@@ -4,7 +4,7 @@ GodUsage is a SwiftPM SwiftUI menu-bar app for macOS. It shows usage widgets for
 
 AGENTS.md is the only place for agent instructions. CLAUDE.md contains `@AGENTS.md` and nothing else.
 
-Active development happens on `main`. The old Tauri edition is frozen on the `tauri-legacy` branch.
+Active development happens on `develop`; `main` holds what has shipped to production. The old Tauri edition is frozen on the `tauri-legacy` branch.
 
 ## Architecture
 
@@ -29,11 +29,11 @@ Provider modules live under `Sources/GodUsage/Providers/<Name>/`.
 
 ## Releases
 
-Releases ship from `.github/workflows/release.yml` with a Sparkle appcast on `update-feed`. Cut them with the release-swift skill. `docs/releasing.md` covers the secrets and one-time setup.
+Production releases ship from `.github/workflows/release.yml` with a Sparkle appcast on `update-feed`. Cut them with the release-swift skill. Every push to `develop` ships the dev channel (**GodUsage DEV**, `com.montinovo.godusage.dev`) from `.github/workflows/release-dev.yml` as a `dev-<build>` prerelease with its own `appcast-dev.xml`. `docs/releasing.md` covers both channels, the secrets, and one-time setup.
 
 - Versions are `0.7.x` and up. Never reuse a `0.6.x` number. Those belong to the Tauri edition (final release `v0.6.28`).
 - Never bump the version on your own. Propose a number and wait for the owner's explicit approval before tagging or releasing.
-- Tags are plain `vMAJOR.MINOR.PATCH` and become the GitHub "Latest" release. No prerelease suffixes and no Sparkle beta channel.
+- Production tags are plain `vMAJOR.MINOR.PATCH` and become the GitHub "Latest" release. No prerelease suffixes on them. The only other channel is the automatic dev channel above; do not add more.
 - Do not carry over the upstream fork's Tauri `latest.json`, release assets, appcast entries, or signing identity.
 - Never leave a release in Draft or with empty notes. The release-swift skill writes the changelog and verifies the published release.
 

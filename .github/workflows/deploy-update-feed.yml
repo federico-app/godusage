@@ -22,7 +22,7 @@ name: Deploy Update Feed
 
 on:
   workflow_run:
-    workflows: ["Release", "Publish Pricing Supplement", "Publish Landing Page"]
+    workflows: ["Release", "Release Dev", "Publish Pricing Supplement", "Publish Landing Page"]
     types: [completed]
   workflow_dispatch:
 

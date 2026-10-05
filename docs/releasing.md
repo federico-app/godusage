@@ -1,6 +1,9 @@
 # Releasing
 
-Releases are automated. When you push a stable tag such as `v0.7.1` on `main`, the pipeline tests, builds, signs, notarizes, and publishes a new version with its SHA-256 checksum. Prerelease suffixes are rejected. The macOS pipeline is [.github/workflows/release.yml](../.github/workflows/release.yml), which calls the [iOS TestFlight pipeline](../.github/workflows/release-ios.yml) in parallel. The step-by-step is in the `release-swift` skill.
+Releases are automated and come in two channels:
+
+- **Production.** When you push a stable tag such as `v0.7.1` on `main`, the pipeline tests, builds, signs, notarizes, and publishes a new version with its SHA-256 checksum. Prerelease suffixes are rejected.
+- **Dev.** Every push to `develop` publishes **GodUsage DEV** as a GitHub prerelease. See [Dev channel](#dev-channel). The macOS pipeline is [.github/workflows/release.yml](../.github/workflows/release.yml), which calls the [iOS TestFlight pipeline](../.github/workflows/release-ios.yml) in parallel. The step-by-step is in the `release-swift` skill.
 
 Release tags are owner-managed. See [CONTRIBUTING.md](../CONTRIBUTING.md). Everything below is one-time setup for the maintainer's fork, not something contributors need.
 
@@ -15,7 +18,9 @@ The release workflow needs these repository secrets (Settings → Secrets and va
 | `APPLE_NOTARY_PRIVATE_KEY_BASE64` | base64 of an App Store Connect API private key (`.p8`) |
 | `APPLE_NOTARY_KEY_ID` | the App Store Connect API key ID |
 | `APPLE_NOTARY_ISSUER_ID` | the App Store Connect API issuer ID |
-| `APPLE_DEVELOPER_ID_ICLOUD_PROFILE` | base64 Developer ID provisioning profile for the production iCloud container |
+| `APPLE_DEVELOPER_ID_ICLOUD_PROFILE` | base64 Developer ID provisioning profile for `com.montinovo.godusage` (production iCloud container, Sign in with Apple) |
+| `APPLE_DEVELOPER_ID_DEV_PROFILE` | base64 Developer ID provisioning profile for `com.montinovo.godusage.dev` (dev iCloud container, Sign in with Apple) |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token that can edit Workers and D1 in the account in `backend/wrangler.jsonc` |
 | `SPARKLE_PUBLIC_KEY` | base64 EdDSA public key, baked into the build as `SUPublicEDKey` |
 | `SPARKLE_PRIVATE_KEY` | base64 EdDSA private key used to sign the DMG |
 | `APPLE_DISTRIBUTION_CERTIFICATE_BASE64` | base64 of the Apple Distribution `.p12` that signs the iOS app |
@@ -26,6 +31,23 @@ The release workflow needs these repository secrets (Settings → Secrets and va
 ### macOS signing and notarization
 
 Export the Developer ID Application cert (with its private key) from Keychain Access as a `.p12`, then `base64 -i DeveloperID.p12 | pbcopy`. Create an App Store Connect API key with the **App Manager** role (it notarizes the Mac app and uploads the iOS app), download its `.p8` once, and base64-encode it the same way. The certificate, API key, and iCloud profile must all belong to the same team (`S6X72K86R8`). Generate the Sparkle EdDSA key pair once with Sparkle's `generate_keys` tool. The public and private values must be a matching pair, or signing is silently skipped.
+
+## Dev channel
+
+[.github/workflows/release-dev.yml](../.github/workflows/release-dev.yml) runs on every push to `develop`. It builds `script/release.sh` with `CHANNEL=dev`:
+
+- the app is **GodUsage DEV** (`com.montinovo.godusage.dev`, iCloud container `iCloud.com.montinovo.godusage.dev`), so it installs beside the release app and keeps its own settings, iCloud data, and teams backend;
+- the version is the newest stable tag plus the build number, for example `0.8.16-dev.642`;
+- it is Developer ID-signed and notarized like production, published as the prerelease `dev-<build>` with `GodUsage-DEV-<version>.dmg`, and never becomes the GitHub "Latest" release;
+- it updates `appcast-dev.xml` on `update-feed` (last 10 builds). Installed DEV apps update from that feed and never see production releases, and production apps never see DEV builds.
+
+Merge `develop` into `main` and tag it to ship production.
+
+The dev container needs its CloudKit schema deployed to **Production** too, because a Developer ID build uses the Production environment (see [iCloud Sync](icloud-sync.md#development-and-release-setup)).
+
+## Teams backend
+
+[.github/workflows/backend-deploy.yml](../.github/workflows/backend-deploy.yml) deploys the [teams backend](teams-backend.md) on the same channels. A push to `develop` that changes `backend/` migrates and deploys the dev Worker. A stable tag migrates and deploys production. It can also be run by hand for either environment. It needs `CLOUDFLARE_API_TOKEN`.
 
 ### iOS signing
 

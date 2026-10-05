@@ -12,6 +12,9 @@ GodUsage updates itself with [Sparkle](https://sparkle-project.org), the standar
 
 ## Where updates come from
 
+**GodUsage DEV**, the development build from the `develop` branch, reads its own feed (`appcast-dev.xml`) and only ever updates to newer DEV builds. The release app reads `appcast.xml` and only updates to stable releases. See [Releasing](releasing.md#dev-channel).
+
+
 GodUsage publishes update builds on its GitHub releases and serves the list of versions (the appcast) from `https://federico-app.github.io/godusage/appcast.xml`. That address is baked into every shipped app, and it is the same GitHub Pages site as the [landing page](https://federico-app.github.io/godusage/). Keep it working: a release that moves the feed must ship before the old address goes away.
 
 Each download is signed two ways, Apple notarization plus GodUsage's own Sparkle signature, and the app refuses anything that does not match. Updates are only available in the official signed release build, not in local developer builds.

@@ -14,6 +14,10 @@ set -euo pipefail
 #                         only signs the DMG if this matches the private key it signs with.
 #   GODUSAGE_VERSION     human version, e.g. 0.7.0 (CFBundleShortVersionString)
 # Optional env:
+#   CHANNEL               "prod" (default) or "dev". dev builds "GodUsage DEV" (com.montinovo.godusage.dev,
+#                         its own iCloud container, appcast-dev.xml feed, GodUsage-DEV-<version>.dmg) so
+#                         it installs and updates beside the release app. GODUSAGE_VERSION may then
+#                         carry a suffix (0.8.16-dev.642); prod accepts only a stable version.
 #   GODUSAGE_BUILD       CFBundleVersion (monotonic). Default: git commit count.
 #   FEED_URL              appcast URL baked into the app. Default: GitHub Pages project URL.
 #   APPLE_NOTARY_KEY_PATH / APPLE_NOTARY_KEY_ID / APPLE_NOTARY_ISSUER_ID
@@ -30,22 +34,47 @@ cd "$ROOT_DIR"
 : "${SPARKLE_PUBLIC_KEY:?set SPARKLE_PUBLIC_KEY to your base64 EdDSA public key}"
 : "${GODUSAGE_VERSION:?set GODUSAGE_VERSION, e.g. 0.7.0}"
 
-APP_NAME="GodUsage"
-BUNDLE_ID="com.montinovo.godusage"
+CHANNEL="${CHANNEL:-prod}"
+APP_NAME="GodUsage"   # executable and SwiftPM product; the same for both channels
+case "$CHANNEL" in
+  prod)
+    APP_DISPLAY_NAME="GodUsage"
+    BUNDLE_ID="com.montinovo.godusage"
+    ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage"
+    FEED_FILE="appcast.xml"
+    DMG_PREFIX="GodUsage"
+    ;;
+  dev)
+    APP_DISPLAY_NAME="GodUsage DEV"
+    BUNDLE_ID="com.montinovo.godusage.dev"
+    ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage.dev"
+    FEED_FILE="appcast-dev.xml"
+    DMG_PREFIX="GodUsage-DEV"
+    ;;
+  *)
+    echo "CHANNEL must be prod or dev, got: $CHANNEL" >&2
+    exit 1
+    ;;
+esac
 EXPECTED_TEAM_ID="${APPLE_TEAM_ID:-S6X72K86R8}"
 APPLE_TEAM_ID="$EXPECTED_TEAM_ID"
 export APPLE_TEAM_ID
 MIN_SYSTEM_VERSION="15.0"
 VERSION="$GODUSAGE_VERSION"
-"$ROOT_DIR/script/validate_release_tag.sh" "v$VERSION" >/dev/null
+if [ "$CHANNEL" = "prod" ]; then
+  "$ROOT_DIR/script/validate_release_tag.sh" "v$VERSION" >/dev/null
+elif [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]+$ ]]; then
+  echo "Dev versions must look like 1.2.3-dev.45, got: $VERSION" >&2
+  exit 1
+fi
 # CFBundleShortVersionString is the stable human-readable version Sparkle shows in its update prompt
 # and the app shows in its footer/About. Sparkle compares builds by the monotonic CFBundleVersion.
 BUILD="${GODUSAGE_BUILD:-$(git rev-list --count HEAD)}"
-FEED_URL="${FEED_URL:-https://federico-app.github.io/godusage/appcast.xml}"
-DMG_NAME="$APP_NAME-$VERSION.dmg"
+FEED_URL="${FEED_URL:-https://federico-app.github.io/godusage/$FEED_FILE}"
+DMG_NAME="$DMG_PREFIX-$VERSION.dmg"
 
 DIST_DIR="$ROOT_DIR/dist"
-APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
+APP_BUNDLE="$DIST_DIR/$APP_DISPLAY_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_HELPERS="$APP_CONTENTS/Helpers"
@@ -55,6 +84,15 @@ CLI_BINARY="$APP_HELPERS/godusage"
 DMG_PATH="$DIST_DIR/$DMG_NAME"
 DMG_CHECKSUM_PATH="$DMG_PATH.sha256"
 ENTITLEMENTS_TEMPLATE="$ROOT_DIR/script/GodUsage.release.entitlements.plist"
+if [ "$CHANNEL" = "dev" ]; then
+  # Same entitlements, pointed at the dev container.
+  mkdir -p "$DIST_DIR"
+  sed "s/iCloud\.com\.montinovo\.godusage</$ICLOUD_CONTAINER_ID</" "$ENTITLEMENTS_TEMPLATE" \
+    > "$DIST_DIR/GodUsage.release-dev.entitlements.plist"
+  ENTITLEMENTS_TEMPLATE="$DIST_DIR/GodUsage.release-dev.entitlements.plist"
+  grep -q "$ICLOUD_CONTAINER_ID<" "$ENTITLEMENTS_TEMPLATE" \
+    || { echo "could not point the entitlements at $ICLOUD_CONTAINER_ID" >&2; exit 1; }
+fi
 ENTITLEMENTS="$DIST_DIR/GodUsage.release.resolved.entitlements.plist"
 
 [[ "$CODESIGN_IDENTITY" == Developer\ ID\ Application:*"($EXPECTED_TEAM_ID)" ]] \
@@ -86,7 +124,7 @@ notarize() {  # $1: artifact to submit (.zip or .dmg)
     --wait
 }
 
-echo "==> building $APP_NAME $VERSION ($BUILD) — universal (arm64 + x86_64)"
+echo "==> building $APP_DISPLAY_NAME $VERSION ($BUILD) — universal (arm64 + x86_64)"
 # Build both arch slices and let SwiftPM lipo-merge them into one universal binary. With multiple
 # --arch, --show-bin-path resolves to the merged products dir (.build/apple/Products/Release), which
 # also holds the *.bundle resources, so the staging loop below is unchanged.
@@ -158,8 +196,8 @@ cat >"$APP_CONTENTS/Info.plist" <<PLIST
 <dict>
   <key>CFBundleExecutable</key><string>$APP_NAME</string>
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
-  <key>CFBundleName</key><string>$APP_NAME</string>
-  <key>CFBundleDisplayName</key><string>$APP_NAME</string>
+  <key>CFBundleName</key><string>$APP_DISPLAY_NAME</string>
+  <key>CFBundleDisplayName</key><string>$APP_DISPLAY_NAME</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$BUILD</string>
@@ -183,7 +221,7 @@ cat >"$APP_CONTENTS/Info.plist" <<PLIST
   <key>SUScheduledCheckInterval</key><integer>3600</integer>
   <key>NSUbiquitousContainers</key>
   <dict>
-    <key>iCloud.com.montinovo.godusage</key>
+    <key>$ICLOUD_CONTAINER_ID</key>
     <dict>
       <key>NSUbiquitousContainerIsDocumentScopePublic</key><false/>
       <key>NSUbiquitousContainerName</key><string>GodUsage</string>
@@ -197,7 +235,7 @@ PLIST
 cp "$ICLOUD_PROVISIONING_PROFILE" "$APP_CONTENTS/embedded.provisionprofile"
 "$ROOT_DIR/script/render_icloud_entitlements.sh" \
   "$ENTITLEMENTS_TEMPLATE" "$ICLOUD_PROVISIONING_PROFILE" "$ENTITLEMENTS" \
-  "iCloud.com.montinovo.godusage"
+  "$ICLOUD_CONTAINER_ID"
 
 # Embed + sign Sparkle (Developer ID, hardened runtime, secure timestamp).
 "$ROOT_DIR/script/embed_sparkle.sh" "$APP_BUNDLE" "$APP_BINARY" "$CODESIGN_IDENTITY" "--options runtime --timestamp"
@@ -208,8 +246,8 @@ echo "==> signing app (Developer ID, hardened runtime)"
 codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS" \
   --sign "$CODESIGN_IDENTITY" "$APP_BUNDLE"
 codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
-codesign -d --entitlements :- "$APP_BUNDLE" 2>&1 | grep -q "iCloud.com.montinovo.godusage" \
-  || { echo "signed app is missing the production iCloud entitlement" >&2; exit 1; }
+codesign -d --entitlements :- "$APP_BUNDLE" 2>&1 | grep -q "$ICLOUD_CONTAINER_ID<" \
+  || { echo "signed app is missing the $ICLOUD_CONTAINER_ID iCloud entitlement" >&2; exit 1; }
 
 # Notarize + staple the app itself (not just the DMG) so it launches cleanly even offline after a
 # Sparkle update extracts it from the disk image.
@@ -224,10 +262,10 @@ fi
 
 echo "==> building $DMG_PATH"
 STAGE="$(mktemp -d)"
-cp -R "$APP_BUNDLE" "$STAGE/$APP_NAME.app"
+cp -R "$APP_BUNDLE" "$STAGE/$APP_DISPLAY_NAME.app"
 ln -s /Applications "$STAGE/Applications"
 rm -f "$DMG_PATH"
-hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE" -ov -format UDZO "$DMG_PATH" >/dev/null
+hdiutil create -volname "$APP_DISPLAY_NAME" -srcfolder "$STAGE" -ov -format UDZO "$DMG_PATH" >/dev/null
 rm -rf "$STAGE"
 codesign --force --timestamp --sign "$CODESIGN_IDENTITY" "$DMG_PATH"
 
