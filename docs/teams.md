@@ -55,7 +55,7 @@ Every ranking shows each member's movement since the period before: ▲ places g
 
 **Share Wrapped** (Teams window) copies an image of your standing in the team over the last 30 days or 12 months: your rank, spend, tokens, efficiency, top provider and model, and the team's top five.
 
-**Show Rank in Menu Bar** (Settings → Teams) adds your rank and today's spend in the selected team to the menu bar. See [Menu bar](menu-bar.md#team-rank).
+**Show Rank in Menu Bar** (Settings → Teams) adds your rank, your share of the team's spend, and your spend today in the selected team to the menu bar. See [Menu bar](menu-bar.md#team-rank).
 
 Providers have the same color everywhere: the popover's Cost ring, the Team screen, the Teams window, and the web boards (Claude is terracotta, Codex green, Cursor black, or white in dark mode). Every chart also has a legend and value labels, so no number depends on color alone.
 

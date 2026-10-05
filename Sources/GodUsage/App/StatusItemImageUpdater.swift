@@ -66,7 +66,8 @@ final class StatusItemImageUpdater {
             quotaDescriptors: { container.registry.descriptors(for: $0).filter(container.dataStore.isMetricApplicable) },
             loginRequired: container.dataStore.loginRequired(for:)
         )
-        // The team standing rides as one more group after the pinned providers ("#2" over today's spend).
+        // The team standing rides as one more group after the pinned providers: "#2 · 38%" (rank and
+        // share of the team's spend) over today's spend.
         if let standing = container.teams.menuBarStanding {
             let team = MenuBarContent.Group(
                 providerID: TeamsStore.menuBarGroupID,

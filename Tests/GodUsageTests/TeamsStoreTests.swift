@@ -157,7 +157,7 @@ final class TeamsStoreTests: XCTestCase {
         TeamStats(
             range: .init(name: .today, from: "2026-10-05", to: "2026-10-05"),
             sort: .cost,
-            totals: UsageTotals(tokens: 0, costUSD: 0),
+            totals: UsageTotals(tokens: members.count, costUSD: members.reduce(0) { $0 + $1.3 }),
             members: members.map { TeamStats.Member(userID: $0.0, displayName: $0.1, rank: $0.2, tokens: 1, costUSD: $0.3, providers: []) },
             providers: [],
             models: [],
@@ -179,8 +179,17 @@ final class TeamsStoreTests: XCTestCase {
         XCTAssertNil(store.menuBarStanding, "off by default")
 
         store.showRankInMenuBar = true
-        XCTAssertEqual(store.menuBarStanding?.rank, "#2")
+        // Fede spent $5 of the team's $14 today.
+        XCTAssertEqual(store.menuBarStanding?.rank, "#2 · 36%")
         XCTAssertEqual(store.menuBarStanding?.spend, "$5.00")
+    }
+
+    func testShareText() {
+        XCTAssertEqual(TeamsStore.shareText(5, of: 14), "36%")
+        XCTAssertEqual(TeamsStore.shareText(14, of: 14), "100%")
+        XCTAssertEqual(TeamsStore.shareText(0.01, of: 14), "<1%")
+        XCTAssertEqual(TeamsStore.shareText(0, of: 14), "0%")
+        XCTAssertNil(TeamsStore.shareText(0, of: 0))
     }
 
     func testOvertakesNotifyAfterTheBaseline() async {

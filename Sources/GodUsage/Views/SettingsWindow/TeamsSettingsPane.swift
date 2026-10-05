@@ -160,7 +160,7 @@ private struct TeamsAccountSection: View {
                 Toggle("", isOn: Binding(get: { teams.showRankInMenuBar }, set: { teams.showRankInMenuBar = $0 }))
                     .settingsSwitchStyle()
             }
-            SettingsCaption("Your rank and today's spend in the selected team, next to your pinned metrics.")
+            SettingsCaption("Your rank, your share of the team's spend, and your spend today in the selected team, next to your pinned metrics.")
         }
         .alert("Display Name", isPresented: $isRenaming) {
             TextField("Name", text: $newName)

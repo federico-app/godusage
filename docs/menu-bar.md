@@ -23,7 +23,7 @@ Settings → Appearance → Icon Style:
 
 ## Team rank
 
-With **Show Rank in Menu Bar** on (Settings → Teams), the strip ends with a team segment: your rank in the selected team over today's spend, for example **#2** over **$12.40**. It updates with each team upload, at most every 15 minutes, and whenever the popover's Team screen loads Today. See [Teams](teams.md).
+With **Show Rank in Menu Bar** on (Settings → Teams), the strip ends with a team segment: your rank in the selected team and your share of the team's spend today, over your spend today, for example **#2 · 38%** over **$12.40**. The share is left out while the team has spent nothing today. It updates with each team upload, at most every 15 minutes, and whenever the popover's Team screen loads Today. See [Teams](teams.md).
 
 ## Login unavailable
 
