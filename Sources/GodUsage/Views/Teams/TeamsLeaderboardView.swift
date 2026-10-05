@@ -56,7 +56,7 @@ struct TeamsLeaderboardView: View {
         var teamCount: Int
     }
 
-    /// Shared with the popover's Team screen and the Teams settings pane.
+    /// Shared with the dashboard's Team section and the Teams settings pane.
     private var currentTeamID: String? { container.teams.selectedTeamID }
 
     private func load() async {

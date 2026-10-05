@@ -277,7 +277,7 @@ struct TeamsCharts: View {
 }
 
 /// A member's usage split by provider, scaled against the team's top member so bars compare across
-/// rows. Shared by the popover's Team screen and the Teams window, with a 2pt gap between segments.
+/// rows. Shared by the dashboard's Team section and the Teams window, with a 2pt gap between segments.
 struct ProviderSplitBar: View {
     let providers: [TeamStats.ProviderTotals]
     let top: Double

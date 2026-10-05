@@ -107,7 +107,7 @@ struct HeaderView: View {
         }
         .keyboardShortcut("m")
 
-        Button { toggle(.team) } label: {
+        Button { TeamsWindowLink.open() } label: {
             Label("Team", systemImage: "person.3")
         }
         .keyboardShortcut("t")

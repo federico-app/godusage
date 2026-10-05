@@ -223,11 +223,10 @@ struct DashboardView: View {
                         MemoryWindowLink.open()
                         return true
                     },
-                    // ⌘T toggles the Team screen from every screen; the gear menu's Team item
+                    // ⌘T opens the Teams window from every screen; the gear menu's Team item
                     // carries ⌘T only as a label, like Memory's ⌘M.
                     onTeam: {
-                        let target: PopoverScreen = layout.screen == .team ? .dashboard : .team
-                        withAnimation(Motion.modeSwitch) { layout.screen = target }
+                        TeamsWindowLink.open()
                         return true
                     },
                     // ⌘Z walks back the last customization step (remove/add, reorder, pin/unpin, caret
@@ -762,8 +761,6 @@ struct DashboardView: View {
                 reorderSpaceName: Self.reorderSpace,
                 reorderLift: $reorderLift
             )
-        case .team:
-            TeamPopoverView(heightCoordinator: heightCoordinator, horizontalPadding: Self.outerPadding)
         }
     }
 

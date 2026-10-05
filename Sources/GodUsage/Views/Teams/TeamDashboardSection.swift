@@ -1,12 +1,10 @@
 import SwiftUI
 
-/// The popover's Team screen: the selected team's ranking at a glance, with each member's split by
-/// provider. Click a member for their providers and top models. The Teams window (top bar button)
-/// has the full charts.
-struct TeamPopoverView: View {
+/// The dashboard's Team section, under the provider cards once you're signed in and in a team: the
+/// selected team's ranking at a glance, with each member's split by provider. Click a member for their
+/// providers and top models. Advanced Stats opens the Teams window with the full charts.
+struct TeamDashboardSection: View {
     @Environment(AppContainer.self) private var container
-    let heightCoordinator: PanelHeightCoordinator
-    let horizontalPadding: CGFloat
 
     @AppStorage("godusage.teams.popover.range") private var range: StatsRange = .today
     @AppStorage("godusage.teams.popover.sort") private var sort: StatsSort = .cost
@@ -16,14 +14,10 @@ struct TeamPopoverView: View {
     private let density = DensitySetting.compact
 
     var body: some View {
-        PopoverScrollView(heightCoordinator: heightCoordinator, screen: .team) {
-            VStack(alignment: .leading, spacing: density.sectionSpacing) {
-                content
-            }
-            .padding(.horizontal, horizontalPadding)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity)
+        VStack(alignment: .leading, spacing: density.sectionSpacing) {
+            content
         }
+        .frame(maxWidth: .infinity)
         .task(id: loadKey) { await load() }
     }
 
@@ -54,32 +48,18 @@ struct TeamPopoverView: View {
     @ViewBuilder
     private var content: some View {
         let teams = container.teams
-        if !teams.isSignedIn {
-            emptyCard(
-                title: "Compare Usage With Friends",
-                message: "Sign in with Apple in Teams settings, then create a team or open an invite link.",
-                button: "Open Teams Settings"
-            )
-        } else if teams.teams.isEmpty {
-            emptyCard(
-                title: "No Teams Yet",
-                message: "Create a team or join one with an invite link in Teams settings.",
-                button: "Open Teams Settings"
-            )
+        controls
+        if let stats {
+            summary(stats)
+            ranking(stats)
+        } else if let error = teams.statsError {
+            errorCard(error)
         } else {
-            controls
-            if let stats {
-                summary(stats)
-                ranking(stats)
-            } else if let error = teams.statsError {
-                errorCard(error)
-            } else {
-                HStack { Spacer(); ProgressView().controlSize(.small); Spacer() }
-                    .padding(.vertical, 24)
-            }
-            if stats != nil, let error = teams.statsError {
-                Text(error).font(.caption).foregroundStyle(Theme.notice)
-            }
+            HStack { Spacer(); ProgressView().controlSize(.small); Spacer() }
+                .padding(.vertical, 24)
+        }
+        if stats != nil, let error = teams.statsError {
+            Text(error).font(.caption).foregroundStyle(Theme.notice)
         }
     }
 
@@ -157,8 +137,32 @@ struct TeamPopoverView: View {
                 if index > 0 { Divider().padding(.leading, 12) }
                 memberRow(member, top: top, stats: stats)
             }
+            Divider()
+            advancedStatsRow
         }
         .cardSurface()
+    }
+
+    /// Opens the Teams window: every range, charts, models, and the two-member comparison.
+    private var advancedStatsRow: some View {
+        Button { TeamsWindowLink.open() } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "chart.bar.xaxis")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                Text("Advanced Stats")
+                Spacer(minLength: 6)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Advanced Stats")
     }
 
     private func memberRow(_ member: TeamStats.Member, top: Double, stats: TeamStats) -> some View {
@@ -263,25 +267,7 @@ struct TeamPopoverView: View {
         container.registry.providers.first { $0.id == id }?.displayName ?? id.capitalized
     }
 
-    // MARK: - Empty and error states
-
-    private func emptyCard(title: String, message: String, button: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: "person.3").font(.title2).foregroundStyle(.secondary)
-            Text(title).font(.headline)
-            Text(message)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button(button) { SettingsWindowLink.open(pane: .teams) }
-                .glassButtonStyle()
-                .controlSize(.regular)
-                .padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(16)
-        .cardSurface()
-    }
+    // MARK: - Error state
 
     private func errorCard(_ message: String) -> some View {
         VStack(spacing: 8) {

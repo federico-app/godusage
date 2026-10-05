@@ -40,7 +40,7 @@ Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Code
 
 Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac uploaded, so the Year range fills in from the day you start sharing.
 
-**In the popover.** Press **⌘T**, or once you're signed in use the footer's **team** button (also **Team** in the gear menu). The Team screen shows the selected team's ranking for Today, 7 Days, or 30 Days, by Spend or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. The chart button in its top bar opens the Teams window. With more than one team, pick one from the team name.
+**On the dashboard.** Once you're signed in and in a team, a Team section sits under the provider cards. It shows the selected team's ranking for Today, 7 Days, 30 Days, or Year, by Spend or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. **Advanced Stats** at the bottom opens the Teams window. With more than one team, pick one from the team name. Press **⌘T**, or choose **Team** in the gear menu, to open the Teams window directly.
 
 **In the Teams window** (the popover's chart button, or **Open Leaderboards** in Settings → Teams):
 
@@ -57,7 +57,7 @@ Every ranking shows each member's movement since the period before: ▲ places g
 
 **Show Rank in Menu Bar** (Settings → Teams) adds your rank, your share of the team's spend, and your spend today in the selected team to the menu bar. See [Menu bar](menu-bar.md#team-rank).
 
-Providers have the same color everywhere: the popover's Cost ring, the Team screen, the Teams window, and the web boards (Claude is terracotta, Codex green, Cursor black, or white in dark mode). Every chart also has a legend and value labels, so no number depends on color alone.
+Providers have the same color everywhere: the popover's Cost ring, the dashboard's Team section, the Teams window, and the web boards (Claude is terracotta, Codex green, Cursor black, or white in dark mode). Every chart also has a legend and value labels, so no number depends on color alone.
 
 The popover, the Teams window, and Settings share the selected team.
 

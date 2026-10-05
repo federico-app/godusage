@@ -37,6 +37,12 @@ struct DashboardContentView: View {
                         .transition(.scaleOrInstant(scale: 0.95))
                 }
                 widgetContent(displayGroups)
+                // The team ranking follows the provider cards once you're signed in and in a team;
+                // Advanced Stats inside it opens the Teams window.
+                if container.teams.isSignedIn, !container.teams.teams.isEmpty {
+                    TeamDashboardSection()
+                        .padding(.top, density.sectionSpacing)
+                }
             }
             .animation(Motion.spring, value: container.onboarding.isCustomizeHintPending)
             .animation(Motion.spring, value: updater.availableUpdateVersion)

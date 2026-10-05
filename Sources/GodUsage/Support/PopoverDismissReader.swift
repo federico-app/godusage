@@ -30,7 +30,7 @@ struct PopoverKeyReader: NSViewRepresentable {
     /// always-on monitor handles it from every screen, and the gear options menu's Memory item
     /// carries ⌘M only as a label, so the two can never both fire.
     var onMemory: @MainActor () -> Bool = { false }
-    /// Called on ⌘T (toggles the Team screen). Same arrangement as `onMemory`, matched by character.
+    /// Called on ⌘T (opens the Teams window). Same arrangement as `onMemory`, matched by character.
     var onTeam: @MainActor () -> Bool = { false }
     /// Called on plain ⌘Z (undo). Rides this monitor — same reasons as Esc/Return: a hidden SwiftUI
     /// shortcut only fires when the popover is the key window, which the panel isn't always for. By the
@@ -127,7 +127,7 @@ struct PopoverKeyReader: NSViewRepresentable {
                    event.modifierFlags.intersection([.command, .option, .control, .shift]) != [.command] {
                     return event
                 }
-                // Only plain ⌘T toggles Team; a bare t (typing) or ⇧⌘T etc. belong elsewhere.
+                // Only plain ⌘T opens Teams; a bare t (typing) or ⇧⌘T etc. belong elsewhere.
                 if isTeam,
                    event.modifierFlags.intersection([.command, .option, .control, .shift]) != [.command] {
                     return event
