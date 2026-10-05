@@ -12,6 +12,7 @@ Active development happens on `main`. The old Tauri edition is frozen on the `ta
 - Swift 6 with strict concurrency.
 - Each provider implements `ProviderRuntime`: an auth store reads credentials already on the machine, a usage client calls the provider API, and a mapper turns the response into `MetricLine` values. The UI renders those values.
 - `docs/` holds the behavior docs and the developer docs (architecture, adding a provider).
+- `backend/` is the teams backend: a TypeScript Cloudflare Worker with D1. Run `npm test` there after changing it. See `docs/teams-backend.md`.
 
 ## Providers
 
