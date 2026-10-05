@@ -1,26 +1,46 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  // Top level is production. `--env dev` is a separate Worker with its own database, used by the
+  // dev build (com.montinovo.godusage.dev), so test data never reaches the real leaderboards.
   "name": "godusage-api",
+  "account_id": "c8027ea307622cd1ac394bf73c18efc0",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-22",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
     "enabled": true,
-    "head_sampling_rate": 1,
+    "head_sampling_rate": 1
   },
   "vars": {
-    // Bundle IDs whose Sign in with Apple identity tokens are accepted (release, then dev build).
-    "APPLE_AUDIENCES": "com.montinovo.godusage,com.montinovo.godusage.dev",
+    // Bundle IDs whose Sign in with Apple identity tokens are accepted.
+    "APPLE_AUDIENCES": "com.montinovo.godusage",
     // Where the invite page sends people who do not have the app yet.
-    "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest",
+    "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest"
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "godusage",
-      // Replace with the id printed by `npx wrangler d1 create godusage` before the first deploy.
       "database_id": "7b70362b-aba7-4535-a1bf-beb32015da65",
-      "migrations_dir": "migrations",
-    },
+      "migrations_dir": "migrations"
+    }
   ],
+  "env": {
+    "dev": {
+      "name": "godusage-api-dev",
+      // vars and d1_databases are not inherited by environments, so they are repeated here.
+      "vars": {
+        "APPLE_AUDIENCES": "com.montinovo.godusage.dev",
+        "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "godusage-dev",
+          "database_id": "23c18ca9-a3e7-4fb3-896a-cf9c61e64cb5",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
 }

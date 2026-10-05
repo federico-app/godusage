@@ -3,11 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --env dev",
     "deploy": "wrangler deploy",
     "types": "wrangler types",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy:dev": "wrangler deploy --env dev",
+    "migrate": "wrangler d1 migrations apply godusage --remote",
+    "migrate:dev": "wrangler d1 migrations apply godusage-dev --env dev --remote"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",

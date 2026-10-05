@@ -88,17 +88,22 @@ npm test
 
 Tests run inside the Workers runtime with a local D1 and the migrations applied. Apple is never called: tests sign identity tokens with a generated key.
 
-`npm run dev` serves the Worker locally with a local D1. Apply the migrations to it first with `npx wrangler d1 migrations apply godusage --local`.
+`npm run dev` serves the Worker locally with a local D1. Apply the migrations to it first with `npx wrangler d1 migrations apply godusage-dev --env dev --local`.
 
-## Deploying
+## Environments
 
-One-time setup:
+There are two deployments, each with its own Worker and database, so test data never reaches real leaderboards:
 
-1. `npx wrangler login`
-2. `npx wrangler d1 create godusage`, then put the printed `database_id` in `backend/wrangler.jsonc`.
-3. `npx wrangler d1 migrations apply godusage --remote`
-4. `npm run deploy`
+| | Production | Development |
+| --- | --- | --- |
+| Worker | `godusage-api` | `godusage-api-dev` (`https://godusage-api-dev.federico-c80.workers.dev`) |
+| D1 database | `godusage` | `godusage-dev` |
+| Accepted app | `com.montinovo.godusage` | `com.montinovo.godusage.dev` |
+| Migrate | `npm run migrate` | `npm run migrate:dev` |
+| Deploy | `npm run deploy` | `npm run deploy:dev` |
 
-Later schema changes go in a new file in `backend/migrations/` and are applied with step 3 before deploying.
+Each environment accepts Sign in with Apple tokens only from its own bundle id (`APPLE_AUDIENCES` in `wrangler.jsonc`), so a dev build cannot sign in to production.
 
-Sign in with Apple must be enabled on the `com.montinovo.godusage` and `com.montinovo.godusage.dev` App IDs, which are the accepted token audiences (`APPLE_AUDIENCES` in `wrangler.jsonc`).
+Schema changes go in a new file in `backend/migrations/`. Apply it with the migrate command of each environment before deploying that environment. Run `npx wrangler login` once before the first remote command.
+
+Sign in with Apple must be enabled on both App IDs.
