@@ -69,7 +69,7 @@ jobs:
       # Publish the FULL desired state of the branch instead of layering with keep_files: carry the
       # live appcast forward, then lay down the current main-branch content. Publishing the whole
       # state is what lets a deleted or renamed website file actually disappear from the served
-      # site. The branch holds nothing but the appcast, the supplement, and the website.
+      # site. The branch holds nothing but the appcasts (release and DEV), the supplement, and the website.
       #
       # The appcast carry-forward must distinguish "branch does not exist yet" (bootstrap: publish
       # without an appcast) from "could not reach origin" (abort: publishing without the live
@@ -90,6 +90,11 @@ jobs:
               git show FETCH_HEAD:appcast.xml > public/appcast.xml
             else
               echo "update-feed exists but has no appcast.xml yet (pre-first-release); continuing."
+            fi
+            # The DEV channel's feed (release-dev.yml) lives on the same branch; carry it too, or
+            # installed GodUsage DEV apps lose their updates.
+            if git cat-file -e FETCH_HEAD:appcast-dev.xml 2>/dev/null; then
+              git show FETCH_HEAD:appcast-dev.xml > public/appcast-dev.xml
             fi
           elif [ "$status" -eq 2 ]; then
             echo "update-feed branch does not exist yet; bootstrapping it without an appcast."
