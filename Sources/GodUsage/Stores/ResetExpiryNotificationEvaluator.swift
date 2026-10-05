@@ -25,9 +25,12 @@ final class ResetExpiryNotificationEvaluator {
         /// Format at delivery time: a permission prompt may have been open for hours.
         func body(now: Date) -> String {
             let minutes = max(1, Int(ceil(expiry.timeIntervalSince(now) / 60)))
-            let hours = minutes / 60
+            // Past three days read as days ("7 days"), so the week-out reminder isn't "168 hours".
+            let days = minutes >= 72 * 60 ? minutes / (24 * 60) : 0
+            let hours = (minutes - days * 24 * 60) / 60
             let minutesPart = minutes % 60
             var parts: [String] = []
+            if days > 0 { parts.append("\(days) \(days == 1 ? "day" : "days")") }
             if hours > 0 { parts.append("\(hours) \(hours == 1 ? "hour" : "hours")") }
             if minutesPart > 0 { parts.append("\(minutesPart) \(minutesPart == 1 ? "minute" : "minutes")") }
             let subject = count == 1 ? "An unused reset expires" : "\(count) unused resets expire"
@@ -43,7 +46,7 @@ final class ResetExpiryNotificationEvaluator {
         var visible: Bool
     }
 
-    static let thresholds: [TimeInterval] = [48 * 3600, 24 * 3600, 2 * 3600, 3600, 15 * 60]
+    static let thresholds: [TimeInterval] = [7 * 86400, 48 * 3600, 24 * 3600, 2 * 3600, 3600, 15 * 60]
     private static let storageKey = "godusage.notifications.resetExpiryHistory.v1"
     private let defaults: UserDefaults
     private var states: [String: State] = [:]

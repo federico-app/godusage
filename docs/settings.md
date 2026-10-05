@@ -50,7 +50,7 @@ GodUsage can send a macOS notification when a metric runs low, its pace gets wor
 | Almost Out | On / Off | Alerts when a metric crosses under 10% remaining, including balances without a reset window. |
 | Cutting It Close | On / Off | Alerts when a metric is projected to finish the period close to its limit. |
 | Will Run Out | On / Off | Alerts when a metric is projected to run out before it resets. |
-| Reset Expiry Reminders | On / Off | Reminds you before unused Codex and Grok reset credits expire: 48 hours, 24 hours, 2 hours, 1 hour, and 15 minutes. |
+| Reset Expiry Reminders | On / Off | Reminds you before unused Codex and Grok reset credits expire: 7 days, 48 hours, 24 hours, 2 hours, 1 hour, and 15 minutes. |
 | Team Overtakes | On / Off | Tells you when a teammate passes you by spend over the last 7 days. See [Teams](teams.md#notifications). |
 | Weekly Team Recap | On / Off | Every Monday from 9:00, your rank, spend, and top model in each team last week. |
 

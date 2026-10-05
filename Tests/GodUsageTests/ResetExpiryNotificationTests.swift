@@ -42,11 +42,11 @@ final class ResetExpiryNotificationTests: XCTestCase {
         )
     }
 
-    func testAllFiveThresholdsReplaceTheSameResetAndDoNotRepeat() async {
+    func testAllSixThresholdsReplaceTheSameResetAndDoNotRepeat() async {
         let evaluator = ResetExpiryNotificationEvaluator(defaults: defaults)
         let sink = Sink()
         let thresholds = ResetExpiryNotificationEvaluator.thresholds
-        XCTAssertEqual(thresholds, [172800, 86400, 7200, 3600, 900])
+        XCTAssertEqual(thresholds, [604800, 172800, 86400, 7200, 3600, 900])
         for (index, threshold) in thresholds.enumerated() {
             await evaluate(evaluator, sink: sink, remaining: threshold + 1)
             XCTAssertEqual(sink.posts.count, index)
@@ -55,7 +55,7 @@ final class ResetExpiryNotificationTests: XCTestCase {
             XCTAssertEqual(sink.posts.count, index + 1)
         }
         XCTAssertEqual(Set(sink.posts.map(\.identifier)).count, 1)
-        let durations = ["48 hours", "24 hours", "2 hours", "1 hour", "15 minutes"]
+        let durations = ["7 days", "48 hours", "24 hours", "2 hours", "1 hour", "15 minutes"]
         for (index, duration) in durations.enumerated() {
             XCTAssertTrue(sink.posts[index].body(now: expiry.addingTimeInterval(-thresholds[index])).contains(duration))
         }
