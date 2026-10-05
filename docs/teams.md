@@ -36,7 +36,7 @@ Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Code
 
 ## Leaderboards
 
-**In the popover.** Once you're signed in, the footer shows a **team** button (also **Team** in the gear menu). The Team screen shows the selected team's ranking for Today, 7 Days, or 30 Days, by Spend or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. The chart button in its top bar opens the Teams window. With more than one team, pick one from the team name.
+**In the popover.** Press **⌘T**, or once you're signed in use the footer's **team** button (also **Team** in the gear menu). The Team screen shows the selected team's ranking for Today, 7 Days, or 30 Days, by Spend or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. The chart button in its top bar opens the Teams window. With more than one team, pick one from the team name.
 
 **In the Teams window** (the popover's chart button, or **Open Leaderboards** in Settings → Teams):
 

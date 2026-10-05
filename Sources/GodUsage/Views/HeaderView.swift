@@ -110,6 +110,7 @@ struct HeaderView: View {
         Button { toggle(.team) } label: {
             Label("Team", systemImage: "person.3")
         }
+        .keyboardShortcut("t")
 
         Divider()
 

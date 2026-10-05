@@ -30,6 +30,8 @@ struct PopoverKeyReader: NSViewRepresentable {
     /// always-on monitor handles it from every screen, and the gear options menu's Memory item
     /// carries ⌘M only as a label, so the two can never both fire.
     var onMemory: @MainActor () -> Bool = { false }
+    /// Called on ⌘T (toggles the Team screen). Same arrangement as `onMemory`, matched by character.
+    var onTeam: @MainActor () -> Bool = { false }
     /// Called on plain ⌘Z (undo). Rides this monitor — same reasons as Esc/Return: a hidden SwiftUI
     /// shortcut only fires when the popover is the key window, which the panel isn't always for. By the
     /// time this runs the monitor has already confirmed the panel owns the keystroke and no text field is
@@ -43,6 +45,7 @@ struct PopoverKeyReader: NSViewRepresentable {
         view.onReturn = onReturn
         view.onSettings = onSettings
         view.onMemory = onMemory
+        view.onTeam = onTeam
         view.onUndo = onUndo
         return view
     }
@@ -53,6 +56,7 @@ struct PopoverKeyReader: NSViewRepresentable {
         view.onReturn = onReturn
         view.onSettings = onSettings
         view.onMemory = onMemory
+        view.onTeam = onTeam
         view.onUndo = onUndo
     }
 
@@ -74,6 +78,7 @@ struct PopoverKeyReader: NSViewRepresentable {
         var onReturn: (@MainActor () -> Bool)?
         var onSettings: (@MainActor () -> Bool)?
         var onMemory: (@MainActor () -> Bool)?
+        var onTeam: (@MainActor () -> Bool)?
         var onUndo: (@MainActor () -> Bool)?
         private var monitor: Any?
         private static let escapeKeyCode: UInt16 = 53
@@ -95,11 +100,13 @@ struct PopoverKeyReader: NSViewRepresentable {
                 // match would both miss the real ⌘M and steal ⌘, (lowercased so caps lock can't defeat
                 // it; Shift is already excluded by the modifier check below).
                 let isMemory = event.charactersIgnoringModifiers?.lowercased() == "m"
+                let isTeam = event.charactersIgnoringModifiers?.lowercased() == "t"
                 guard keyCode == MonitorView.escapeKeyCode
                     || keyCode == MonitorView.returnKeyCode
                     || keyCode == MonitorView.commaKeyCode
                     || keyCode == MonitorView.zKeyCode
-                    || isMemory else {
+                    || isMemory
+                    || isTeam else {
                     return event
                 }
                 let isReturn = keyCode == MonitorView.returnKeyCode
@@ -117,6 +124,11 @@ struct PopoverKeyReader: NSViewRepresentable {
                 }
                 // Only plain ⌘M opens Memory; a bare m (typing) or ⌥⌘M etc. belong elsewhere.
                 if isMemory,
+                   event.modifierFlags.intersection([.command, .option, .control, .shift]) != [.command] {
+                    return event
+                }
+                // Only plain ⌘T toggles Team; a bare t (typing) or ⇧⌘T etc. belong elsewhere.
+                if isTeam,
                    event.modifierFlags.intersection([.command, .option, .control, .shift]) != [.command] {
                     return event
                 }
@@ -147,6 +159,9 @@ struct PopoverKeyReader: NSViewRepresentable {
                     }
                     if isMemory {
                         return self.onMemory?() ?? false
+                    }
+                    if isTeam {
+                        return self.onTeam?() ?? false
                     }
                     if isUndo {
                         return self.onUndo?() ?? false

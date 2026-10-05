@@ -223,6 +223,13 @@ struct DashboardView: View {
                         MemoryWindowLink.open()
                         return true
                     },
+                    // ⌘T toggles the Team screen from every screen; the gear menu's Team item
+                    // carries ⌘T only as a label, like Memory's ⌘M.
+                    onTeam: {
+                        let target: PopoverScreen = layout.screen == .team ? .dashboard : .team
+                        withAnimation(Motion.modeSwitch) { layout.screen = target }
+                        return true
+                    },
                     // ⌘Z walks back the last customization step (remove/add, reorder, pin/unpin, caret
                     // move) — app-wide, since Hide and Pin happen via the dashboard's context menus too,
                     // not only in Customize. Always consumed here: by the time the monitor calls this it

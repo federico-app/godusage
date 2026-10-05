@@ -102,6 +102,7 @@ When GodUsage ships a new default metric, existing layouts get it once, in that 
 | ⌘R | Refresh now from the dashboard (skips the cache) |
 | ⌘, | Open the [Settings window](settings.md) (closes the popover) |
 | ⌘M | Open the [Memory Explorer](memory-explorer.md) (closes the popover) |
+| ⌘T | Show the [Team](teams.md#leaderboards) screen, or go back to the dashboard from it |
 
 A global shortcut (recorded in Settings) toggles the popover from anywhere.
 
