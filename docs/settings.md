@@ -53,6 +53,7 @@ GodUsage can send a macOS notification when a metric runs low, its pace gets wor
 | Reset Expiry Reminders | On / Off | Reminds you before unused Codex and Grok reset credits expire: 7 days, 48 hours, 24 hours, 2 hours, 1 hour, and 15 minutes. |
 | Team Overtakes | On / Off | Tells you when a teammate passes you by spend over the last 7 days. See [Teams](teams.md#notifications). |
 | Weekly Team Recap | On / Off | Every Monday from 9:00, your rank, spend, and top model in each team last week. |
+| Team Challenges | On / Off | Who won, when a team challenge ends. |
 
 Pace alerts fire on a new crossing or when pace worsens, then stay quiet while that condition is unchanged. A quota already in a bad state when GodUsage launches sets the baseline without alerting. If it recovers and later worsens again, the alert fires again. A new reset period also clears the reset-based history. **Almost Out** uses only the remaining share, so it also works for balances without a reset window. **Cutting It Close** and **Will Run Out** need a reset window. Metrics whose data cannot be read never alert. Turn all four settings off to silence everything. Several alerts at once stack into one grouped banner.
 

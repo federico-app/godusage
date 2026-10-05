@@ -317,4 +317,19 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
         if let deleteDeviceError { throw deleteDeviceError }
         log.append("deleteDevice \(deviceID)")
     }
+
+    var reactionCalls: [(String, TeamReaction, Bool)] = []
+    func setReaction(token: String, teamID: String, userID: String, reaction: TeamReaction, on: Bool) async throws -> TeamReactions {
+        reactionCalls.append((userID, reaction, on))
+        let mine: [TeamReaction] = on ? [reaction] : []
+        return TeamReactions(week: "2026-W41", byMember: [userID: MemberReactions(fire: reaction == .fire && on ? 3 : 2, clap: 0, clown: 0, mine: mine)])
+    }
+
+    var challengesResult: [TeamChallenge] = []
+    func challenges(token: String, teamID: String, today: String) async throws -> [TeamChallenge] { challengesResult }
+    func createChallenge(token: String, teamID: String, kind: ChallengeKind, days: Int, today: String) async throws -> TeamChallenge {
+        log.append("createChallenge \(kind.rawValue) \(days)")
+        return TeamChallenge(id: "c-new", kind: kind, startsOn: today, endsOn: today, createdBy: "u1", finished: false, daysLeft: days, standings: [], winners: [])
+    }
+    func deleteChallenge(token: String, teamID: String, challengeID: String) async throws { log.append("deleteChallenge \(challengeID)") }
 }

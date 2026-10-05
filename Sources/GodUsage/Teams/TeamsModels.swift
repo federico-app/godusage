@@ -65,6 +65,11 @@ enum StatsRange: String, CaseIterable, Codable, Hashable, Sendable {
     case week = "7d"
     case month = "30d"
     case year = "365d"
+    /// The calendar month so far; used for the end-of-month projection, not offered in pickers.
+    case monthToDate = "mtd"
+
+    /// The ranges the pickers offer.
+    static let pickerCases: [StatsRange] = [.today, .week, .month, .year]
 
     var label: String {
         switch self {
@@ -72,6 +77,7 @@ enum StatsRange: String, CaseIterable, Codable, Hashable, Sendable {
         case .week: "7 Days"
         case .month: "30 Days"
         case .year: "Year"
+        case .monthToDate: "This Month"
         }
     }
 
@@ -82,6 +88,7 @@ enum StatsRange: String, CaseIterable, Codable, Hashable, Sendable {
         case .week: "the previous 7 days"
         case .month: "the previous 30 days"
         case .year: "the previous year"
+        case .monthToDate: "the same days last month"
         }
     }
 }
@@ -192,4 +199,7 @@ struct TeamStatsResponse: Codable, Hashable, Sendable {
 
     var team: Team
     var stats: TeamStats
+    /// Optional so an older backend's responses still decode.
+    var reactions: TeamReactions?
+    var champions: [TeamChampion]?
 }

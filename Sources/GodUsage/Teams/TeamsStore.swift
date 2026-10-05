@@ -22,6 +22,20 @@ final class TeamsStore {
     private(set) var uploadError: String?
     /// The latest stats per team/range/sort, so a reopened leaderboard shows instantly while it reloads.
     private(set) var cachedStats: [StatsKey: TeamStats] = [:]
+    /// This week's reactions per team, from the latest stats (and reaction changes, see
+    /// `TeamsSocialStore`).
+    var reactionsByTeam: [String: TeamReactions] = [:]
+    /// Each team's monthly champions (newest first), from the latest stats.
+    private(set) var championsByTeam: [String: [TeamChampion]] = [:]
+    /// Run after each successful upload, after the team notifications (challenge results).
+    @ObservationIgnored var afterUploadHooks: [@MainActor () async -> Void] = []
+
+    var sessionToken: String? { session?.token }
+
+    /// The viewer's calendar day, the key the stats and challenges use for "today".
+    func localToday() -> String {
+        DailyUsageAccumulator.dayKey(from: now(), calendar: .current)
+    }
     private(set) var statsError: String?
     /// The team the popover and the Teams window show. Falls back to the first team.
     var selectedTeamID: String? {
@@ -71,26 +85,6 @@ final class TeamsStore {
         }
     }
 
-    /// Your rank, your share of the team's spend, and your spend today in the selected team, from the
-    /// latest loaded stats; nil when off or not loaded yet. `rank` reads "#2 · 38%" (the share is
-    /// left out while the team has spent nothing today).
-    var menuBarStanding: (rank: String, spend: String)? {
-        guard showRankInMenuBar, let teamID = selectedTeamID, let me = user?.id,
-              let stats = cachedStats[StatsKey(teamID: teamID, range: .today, sort: .cost)],
-              let mine = stats.members.first(where: { $0.userID == me })
-        else { return nil }
-        var rank = "#\(mine.rank)"
-        if let share = Self.shareText(mine.costUSD, of: stats.totals.costUSD) { rank += " · \(share)" }
-        return (rank, Formatters.currency(mine.costUSD))
-    }
-
-    /// "38%", or "<1%" for a sliver; nil when the team total is zero.
-    static func shareText(_ part: Double, of total: Double) -> String? {
-        guard total > 0 else { return nil }
-        let percent = part / total * 100
-        if percent > 0, percent < 1 { return "<1%" }
-        return "\(Int(percent.rounded()))%"
-    }
     private static let weeklyRecapWeekKey = "godusage.teams.weeklyRecapWeek.v1"
 
     init(
@@ -273,7 +267,10 @@ final class TeamsStore {
         guard let token = session?.token else { throw TeamsAPIError(kind: .unauthorized, message: "Sign in to see team stats.") }
         let today = endingOn ?? DailyUsageAccumulator.dayKey(from: now(), calendar: .current)
         do {
-            return try await api.stats(token: token, teamID: teamID, range: range, sort: sort, today: today).stats
+            let response = try await api.stats(token: token, teamID: teamID, range: range, sort: sort, today: today)
+            if let reactions = response.reactions { reactionsByTeam[teamID] = reactions }
+            if let champions = response.champions { championsByTeam[teamID] = champions }
+            return response.stats
         } catch let error as TeamsAPIError where error.kind == .unauthorized {
             sessionExpired()
             throw error
@@ -351,6 +348,7 @@ final class TeamsStore {
             uploadError = nil
             AppLog.info(.teams, "teams usage uploaded (\(upload.providers.count) providers)")
             await checkTeamEvents()
+            for hook in afterUploadHooks { await hook() }
         } catch let error as TeamsAPIError where error.kind == .unauthorized {
             sessionExpired()
         } catch {
@@ -470,6 +468,8 @@ final class TeamsStore {
         lastUploadAt = nil
         uploadError = nil
         cachedStats = [:]
+        reactionsByTeam = [:]
+        championsByTeam = [:]
         statsError = nil
         do { try sessionStore.save(nil) } catch {
             AppLog.error(.teams, "couldn't remove the saved teams session: \(error)")

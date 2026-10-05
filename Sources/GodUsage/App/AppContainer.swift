@@ -14,6 +14,8 @@ final class AppContainer {
     let iCloudSync: ICloudUsageSyncStore
     /// Opt-in teams: Sign in with Apple, invites, leaderboards, and this Mac's usage upload.
     let teams: TeamsStore
+    /// Reactions, challenges, champions, and the end-of-month projection.
+    let teamsSocial: TeamsSocialStore
     /// Single source of truth for which providers the user has turned off. Both stores consult it (via
     /// injected closures) and the Customize provider list drives it.
     let enablement: ProviderEnablementStore
@@ -121,6 +123,13 @@ final class AppContainer {
             }
         )
         dataStore.addLocalStateObserver { [weak teams] in teams?.scheduleUpload() }
+        let teamsSocial = TeamsSocialStore(
+            teams: teams,
+            challengeAlertsEnabled: { notificationSettings.teamChallenges },
+            postNotification: { id, title, subtitle, body in
+                await AppNotifications.shared.post(idPrefix: id, title: title, subtitle: subtitle, body: body)
+            }
+        )
         // Re-enabling a provider should fetch it promptly, so clear any leftover failure backoff before
         // the enablement wake refreshes. `weak` breaks the cycle (dataStore already captures enablement).
         enablement.onProviderEnabled = { [weak dataStore] id in dataStore?.clearFailureBackoff(for: id) }
@@ -158,6 +167,7 @@ final class AppContainer {
         self.dataStore = dataStore
         self.iCloudSync = iCloudSync
         self.teams = teams
+        self.teamsSocial = teamsSocial
 
         // One claim service per Codex card. Each shares that card's credential loading and HTTP client,
         // and refreshes that exact card after a successful claim. The forced refresh returns `.skipped`

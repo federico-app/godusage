@@ -49,6 +49,13 @@ Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac
 - **By Day**: the team's usage per day, split by provider; hover a day for its numbers,
 - **Top Models**: the team's most used models, colored by provider.
 
+**Team life.** Around the ranking:
+
+- **👑** marks today's top spender and **🏆** last month's champion (the **Hall of Fame** in the Teams window lists every month's champion; a month counts once it's over).
+- **Reactions:** give a teammate 🔥, 👏, or 🤡, one of each per week; click again to take it back. Counts start clean every Monday. On the dashboard's team section, click a member to react; the Teams window has the buttons on each row.
+- **Projection:** "Team on pace for $X in October" stretches this month's spend so far over the whole month, for the team and for each member.
+- **Challenges** (Teams window, **New Challenge**): any member starts one for 7, 14, or 30 days: **Lowest Spend** (among members who spend something), **Most Models**, **Most Tokens**, or **Best Efficiency** (with at least 100K tokens). Standings update live; when it ends, the leader wins. The creator or the owner can cancel it. Active challenges also show under the dashboard's team ranking.
+
 Every ranking shows each member's movement since the period before: ▲ places gained, ▼ places lost, or **New** for someone who had no usage then. Each member also shows **Efficiency**, what they pay per million tokens (lower means cheaper models or more cache use); the Teams window charts it for the whole team.
 
 **Compare** (Teams window) puts two members side by side: totals, rank, efficiency, each provider as mirrored bars, their top models, and their days as a solid and a dashed line. It starts with you and the next member; pick anyone from either name.
@@ -69,12 +76,14 @@ The owner can also turn on **Public Leaderboard** for a team. That gives a read-
 
 ## Notifications
 
-Two team alerts in **Settings → Notifications**, both off by default:
+Three team alerts in **Settings → Notifications**, all off by default:
 
 - **Team Overtakes**: when a teammate passes you by spend over the last 7 days. The first check after you turn it on only records where everyone stands, so it never alerts about old moves.
 - **Weekly Team Recap**: from Monday 9:00, one notification per team about the week that just ended: your rank (and how it moved), your spend, who led, and your top model.
 
-Both are checked after each upload, so at most every 15 minutes, and only while GodUsage is running.
+- **Team Challenges**: who won, when a challenge ends. Challenges that had already ended when you turned it on are never announced.
+
+All three are checked after each upload, so at most every 15 minutes, and only while GodUsage is running.
 
 ## Requirements
 

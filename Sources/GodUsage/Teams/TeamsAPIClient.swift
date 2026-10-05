@@ -36,6 +36,10 @@ protocol TeamsAPI: Sendable {
     func acceptInvite(token: String, code: String) async throws -> TeamDetail
     func stats(token: String, teamID: String, range: StatsRange, sort: StatsSort, today: String) async throws -> TeamStatsResponse
     func uploadUsage(token: String, deviceID: String, upload: TeamUsageUpload) async throws
+    func setReaction(token: String, teamID: String, userID: String, reaction: TeamReaction, on: Bool) async throws -> TeamReactions
+    func challenges(token: String, teamID: String, today: String) async throws -> [TeamChallenge]
+    func createChallenge(token: String, teamID: String, kind: ChallengeKind, days: Int, today: String) async throws -> TeamChallenge
+    func deleteChallenge(token: String, teamID: String, challengeID: String) async throws
     func deleteDevice(token: String, deviceID: String) async throws
 }
 
@@ -141,6 +145,32 @@ struct TeamsAPIClient: TeamsAPI {
 
     func uploadUsage(token: String, deviceID: String, upload: TeamUsageUpload) async throws {
         try await sendEmpty("PUT", "/v1/devices/\(escaped(deviceID))/usage", token: token, body: upload)
+    }
+
+    func setReaction(token: String, teamID: String, userID: String, reaction: TeamReaction, on: Bool) async throws -> TeamReactions {
+        struct Envelope: Decodable { var week: String; var reactions: [String: MemberReactions] }
+        let path = "/v1/teams/\(escaped(teamID))/members/\(escaped(userID))/reactions/\(reaction.rawValue)"
+        let response: Envelope = try await send(on ? "PUT" : "DELETE", path, token: token)
+        return TeamReactions(week: response.week, byMember: response.reactions)
+    }
+
+    func challenges(token: String, teamID: String, today: String) async throws -> [TeamChallenge] {
+        struct Envelope: Decodable { var challenges: [TeamChallenge] }
+        let response: Envelope = try await send("GET", "/v1/teams/\(escaped(teamID))/challenges?today=\(escaped(today))", token: token)
+        return response.challenges
+    }
+
+    func createChallenge(token: String, teamID: String, kind: ChallengeKind, days: Int, today: String) async throws -> TeamChallenge {
+        struct Body: Encodable { var kind: ChallengeKind; var days: Int; var today: String }
+        struct Envelope: Decodable { var challenge: TeamChallenge }
+        let response: Envelope = try await send(
+            "POST", "/v1/teams/\(escaped(teamID))/challenges", token: token, body: Body(kind: kind, days: days, today: today)
+        )
+        return response.challenge
+    }
+
+    func deleteChallenge(token: String, teamID: String, challengeID: String) async throws {
+        try await sendEmpty("DELETE", "/v1/teams/\(escaped(teamID))/challenges/\(escaped(challengeID))", token: token)
     }
 
     func deleteDevice(token: String, deviceID: String) async throws {

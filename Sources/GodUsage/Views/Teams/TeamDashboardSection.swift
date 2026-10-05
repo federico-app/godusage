@@ -43,6 +43,10 @@ struct TeamDashboardSection: View {
         isLoading = true
         await teams.loadStats(teamID: teamID, range: range, sort: sort)
         isLoading = false
+        // Today's leader (👑), the month-to-date projection, and challenges, alongside the board.
+        if range != .today || sort != .cost { await teams.loadStats(teamID: teamID, range: .today, sort: .cost) }
+        await teams.loadStats(teamID: teamID, range: .monthToDate, sort: .cost)
+        await container.teamsSocial.loadChallenges(teamID: teamID)
     }
 
     @ViewBuilder
@@ -52,6 +56,7 @@ struct TeamDashboardSection: View {
         if let stats {
             summary(stats)
             ranking(stats)
+            challengesCard
         } else if let error = teams.statsError {
             errorCard(error)
         } else {
@@ -80,7 +85,7 @@ struct TeamDashboardSection: View {
                 .fixedSize()
             }
             Picker("Range", selection: $range) {
-                ForEach(StatsRange.allCases, id: \.self) { Text($0.label).tag($0) }
+                ForEach(StatsRange.pickerCases, id: \.self) { Text($0.label).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -119,15 +124,39 @@ struct TeamDashboardSection: View {
     // MARK: - Board
 
     private func summary(_ stats: TeamStats) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(TeamsFormat.value(stats.totals, sort: sort))
-                .font(.system(size: 22, weight: .semibold).monospacedDigit())
-            Text(sort == .cost ? "team spend" : "team tokens")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(TeamsFormat.value(stats.totals, sort: sort))
+                    .font(.system(size: 22, weight: .semibold).monospacedDigit())
+                Text(sort == .cost ? "team spend" : "team tokens")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            if let teamID = container.teams.selectedTeamID, let projection = container.teamsSocial.projection(teamID: teamID) {
+                ProjectionText(projection: projection, prefix: "Team on pace for")
+                    .font(.caption)
+            }
         }
         .padding(.horizontal, 4)
+    }
+
+    @ViewBuilder
+    private var challengesCard: some View {
+        if let teamID = container.teams.selectedTeamID {
+            let active = container.teamsSocial.challenges(teamID: teamID).filter { !$0.finished }
+            if !active.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(active.prefix(3).enumerated()), id: \.element.id) { index, challenge in
+                        if index > 0 { Divider() }
+                        ChallengeSummaryRow(challenge: challenge, me: container.teams.user?.id)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                    }
+                }
+                .cardSurface()
+            }
+        }
     }
 
     private func ranking(_ stats: TeamStats) -> some View {
@@ -190,7 +219,13 @@ struct TeamDashboardSection: View {
                                 .background(.secondary.opacity(0.12), in: Capsule())
                         }
                         RankChangeBadge(member: member, range: range, sort: sort)
+                        if let teamID = container.teams.selectedTeamID {
+                            MemberBadges(teamID: teamID, userID: member.userID)
+                        }
                         Spacer(minLength: 6)
+                        if let teamID = container.teams.selectedTeamID {
+                            ReactionCounts(reactions: container.teamsSocial.reactions(teamID: teamID, userID: member.userID))
+                        }
                         Text(TeamsFormat.value(member.totals, sort: sort))
                             .font(.callout.monospacedDigit().weight(.semibold))
                     }
@@ -226,6 +261,13 @@ struct TeamDashboardSection: View {
             .sorted { $0.1.value(for: sort) > $1.1.value(for: sort) }
             .prefix(3)
         VStack(alignment: .leading, spacing: 4) {
+            if let teamID = container.teams.selectedTeamID {
+                ReactionButtons(teamID: teamID, member: member, compact: true)
+                    .padding(.bottom, 2)
+                if let projection = container.teamsSocial.projection(teamID: teamID, userID: member.userID), projection.spentSoFar > 0 {
+                    ProjectionText(projection: projection).font(.caption)
+                }
+            }
             if providers.isEmpty {
                 Text("No usage in this period.").font(.caption).foregroundStyle(.secondary)
             }

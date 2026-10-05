@@ -72,6 +72,9 @@ struct TeamsLeaderboardView: View {
         } catch {
             loadError = error.localizedDescription
         }
+        // Today's leader (👑) and the month-to-date projection.
+        await container.teams.loadStats(teamID: teamID, range: .today, sort: .cost)
+        await container.teams.loadStats(teamID: teamID, range: .monthToDate, sort: .cost)
     }
 
     // MARK: - Chrome
@@ -94,7 +97,7 @@ struct TeamsLeaderboardView: View {
             Spacer()
             if isLoading { ProgressView().controlSize(.small) }
             Picker("Range", selection: $range) {
-                ForEach(StatsRange.allCases, id: \.self) { Text($0.label).tag($0) }
+                ForEach(StatsRange.pickerCases, id: \.self) { Text($0.label).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -145,8 +148,10 @@ struct TeamsLeaderboardView: View {
                     summary(stats)
                     switch mode {
                     case .leaderboard:
-                        TeamsRankingList(stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName)
+                        TeamsRankingList(stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName, teamID: currentTeamID)
+                        if let teamID = currentTeamID { TeamChallengesSection(teamID: teamID) }
                         TeamsCharts(stats: stats, sort: sort, providerName: providerName)
+                        if let teamID = currentTeamID { HallOfFameSection(teamID: teamID) }
                     case .compare:
                         TeamCompareView(stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName)
                     }
@@ -168,6 +173,9 @@ struct TeamsLeaderboardView: View {
                 Text(rangeCaption(stats))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if let teamID = currentTeamID, let projection = container.teamsSocial.projection(teamID: teamID) {
+                    ProjectionText(projection: projection, prefix: "Team on pace for").font(.caption)
+                }
             }
             Spacer()
         }
@@ -250,6 +258,7 @@ private struct TeamsRankingList: View {
     let sort: StatsSort
     let currentUserID: String?
     let providerName: (String) -> String
+    let teamID: String?
 
     var body: some View {
         let top = stats.members.map { $0.totals.value(for: sort) }.max() ?? 0
@@ -273,8 +282,12 @@ private struct TeamsRankingList: View {
                                     .background(.secondary.opacity(0.12), in: Capsule())
                             }
                             RankChangeBadge(member: member, range: stats.range.name, sort: sort)
+                            if let teamID { MemberBadges(teamID: teamID, userID: member.userID) }
                         }
                         ProviderSplitBar(providers: member.providers, top: top, sort: sort, height: 6)
+                    }
+                    if let teamID {
+                        ReactionButtons(teamID: teamID, member: member, compact: true)
                     }
                     Text(TeamsFormat.value(member.totals, sort: sort))
                         .font(.body.monospacedDigit().weight(.semibold))

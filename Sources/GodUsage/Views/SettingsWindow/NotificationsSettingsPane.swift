@@ -67,6 +67,8 @@ struct NotificationsSettingsPane: View {
                 SettingsCaption("Tells you when a teammate passes you by spend over the last 7 days.")
                 teamToggle("Weekly Team Recap", isOn: $notifications.teamWeeklyRecap)
                 SettingsCaption("Every Monday: your rank, spend, and top model in each team last week.")
+                teamToggle("Team Challenges", isOn: $notifications.teamChallenges)
+                SettingsCaption("Tells you who won when a team challenge ends.")
                 if needsAttention {
                     actionRow
                 }
