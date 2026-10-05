@@ -17,7 +17,6 @@ jobs:
     runs-on: macos-26
     permissions:
       contents: write
-      actions: write
     # Shares the update-feed lock with release.yml: both read, regenerate, and publish update-feed.
     concurrency:
       group: update-feed-publish
@@ -176,11 +175,6 @@ jobs:
           # Only appcast-dev.xml is published here; keep the release appcast, site, and pricing.
           keep_files: true
 
-      - name: Deploy update feed now
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy-update-feed.yml --ref main
-
       - name: Remove release credentials
         if: always()
         env:
@@ -190,3 +184,34 @@ jobs:
           if [[ -n "$APPLE_NOTARY_KEY_ID" ]]; then
             rm -f "$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           fi
+
+  # Puts the freshly published update-feed branch live on GitHub Pages. Done here rather than by
+  # dispatching deploy-update-feed.yml, which only exists on the default branch, so a develop push
+  # never depends on main. Same steps and lock as deploy-update-feed.yml.
+  deploy-feed:
+    needs: release-dev
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: update-feed-deploy
+      cancel-in-progress: false
+    environment:
+      name: Update Feed
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: update-feed
+          persist-credentials: false
+
+      - name: Upload update feed artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: .
+
+      - name: Deploy update feed
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5

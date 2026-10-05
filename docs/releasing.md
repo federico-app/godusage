@@ -39,7 +39,7 @@ Export the Developer ID Application cert (with its private key) from Keychain Ac
 - the app is **GodUsage DEV** (`com.montinovo.godusage.dev`, iCloud container `iCloud.com.montinovo.godusage.dev`), so it installs beside the release app and keeps its own settings, iCloud data, and teams backend;
 - the version is the newest stable tag plus the build number, for example `0.8.16-dev.642`;
 - it is Developer ID-signed and notarized like production, published as the prerelease `dev-<build>` with `GodUsage-DEV-<version>.dmg`, and never becomes the GitHub "Latest" release;
-- it updates `appcast-dev.xml` on `update-feed` (last 10 builds). Installed DEV apps update from that feed and never see production releases, and production apps never see DEV builds.
+- it updates `appcast-dev.xml` on `update-feed` (last 10 builds) and deploys `update-feed` to GitHub Pages itself, so it does not depend on workflows on `main`. Installed DEV apps update from that feed and never see production releases, and production apps never see DEV builds.
 
 Merge `develop` into `main` and tag it to ship production.
 
