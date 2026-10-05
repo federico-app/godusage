@@ -24,8 +24,8 @@ enum SettingsPane: String, CaseIterable, Sendable {
         switch self {
         case .general: "gearshape"
         case .appearance: "paintbrush"
-        case .notifications: "bell.badge"
-        case .teams: "person.3"
+        case .notifications: "bell"
+        case .teams: "person.2"
         case .advanced: "wrench.and.screwdriver"
         }
     }
