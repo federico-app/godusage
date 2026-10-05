@@ -1,0 +1,86 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>GodUsage DEV</title>
+        <item>
+            <title>0.8.16-dev.663</title>
+            <pubDate>Mon, 05 Oct 2026 17:52:29 +0000</pubDate>
+            <sparkle:version>663</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.663</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-663/GodUsage-DEV-0.8.16-dev.663.dmg" length="28085315" type="application/octet-stream" sparkle:edSignature="VHAA8oRjR85Q0eNJNA7cUx+ODxCYGhWlBBf0a+DjiDq8kw3pJgKBlFxi9tIety4gO5Iixdii2AyFydDCeWY2DQ=="/>
+        </item>
+        <item>
+            <title>0.8.16-dev.660</title>
+            <pubDate>Mon, 05 Oct 2026 17:31:11 +0000</pubDate>
+            <sparkle:version>660</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.660</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-660/GodUsage-DEV-0.8.16-dev.660.dmg" length="28068957" type="application/octet-stream" sparkle:edSignature="+QLYIBXFuIKFkXiqZYj8L6o8hTliKlQN4xfppsj8dtHVElzKmeldY7NBvtoQmSDzNyZCuC/k9Y+8cgTFN224Dw=="/>
+        </item>
+        <item>
+            <title>0.8.16-dev.655</title>
+            <pubDate>Mon, 05 Oct 2026 17:21:48 +0000</pubDate>
+            <sparkle:version>655</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.655</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-655/GodUsage-DEV-0.8.16-dev.655.dmg" length="24854857" type="application/octet-stream" sparkle:edSignature="a6vd83RmUSSf8RWtPM3+MAQRIZTfxjmITv/qWgVc8oaz4tLpK46gDWRG94DhdIY3Zb89agWzBMdSZtZ0WA/OCg=="/>
+        </item>
+        <item>
+            <title>0.8.16-dev.654</title>
+            <pubDate>Mon, 05 Oct 2026 17:13:00 +0000</pubDate>
+            <sparkle:version>654</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.654</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-654/GodUsage-DEV-0.8.16-dev.654.dmg" length="24854993" type="application/octet-stream" sparkle:edSignature="7yPPRgY2kWOu5EDBXji9KpkTba+VJ8xIzeQNhIq6af44JR4E265zgwDnNJdVFfuIuxKg8vPxqe2rbMb1PbT9AA=="/>
+        </item>
+        <item>
+            <title>0.8.16-dev.653</title>
+            <pubDate>Mon, 05 Oct 2026 17:03:38 +0000</pubDate>
+            <sparkle:version>653</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.653</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-653/GodUsage-DEV-0.8.16-dev.653.dmg" length="24855415" type="application/octet-stream" sparkle:edSignature="Im0kQO0qBXqXPUTGBVJG8F4XiXNYX7vss/Is6pnC19SAiSFg2Pne7Y9TdZKW1CD4GrQP/kAu03ZVe7CXVCRFAQ=="/>
+        </item>
+        <item>
+            <title>0.8.16-dev.649</title>
+            <pubDate>Mon, 05 Oct 2026 16:53:04 +0000</pubDate>
+            <sparkle:version>649</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.649</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-649/GodUsage-DEV-0.8.16-dev.649.dmg" length="24278225" type="application/octet-stream" sparkle:edSignature="LP0v/Q3Kh1iT8SCl//aCkFOcihp/pJ+G3RaHiAfB+Ecg7ZpzFnPQx5YqdBC4ghVjvGKE2njjQp6Jpf7aWurrDw=="/>
+        </item>
+        <item>
+            <title>0.8.16-dev.648</title>
+            <pubDate>Mon, 05 Oct 2026 16:42:30 +0000</pubDate>
+            <sparkle:version>648</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.648</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-648/GodUsage-DEV-0.8.16-dev.648.dmg" length="24275235" type="application/octet-stream" sparkle:edSignature="Ogi8meZmwlB7Sw9DWgIOgXJ/ARZxbQU7j8CuApI8fJHv4wc3BUk6l1lMXcBaMd+9foelc+nHuSRVeMfEe4xoDw=="/>
+        </item>
+        <item>
+            <title>0.8.16-dev.646</title>
+            <pubDate>Mon, 05 Oct 2026 16:26:24 +0000</pubDate>
+            <sparkle:version>646</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.646</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-646/GodUsage-DEV-0.8.16-dev.646.dmg" length="22496212" type="application/octet-stream" sparkle:edSignature="nvgvnfoWxUk/DuRg3GWO6RRreNVbbdlCNOBy5mNran+YEJZAox8ACJlwlR2g8fy37C62Pd85qtSNb6/mkUp8Cg=="/>
+        </item>
+        <item>
+            <title>0.8.16-dev.645</title>
+            <pubDate>Mon, 05 Oct 2026 16:15:30 +0000</pubDate>
+            <sparkle:version>645</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.645</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-645/GodUsage-DEV-0.8.16-dev.645.dmg" length="22868362" type="application/octet-stream" sparkle:edSignature="0Qv6RvOSIfZ7sjfCWz7hGH4p/jhU5N/b6zT73W/SoAc/o7J6rqjuLoBH1J9sx92CtKHVfW6APL22Mc9B9+ffAQ=="/>
+        </item>
+        <item>
+            <title>0.8.16-dev.644</title>
+            <pubDate>Mon, 05 Oct 2026 16:09:03 +0000</pubDate>
+            <sparkle:version>644</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.644</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-644/GodUsage-DEV-0.8.16-dev.644.dmg" length="22868567" type="application/octet-stream" sparkle:edSignature="wCsKcZc8JZ95VaMUYbHrk1JDQy+11C7FjF09/Aa4V/RZlGUgTqKcADpHepb12CyrxaHeHm4X//2QoPwqlbWFAA=="/>
+        </item>
+    </channel>
+</rss>
