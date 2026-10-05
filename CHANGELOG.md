@@ -1,20 +1,65 @@
 # Changelog
 
-## Unreleased
+## v1.0.0
 
 ### New Features
-- Rename the app to GodUsage, with its own bundle ids (`com.montinovo.godusage`), iCloud containers, update feed, and repository
-- Add Teams: sign in with Apple, create teams, invite friends with a link, and compare AI spend and tokens per provider and model on a leaderboard on the dashboard and in the Teams window
-- Add rank movement, efficiency (cost per million tokens), a two-member comparison, Who Uses What, By Day, Efficiency, and Top Models charts, and a Year range
-- Add reactions, 👑 for today's top spender, a monthly Hall of Fame (🏆), month-end projections, and timed challenges
-- Add Team Overtakes, Weekly Team Recap, and Team Challenges notifications (off by default)
-- Add Share Wrapped images and an optional team rank and share of spend in the menu bar
-- Add members-only and public web leaderboards, a privacy policy, terms, and Export My Data
-- Add a GodUsage DEV channel: every push to `develop` ships a signed, notarized DEV build with its own update feed
+- Rename the app to GodUsage, with its own bundle ids (`com.montinovo.godusage`), iCloud containers, update feed, and repository by @federico-app
+- Add Teams: sign in with Apple, create teams, invite friends with a link, and compare AI spend and tokens per provider and model on a leaderboard on the dashboard and in the Teams window ([#1](https://github.com/federico-app/godusage/pull/1)) by @federico-app
+- Open the Team screen from the popover with ⌘T by @federico-app
+- Add rank movement, efficiency (cost per million tokens), a two-member comparison, Who Uses What, By Day, Efficiency, and Top Models charts, and a Year range by @federico-app
+- Add reactions, 👑 for today's top spender, a monthly Hall of Fame (🏆), month-end projections, and timed challenges by @federico-app
+- Add Team Overtakes, Weekly Team Recap, and Team Challenges notifications (off by default) by @federico-app
+- Add Share Wrapped images and an optional team rank and share of spend in the menu bar by @federico-app
+- Move the team ranking onto the dashboard by @andreaAppload
+- Remind about expiring resets a week ahead by @andreaAppload
+- Add members-only and public web leaderboards, a privacy policy, terms, and Export My Data by @federico-app
+- Add a GodUsage DEV channel: every push to `develop` ships a signed, notarized DEV build with its own update feed by @federico-app
 
 ### Bug Fixes
-- Fix a crash when the Apple sign-in sheet returned on a background queue
+- Fix a crash when the Apple sign-in sheet returned on a background queue by @federico-app
 
+### Refactor
+- Replace the app icon with the Zeus artwork by @andreaAppload
+- Use consistent Settings toolbar icons by @andreaAppload
+
+### Chores
+- Add the teams backend (Cloudflare Worker + D1) with separate production and dev environments, rate limits, and deploys by @federico-app
+- Skip DEV builds for pushes that don't touch the app, and carry the DEV appcast when publishing update-feed ([#2](https://github.com/federico-app/godusage/pull/2)) by @federico-app
+
+---
+
+### Changelog
+**Full Changelog**: [v0.8.16...v1.0.0](https://github.com/federico-app/godusage/compare/v0.8.16...v1.0.0)
+
+- [8fc26fc](https://github.com/federico-app/godusage/commit/8fc26fc36b6c1b8186042bf62ba3288a9d8cd0e9) Carry the DEV appcast when publishing update-feed by @federico-app
+- [e03ad9e](https://github.com/federico-app/godusage/commit/e03ad9ef9b1ca89903b718d74a6437290696f6b3) Skip DEV builds for pushes that don't touch the app by @federico-app
+- [7a97238](https://github.com/federico-app/godusage/commit/7a972388dc51cd30b3fac43cdd1265a327f86f1f) Add Export My Data and legal links, rebrand owners, and note unreleased changes by @federico-app
+- [a0674f4](https://github.com/federico-app/godusage/commit/a0674f41cf72ea8f3b9e67d291626e90af8c75b7) Add rate limits, data export, legal pages, and richer web boards by @federico-app
+- [4b6539c](https://github.com/federico-app/godusage/commit/4b6539c4782df7b5938f59ecbf304f94e7db954d) Add reactions, crowns, the Hall of Fame, projections, and challenges by @federico-app
+- [5e03661](https://github.com/federico-app/godusage/commit/5e0366160284bef09e687af89617bb6c4b7243b7) Add reactions, monthly champions, challenges, and month-to-date by @federico-app
+- [b87eb1d](https://github.com/federico-app/godusage/commit/b87eb1dfeb23143121bc36eed6f6fe1bbc1c849e) Move the team ranking onto the dashboard by @andreaAppload
+- [884e5ac](https://github.com/federico-app/godusage/commit/884e5ac9c37a2e8388729351b483f1bf7bd92acc) Replace app icon with Zeus artwork by @andreaAppload
+- [56a3ad0](https://github.com/federico-app/godusage/commit/56a3ad0bb133d5d28afee1d6c80c84d579361866) Remind about expiring resets a week ahead by @andreaAppload
+- [d0b60fd](https://github.com/federico-app/godusage/commit/d0b60fd8616a003b8fd06498bc43e3d40cec38a1) Use consistent Settings toolbar icons by @andreaAppload
+- [6d4946a](https://github.com/federico-app/godusage/commit/6d4946a73c4a472d0df640ab80d36dbbf8232415) Show your share of team spend in the menu bar by @federico-app
+- [c31fd03](https://github.com/federico-app/godusage/commit/c31fd03626d0584d8619adc36390f68ece0ef189) Add team notifications, Share Wrapped, and the menu bar team rank by @federico-app
+- [c9d73cf](https://github.com/federico-app/godusage/commit/c9d73cf94f3dabd434a1dd0eb3a789df5ee64ae6) Show rank movement, efficiency, and a two-member comparison by @federico-app
+- [f8c5bd1](https://github.com/federico-app/godusage/commit/f8c5bd11d42c09ac1f825ee64b0a0eab651ef184) Let stats end on a past day by @federico-app
+- [a539977](https://github.com/federico-app/godusage/commit/a539977ea79e631bcb4165f564c43c2112b6abcf) Keep the full usage history and report previous ranks by @federico-app
+- [60d960e](https://github.com/federico-app/godusage/commit/60d960e1cde5e8ec212bc1ae1c900da7defcc4e6) Open the Team screen with ⌘T by @federico-app
+- [6bbe161](https://github.com/federico-app/godusage/commit/6bbe161b94e050ad1006eba8479e4833ee5bae0e) Add the popover Team screen, tidy Teams settings, and color by provider by @federico-app
+- [6ed2732](https://github.com/federico-app/godusage/commit/6ed2732f9414c6d8d73effa4991b0150b66e73a0) Add a members-only web leaderboard by @federico-app
+- [1b046ab](https://github.com/federico-app/godusage/commit/1b046ab0b52f7a42f570a12f8a2f563743b94571) Fix a crash when Apple web sign-in returns by @federico-app
+- [0eeee0a](https://github.com/federico-app/godusage/commit/0eeee0afbd16aa51604b3b9fd744ac5b25c71ae5) Use a separate Services ID for the dev backend by @federico-app
+- [9e6ec27](https://github.com/federico-app/godusage/commit/9e6ec2762c297884c1e2232408b6d109c17b590b) Sign in to Teams with Apple's web flow by @federico-app
+- [8b264e8](https://github.com/federico-app/godusage/commit/8b264e869bcd8c6b5ce60c36ed542717dd4870c1) Deploy the dev feed to Pages from Release Dev by @federico-app
+- [47b793f](https://github.com/federico-app/godusage/commit/47b793fa4fdeb637b55d4d9bd24c033bb598639f) Use the appcast-dev.xml name generate_appcast writes by @federico-app
+- [803a989](https://github.com/federico-app/godusage/commit/803a98998a0b245fd3dcb657f8aa7a780201e932) Add a dev release channel and backend deploys by @federico-app
+- [82639c1](https://github.com/federico-app/godusage/commit/82639c13361f5dc1eb95bb705657d4a6991edda0) Name the dev build GodUsage DEV by @federico-app
+- [4eaa89a](https://github.com/federico-app/godusage/commit/4eaa89a2ea10e6f082542cd6383743f232ba1efc) Add Teams to the Mac app by @federico-app
+- [de865aa](https://github.com/federico-app/godusage/commit/de865aa8539353ea74ce84811232a7afb736ea84) Split the teams backend into production and dev environments by @federico-app
+- [9eff1e4](https://github.com/federico-app/godusage/commit/9eff1e4f8f82f155f924806938fcb449eb1cf8b5) Add the teams backend (Cloudflare Worker + D1) by @federico-app
+- [5685034](https://github.com/federico-app/godusage/commit/56850349610abfedc97c1c03258a6a41bd000e37) Rename Runway to GodUsage by @federico-app
 
 ## v0.8.16
 
