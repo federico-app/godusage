@@ -34,7 +34,7 @@ Export the Developer ID Application cert (with its private key) from Keychain Ac
 
 ## Dev channel
 
-[.github/workflows/release-dev.yml](../.github/workflows/release-dev.yml) runs on every push to `develop`. It builds `script/release.sh` with `CHANNEL=dev`:
+[.github/workflows/release-dev.yml](../.github/workflows/release-dev.yml) runs on every push to `develop` that changes the app: pushes that only touch `docs/`, `backend/`, `website/`, or Markdown files are skipped (run it by hand from Actions if needed). It builds `script/release.sh` with `CHANNEL=dev`:
 
 - the app is **GodUsage DEV** (`com.montinovo.godusage.dev`, iCloud container `iCloud.com.montinovo.godusage.dev`), so it installs beside the release app and keeps its own settings, iCloud data, and teams backend;
 - the version is the newest stable tag plus the build number, for example `0.8.16-dev.642`;

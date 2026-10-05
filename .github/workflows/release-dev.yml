@@ -7,6 +7,9 @@ name: Release Dev
 on:
   push:
     branches: [develop]
+    # Only changes that reach the app ship a new DEV build: docs, the backend (deployed by
+    # backend-deploy.yml), the website, and Markdown never do.
+    paths-ignore: ["docs/**", "backend/**", "website/**", "**/*.md", ".github/ISSUE_TEMPLATE/**"]
   workflow_dispatch:
 
 permissions:
