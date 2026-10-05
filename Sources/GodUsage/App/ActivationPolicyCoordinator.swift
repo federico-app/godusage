@@ -22,6 +22,7 @@ final class ActivationPolicyCoordinator {
     enum Holder: String {
         case settingsWindow
         case memoryWindow
+        case teamsWindow
         case updaterUI
     }
 

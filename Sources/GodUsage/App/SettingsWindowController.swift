@@ -10,8 +10,15 @@ public enum SettingsWindowLink {
     /// Closes the popover (when open) and shows the Settings window.
     static var openHandler: (() -> Void)?
 
+    /// Shows the Settings window on a specific pane (an invite link lands on Teams).
+    static var openPaneHandler: ((SettingsPane) -> Void)?
+
     public static func open() {
         openHandler?()
+    }
+
+    static func open(pane: SettingsPane) {
+        openPaneHandler?(pane)
     }
 }
 
@@ -190,9 +197,24 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
 
     // MARK: - Pane selection
 
+    /// Shows the window on `pane`, switching panes if it is already open.
+    func show(pane: SettingsPane) {
+        if window == nil {
+            selectedPane = pane
+            defaults.set(pane.rawValue, forKey: Self.paneKey)
+        } else {
+            switchPane(to: pane)
+        }
+        show()
+    }
+
     @objc private func selectPane(_ sender: NSToolbarItem) {
-        guard let pane = SettingsPane(rawValue: sender.itemIdentifier.rawValue),
-              pane != selectedPane else { return }
+        guard let pane = SettingsPane(rawValue: sender.itemIdentifier.rawValue) else { return }
+        switchPane(to: pane)
+    }
+
+    private func switchPane(to pane: SettingsPane) {
+        guard pane != selectedPane else { return }
         selectedPane = pane
         defaults.set(pane.rawValue, forKey: Self.paneKey)
         guard let window, let hosting else { return }

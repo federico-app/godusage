@@ -84,6 +84,13 @@ final class ICloudUsageSyncStore {
     private var writeError: String?
     var serviceError: String? { writeError ?? readError ?? identityError }
     var canRecoverIdentity: Bool { identityIsProvisional && legacyIdentityRecoveryAvailable }
+    /// This Mac's durable id, or nil while it is provisional. Other per-device publishers (Teams)
+    /// use it so one Mac is one device everywhere, and withhold publishing for the same reason
+    /// iCloud does: a provisional id would register this Mac a second time.
+    var durableDeviceID: String? {
+        resolveProvisionalIdentityIfNeeded()
+        return identityIsProvisional ? nil : deviceID
+    }
     /// The subset of `serviceError` that still matters once sync is switched OFF: an unresolved
     /// identity means this Mac's existing iCloud record could not be removed, and nothing retries
     /// while sync is disabled — so Settings keeps showing it instead of appearing cleanly off.

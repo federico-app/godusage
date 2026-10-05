@@ -8,7 +8,7 @@ final class SettingsPaneTests: XCTestCase {
     func testRawValuesAreStable() {
         XCTAssertEqual(
             SettingsPane.allCases.map(\.rawValue),
-            ["general", "appearance", "notifications", "advanced"]
+            ["general", "appearance", "notifications", "teams", "advanced"]
         )
     }
 

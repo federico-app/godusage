@@ -122,6 +122,8 @@ final class WidgetDataStore {
     /// too). Wired by `ICloudUsageSyncStore`; debounced there so a concurrent provider batch
     /// produces one write.
     @ObservationIgnored var onLocalStateChanged: (@MainActor () -> Void)?
+    /// Further listeners for the same signal (the Teams uploader), so iCloud keeps its own slot.
+    @ObservationIgnored private var localStateObservers: [@MainActor () -> Void] = []
     /// One-time user-attended preparation for hidden credential-backed accounts. The provider-id set
     /// makes applicability explicit: disabling that provider family must also disable its secret reads.
     @ObservationIgnored private var interactiveRefreshPreparationProviderIDs: Set<String> = []
@@ -282,7 +284,7 @@ final class WidgetDataStore {
         let backedOff = outcomes.count { $0 == .backedOff }
         // Failures publish too: the synced snapshot's error map must not stay frozen on a Mac whose
         // every provider is failing. Cached/backed-off outcomes changed nothing, so they don't.
-        if refreshed > 0 || failed > 0 { onLocalStateChanged?() }
+        if refreshed > 0 || failed > 0 { notifyLocalStateChanged() }
         AppLog.info(.refresh, "batch end (\(durationMs)ms, \(refreshed) ok / \(failed) failed / \(cached) cached / \(backedOff) backed off)")
     }
 
@@ -558,7 +560,7 @@ final class WidgetDataStore {
             providerConnectPrompts.remove(providerID)
             failureRetryAfter[providerID] = now().addingTimeInterval(Self.failureRetryBackoff)
             AppLog.warn(.refresh, "\(providerID) timed out after \(Int(refreshTimeout * 1000))ms; keeping last-good snapshot")
-            if notifyStateChange { onLocalStateChanged?() }
+            if notifyStateChange { notifyLocalStateChanged() }
             return .failed
         }
         // A canceled refresh may still return if a provider's underlying work is non-throwing. Never
@@ -588,7 +590,7 @@ final class WidgetDataStore {
             // Negative-cache the failure so a wake burst can't re-probe this provider in a tight loop.
             failureRetryAfter[providerID] = now().addingTimeInterval(Self.failureRetryBackoff)
             AppLog.warn(.refresh, "\(providerID) failed: \(message)")
-            if notifyStateChange { onLocalStateChanged?() }
+            if notifyStateChange { notifyLocalStateChanged() }
             return .failed
         }
         if providerErrors[providerID] != nil {
@@ -631,7 +633,7 @@ final class WidgetDataStore {
             persist: snapshotRebuildDeferrals == 0
         )
         requestSnapshotRebuild()
-        if notifyStateChange { onLocalStateChanged?() }
+        if notifyStateChange { notifyLocalStateChanged() }
         AppLog.info(.refresh, "\(providerID) ok (\(durationMs)ms)")
         return .refreshed
     }
@@ -666,6 +668,25 @@ final class WidgetDataStore {
         guard !peerHistoryDocuments.isEmpty else { return }
         peerHistoryDocuments = []
         rebuildRenderedSnapshots()
+    }
+
+    func addLocalStateObserver(_ observer: @escaping @MainActor () -> Void) {
+        localStateObservers.append(observer)
+    }
+
+    private func notifyLocalStateChanged() {
+        onLocalStateChanged?()
+        for observer in localStateObservers { observer() }
+    }
+
+    /// This Mac's own daily history for every enabled provider that classifies it, account-wide
+    /// sources (Cursor) included, for the Teams upload. Peer (iCloud) contributions are never
+    /// included, so each Mac reports only what it read itself.
+    func localTeamHistorySources() -> [TeamHistorySource] {
+        registry.historyDescriptorsByProvider.compactMap { providerID, descriptor in
+            guard isProviderEnabled(providerID), let history = localSnapshots[providerID]?.usageHistory else { return nil }
+            return TeamHistorySource(cardID: providerID, scope: descriptor.scope, history: history)
+        }
     }
 
     func localHistoryDocument(deviceID: String, deviceName: String, updatedAt: Date = Date()) -> UsageHistoryDocument {

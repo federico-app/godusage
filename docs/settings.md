@@ -2,7 +2,7 @@
 
 Settings opens in its own window, separate from the popover. Open it from the popover footer's **gear** menu, with ⌘, while the popover is showing, or by right-clicking the menu bar icon and choosing Settings. Opening Settings closes the popover. Close the window with the red close button, Esc, ⌘W, or ⌘Q. ⌘Q closes only the Settings window. GodUsage keeps running in the menu bar. Quit it from the popover's gear menu or the menu bar icon's right-click menu.
 
-The window has four tabs: **General**, **Appearance**, **Notifications**, and **Advanced**. It remembers the tab you were on, its size, and its position. It only exists while it is open, so a closed Settings window uses no memory or CPU.
+The window has five tabs: **General**, **Appearance**, **Notifications**, **Teams**, and **Advanced**. It remembers the tab you were on, its size, and its position. It only exists while it is open, so a closed Settings window uses no memory or CPU.
 
 While Settings is open, GodUsage briefly appears in the Dock, the same as during an [update session](updates.md). That is what brings the window to the front for a menu-bar-only app. It leaves the Dock when you close the window.
 
@@ -65,6 +65,20 @@ GodUsage schedules the next reminder or expiry directly and reschedules when dat
 The current reminder is removed when the credit expires, a refresh no longer lists it, or you disable its provider or Reset Expiry Reminders. If a group's count changes, its outdated reminder is removed; the next milestone uses the new count. Temporarily missing expiry data also withdraws it without forgetting which milestones already fired. A reminder that becomes obsolete while awaiting permission is skipped. The notification includes the exact expiry date and time; its countdown text updates only at the next milestone. Failed deliveries retry after five minutes, at an earlier milestone, or when data changes, and show a message in Notifications settings. If a replacement fails, the previous alert stays in place.
 
 For notifications that stay onscreen until dismissed, choose **Alerts** for GodUsage in **System Settings → Notifications**. GodUsage requests that style by default, but macOS and your saved choice control it; the app cannot force persistent alerts. The shortcut under Reset Expiry Reminders opens those settings.
+
+## Teams
+
+| Setting | What it does |
+|---|---|
+| Sign In with Apple | Creates or opens your teams account. Shown while signed out. |
+| Display Name | The name teammates see on leaderboards. |
+| This Mac | When this Mac last shared its usage, or why it isn't sharing. |
+| Sign Out | Removes this Mac's usage from your teams, then signs out. |
+| Delete Account… | Deletes the account, the usage every Mac shared, and the teams you own. |
+| Your Teams | Each team's invite link, members, and (owner) New Link, Public Leaderboard, Remove, Delete Team. Members can Leave Team. |
+| Add a Team | Create a team, or paste an invite link to join one. |
+
+An invite link opened from the web lands here and asks you to confirm joining. See [Teams](teams.md).
 
 ## Advanced
 

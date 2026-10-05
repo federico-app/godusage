@@ -10,6 +10,7 @@ What the app does and how it behaves. These pages describe behavior, not visuals
 - [Memory Explorer](memory-explorer.md): view and edit each AI harness's memory and instruction files
 - [Refreshing and caching](refreshing.md): when data updates and what happens when a fetch fails
 - [iCloud Sync](icloud-sync.md): how spend history is combined across Macs
+- [Teams](teams.md): invite friends and compare usage on leaderboards
 - [iOS companion app](ios-app.md): the iPhone and iPad viewer for synced usage
 - [Model pricing](pricing.md): how spend tiles price tokens and where the rates come from
 - [Updates](updates.md): automatic updates and manual checks

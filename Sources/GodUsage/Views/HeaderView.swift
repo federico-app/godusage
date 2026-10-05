@@ -107,6 +107,10 @@ struct HeaderView: View {
         }
         .keyboardShortcut("m")
 
+        Button { TeamsWindowLink.open() } label: {
+            Label("Teams", systemImage: "person.3")
+        }
+
         Divider()
 
         shareScreenshotMenu

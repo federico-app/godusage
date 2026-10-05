@@ -47,6 +47,7 @@ Muse subscription meters use the Meta developer dashboard’s teams/subscription
 - `WidgetDataStore`: the latest snapshot per provider, plus refresh and caching. Machine-local cached snapshots are kept separate from rendered snapshots so peer history is never written back out and counted twice.
 - `LayoutStore`: which metrics are shown, the provider and metric order, and which metrics are starred for the menu bar.
 - `ProviderEnablementStore`: which providers are on or off.
+- `TeamsStore`: the Sign in with Apple session, teams, a pending invite, and this Mac's throttled usage upload to the teams backend (`backend/`). It reads `WidgetDataStore.localTeamHistorySources()`, so only this Mac's own history is uploaded, and uses `ICloudUsageSyncStore.durableDeviceID` so one Mac is one device everywhere. The API, session storage, and Apple sign-in are injected for tests. See [Teams](teams.md).
 - `ICloudUsageSyncStore`: one CloudKit record per device in the app's private database (history plus a live snapshot for companion apps), a five-minute peer poll, and the visible device and error state. Cloud access is injected for tests.
 
 Refresh runs on a timer in `AppContainer`. Each pass respects the cache, so the app only hits the network once a snapshot has expired.

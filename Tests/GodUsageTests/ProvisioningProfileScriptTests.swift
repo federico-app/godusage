@@ -57,6 +57,21 @@ final class ProvisioningProfileScriptTests: XCTestCase {
         XCTAssertFalse(try authorizesCloudKit(""))
     }
 
+    func testSignInProfileMatcherRequiresTheExactBundleUnderATeamPrefix() throws {
+        let matches: (String) throws -> Bool = { applicationID in
+            try self.runSourcedFunction(
+                "profile_matches_bundle \"$2\" \"$3\"",
+                arguments: [applicationID, "com.montinovo.godusage.dev"],
+                script: "script/find_signin_provisioning_profile.sh"
+            )
+        }
+        XCTAssertTrue(try matches("TEAM123.com.montinovo.godusage.dev"))
+        XCTAssertFalse(try matches("TEAM123.com.montinovo.godusage"))
+        XCTAssertFalse(try matches("TEAM123.com.montinovo.godusage.dev.extra"))
+        XCTAssertFalse(try matches(".com.montinovo.godusage.dev"))
+        XCTAssertFalse(try matches(""))
+    }
+
     private func matches(
         applicationID: String = "TEAM123.com.montinovo.godusage.dev",
         containerID: String
@@ -76,12 +91,16 @@ final class ProvisioningProfileScriptTests: XCTestCase {
         try runSourcedFunction("profile_authorizes_cloudkit \"$2\"", arguments: [services])
     }
 
-    private func runSourcedFunction(_ invocation: String, arguments: [String]) throws -> Bool {
+    private func runSourcedFunction(
+        _ invocation: String,
+        arguments: [String],
+        script scriptPath: String = "script/find_icloud_provisioning_profile.sh"
+    ) throws -> Bool {
         let script = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("script/find_icloud_provisioning_profile.sh")
+            .appendingPathComponent(scriptPath)
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")

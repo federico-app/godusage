@@ -31,7 +31,7 @@ Any provider refresh that takes 10 seconds or longer writes a Warning-level `[re
 
 Every line starts with a bracketed tag so the log is easy to grep:
 
-`[refresh]` `[cache]` `[http]` `[auth]` `[keychain]` `[menubar]` `[updates]` `[config]` `[subprocess]` `[localapi]`, plus per-provider tags like `[plugin:claude]` and `[auth:claude]`.
+`[refresh]` `[cache]` `[http]` `[auth]` `[keychain]` `[menubar]` `[updates]` `[config]` `[subprocess]` `[localapi]` `[teams]`, plus per-provider tags like `[plugin:claude]` and `[auth:claude]`.
 
 To follow just the refresh cycle:
 

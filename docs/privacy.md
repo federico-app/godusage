@@ -4,7 +4,7 @@ GodUsage collects no product analytics or usage statistics. It has no analytics 
 
 On the first launch after upgrading from a version that included analytics, GodUsage deletes the retired analytics identifier and counters that version stored locally.
 
-Provider usage stays on your Mac except for the network requests needed to read each provider's limits, and the optional services described below, which you can turn off.
+Provider usage stays on your Mac except for the network requests needed to read each provider's limits, and the optional services described below (iCloud Sync and Teams), which you can turn off.
 
 ## Credentials stored on this Mac
 
@@ -32,6 +32,10 @@ The cache is private to your macOS account and is never sent to a provider or iC
 ## iCloud Sync
 
 iCloud Sync is on by default. You can turn it off in Settings. With [iCloud Sync](icloud-sync.md) on, GodUsage writes normalized daily tokens, spend, and model totals to its private CloudKit database, plus each device's latest rendered usage snapshot (current quotas, plans, balances, and refresh errors). Your own devices use this data to show one combined summary and live usage. It stays inside your iCloud account and is never visible to GodUsage's developers or any provider. Credentials, raw provider responses, and raw logs are never written there. Turning sync off deletes this device's record from iCloud.
+
+## Teams
+
+Teams are off until you sign in with Apple. While you are signed in and in a team, each Mac uploads its own daily tokens and spend per provider and per model for the last 30 days to the GodUsage teams server (a Cloudflare Worker), and your teammates can see them with your display name. Account ids, credentials, logs, prompts, and project names are never uploaded, and the server never receives your email. The session token is kept in a private file in GodUsage's Application Support folder, readable only by your macOS account. Sign out or delete the account to remove what you shared. See [Teams](teams.md).
 
 ## Local diagnostics
 

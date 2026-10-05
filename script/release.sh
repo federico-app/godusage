@@ -170,6 +170,13 @@ cat >"$APP_CONTENTS/Info.plist" <<PLIST
   <key>NSUserNotificationAlertStyle</key><string>alert</string>
   <key>NSPrincipalClass</key><string>NSApplication</string>
   <key>NSHighResolutionCapable</key><true/>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key><string>$BUNDLE_ID.invite</string>
+      <key>CFBundleURLSchemes</key><array><string>godusage</string></array>
+    </dict>
+  </array>
   <key>SUFeedURL</key><string>$FEED_URL</string>
   <key>SUPublicEDKey</key><string>$SPARKLE_PUBLIC_KEY</string>
   <key>SUEnableAutomaticChecks</key><true/>

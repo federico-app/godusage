@@ -7,6 +7,7 @@ enum SettingsPane: String, CaseIterable, Sendable {
     case general
     case appearance
     case notifications
+    case teams
     case advanced
 
     var title: String {
@@ -14,6 +15,7 @@ enum SettingsPane: String, CaseIterable, Sendable {
         case .general: "General"
         case .appearance: "Appearance"
         case .notifications: "Notifications"
+        case .teams: "Teams"
         case .advanced: "Advanced"
         }
     }
@@ -23,6 +25,7 @@ enum SettingsPane: String, CaseIterable, Sendable {
         case .general: "gearshape"
         case .appearance: "paintbrush"
         case .notifications: "bell.badge"
+        case .teams: "person.3"
         case .advanced: "wrench.and.screwdriver"
         }
     }
@@ -65,6 +68,7 @@ struct SettingsPaneHost: View {
         case .general: GeneralSettingsPane()
         case .appearance: AppearanceSettingsPane()
         case .notifications: NotificationsSettingsPane()
+        case .teams: TeamsSettingsPane()
         case .advanced: AdvancedSettingsPane()
         }
     }

@@ -77,6 +77,7 @@ final class StatusItemController: NSObject {
     private let settingsWindow: SettingsWindowController
     /// Owns the standalone Memory Explorer window (same lazy-build, teardown-on-close lifecycle).
     private let memoryWindow: MemoryWindowController
+    private let teamsWindow: TeamsWindowController
     /// The panel's backdrop: an opaque tray by default, swapped to a behind-window vibrancy view when
     /// the transparency style is non-opaque. Built once and toggled, so it can't race the style observer.
     private let backdrop = PopoverBackdropView(cornerRadius: StatusItemController.cornerRadius)
@@ -142,6 +143,7 @@ final class StatusItemController: NSObject {
         self.heightController = PanelHeightController(panel: panel) { container.layout.screen }
         self.settingsWindow = SettingsWindowController(container: container, updater: updater)
         self.memoryWindow = MemoryWindowController(accounts: container.accounts)
+        self.teamsWindow = TeamsWindowController(container: container)
 
         super.init()
 
@@ -177,6 +179,12 @@ final class StatusItemController: NSObject {
         // through this one chokepoint so they all close the popover and share the same window.
         SettingsWindowLink.openHandler = { [weak self] in
             self?.openSettings()
+        }
+        SettingsWindowLink.openPaneHandler = { [weak self] pane in
+            self?.openSettings(pane: pane)
+        }
+        TeamsWindowLink.openHandler = { [weak self] in
+            self?.openTeams()
         }
         // Memory entry points (gear menu, context menu) share the same chokepoint discipline.
         MemoryWindowLink.openHandler = { [weak self] in
@@ -431,6 +439,17 @@ final class StatusItemController: NSObject {
     private func openSettings() {
         if panel.isVisible { hidePanel() }
         settingsWindow.show()
+    }
+
+    private func openSettings(pane: SettingsPane) {
+        if panel.isVisible { hidePanel() }
+        settingsWindow.show(pane: pane)
+    }
+
+    /// Opens the Teams leaderboard window, with the same hand-off as Settings and Memory.
+    private func openTeams() {
+        if panel.isVisible { hidePanel() }
+        teamsWindow.show()
     }
 
     /// Opens the standalone Memory window. Same hand-off as `openSettings()`: the window activates

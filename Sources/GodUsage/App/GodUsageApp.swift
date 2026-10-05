@@ -78,6 +78,27 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// `godusage://join/<code>` from an invite page. Launch can still be in flight, so the link
+    /// waits for the container, then lands on the Teams pane where the user confirms joining.
+    public func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            guard let code = TeamInviteLink.code(from: url) else {
+                AppLog.warn(.teams, "ignored an unrecognized link: \(url.scheme ?? "?")://\(url.host() ?? "")")
+                continue
+            }
+            Task { [weak self] in
+                guard let container = await self?.waitForContainer() else { return }
+                await container.teams.receiveInvite(code)
+                SettingsWindowLink.open(pane: .teams)
+            }
+        }
+    }
+
+    private func waitForContainer() async -> AppContainer? {
+        if container == nil { await launchTask?.value }
+        return container
+    }
+
     /// Quit bypasses every window's `windowShouldClose`, so a dirty Memory editor gets its
     /// Save / Discard / Cancel say here before the process exits.
     public func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

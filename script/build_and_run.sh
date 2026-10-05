@@ -158,6 +158,17 @@ cat >"$INFO_PLIST" <<PLIST
   <string>NSApplication</string>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>$BUNDLE_ID.invite</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>godusage</string>
+      </array>
+    </dict>
+  </array>
   <key>NSUbiquitousContainers</key>
   <dict>
     <key>iCloud.com.montinovo.godusage.dev</key>
@@ -184,15 +195,26 @@ if [ -z "${ICLOUD_PROVISIONING_PROFILE:-}" ]; then
     "$BUNDLE_ID" "$ICLOUD_CONTAINER_ID" || true)
 fi
 
+EMBEDDED_PROFILE=""
 if [ -n "${ICLOUD_PROVISIONING_PROFILE:-}" ]; then
   echo "==> using iCloud provisioning profile: $ICLOUD_PROVISIONING_PROFILE"
+  EMBEDDED_PROFILE="$ICLOUD_PROVISIONING_PROFILE"
   cp "$ICLOUD_PROVISIONING_PROFILE" "$APP_CONTENTS/embedded.provisionprofile"
   SIGN_ENTITLEMENTS="$DIST_DIR/GodUsage.dev.resolved.entitlements.plist"
   "$ROOT_DIR/script/render_icloud_entitlements.sh" \
     "$ENTITLEMENTS" "$ICLOUD_PROVISIONING_PROFILE" "$SIGN_ENTITLEMENTS" \
     "$ICLOUD_CONTAINER_ID"
+elif SIGNIN_PROFILE=$("$ROOT_DIR/script/find_signin_provisioning_profile.sh" "$BUNDLE_ID"); then
+  # A profile without the iCloud container still enables Sign in with Apple (Teams).
+  echo "==> using Sign in with Apple provisioning profile (no iCloud container): $SIGNIN_PROFILE"
+  echo "WARNING: the profile has no iCloud container; iCloud Sync will be unavailable in this build." >&2
+  EMBEDDED_PROFILE="$SIGNIN_PROFILE"
+  cp "$SIGNIN_PROFILE" "$APP_CONTENTS/embedded.provisionprofile"
+  SIGN_ENTITLEMENTS="$DIST_DIR/GodUsage.dev.resolved.entitlements.plist"
+  "$ROOT_DIR/script/render_icloud_entitlements.sh" \
+    "$ROOT_DIR/script/GodUsage.local.entitlements.plist" "$SIGNIN_PROFILE" "$SIGN_ENTITLEMENTS"
 else
-  echo "WARNING: no matching installed iCloud provisioning profile was found; iCloud Sync will be unavailable in this build." >&2
+  echo "WARNING: no matching installed provisioning profile was found; iCloud Sync and Teams sign-in will be unavailable in this build." >&2
 fi
 
 # Pick a stable Apple Development identity from the team so ad-hoc cdhash churn doesn't
@@ -205,7 +227,19 @@ find_apple_development_identity() {
 }
 
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:-}"
-if [ -z "$CODESIGN_IDENTITY" ]; then
+IDENTITY_FROM_PROFILE=0
+# An embedded profile only works with a certificate it lists, so prefer that one.
+if [ -z "$CODESIGN_IDENTITY" ] && [ -n "$EMBEDDED_PROFILE" ]; then
+  if profile_identity=$("$ROOT_DIR/script/profile_signing_identity.sh" "$EMBEDDED_PROFILE"); then
+    CODESIGN_IDENTITY="$profile_identity"
+    IDENTITY_FROM_PROFILE=1
+  else
+    echo "WARNING: none of the provisioning profile's certificates is installed; signing with another identity, so the app may refuse to launch." >&2
+  fi
+fi
+if [ "$IDENTITY_FROM_PROFILE" = 1 ]; then
+  : # found in the keychain by profile_signing_identity.sh
+elif [ -z "$CODESIGN_IDENTITY" ]; then
   if resolved_identity="$(find_apple_development_identity)"; then
     CODESIGN_IDENTITY="$resolved_identity"
   else

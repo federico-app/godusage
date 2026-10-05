@@ -12,6 +12,8 @@ final class AppContainer {
     /// Default-on private CloudKit sync: one record per device carrying additive machine-local
     /// daily history plus the live snapshot companion apps read.
     let iCloudSync: ICloudUsageSyncStore
+    /// Opt-in teams: Sign in with Apple, invites, leaderboards, and this Mac's usage upload.
+    let teams: TeamsStore
     /// Single source of truth for which providers the user has turned off. Both stores consult it (via
     /// injected closures) and the Customize provider list drives it.
     let enablement: ProviderEnablementStore
@@ -110,12 +112,18 @@ final class AppContainer {
             accountAssembly.startCodexIdentityBindingTask()
         }
         let iCloudSync = ICloudUsageSyncStore(dataStore: dataStore)
+        let teams = TeamsStore(
+            historySources: { [weak dataStore] in dataStore?.localTeamHistorySources() ?? [] },
+            deviceID: { [weak iCloudSync] in iCloudSync?.durableDeviceID }
+        )
+        dataStore.addLocalStateObserver { [weak teams] in teams?.scheduleUpload() }
         // Re-enabling a provider should fetch it promptly, so clear any leftover failure backoff before
         // the enablement wake refreshes. `weak` breaks the cycle (dataStore already captures enablement).
         enablement.onProviderEnabled = { [weak dataStore] id in dataStore?.clearFailureBackoff(for: id) }
-        enablement.onChange = { [weak dataStore, weak iCloudSync] in
+        enablement.onChange = { [weak dataStore, weak iCloudSync, weak teams] in
             dataStore?.providerEnablementDidChange()
             iCloudSync?.scheduleWrite()
+            teams?.scheduleUpload(force: true)
         }
         // Fresh installs start minimal: seed the enabled-provider list (Claude/Codex/Cursor right away,
         // then the detected set once the local credential probe finishes). No-op on every later launch.
@@ -145,6 +153,7 @@ final class AppContainer {
         self.layout = layout
         self.dataStore = dataStore
         self.iCloudSync = iCloudSync
+        self.teams = teams
 
         // One claim service per Codex card. Each shares that card's credential loading and HTTP client,
         // and refreshes that exact card after a successful claim. The forced refresh returns `.skipped`
@@ -214,6 +223,7 @@ final class AppContainer {
             settings: notificationSettings, dataStore: dataStore
         ).start()
         localAPI.start()
+        Task { [teams] in await teams.refresh() }
         // Become the notification-center delegate so banners show while frontmost — a menu-bar accessory
         // effectively always is. Notification authorization is requested the first time a trigger is
         // turned on in Settings, not at launch — triggers default off. No-op under tests.
