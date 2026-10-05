@@ -115,13 +115,13 @@ jobs:
       - name: Carry forward the dev appcast
         run: |
           set -euo pipefail
-          # generate_appcast reads and rewrites appcast.xml in this folder; it is published as
-          # appcast-dev.xml. The dev feed keeps only recent builds, so a missing feed (first dev
-          # release) simply starts fresh.
+          # generate_appcast names the feed after the app's SUFeedURL, so in this folder it reads and
+          # rewrites appcast-dev.xml. The dev feed keeps only recent builds, so a missing feed (first
+          # dev release) simply starts fresh.
           mkdir -p feed
           if git ls-remote --exit-code --heads origin update-feed >/dev/null 2>&1; then
             git fetch origin update-feed
-            git show origin/update-feed:appcast-dev.xml > feed/appcast.xml 2>/dev/null || rm -f feed/appcast.xml
+            git show origin/update-feed:appcast-dev.xml > feed/appcast-dev.xml 2>/dev/null || rm -f feed/appcast-dev.xml
           fi
 
       - name: Build, sign, and notarize the DMG
@@ -161,11 +161,11 @@ jobs:
             --download-url-prefix "$DOWNLOAD_PREFIX" \
             --maximum-versions 10 \
             feed
-          "$GITHUB_WORKSPACE/script/normalize_appcast_title.sh" feed/appcast.xml "GodUsage DEV"
-          grep -Eq "$DMG\"[^>]*sparkle:edSignature" feed/appcast.xml \
+          "$GITHUB_WORKSPACE/script/normalize_appcast_title.sh" feed/appcast-dev.xml "GodUsage DEV"
+          grep -Eq "$DMG\"[^>]*sparkle:edSignature" feed/appcast-dev.xml \
             || { echo "New item for $DMG is missing or unsigned (SUPublicEDKey/private-key mismatch?)." >&2; exit 1; }
           mkdir -p public
-          cp feed/appcast.xml public/appcast-dev.xml
+          cp feed/appcast-dev.xml public/appcast-dev.xml
 
       - name: Publish update feed branch
         uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.0.0
