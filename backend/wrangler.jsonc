@@ -34,7 +34,7 @@
       // vars and d1_databases are not inherited by environments, so they are repeated here.
       "vars": {
         "APPLE_AUDIENCES": "com.montinovo.godusage.dev",
-        "APPLE_WEB_CLIENT_ID": "com.montinovo.godusage.web",
+        "APPLE_WEB_CLIENT_ID": "com.montinovo.godusage.web.dev",
         "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest"
       },
       "d1_databases": [

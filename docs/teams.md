@@ -49,4 +49,4 @@ The owner can turn on **Public Leaderboard** for a team. That gives a read-only 
 
 ## Requirements
 
-Sign in goes through Apple's web sign-in, so it works in every build, including Developer ID releases (their provisioning profiles never grant the native Sign in with Apple entitlement). It needs the teams backend's Services ID; see [Teams backend](teams-backend.md#sign-in-with-apple).
+Sign in goes through Apple's web sign-in, so it works in every build, including Developer ID releases (their provisioning profiles never grant the native Sign in with Apple entitlement). It needs the teams backend's Services IDs; see [Teams backend](teams-backend.md#sign-in-with-apple).

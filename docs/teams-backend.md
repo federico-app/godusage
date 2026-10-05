@@ -89,10 +89,12 @@ The Mac app signs in through the web, because Developer ID provisioning profiles
 2. Apple posts the identity token to `/v1/auth/apple/callback`. The Worker checks that the request exists and has not expired (each is used once), and verifies the token: Apple's signature, issuer, expiry, audience = the Services ID (`APPLE_WEB_CLIENT_ID`), and the request's nonce. It finds or creates the account (with the name Apple shares on the first sign-in) and redirects to `godusage://auth` with a one-time code.
 3. The app checks the returned `state` and posts the code with its PKCE verifier to `/v1/auth/apple/exchange`. Only the app that started the sign-in can redeem the code.
 
-Apple setup, once: create a **Services ID** `com.montinovo.godusage.web` (Identifiers → Services IDs), enable Sign in with Apple on it with `com.montinovo.godusage` as the primary App ID, and add both Workers as domains and return URLs:
+Apple setup, once: one **Services ID** per environment (Identifiers → Services IDs), each with Sign in with Apple enabled and its own Worker as domain and return URL:
 
-- `godusage-api.federico-c80.workers.dev` → `https://godusage-api.federico-c80.workers.dev/v1/auth/apple/callback`
-- `godusage-api-dev.federico-c80.workers.dev` → `https://godusage-api-dev.federico-c80.workers.dev/v1/auth/apple/callback`
+| Environment | Services ID (`APPLE_WEB_CLIENT_ID`) | Primary App ID | Domain → return URL |
+| --- | --- | --- | --- |
+| Production | `com.montinovo.godusage.web` | `com.montinovo.godusage` | `godusage-api.federico-c80.workers.dev` → `https://godusage-api.federico-c80.workers.dev/v1/auth/apple/callback` |
+| Development | `com.montinovo.godusage.web.dev` | `com.montinovo.godusage.dev` | `godusage-api-dev.federico-c80.workers.dev` → `https://godusage-api-dev.federico-c80.workers.dev/v1/auth/apple/callback` |
 
 Apple gives a person the same user id for every app and Services ID grouped under the same primary App ID, so web and native sign-ins reach the same account.
 
