@@ -24,7 +24,7 @@ MODE="${1:-run}"
 CONFIG="${CONFIG:-release}"
 
 TARGET_NAME="GodUsage"                 # SwiftPM target / binary name
-APP_DISPLAY="GodUsage"                 # user-facing app name
+APP_DISPLAY="GodUsage DEV"             # user-facing app name; DEV tells it apart from the release app
 BUNDLE_ID="${BUNDLE_ID:-com.montinovo.godusage.dev}"
 ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage.dev"
 APPLE_TEAM_ID="${APPLE_TEAM_ID:-S6X72K86R8}"

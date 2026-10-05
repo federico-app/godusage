@@ -15,7 +15,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG="$HOME/Library/Logs/GodUsage/GodUsage.log"
-APP_BINARY="$ROOT_DIR/dist/GodUsage.app/Contents/MacOS/GodUsage"
+APP_BINARY="$ROOT_DIR/dist/GodUsage DEV.app/Contents/MacOS/GodUsage"
 
 if [ "${1:-}" != "--skip-build" ]; then
     "$ROOT_DIR/script/build_and_run.sh" build
