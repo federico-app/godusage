@@ -51,7 +51,7 @@ export async function appleToken(claims: TokenClaims = {}): Promise<string> {
 }
 
 export function makeApp(now: Date = NOW) {
-  return createApp({ fetchAppleKeys: async () => [publicJWK], now: () => now });
+  return createApp({ fetchAppleKeys: async () => [publicJWK], now: () => now, rateLimiter: async () => true });
 }
 
 export interface APIResponse<T = any> {

@@ -1,7 +1,9 @@
 import { fetchAppleKeys } from "./apple";
 import type { AppDeps, Handler } from "./context";
 import { ApiError, errorResponse, json } from "./http";
-import { deleteMe, getMe, signInWithApple, signOut, updateMe } from "./routes/account";
+import { bindingRateLimiter, RateLimitedError, rateLimitKey, rateLimitKind } from "./rateLimit";
+import { deleteMe, exportMe, getMe, signInWithApple, signOut, updateMe } from "./routes/account";
+import { privacyPage, termsPage } from "./routes/legal";
 import { homePage, invitePage, publicBoardPage } from "./routes/pages";
 import { getTeamStats } from "./routes/stats";
 import {
@@ -45,6 +47,7 @@ const ROUTES: Route[] = [
   route("GET", "/v1/me", getMe),
   route("PATCH", "/v1/me", updateMe),
   route("DELETE", "/v1/me", deleteMe),
+  route("GET", "/v1/me/export", exportMe),
   route("GET", "/v1/teams", listTeams),
   route("POST", "/v1/teams", createTeam),
   route("GET", "/v1/teams/:teamID", getTeam),
@@ -64,6 +67,8 @@ const ROUTES: Route[] = [
   route("PUT", "/v1/devices/:deviceID/usage", putDeviceUsage),
   route("DELETE", "/v1/devices/:deviceID", deleteDevice),
   route("GET", "/", homePage),
+  route("GET", "/privacy", privacyPage),
+  route("GET", "/terms", termsPage),
   route("GET", "/join/:code", invitePage),
   route("GET", "/t/:token", publicBoardPage),
   route("GET", "/teams/:teamID", memberBoardPage),
@@ -85,6 +90,15 @@ export function createApp(deps: AppDeps) {
           Object.entries(match.pathname.groups).filter((entry): entry is [string, string] => entry[1] !== undefined),
         );
         try {
+          const limitKind = rateLimitKind(url.pathname);
+          if (limitKind) {
+            const limiter = deps.rateLimiter ?? bindingRateLimiter(env);
+            if (!(await limiter(limitKind, await rateLimitKey(request, limitKind)))) {
+              const response = errorResponse(new RateLimitedError());
+              response.headers.set("retry-after", "60");
+              return response;
+            }
+          }
           return await candidate.handler({ request, env, url, params, deps });
         } catch (error) {
           if (error instanceof ApiError) return errorResponse(error);

@@ -78,3 +78,44 @@ export const deleteMe: Handler = async ({ request, env }) => {
   console.log(JSON.stringify({ event: "account_deleted", userID: user.id }));
   return noContent();
 };
+
+/**
+ * GET /v1/me/export — everything the server keeps about the signed-in user, as one JSON document:
+ * the account, Macs, daily usage per provider and per model, team memberships, reactions given and
+ * received, and challenges started. Session tokens are never included (only their count).
+ */
+export const exportMe: Handler = async ({ request, env, deps }) => {
+  const user = await requireUser(request, env.DB);
+  const [account, sessions, devices, days, models, teams, given, received, challenges] = await env.DB.batch([
+    env.DB.prepare("SELECT id, apple_sub, display_name, created_at FROM users WHERE id = ?").bind(user.id),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?").bind(user.id),
+    env.DB.prepare("SELECT id, name, updated_at FROM devices WHERE user_id = ? ORDER BY updated_at DESC").bind(user.id),
+    env.DB.prepare("SELECT device_id, provider, day, scope, tokens, cost_usd FROM usage_days WHERE user_id = ? ORDER BY day, provider").bind(user.id),
+    env.DB.prepare("SELECT device_id, provider, day, model, scope, tokens, cost_usd FROM usage_model_days WHERE user_id = ? ORDER BY day, provider, model").bind(user.id),
+    env.DB.prepare("SELECT t.id, t.name, m.role, m.joined_at FROM team_members m JOIN teams t ON t.id = m.team_id WHERE m.user_id = ? ORDER BY t.name").bind(user.id),
+    env.DB.prepare("SELECT team_id, to_user, emoji, week, created_at FROM reactions WHERE from_user = ? ORDER BY created_at").bind(user.id),
+    env.DB.prepare("SELECT team_id, from_user, emoji, week, created_at FROM reactions WHERE to_user = ? ORDER BY created_at").bind(user.id),
+    env.DB.prepare("SELECT id, team_id, kind, starts_on, ends_on, created_at FROM challenges WHERE created_by = ? ORDER BY created_at").bind(user.id),
+  ]);
+  const row = account!.results[0] as { id: string; apple_sub: string; display_name: string; created_at: string };
+  const body = {
+    schema: "godusage.export.v1",
+    exportedAt: deps.now().toISOString(),
+    account: { id: row.id, appleUserID: row.apple_sub, displayName: row.display_name, createdAt: row.created_at },
+    activeSessions: (sessions!.results[0] as { n: number }).n,
+    devices: devices!.results,
+    usageDays: days!.results,
+    usageModelDays: models!.results,
+    teams: teams!.results,
+    reactionsGiven: given!.results,
+    reactionsReceived: received!.results,
+    challengesStarted: challenges!.results,
+  };
+  return new Response(JSON.stringify(body, null, 2), {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "content-disposition": 'attachment; filename="godusage-export.json"',
+      "cache-control": "no-store",
+    },
+  });
+};

@@ -34,6 +34,8 @@ Uploads happen after a refresh, at most every 15 minutes, and right away when yo
 
 Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Codex, Grok, and others) adds up across Macs. Cursor's usage is already account-wide, so only your most recently updated Mac counts.
 
+**Export My Data** (Settings → Teams) saves everything the service keeps about you as a JSON file. The service's [Terms](https://godusage-api.federico-c80.workers.dev/terms) and [Privacy Policy](https://godusage-api.federico-c80.workers.dev/privacy) are linked at sign-in.
+
 **Sign Out** removes this Mac's usage from your teams first, then ends the session. If removing it fails, you stay signed in and see the error. **Delete Account** removes your account, the usage all your Macs shared, and the teams you own.
 
 ## Leaderboards

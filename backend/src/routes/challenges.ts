@@ -118,19 +118,23 @@ async function describe(db: D1Database, teamID: string, challenge: ChallengeRow,
   };
 }
 
+/** Active challenges (soonest to end first) and the last five finished, with standings. */
+export async function teamChallengeList(db: D1Database, teamID: string, today: string) {
+  const [active, finished] = await db.batch([
+    db.prepare("SELECT id, kind, starts_on, ends_on, created_by FROM challenges WHERE team_id = ? AND ends_on >= ? ORDER BY ends_on, id").bind(teamID, today),
+    db.prepare("SELECT id, kind, starts_on, ends_on, created_by FROM challenges WHERE team_id = ? AND ends_on < ? ORDER BY ends_on DESC, id LIMIT ?").bind(teamID, today, RECENT_FINISHED),
+  ]);
+  const rows = [...(active!.results as ChallengeRow[]), ...(finished!.results as ChallengeRow[])];
+  const challenges = [];
+  for (const row of rows) challenges.push(await describe(db, teamID, row, today));
+  return challenges;
+}
+
 /** GET /v1/teams/:teamID/challenges?today=… — active challenges and the last five finished. */
 export const listChallenges: Handler = async ({ request, env, url, params, deps }) => {
   const user = await requireUser(request, env.DB);
   await requireMembership(env.DB, params.teamID!, user);
-  const today = viewerToday(url, deps.now());
-  const [active, finished] = await env.DB.batch([
-    env.DB.prepare("SELECT id, kind, starts_on, ends_on, created_by FROM challenges WHERE team_id = ? AND ends_on >= ? ORDER BY ends_on, id").bind(params.teamID!, today),
-    env.DB.prepare("SELECT id, kind, starts_on, ends_on, created_by FROM challenges WHERE team_id = ? AND ends_on < ? ORDER BY ends_on DESC, id LIMIT ?").bind(params.teamID!, today, RECENT_FINISHED),
-  ]);
-  const rows = [...(active!.results as ChallengeRow[]), ...(finished!.results as ChallengeRow[])];
-  const challenges = [];
-  for (const row of rows) challenges.push(await describe(env.DB, params.teamID!, row, today));
-  return json({ challenges });
+  return json({ challenges: await teamChallengeList(env.DB, params.teamID!, viewerToday(url, deps.now())) });
 };
 
 /** POST /v1/teams/:teamID/challenges { kind, days, today? } — starts today, any member. */

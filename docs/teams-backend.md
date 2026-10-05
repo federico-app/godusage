@@ -35,9 +35,19 @@ Day keys are each Mac's local calendar days. A stats request can pass the viewer
 - A member can leave. The owner cannot leave; they delete the team instead.
 - Limits: 50 members per team, 20 teams per user.
 
+## Rate limits
+
+Sign-in routes (`/v1/auth/*`, `/teams/<id>/sign-in`) allow 20 requests a minute per IP. Every other `/v1` route allows 120 a minute per session, or per IP without one. Pages are not limited. Over the limit the Worker answers 429 with `Retry-After: 60`. The limits use Cloudflare's rate limiting bindings (`ratelimits` in `wrangler.jsonc`, separate namespaces per environment).
+
+## Privacy policy and terms
+
+The Worker serves `/privacy` and `/terms`, linked from every page and from the app's sign-in. Keep them in step with what the service stores (this page) and with [Privacy](privacy.md).
+
 ## Members-only board
 
 Every member can open `https://<worker>/teams/<team id>` in a browser (the app's **Web Leaderboard** link). Visitors who are not signed in see **Sign In with Apple**, which runs the same web sign-in as the app (`/teams/<id>/sign-in`) and comes back to the board. The browser then keeps a 30-day session in a `HttpOnly`, `Secure`, `SameSite=Lax` cookie. Only members see the board; anyone else sees "Not a Member". **Sign Out** on the page ends that browser session. Sign-in only ever returns to a `/teams/<id>` path on the same site.
+
+Both boards show the same extras as the app: 👑 for today's top spender, 🏆 for last month's champion, this week's reactions, the team's month-end projection, challenges, and the Hall of Fame.
 
 It sits beside the public board below: the public link needs no sign-in, the members-only one needs a member's Apple ID.
 
@@ -56,6 +66,7 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `POST /v1/auth/apple/exchange` | `{ code, codeVerifier }` → `{ token, user, created }`. The code works once, for five minutes. |
 | `POST /v1/auth/apple` | Native sign-in (for the iOS app): `{ identityToken, displayName? }` → `{ token, user, created }`. `displayName` is used only for a new account. |
 | `POST /v1/auth/logout` | Ends this session. |
+| `GET /v1/me/export` | Everything the server keeps about you, as one JSON document (the app's **Export My Data**). Session tokens are never included. |
 | `GET`, `PATCH`, `DELETE /v1/me` | Read, rename (`{ displayName }`, at most 40 characters), or delete the account. |
 | `GET`, `POST /v1/teams` | List my teams, or create one (`{ name }`, at most 60 characters). |
 | `GET`, `PATCH`, `DELETE /v1/teams/:id` | Team with members; owner can change `{ name?, publicBoard? }` or delete it. |
