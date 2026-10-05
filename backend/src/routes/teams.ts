@@ -59,6 +59,7 @@ async function teamDetail(context: RouteContext, team: TeamRow, role: Role) {
     role,
     createdAt: team.created_at,
     inviteURL: inviteURL(origin, team.invite_code),
+    webBoardURL: `${origin}/teams/${team.id}`,
     publicBoardURL: role === "owner" && team.public_token ? publicBoardURL(origin, team.public_token) : null,
     members: members.results.map((member) => ({
       id: member.id,

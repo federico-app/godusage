@@ -3,6 +3,15 @@ import { ApiError } from "../http";
 import { parseStatsQuery, teamStats, type TeamStats } from "../stats";
 import { invitePreview } from "./teams";
 
+/** GET / — where the browser lands after signing out. */
+export const homePage: Handler = async ({ env }) =>
+  page(
+    "GodUsage Teams",
+    `<p class="eyebrow">GodUsage</p><h1>GodUsage Teams</h1>
+     <p class="muted">Compare AI usage with friends. Open your team's leaderboard from GodUsage, or ask a member for its link.</p>
+     <p><a href="${escapeHTML(env.DOWNLOAD_URL)}">Download GodUsage for macOS</a></p>`,
+  );
+
 /** GET /join/:code — the invite link. Opens the app, or points to the download. */
 export const invitePage: Handler = async ({ env, params }) => {
   const code = params.code!;
@@ -39,7 +48,7 @@ export const publicBoardPage: Handler = async ({ env, url, params, deps }) => {
   return page(`${team.name} Leaderboard`, renderBoard(team.name, stats, url));
 };
 
-function renderBoard(teamName: string, stats: TeamStats, url: URL): string {
+export function renderBoard(teamName: string, stats: TeamStats, url: URL): string {
   const value = (totals: { tokens: number; costUSD: number }) =>
     stats.sort === "cost" ? formatUSD(totals.costUSD) : formatTokens(totals.tokens);
   const metric = (totals: { tokens: number; costUSD: number }) => (stats.sort === "cost" ? totals.costUSD : totals.tokens);
@@ -104,7 +113,7 @@ export function escapeHTML(value: string): string {
   return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
 }
 
-function page(title: string, body: string, status = 200): Response {
+export function page(title: string, body: string, status = 200, extraHeaders: Record<string, string> = {}): Response {
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -129,6 +138,9 @@ nav { display:flex; flex-wrap:wrap; gap:6px; margin:16px 0; align-items:center; 
 .chip { padding:4px 12px; border:1px solid var(--line); border-radius:999px; text-decoration:none; font-size:14px; }
 .chip.active { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
 .sep { width:12px; }
+.account { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:24px; font-size:14px; }
+.account form { margin:0; }
+.linkbutton { background:none; border:none; padding:0; color:inherit; text-decoration:underline; font:inherit; cursor:pointer; }
 ol { list-style:none; padding:0; margin:0; }
 .board li, .models li { display:grid; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); }
 .board li { grid-template-columns:28px minmax(80px, 160px) 1fr auto; }
@@ -150,8 +162,9 @@ ol { list-style:none; padding:0; margin:0; }
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
-      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
       "referrer-policy": "no-referrer",
+      ...extraHeaders,
     },
   });
 }

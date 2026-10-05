@@ -2,7 +2,7 @@ import { fetchAppleKeys } from "./apple";
 import type { AppDeps, Handler } from "./context";
 import { ApiError, errorResponse, json } from "./http";
 import { deleteMe, getMe, signInWithApple, signOut, updateMe } from "./routes/account";
-import { invitePage, publicBoardPage } from "./routes/pages";
+import { homePage, invitePage, publicBoardPage } from "./routes/pages";
 import { getTeamStats } from "./routes/stats";
 import {
   acceptInvite,
@@ -16,6 +16,7 @@ import {
   updateTeam,
 } from "./routes/teams";
 import { deleteDevice, listDevices, putDeviceUsage } from "./routes/usage";
+import { browserSignOut, memberBoardPage, memberBoardSignIn } from "./routes/webBoard";
 import { exchangeWebSignIn, finishWebSignIn, startWebSignIn } from "./routes/webSignIn";
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -55,8 +56,12 @@ const ROUTES: Route[] = [
   route("GET", "/v1/devices", listDevices),
   route("PUT", "/v1/devices/:deviceID/usage", putDeviceUsage),
   route("DELETE", "/v1/devices/:deviceID", deleteDevice),
+  route("GET", "/", homePage),
   route("GET", "/join/:code", invitePage),
   route("GET", "/t/:token", publicBoardPage),
+  route("GET", "/teams/:teamID", memberBoardPage),
+  route("GET", "/teams/:teamID/sign-in", memberBoardSignIn),
+  route("POST", "/sign-out", browserSignOut),
 ];
 
 export function createApp(deps: AppDeps) {

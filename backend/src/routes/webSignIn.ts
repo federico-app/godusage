@@ -1,7 +1,7 @@
 import { verifyAppleIdentityToken } from "../apple";
 import type { Handler, RouteContext } from "../context";
 import { ApiError, badRequest, base64url, isRecord, json, randomToken, readJSONObject, requireName, sha256Hex, unauthorized } from "../http";
-import { createSession } from "../session";
+import { createSession, WEB_SESSION_DAYS, webSessionCookie } from "../session";
 import { escapeHTML } from "./pages";
 import { DISPLAY_NAME_MAX, findOrCreateUser } from "./account";
 
@@ -35,6 +35,12 @@ function appRedirect(params: Record<string, string>): Response {
   );
 }
 
+function seeOther(location: string, cookie?: string): Response {
+  const headers = new Headers({ location, "cache-control": "no-store" });
+  if (cookie) headers.set("set-cookie", cookie);
+  return new Response(null, { status: 303, headers });
+}
+
 function errorPage(message: string, status: number): Response {
   return new Response(
     `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign In Failed</title>` +
@@ -43,20 +49,39 @@ function errorPage(message: string, status: number): Response {
   );
 }
 
-/** GET /v1/auth/apple/start?state=…&code_challenge=… */
+/** GET /v1/auth/apple/start?state=…&code_challenge=… — the app's sign-in. */
 export const startWebSignIn: Handler = async ({ env, url, deps }) => {
   const appState = url.searchParams.get("state") ?? "";
   const challenge = url.searchParams.get("code_challenge") ?? "";
   if (!TOKENISH.test(appState) || !CHALLENGE.test(challenge)) {
     return errorPage("This sign-in link is incomplete. Go back to GodUsage and try again.", 400);
   }
-  const now = deps.now();
+  return redirectToApple(env, url, deps.now(), { kind: "app", appState, challenge, returnTo: null });
+};
+
+/** Only paths on this site, so a sign-in can never bounce a browser to another site. */
+export function safeReturnPath(value: string | null): string {
+  return value && /^\/teams\/[A-Za-z0-9-]{1,64}$/.test(value) ? value : "/";
+}
+
+/** Starts a browser sign-in for the web leaderboard; Apple returns to `returnTo` afterwards. */
+export async function startBrowserSignIn(env: Env, url: URL, now: Date, returnTo: string): Promise<Response> {
+  return redirectToApple(env, url, now, { kind: "web", appState: "", challenge: "", returnTo: safeReturnPath(returnTo) });
+}
+
+async function redirectToApple(
+  env: Env,
+  url: URL,
+  now: Date,
+  request: { kind: "app" | "web"; appState: string; challenge: string; returnTo: string | null },
+): Promise<Response> {
   const state = randomToken(24);
   const nonce = randomToken(24);
   await env.DB.batch([
     env.DB.prepare("DELETE FROM auth_requests WHERE expires_at < ?").bind(now.toISOString()),
-    env.DB.prepare("INSERT INTO auth_requests (state, nonce, code_challenge, app_state, expires_at) VALUES (?, ?, ?, ?, ?)")
-      .bind(state, nonce, challenge, appState, new Date(now.getTime() + REQUEST_TTL_MS).toISOString()),
+    env.DB.prepare(
+      "INSERT INTO auth_requests (state, nonce, code_challenge, app_state, expires_at, kind, return_to) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).bind(state, nonce, request.challenge, request.appState, new Date(now.getTime() + REQUEST_TTL_MS).toISOString(), request.kind, request.returnTo),
   ]);
 
   const apple = new URL(APPLE_AUTHORIZE_URL);
@@ -70,7 +95,7 @@ export const startWebSignIn: Handler = async ({ env, url, deps }) => {
     nonce,
   }).toString();
   return new Response(null, { status: 302, headers: { location: apple.toString(), "cache-control": "no-store" } });
-};
+}
 
 /** POST /v1/auth/apple/callback — Apple's form post. */
 export const finishWebSignIn: Handler = async (context: RouteContext) => {
@@ -86,15 +111,20 @@ export const finishWebSignIn: Handler = async (context: RouteContext) => {
     return typeof value === "string" ? value : "";
   };
 
-  const pending = await env.DB.prepare("DELETE FROM auth_requests WHERE state = ? RETURNING nonce, code_challenge, app_state, expires_at")
+  const pending = await env.DB.prepare(
+    "DELETE FROM auth_requests WHERE state = ? RETURNING nonce, code_challenge, app_state, expires_at, kind, return_to",
+  )
     .bind(field("state"))
-    .first<{ nonce: string; code_challenge: string; app_state: string; expires_at: string }>();
+    .first<{ nonce: string; code_challenge: string; app_state: string; expires_at: string; kind: "app" | "web"; return_to: string | null }>();
   const now = deps.now();
   if (!pending || new Date(pending.expires_at) <= now) {
     return errorPage("This sign-in expired. Go back to GodUsage and try again.", 400);
   }
 
   const appleError = field("error");
+  if (pending.kind === "web" && appleError) {
+    return seeOther(safeReturnPath(pending.return_to));
+  }
   if (appleError) {
     return appRedirect({ state: pending.app_state, error: appleError === "user_cancelled_authorize" ? "cancelled" : "apple" });
   }
@@ -105,10 +135,16 @@ export const finishWebSignIn: Handler = async (context: RouteContext) => {
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     console.warn(JSON.stringify({ event: "web_sign_in_rejected", reason: error.message }));
+    if (pending.kind === "web") return errorPage("Apple's response couldn't be verified. Try signing in again.", 401);
     return appRedirect({ state: pending.app_state, error: "invalid_token" });
   }
 
   const { user, created } = await findOrCreateUser(env.DB, identity.sub, nameFromAppleUser(field("user")));
+  if (pending.kind === "web") {
+    const token = await createSession(env.DB, user.id, WEB_SESSION_DAYS);
+    console.log(JSON.stringify({ event: "browser_sign_in", userID: user.id, created }));
+    return seeOther(safeReturnPath(pending.return_to), webSessionCookie(token));
+  }
   const code = randomToken(32);
   await env.DB.prepare("INSERT INTO login_codes (code_hash, user_id, code_challenge, created, expires_at) VALUES (?, ?, ?, ?, ?)")
     .bind(await sha256Hex(code), user.id, pending.code_challenge, created ? 1 : 0, new Date(now.getTime() + CODE_TTL_MS).toISOString())

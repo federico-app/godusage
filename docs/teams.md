@@ -45,7 +45,9 @@ Open the **Teams** window from the popover's gear menu or **Open Leaderboards** 
 
 Days are calendar days on each Mac. Refresh uploads this Mac's latest usage and reloads.
 
-The owner can turn on **Public Leaderboard** for a team. That gives a read-only web page anyone with its link can open without signing in. It shows display names, ranks, spend or tokens by provider, and top models. Turning it off makes the link stop working.
+Every member can open the team's **Web Leaderboard** in a browser. It shows the same board after you sign in with your Apple ID, and only to members.
+
+The owner can also turn on **Public Leaderboard** for a team. That gives a read-only web page anyone with its link can open without signing in. It shows display names, ranks, spend or tokens by provider, and top models. Turning it off makes the link stop working.
 
 ## Requirements
 

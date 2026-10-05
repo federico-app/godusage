@@ -29,6 +29,12 @@ Day keys are each Mac's local calendar days. A stats request can pass the viewer
 - A member can leave. The owner cannot leave; they delete the team instead.
 - Limits: 50 members per team, 20 teams per user.
 
+## Members-only board
+
+Every member can open `https://<worker>/teams/<team id>` in a browser (the app's **Web Leaderboard** link). Visitors who are not signed in see **Sign In with Apple**, which runs the same web sign-in as the app (`/teams/<id>/sign-in`) and comes back to the board. The browser then keeps a 30-day session in a `HttpOnly`, `Secure`, `SameSite=Lax` cookie. Only members see the board; anyone else sees "Not a Member". **Sign Out** on the page ends that browser session. Sign-in only ever returns to a `/teams/<id>` path on the same site.
+
+It sits beside the public board below: the public link needs no sign-in, the members-only one needs a member's Apple ID.
+
 ## Public board
 
 While the owner shares it, `https://<worker>/t/<token>` shows the leaderboard without sign-in: ranks, display names, spend or tokens split by provider, and the top models. Turning sharing off makes the link return 404. Turning it on again keeps the same link until it is turned off.
