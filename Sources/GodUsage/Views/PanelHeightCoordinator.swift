@@ -41,7 +41,8 @@ final class PanelHeightCoordinator {
     private func recomposeIdeal(for screen: PopoverScreen) {
         guard let content = measuredScrollContent[screen], content > 0 else { return }
         let topBar: CGFloat = screen == .dashboard ? 0 : topBarHeight
-        let footer: CGFloat = screen == .customize ? 0 : footerHeight
+        // Only the dashboard carries the footer bar (see `PopoverFooter`).
+        let footer: CGFloat = screen == .dashboard ? footerHeight : 0
         measuredIdeal[screen] = topBar + footer + content
     }
 

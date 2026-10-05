@@ -755,6 +755,8 @@ struct DashboardView: View {
                 reorderSpaceName: Self.reorderSpace,
                 reorderLift: $reorderLift
             )
+        case .team:
+            TeamPopoverView(heightCoordinator: heightCoordinator, horizontalPadding: Self.outerPadding)
         }
     }
 

@@ -36,12 +36,18 @@ Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Code
 
 ## Leaderboards
 
-Open the **Teams** window from the popover's gear menu or **Open Leaderboards** in Settings → Teams. Pick a team, a range (Today, 7 Days, 30 Days), and Spend or Tokens. The window shows:
+**In the popover.** Once you're signed in, the footer shows a **team** button (also **Team** in the gear menu). The Team screen shows the selected team's ranking for Today, 7 Days, or 30 Days, by Spend or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. The chart button in its top bar opens the Teams window. With more than one team, pick one from the team name.
 
-- the ranking (members with the same value share a rank),
-- each member's usage by provider,
-- usage by day per member,
-- the team's top models.
+**In the Teams window** (the popover's chart button, or **Open Leaderboards** in Settings → Teams):
+
+- the ranking (members with the same value share a rank), each bar split by provider,
+- **Who Uses What**: each member's usage, split by provider,
+- **By Day**: the team's usage per day, split by provider; hover a day for its numbers,
+- **Top Models**: the team's most used models, colored by provider.
+
+Providers have the same color everywhere: the popover's Cost ring, the Team screen, the Teams window, and the web boards (Claude is terracotta, Codex green, Cursor black, or white in dark mode). Every chart also has a legend and value labels, so no number depends on color alone.
+
+The popover, the Teams window, and Settings share the selected team.
 
 Days are calendar days on each Mac. Refresh uploads this Mac's latest usage and reloads.
 

@@ -4,7 +4,6 @@ import SwiftUI
 /// The Teams window: pick a team, a range, and spend or tokens; see the ranking and who uses what.
 struct TeamsLeaderboardView: View {
     @Environment(AppContainer.self) private var container
-    @State private var selectedTeamID: String?
     @AppStorage("godusage.teams.window.range") private var range: StatsRange = .week
     @AppStorage("godusage.teams.window.sort") private var sort: StatsSort = .cost
     @State private var stats: TeamStats?
@@ -47,11 +46,8 @@ struct TeamsLeaderboardView: View {
         var teamCount: Int
     }
 
-    private var currentTeamID: String? {
-        let teams = container.teams.teams
-        if let selectedTeamID, teams.contains(where: { $0.id == selectedTeamID }) { return selectedTeamID }
-        return teams.first?.id
-    }
+    /// Shared with the popover's Team screen and the Teams settings pane.
+    private var currentTeamID: String? { container.teams.selectedTeamID }
 
     private func load() async {
         guard let teamID = currentTeamID else {
@@ -72,7 +68,7 @@ struct TeamsLeaderboardView: View {
 
     private var toolbar: some View {
         HStack(spacing: 12) {
-            Picker("Team", selection: Binding(get: { currentTeamID ?? "" }, set: { selectedTeamID = $0 })) {
+            Picker("Team", selection: Binding(get: { currentTeamID ?? "" }, set: { container.teams.selectedTeamID = $0 })) {
                 ForEach(container.teams.teams) { team in
                     Text(team.name).tag(team.id)
                 }
@@ -211,34 +207,35 @@ private struct TeamsRankingList: View {
     let providerName: (String) -> String
 
     var body: some View {
+        let top = stats.members.map { $0.totals.value(for: sort) }.max() ?? 0
         VStack(spacing: 0) {
             ForEach(Array(stats.members.enumerated()), id: \.element.id) { index, member in
                 if index > 0 { Divider() }
-                HStack(spacing: 10) {
+                HStack(alignment: .center, spacing: 10) {
                     Text("\(member.rank)")
                         .font(.body.monospacedDigit().weight(.semibold))
                         .foregroundStyle(member.rank <= 3 ? .primary : .secondary)
                         .frame(width: 24, alignment: .trailing)
-                    Text(member.displayName).lineLimit(1)
-                    if member.userID == currentUserID {
-                        Text("You")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(.secondary.opacity(0.12), in: Capsule())
-                    }
-                    Spacer(minLength: 8)
-                    if let top = member.providers.first, member.totals.value(for: sort) > 0 {
-                        Text("Mostly \(providerName(top.provider))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 6) {
+                            Text(member.displayName).lineLimit(1)
+                            if member.userID == currentUserID {
+                                Text("You")
+                                    .font(.caption2.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(.secondary.opacity(0.12), in: Capsule())
+                            }
+                        }
+                        ProviderSplitBar(providers: member.providers, top: top, sort: sort, height: 6)
                     }
                     Text(TeamsFormat.value(member.totals, sort: sort))
                         .font(.body.monospacedDigit().weight(.semibold))
+                        .frame(minWidth: 70, alignment: .trailing)
                 }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.vertical, 9)
             }
         }
         .cardSurface()

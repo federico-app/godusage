@@ -74,7 +74,7 @@ The image shows the provider's mark and name, the metric rows you currently see 
 
 ## Footer
 
-The bar pinned to the bottom of the popover. On the left: the app version. On the right: a countdown to the next update (like `5m`) that you can click, or press **⌘R**, to refresh now, and a **gear** menu. The gear holds **Customize**, **Settings** (opens the [Settings window](settings.md)), **Memory** (opens the [Memory Explorer](memory-explorer.md)), **Teams** (opens the [Teams](teams.md) leaderboards), **Share Screenshot**, **Check for Updates…**, **About GodUsage**, and **Quit GodUsage**.
+The bar pinned to the bottom of the popover. On the left: the app version. On the right: a countdown to the next update (like `5m`) that you can click, or press **⌘R**, to refresh now, a **team** button while you're signed in to [Teams](teams.md), and a **gear** menu. The gear holds **Customize**, **Settings** (opens the [Settings window](settings.md)), **Memory** (opens the [Memory Explorer](memory-explorer.md)), **Team** (the [team](teams.md#leaderboards) leaderboard screen), **Share Screenshot**, **Check for Updates…**, **About GodUsage**, and **Quit GodUsage**.
 
 ## Customize
 

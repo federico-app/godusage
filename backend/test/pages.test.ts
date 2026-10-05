@@ -41,6 +41,9 @@ describe("public leaderboard", () => {
     expect(board.body).toContain("&lt;script&gt;x&lt;/script&gt;");
     expect(board.body).not.toContain("<script>");
     expect(board.body).toContain("Top Models");
+    // Provider colors follow the provider (the app's palette), never its rank on the board.
+    expect(board.body).toContain("background:#DE7356");
+    expect(board.body).toContain(">Claude</span>");
 
     const tokens = await api("GET", `${path}?range=today&sort=tokens`);
     expect(tokens.body).toContain("2.5M");

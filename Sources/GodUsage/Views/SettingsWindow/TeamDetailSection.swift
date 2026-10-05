@@ -1,12 +1,11 @@
 import AppKit
 import SwiftUI
 
-/// One team in the Teams pane: a summary row that expands into the invite link, the public board
-/// (owner), members, and leave/delete.
-struct TeamSettingsRow: View {
+/// The selected team in the Teams pane: its members, its invite and leaderboard links, and
+/// leaving or deleting it. Owner-only controls appear only for the owner.
+struct TeamDetailSection: View {
     let teams: TeamsStore
     let summary: TeamSummary
-    @State private var expanded = false
     @State private var confirmation: Confirmation?
     @State private var copiedURL: URL?
 
@@ -26,80 +25,42 @@ struct TeamSettingsRow: View {
         }
     }
 
-    private let density = DensitySetting.compact
     private var detail: TeamDetail? { teams.details[summary.id] }
     private var isOwner: Bool { summary.role == .owner }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Button {
-                withAnimation(Motion.spring) { expanded.toggle() }
-                if expanded { Task { await teams.loadTeam(summary.id) } }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(expanded ? 90 : 0))
-                    Text(summary.name).lineLimit(1)
+        SettingsSection(summary.name) {
+            if let detail {
+                members(detail)
+                Divider()
+                links(detail)
+                Divider()
+                HStack {
+                    Button("Open Leaderboards") { TeamsWindowLink.open() }
+                    Spacer()
                     if isOwner {
-                        Text("Owner")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(.secondary.opacity(0.12), in: Capsule())
+                        Button("Delete Team…", role: .destructive) { confirmation = .delete }
+                    } else {
+                        Button("Leave Team…", role: .destructive) { confirmation = .leave }
                     }
-                    Spacer(minLength: 8)
-                    Text(summary.memberCount == 1 ? "1 member" : "\(summary.memberCount) members")
-                        .foregroundStyle(.secondary)
                 }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 12)
-            .padding(.vertical, density.controlRowPadding)
-
-            if expanded {
-                if let detail {
-                    expandedContent(detail)
-                } else {
-                    ProgressView().controlSize(.small).padding(.bottom, 10)
-                }
+                .disabled(teams.isBusy)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+            } else {
+                HStack { Spacer(); ProgressView().controlSize(.small); Spacer() }
+                    .padding(.vertical, 12)
             }
         }
-        .alert(item: $confirmation) { confirmation in
-            alert(for: confirmation)
-        }
+        .task { await teams.loadTeam(summary.id) }
+        .alert(item: $confirmation) { alert(for: $0) }
     }
 
     @ViewBuilder
-    private func expandedContent(_ detail: TeamDetail) -> some View {
-        SettingsRow("Invite Link") {
-            copyButton(detail.inviteURL)
-            if isOwner {
-                Button("New Link") { confirmation = .newLink }
-            }
-        }
-        SettingsCaption("Anyone with the link can join and see the team's usage.")
-
-        if isOwner {
-            SettingsRow("Public Leaderboard") {
-                if let url = detail.publicBoardURL { copyButton(url) }
-                Toggle("", isOn: Binding(
-                    get: { detail.publicBoardURL != nil },
-                    set: { shared in Task { await teams.setPublicBoard(detail.id, shared: shared) } }
-                ))
-                .settingsSwitchStyle()
-                .disabled(teams.isBusy)
-            }
-            SettingsCaption("A read-only web page anyone with its link can open, no sign-in needed.")
-        }
-
+    private func members(_ detail: TeamDetail) -> some View {
         ForEach(detail.members) { member in
             HStack(spacing: 8) {
-                Image(systemName: "person.crop.circle")
-                    .foregroundStyle(.secondary)
+                Image(systemName: "person.crop.circle").foregroundStyle(.secondary)
                 Text(member.displayName).lineLimit(1)
                 if member.id == teams.user?.id {
                     Text("You").font(.caption).foregroundStyle(.secondary)
@@ -114,20 +75,41 @@ struct TeamSettingsRow: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 4)
+            .padding(.vertical, 5)
         }
+        .padding(.vertical, 4)
+    }
 
-        HStack {
-            Spacer()
+    @ViewBuilder
+    private func links(_ detail: TeamDetail) -> some View {
+        SettingsRow("Invite Link") {
+            copyButton(detail.inviteURL)
             if isOwner {
-                Button("Delete Team…", role: .destructive) { confirmation = .delete }
-            } else {
-                Button("Leave Team…", role: .destructive) { confirmation = .leave }
+                Button("New Link") { confirmation = .newLink }
             }
         }
-        .disabled(teams.isBusy)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        SettingsCaption("Anyone with the link can join and see the team's usage.")
+
+        if let webBoardURL = detail.webBoardURL {
+            SettingsRow("Web Leaderboard") {
+                copyButton(webBoardURL)
+                Button("Open") { NSWorkspace.shared.open(webBoardURL) }
+            }
+            SettingsCaption("Opens in a browser. Only members can see it, after signing in with Apple.")
+        }
+
+        if isOwner {
+            SettingsRow("Public Leaderboard") {
+                if let url = detail.publicBoardURL { copyButton(url) }
+                Toggle("", isOn: Binding(
+                    get: { detail.publicBoardURL != nil },
+                    set: { shared in Task { await teams.setPublicBoard(detail.id, shared: shared) } }
+                ))
+                .settingsSwitchStyle()
+                .disabled(teams.isBusy)
+            }
+            SettingsCaption("A read-only page anyone with its link can open, no sign-in needed.")
+        }
     }
 
     private func copyButton(_ url: URL) -> some View {

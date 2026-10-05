@@ -20,6 +20,25 @@ final class TeamsStore {
     private(set) var errorMessage: String?
     private(set) var lastUploadAt: Date?
     private(set) var uploadError: String?
+    /// The latest stats per team/range/sort, so a reopened leaderboard shows instantly while it reloads.
+    private(set) var cachedStats: [StatsKey: TeamStats] = [:]
+    private(set) var statsError: String?
+    /// The team the popover and the Teams window show. Falls back to the first team.
+    var selectedTeamID: String? {
+        get { teams.contains { $0.id == storedSelectedTeamID } ? storedSelectedTeamID : teams.first?.id }
+        set {
+            storedSelectedTeamID = newValue
+            UserDefaults.standard.set(newValue, forKey: Self.selectedTeamKey)
+        }
+    }
+    private var storedSelectedTeamID: String? = UserDefaults.standard.string(forKey: TeamsStore.selectedTeamKey)
+    private static let selectedTeamKey = "godusage.teams.selectedTeam.v1"
+
+    struct StatsKey: Hashable {
+        var teamID: String
+        var range: StatsRange
+        var sort: StatsSort
+    }
 
     var user: TeamsUser? { session?.user }
     var isSignedIn: Bool { session != nil }
@@ -193,6 +212,16 @@ final class TeamsStore {
         }
     }
 
+    /// Reloads one leaderboard into `cachedStats`. Errors land in `statsError`; the cached value stays.
+    func loadStats(teamID: String, range: StatsRange, sort: StatsSort) async {
+        do {
+            cachedStats[StatsKey(teamID: teamID, range: range, sort: sort)] = try await stats(for: teamID, range: range, sort: sort)
+            statsError = nil
+        } catch {
+            statsError = error.localizedDescription
+        }
+    }
+
     func stats(for teamID: String, range: StatsRange, sort: StatsSort) async throws -> TeamStats {
         guard let token = session?.token else { throw TeamsAPIError(kind: .unauthorized, message: "Sign in to see team stats.") }
         let today = DailyUsageAccumulator.dayKey(from: now(), calendar: .current)
@@ -340,6 +369,8 @@ final class TeamsStore {
         details = [:]
         lastUploadAt = nil
         uploadError = nil
+        cachedStats = [:]
+        statsError = nil
         do { try sessionStore.save(nil) } catch {
             AppLog.error(.teams, "couldn't remove the saved teams session: \(error)")
         }

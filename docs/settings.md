@@ -68,15 +68,14 @@ For notifications that stay onscreen until dismissed, choose **Alerts** for GodU
 
 ## Teams
 
-| Setting | What it does |
+Signed out, the pane shows **Sign In with Apple**. Signed in, it has four sections:
+
+| Section | What it holds |
 |---|---|
-| Sign In with Apple | Creates or opens your teams account. Shown while signed out. |
-| Display Name | The name teammates see on leaderboards. |
-| This Mac | When this Mac last shared its usage, or why it isn't sharing. |
-| Sign Out | Removes this Mac's usage from your teams, then signs out. |
-| Delete Account… | Deletes the account, the usage every Mac shared, and the teams you own. |
-| Your Teams | Each team's invite link, members, and (owner) New Link, Public Leaderboard, Remove, Delete Team. Members can Leave Team. |
-| Add a Team | Create a team, or paste an invite link to join one. |
+| Account | Your display name (**Edit Name…**), and when this Mac last shared its usage or why it isn't. |
+| Teams | Your teams; select one to manage it (the popover and Teams window follow). **New Team…** and **Join Team…** (paste an invite link). |
+| *Selected team* | Members, **Invite Link** (Copy; the owner can make a **New Link**), **Web Leaderboard** (members-only, Copy or Open), the owner's **Public Leaderboard** switch, **Open Leaderboards**, and **Leave Team…** or the owner's **Delete Team…**. The owner can **Remove** members. |
+| Account Actions | **Sign Out** removes this Mac's usage from your teams, then signs out. **Delete…** deletes the account, the usage every Mac shared, and the teams you own. |
 
 An invite link opened from the web lands here and asks you to confirm joining. See [Teams](teams.md).
 

@@ -32,6 +32,9 @@ struct TeamDetail: Codable, Hashable, Sendable, Identifiable {
     var role: TeamRole
     var createdAt: String
     var inviteURL: URL
+    /// The members-only web leaderboard (sign in with Apple in a browser). Optional so an older
+    /// backend's responses still decode.
+    var webBoardURL: URL?
     /// Set only for the owner, and only while the read-only web leaderboard is shared.
     var publicBoardURL: URL?
     var members: [TeamMember]
@@ -138,6 +141,8 @@ struct TeamStats: Codable, Hashable, Sendable {
     struct Day: Codable, Hashable, Sendable, Identifiable {
         var day: String
         var members: [MemberTotals]
+        /// Optional so an older backend's responses still decode.
+        var providers: [ProviderTotals]?
         var id: String { day }
     }
 

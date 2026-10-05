@@ -118,6 +118,8 @@ describe("team stats", () => {
     expect(stats.totals).toEqual({ tokens: 1050, costUSD: 5.5 });
     expect(stats.daily).toHaveLength(7);
     expect(stats.daily.find((d: { day: string }) => d.day === "2026-10-04").members).toEqual([{ userID: bea.userID, tokens: 50, costUSD: 4 }]);
+    expect(stats.daily.find((d: { day: string }) => d.day === "2026-10-05").providers).toEqual([{ provider: "claude", tokens: 100, costUSD: 1 }]);
+    expect(stats.daily.find((d: { day: string }) => d.day === "2026-10-03").providers).toEqual([{ provider: "codex", tokens: 900, costUSD: 0.5 }]);
 
     const byTokens = (await api("GET", `/v1/teams/${team.id}/stats?range=7d&sort=tokens`, { token: owner.token })).body.stats;
     expect(byTokens.members.map((m: { displayName: string }) => m.displayName)).toEqual(["Owner", "Bea", "Cy"]);

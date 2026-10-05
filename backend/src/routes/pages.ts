@@ -73,8 +73,8 @@ export function renderBoard(teamName: string, stats: TeamStats, url: URL): strin
         .filter((provider) => metric(provider) > 0)
         .map((provider) => {
           const width = top > 0 ? (metric(provider) / top) * 100 : 0;
-          const color = `var(--c${providers.indexOf(provider.provider) % 8})`;
-          return `<span style="width:${width.toFixed(2)}%;background:${color}" title="${escapeHTML(provider.provider)}: ${value(provider)}"></span>`;
+          const color = providerColor(provider.provider);
+          return `<span style="width:${width.toFixed(2)}%;background:${color}" title="${escapeHTML(providerName(provider.provider))}: ${value(provider)}"></span>`;
         })
         .join("");
       return `<li><span class="rank">${member.rank}</span><span class="name">${escapeHTML(member.displayName)}</span>
@@ -82,11 +82,11 @@ export function renderBoard(teamName: string, stats: TeamStats, url: URL): strin
     })
     .join("");
   const legend = providers
-    .map((provider, index) => `<span><i style="background:var(--c${index % 8})"></i>${escapeHTML(provider)}</span>`)
+    .map((provider) => `<span><i style="background:${providerColor(provider)}"></i>${escapeHTML(providerName(provider))}</span>`)
     .join("");
   const models = stats.models
     .slice(0, 10)
-    .map((model) => `<li><span class="name">${escapeHTML(model.model)}</span><span class="muted">${escapeHTML(model.provider)}</span><span class="value">${value(model)}</span></li>`)
+    .map((model) => `<li><span class="name"><i class="dot" style="background:${providerColor(model.provider)}"></i>${escapeHTML(model.model)}</span><span class="muted">${escapeHTML(providerName(model.provider))}</span><span class="value">${value(model)}</span></li>`)
     .join("");
 
   return `<p class="eyebrow">GodUsage leaderboard</p>
@@ -96,6 +96,44 @@ export function renderBoard(teamName: string, stats: TeamStats, url: URL): strin
     <ol class="board">${rows || `<li class="muted">No usage shared yet.</li>`}</ol>
     <div class="legend">${legend}</div>
     ${models ? `<h2>Top Models</h2><ol class="models">${models}</ol>` : ""}`;
+}
+
+/**
+ * Provider colors match the Mac app's palette (TotalSpendPalette), so Claude is the same terracotta
+ * everywhere. Brand-black providers get a light variant in dark mode via CSS variables.
+ */
+const PROVIDER_COLORS: Record<string, string> = {
+  claude: "#DE7356",
+  codex: "#10A37F",
+  cursor: "var(--p-cursor)",
+  grok: "var(--p-grok)",
+  opencode: "var(--p-opencode)",
+  openrouter: "#6467F2",
+  antigravity: "#4285F4",
+  copilot: "#A855F7",
+  amp: "#F34E3F",
+  factory: "var(--p-factory)",
+  kimi: "#0A66FF",
+  minimax: "#F5433C",
+  zai: "var(--p-zai)",
+};
+const FALLBACK_COLORS = ["#34C759", "#5856D6", "#FF2D55", "#A2845E"];
+const PROVIDER_NAMES: Record<string, string> = {
+  claude: "Claude", codex: "Codex", cursor: "Cursor", grok: "Grok", opencode: "OpenCode", openrouter: "OpenRouter",
+  antigravity: "Antigravity", copilot: "Copilot", kimi: "Kimi", zai: "Z.ai", muse: "Muse", sakana: "Sakana", devin: "Devin", pi: "Pi",
+};
+
+/** Same stable fallback as the app: keyed off the provider id, never its rank. */
+export function providerColor(id: string): string {
+  const known = PROVIDER_COLORS[id];
+  if (known) return known;
+  let hash = 0;
+  for (const char of id) hash = (hash * 31 + char.codePointAt(0)!) & 0xffff;
+  return FALLBACK_COLORS[hash % FALLBACK_COLORS.length]!;
+}
+
+function providerName(id: string): string {
+  return PROVIDER_NAMES[id] ?? id.charAt(0).toUpperCase() + id.slice(1);
 }
 
 function formatUSD(value: number): string {
@@ -123,8 +161,9 @@ export function page(title: string, body: string, status = 200, extraHeaders: Re
 <title>${escapeHTML(title)}</title>
 <style>
 :root { --bg:#fbfbfa; --fg:#1d1d1f; --muted:#6e6e73; --line:#e5e5e7; --card:#fff; --accent:#1d1d1f; --accent-fg:#fff;
-  --c0:#4f6bed; --c1:#e8833a; --c2:#2fa37c; --c3:#c94f7c; --c4:#8a63d2; --c5:#d4a72c; --c6:#3a9ad9; --c7:#7a7a80; }
-@media (prefers-color-scheme: dark) { :root { --bg:#161617; --fg:#f5f5f7; --muted:#a1a1a6; --line:#2c2c2e; --card:#1f1f21; --accent:#f5f5f7; --accent-fg:#161617; } }
+  --p-cursor:#13120A; --p-grok:#8E8E93; --p-opencode:#6E6E73; --p-factory:#48484A; --p-zai:#2D2D2D; }
+@media (prefers-color-scheme: dark) { :root { --bg:#161617; --fg:#f5f5f7; --muted:#a1a1a6; --line:#2c2c2e; --card:#1f1f21; --accent:#f5f5f7; --accent-fg:#161617;
+  --p-cursor:#F5F5F7; --p-grok:#98989D; --p-opencode:#AEAEB2; --p-factory:#C7C7CC; --p-zai:#D1D1D6; } }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 main { max-width:720px; margin:0 auto; padding:48px 16px; }
@@ -149,7 +188,9 @@ ol { list-style:none; padding:0; margin:0; }
 .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .value { font-variant-numeric:tabular-nums; font-weight:600; text-align:right; }
 .bar { display:flex; height:10px; border-radius:5px; overflow:hidden; background:var(--line); }
+.bar { gap:2px; }
 .bar span { display:block; height:100%; }
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px; vertical-align:0; }
 .legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:12px; font-size:13px; color:var(--muted); }
 .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
 @media (max-width:480px) { .board li { grid-template-columns:24px 1fr auto; } .board .value { grid-row:1; grid-column:3; } .board .bar { grid-row:2; grid-column:2 / 4; } }

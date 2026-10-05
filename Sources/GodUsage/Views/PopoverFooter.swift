@@ -22,6 +22,8 @@ struct PopoverFooter: View {
     let height: CGFloat
 
     @Environment(\.popoverIsVisible) private var popoverIsVisible
+    @Environment(AppContainer.self) private var container
+    @Environment(PopoverTransparencyStore.self) private var transparency
     /// Shared 1s clock for the countdown text. Not a gated `TimelineView` — the structural swap on
     /// open/close rebuilt the button subtree every time (see `DashboardClock`). Optional to match
     /// `WidgetRowView`'s defensive read; the footer only ever mounts in the popover, where it exists.
@@ -36,6 +38,9 @@ struct PopoverFooter: View {
                 footerIdentity
                 Spacer(minLength: 8)
                 nextUpdateButton
+                if container.teams.isSignedIn {
+                    teamButton
+                }
                 HeaderView()
             }
             .padding(.horizontal, horizontalPadding)
@@ -82,6 +87,22 @@ struct PopoverFooter: View {
 
     /// The compact countdown — a small refresh glyph plus "3m" / "45s" until the next update, swapped
     /// for a mini spinner while a refresh is in flight. Clicking it (or ⌘R) refreshes immediately.
+    /// Opens the team leaderboard screen. Shown once signed in to Teams; the gear menu's Team item
+    /// reaches the same screen before that. Same glass circle as the gear beside it.
+    private var teamButton: some View {
+        Button {
+            withAnimation(Motion.modeSwitch) { layout.screen = .team }
+        } label: {
+            Image(systemName: "person.3")
+                .font(.system(size: 11, weight: .medium))
+                .frame(width: 28, height: 28)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .interactiveGlass(in: Circle(), reinforced: transparency.effectiveStyle.needsChromeLegibilityBacking)
+        .accessibilityLabel("Team")
+    }
+
     private var nextUpdateButton: some View {
         Button {
             refreshNow()

@@ -175,6 +175,7 @@ final class PanelHeightController {
         switch screen {
         case .dashboard: "godusage.panel.height.dashboard"
         case .customize: "godusage.panel.height.customize"
+        case .team: "godusage.panel.height.team"
         }
     }
 }

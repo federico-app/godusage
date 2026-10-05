@@ -33,7 +33,7 @@ export interface TeamStats {
   members: MemberStats[];
   providers: (Totals & { provider: string })[];
   models: (Totals & { model: string; provider: string; members: (Totals & { userID: string })[] })[];
-  daily: { day: string; members: (Totals & { userID: string })[] }[];
+  daily: { day: string; members: (Totals & { userID: string })[]; providers: (Totals & { provider: string })[] }[];
 }
 
 /**
@@ -106,7 +106,9 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
   const memberProviders = new Map<string, Map<string, Totals>>();
   const providerTotals = new Map<string, Totals>();
   const dailyTotals = new Map<string, Map<string, Totals>>();
+  const dailyProviders = new Map<string, Map<string, Totals>>();
   for (const row of days) {
+    add(entry(nested(dailyProviders, row.day), row.provider), row);
     add(entry(memberTotals, row.user_id), row);
     add(entry(nested(memberProviders, row.user_id), row.provider), row);
     add(entry(providerTotals, row.provider), row);
@@ -155,7 +157,11 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
 
   const daily: TeamStats["daily"] = [];
   for (let day = from; day <= to; day = addDays(day, 1)) {
-    daily.push({ day, members: sortedTotals(dailyTotals.get(day), "userID", metric) });
+    daily.push({
+      day,
+      members: sortedTotals(dailyTotals.get(day), "userID", metric),
+      providers: sortedTotals(dailyProviders.get(day), "provider", metric),
+    });
   }
 
   const totals = zero();

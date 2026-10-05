@@ -6,6 +6,8 @@ import Observation
 enum PopoverScreen: Hashable, Sendable {
     case dashboard
     case customize
+    /// The team leaderboard (Teams), reached from the footer's team button or the gear menu.
+    case team
 
     /// Left-to-right order for the popover's horizontal screen-switch slide: the dashboard is home on
     /// the left, with Customize to its right. The slide reads its direction from these ranks — a
@@ -14,6 +16,7 @@ enum PopoverScreen: Hashable, Sendable {
         switch self {
         case .dashboard: 0
         case .customize: 1
+        case .team: 2
         }
     }
 }

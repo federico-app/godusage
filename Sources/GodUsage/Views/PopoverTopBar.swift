@@ -38,6 +38,20 @@ struct PopoverTopBar: View {
                     Text("Turns providers back on for the tools you have installed and resets every provider's metrics and order. Are you sure?")
                 }
             }
+        case .team:
+            navigationBar(title: "Team", back: { withAnimation(Motion.modeSwitch) { layout.screen = .dashboard } }) {
+                if container.teams.isSignedIn {
+                    Button { TeamsWindowLink.open() } label: {
+                        Image(systemName: "chart.bar.xaxis")
+                            .font(.system(size: 12, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .interactiveGlass(in: Circle())
+                    .accessibilityLabel("Open Charts")
+                }
+            }
         }
     }
 
