@@ -1,11 +1,11 @@
 # Logging
 
-Runway keeps a file log so you can see what the app was doing and share it with support. Lines at or above your chosen level also go to the macOS unified log, so raising the level to Debug adds detail in both places (see [Debugging](debugging.md) for `log stream`).
+GodUsage keeps a file log so you can see what the app was doing and share it with support. Lines at or above your chosen level also go to the macOS unified log, so raising the level to Debug adds detail in both places (see [Debugging](debugging.md) for `log stream`).
 
 ## Where the log file lives
 
 ```
-~/Library/Logs/Runway/Runway.log
+~/Library/Logs/GodUsage/GodUsage.log
 ```
 
 The easiest way to grab it: open Settings → Advanced and use **Copy Log Path** or **Reveal in Finder**.
@@ -23,7 +23,7 @@ The **Log Level** picker controls how much detail is written. Your choice persis
 
 The release default is **Info**. Turn on **Debug** only while reproducing a problem. It is much noisier.
 
-If a local usage log exists but cannot be read, Runway writes one warning and skips it for that refresh. It warns again only if the file recovers and later becomes unreadable again.
+If a local usage log exists but cannot be read, GodUsage writes one warning and skips it for that refresh. It warns again only if the file recovers and later becomes unreadable again.
 
 Any provider refresh that takes 10 seconds or longer writes a Warning-level `[refresh]` line with the provider ID, elapsed milliseconds, and threshold. This is visible at the default Info level, so a slow log scan or network call can be found in a normal support log. The warning is diagnostic only. Other provider cards still update independently, and the slow provider is allowed to finish.
 
@@ -36,7 +36,7 @@ Every line starts with a bracketed tag so the log is easy to grep:
 To follow just the refresh cycle:
 
 ```sh
-grep '\[refresh\]' ~/Library/Logs/Runway/Runway.log
+grep '\[refresh\]' ~/Library/Logs/GodUsage/GodUsage.log
 ```
 
 ## What is never logged
@@ -45,6 +45,6 @@ Secrets never reach the log. The app redacts access and refresh tokens, cookies,
 
 ## File size cap
 
-The log is capped at about 10 MB. When it fills, the app rotates the current file to `Runway.1.log` and starts a fresh `Runway.log`. A long session uses at most about 20 MB across the live file and one archive. If a previous session left an oversize file, the app rotates it once at launch.
+The log is capped at about 10 MB. When it fills, the app rotates the current file to `GodUsage.1.log` and starts a fresh `GodUsage.log`. A long session uses at most about 20 MB across the live file and one archive. If a previous session left an oversize file, the app rotates it once at launch.
 
-> Note: the dev build and a released build both write to the same `Runway.log`. Running both at once interleaves their lines.
+> Note: the dev build and a released build both write to the same `GodUsage.log`. Running both at once interleaves their lines.

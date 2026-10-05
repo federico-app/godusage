@@ -22,7 +22,7 @@
 //                        last received (and only when the change check alone would skip)
 // Optional env:
 //   FORCE_IOS=1                     ship regardless of the delta
-//   RUNWAY_IOS_BUNDLE_ID            defaults to com.mattstallone.runway.mobile
+//   GODUSAGE_IOS_BUNDLE_ID            defaults to com.montinovo.godusage.mobile
 //   TESTFLIGHT_EXTERNAL_GROUPS      comma-separated external group names (default "External";
 //                                   the workflow passes the same value the distribute job uses)
 //   TESTFLIGHT_MAX_BUILD_AGE_DAYS   staleness backstop threshold (default 60)
@@ -56,7 +56,7 @@ const decide = (ship, reason) => {
 const STABLE_TAG = /^v\d+\.\d+\.\d+$/;
 const TAG = env("RELEASE_TAG");
 if (!STABLE_TAG.test(TAG)) fail(`Release tags must use the stable form v1.2.3 (got: ${TAG}).`);
-const BUNDLE_ID = process.env.RUNWAY_IOS_BUNDLE_ID || "com.mattstallone.runway.mobile";
+const BUNDLE_ID = process.env.GODUSAGE_IOS_BUNDLE_ID || "com.montinovo.godusage.mobile";
 const MAX_AGE_DAYS = Number(process.env.TESTFLIGHT_MAX_BUILD_AGE_DAYS || 60);
 
 // stderr passes through so a git failure explains itself before the non-zero exit.

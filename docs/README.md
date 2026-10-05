@@ -1,4 +1,4 @@
-# Runway Documentation
+# GodUsage Documentation
 
 What the app does and how it behaves. These pages describe behavior, not visuals. If the app and a page disagree, that is a bug.
 

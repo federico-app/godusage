@@ -1,6 +1,6 @@
 # Local HTTP API
 
-Runway exposes a read-only HTTP API on the loopback interface so other local apps can read the same usage data shown in the menu bar.
+GodUsage exposes a read-only HTTP API on the loopback interface so other local apps can read the same usage data shown in the menu bar.
 
 **Base URL:** `http://127.0.0.1:6736`
 
@@ -10,7 +10,7 @@ The server starts with the app. If the port is already in use, the app disables 
 
 ### `GET /v1/limits`
 
-Returns an envelope for all **enabled** providers. Providers and resources are keyed by stable IDs. Values are raw scalars with explicit units. Use this route for new integrations. It is the exact format the `runway` CLI prints.
+Returns an envelope for all **enabled** providers. Providers and resources are keyed by stable IDs. Values are raw scalars with explicit units. Use this route for new integrations. It is the exact format the `godusage` CLI prints.
 
 ### `GET /v1/limits/:id`
 
@@ -44,7 +44,7 @@ Methods other than `GET` and `OPTIONS` return **405**. Unknown routes return **4
 
 ```jsonc
 {
-  "schema": "runway.limits.v1",
+  "schema": "godusage.limits.v1",
   "generatedAt": "2026-07-13T01:40:00.000Z",
   "providers": {
     "codex": {

@@ -1,9 +1,9 @@
 # Proxy
 
-Runway can route all provider requests through a proxy.
+GodUsage can route all provider requests through a proxy.
 
 - Supported: `socks5://`, `http://`, `https://`
-- Config file: `~/.runway/config.json`
+- Config file: `~/.godusage/config.json`
 - Default: off
 - No UI. File only.
 
@@ -33,7 +33,7 @@ When the URL has no port, the scheme's default applies (socks5 â†’ 1080, http â†
 
 ## Behavior
 
-- Runway reads the config once at launch. Restart Runway after changing the file.
+- GodUsage reads the config once at launch. Restart GodUsage after changing the file.
 - `localhost`, `127.0.0.1`, and `::1` always bypass the proxy, so the [local HTTP API](local-http-api.md) is unaffected.
 - A missing, disabled, invalid, or unreadable config leaves proxying off.
 

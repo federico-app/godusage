@@ -46,6 +46,6 @@ jobs:
 
       - name: Build
         run: |
-          xcodebuild -project ios/RunwayMobile.xcodeproj -scheme RunwayMobile \
+          xcodebuild -project ios/GodUsageMobile.xcodeproj -scheme GodUsageMobile \
             -configuration Release -destination "generic/platform=iOS Simulator" \
             CODE_SIGNING_ALLOWED=NO build

@@ -9,13 +9,13 @@
 // JWT the API requires without any third-party dependency.
 //
 // Required env:
-//   RUNWAY_VERSION       marketing version of the uploaded build, e.g. 0.7.1
-//   RUNWAY_BUILD         CFBundleVersion of the uploaded build (git commit count)
+//   GODUSAGE_VERSION       marketing version of the uploaded build, e.g. 0.7.1
+//   GODUSAGE_BUILD         CFBundleVersion of the uploaded build (git commit count)
 //   APPLE_NOTARY_KEY_PATH / APPLE_NOTARY_KEY_ID / APPLE_NOTARY_ISSUER_ID
 //                        App Store Connect API key (App Manager role)
 //   TESTFLIGHT_EXTERNAL_GROUPS  comma-separated external group names, e.g. "External"
 // Optional env:
-//   RUNWAY_IOS_BUNDLE_ID        defaults to com.mattstallone.runway.mobile
+//   GODUSAGE_IOS_BUNDLE_ID        defaults to com.montinovo.godusage.mobile
 //   PROCESSING_TIMEOUT_MINUTES  how long to wait for Apple's build processing (default 60)
 
 import { createClient } from "./lib/appstore_connect.mjs";
@@ -29,10 +29,10 @@ const env = (name) => {
   return v;
 };
 
-const VERSION = env("RUNWAY_VERSION");
-const BUILD = env("RUNWAY_BUILD");
+const VERSION = env("GODUSAGE_VERSION");
+const BUILD = env("GODUSAGE_BUILD");
 const GROUPS = env("TESTFLIGHT_EXTERNAL_GROUPS").split(",").map((s) => s.trim()).filter(Boolean);
-const BUNDLE_ID = process.env.RUNWAY_IOS_BUNDLE_ID || "com.mattstallone.runway.mobile";
+const BUNDLE_ID = process.env.GODUSAGE_IOS_BUNDLE_ID || "com.montinovo.godusage.mobile";
 const TIMEOUT_MINUTES = Number(process.env.PROCESSING_TIMEOUT_MINUTES || 60);
 
 const api = createClient({

@@ -1,16 +1,16 @@
 # Adding a Provider
 
-How to add a new AI provider to Runway. Read the [architecture overview](architecture.md) first.
+How to add a new AI provider to GodUsage. Read the [architecture overview](architecture.md) first.
 
 ## What a provider is
 
-A provider is a small Swift module under `Sources/Runway/Providers/<Name>/` that conforms to `ProviderRuntime`. It has three parts:
+A provider is a small Swift module under `Sources/GodUsage/Providers/<Name>/` that conforms to `ProviderRuntime`. It has three parts:
 
 - an **auth store** that reads credentials already on the user's machine (config files, keychain),
 - a **usage client** that calls the provider's API,
 - a **mapper** that turns the response into metric lines.
 
-Runway never asks the user to paste a token. If the provider's own CLI or app is logged in, Runway reads that login.
+GodUsage never asks the user to paste a token. If the provider's own CLI or app is logged in, GodUsage reads that login.
 
 Besides `refresh()`, every provider implements `hasLocalCredentials()`: a cheap, local-only check (files, keychain, never the network) for whether credentials exist. A fresh install calls it once to turn on the providers the user has (`FirstRunSeeder`). Existing installs call it once on the first launch after your provider ships (`NewProviderSeeder`). See [Which Providers Are On](provider-enablement.md). Check the same credential sources `refresh()` reads, and run blocking loads via `loadOffMainActor`.
 
@@ -33,10 +33,10 @@ Set the snapshot's `plan` when the provider exposes a plan name. On failure, ret
 ## Steps
 
 1. **Check first.** Look at open issues and `docs/providers/` to see if the provider is already requested or in progress.
-2. **Create the module.** Add `Sources/Runway/Providers/<Name>/` with the auth store, usage client, and mapper. Implement both `refresh()` and `hasLocalCredentials()` (there is no default). The probe must stay local-only and reuse the same auth-store loaders and usability filters that `refresh()` uses. Do not write a second credential-reading path. Reuse the helpers in `Support/` (`ProviderParse` for JSON, number, and percent parsing, `RunwayISO8601` for timestamps).
+2. **Create the module.** Add `Sources/GodUsage/Providers/<Name>/` with the auth store, usage client, and mapper. Implement both `refresh()` and `hasLocalCredentials()` (there is no default). The probe must stay local-only and reuse the same auth-store loaders and usability filters that `refresh()` uses. Do not write a second credential-reading path. Reuse the helpers in `Support/` (`ProviderParse` for JSON, number, and percent parsing, `GodUsageISO8601` for timestamps).
 3. **Declare its widgets.** Expose the provider's metrics as `WidgetDescriptor`s using the factories in `WidgetDescriptor+Factories.swift` (`percent`, `boundedDollars`, `boundedCount`, `spendTiles`, `dollarBalance`, `combined`, `values`, `badge`, and so on).
 4. **Register it.** Add the provider to the list in `AppContainer`.
-5. **Test it.** Add tests under `Tests/RunwayTests/`, including a mapper test that feeds a sample API response and checks the resulting metric lines.
+5. **Test it.** Add tests under `Tests/GodUsageTests/`, including a mapper test that feeds a sample API response and checks the resulting metric lines.
 6. **Document it.** Add a page under `docs/providers/` covering what it tracks, where its credentials come from, the endpoints it calls, and what its error states mean.
 7. **Run it.** Build and launch with `./script/build_and_run.sh` and confirm the provider shows up.
 

@@ -10,7 +10,7 @@ Tracks your Devin quota using the login from the Devin CLI or the Devin app.
 | Daily | Daily quota used (hidden when Devin hides the daily quota) |
 | Extra Balance | Overage or extra-usage balance in dollars |
 
-When Devin reports your plan name, Runway shows it beside the provider name.
+When Devin reports your plan name, GodUsage shows it beside the provider name.
 
 ## Where credentials come from
 
@@ -19,7 +19,7 @@ Checked in this order. The first that works wins:
 1. Devin CLI credentials: `~/.local/share/devin/credentials.toml` (uses `windsurf_api_key`, and `api_server_url` when present)
 2. The Devin app's local state database
 
-If the CLI credentials fail but the app is signed in with a different account, Runway uses the app's login instead.
+If the CLI credentials fail but the app is signed in with a different account, GodUsage uses the app's login instead.
 
 ## Troubleshooting
 

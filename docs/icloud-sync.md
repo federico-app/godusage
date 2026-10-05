@@ -1,6 +1,6 @@
 # iCloud Sync
 
-**Sync Across Macs** is on by default. You can turn it off in Settings. While it is on, each device keeps one record in Runway's private CloudKit database, part of your own iCloud account, and reads the records written by your other devices. Runway keeps a random device ID in its private Application Support data, so the same Mac keeps updating its existing record after you reset preferences or reinstall. There is no folder picker, pairing code, or separate account.
+**Sync Across Macs** is on by default. You can turn it off in Settings. While it is on, each device keeps one record in GodUsage's private CloudKit database, part of your own iCloud account, and reads the records written by your other devices. GodUsage keeps a random device ID in its private Application Support data, so the same Mac keeps updating its existing record after you reset preferences or reinstall. There is no folder picker, pairing code, or separate account.
 
 Upgrades from either older Keychain-backed device-ID format copy the saved ID into the current file without reading a Keychain secret. If both that saved copy and the current file are missing, Settings pauses publishing and offers **Recover Identity**. That action may show a macOS Keychain approval dialog. Automatic sync never requests the legacy value.
 
@@ -9,9 +9,9 @@ Each device's record has two parts:
 - **History**: normalized daily tokens and spend, model totals, and unknown-model names for sources that are local to one Mac (Claude, Codex, Grok, Muse, Sakana, and OpenCode). Macs merge these into the combined view. Cursor's history is already account-wide, so it is never added across Macs.
 - **Snapshot**: that device's latest rendered usage state for every enabled provider (current quotas, plans, balances, reset times, and refresh errors), with card titles as the dashboard shows them, including your renames. Macs never display other Macs' snapshots. This part exists for companion apps (such as the iOS app) that show live usage without holding any provider credentials.
 
-Records never contain credentials, raw logs, or raw provider responses. When you disable a provider, Runway removes its peer contributions from the combined view and omits it from this device's next record. Its local cached snapshot remains.
+Records never contain credentials, raw logs, or raw provider responses. When you disable a provider, GodUsage removes its peer contributions from the combined view and omits it from this device's next record. Its local cached snapshot remains.
 
-Runway combines the valid history payloads in memory and rebuilds Today, Yesterday, Last 30 Days, Usage Trend, unknown-model warnings, and model breakdowns. The same combined spend rows feed the dashboard, Total Spend, menu-bar pins, share cards, and the local HTTP API. Quotas, plans, balances, and provider errors stay this Mac's own values. Rows in an older peer record are ignored once they fall outside the calendar window the local history scanners use.
+GodUsage combines the valid history payloads in memory and rebuilds Today, Yesterday, Last 30 Days, Usage Trend, unknown-model warnings, and model breakdowns. The same combined spend rows feed the dashboard, Total Spend, menu-bar pins, share cards, and the local HTTP API. Quotas, plans, balances, and provider errors stay this Mac's own values. Rows in an older peer record are ignored once they fall outside the calendar window the local history scanners use.
 
 Every device only writes and deletes its own record, so records cannot conflict. Readers fetch the whole zone and rebuild the peer set from scratch, so a device that stops syncing disappears on the next load.
 
@@ -23,18 +23,18 @@ Histories match by **account**, not by card name. Each device's record notes whi
 
 An account you use on another Mac but have no login for here does not become a card. It appears as its own slice in **Total Spend**, named by its account code ("claude@ab12cd34"), so the number at the top covers all your Macs. That code is the same id the account's card carries on any Mac it is signed in on. When you log that account in locally, its card appears under that same id with the cross-machine history attached.
 
-If a synced record cannot identify the account behind a main Claude or Codex card, Runway keeps its spend in one remote family slice instead of attaching it to a different local account or dropping it from Total Spend.
+If a synced record cannot identify the account behind a main Claude or Codex card, GodUsage keeps its spend in one remote family slice instead of attaching it to a different local account or dropping it from Total Spend.
 
-Devices running an older Runway read their own format but report this device's newer record as "update Runway". Update both sides to sync multi-account machines.
+Devices running an older GodUsage read their own format but report this device's newer record as "update GodUsage". Update both sides to sync multi-account machines.
 
 Settings lists each valid device record with the time that device generated it. To remove a device from the combined summary, turn sync off on that device. This deletes its record from iCloud, stops that device from reading peers, and returns every surface there to local-only spend. Malformed records are ignored and reported in Settings and the app log.
 
 ## Development and release setup
 
-Apple requires the iCloud container assignment in the provisioning profile embedded in the app, and the App ID must have the CloudKit capability. Runway uses separate containers so development builds cannot write production data:
+Apple requires the iCloud container assignment in the provisioning profile embedded in the app, and the App ID must have the CloudKit capability. GodUsage uses separate containers so development builds cannot write production data:
 
-- `com.mattstallone.runway.dev` uses `iCloud.com.mattstallone.runway.dev`.
-- `com.mattstallone.runway` uses `iCloud.com.mattstallone.runway`.
+- `com.montinovo.godusage.dev` uses `iCloud.com.montinovo.godusage.dev`.
+- `com.montinovo.godusage` uses `iCloud.com.montinovo.godusage`.
 
 Development-signed builds also run against the container's **Development** CloudKit environment (release builds use **Production**), so a dev build never touches shipped data even inside the same container.
 
@@ -54,7 +54,7 @@ To inspect the records written by a running build, use the CloudKit Console (<ht
 
 ```bash
 xcrun cktool query-records \
-  --container-id iCloud.com.mattstallone.runway.dev \
+  --container-id iCloud.com.montinovo.godusage.dev \
   --environment development --database-type private \
   --zone-name UsageHistory --record-type DeviceUsage
 ```

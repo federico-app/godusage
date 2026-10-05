@@ -11,17 +11,17 @@ Tracks Grok Build credit usage using the login from the Grok CLI.
 | Rate Limit Resets | Banked usage-limit reset tokens, shown as a count (`1 available`) with a colored dot for the soonest expiry. Hover the value for a timeline of each token's expiry |
 | Today / Yesterday / Last 30 Days | Local cost and tokens estimated from Grok CLI session activity |
 
-When Grok reports your subscription tier, Runway shows it beside the provider name.
+When Grok reports your subscription tier, GodUsage shows it beside the provider name.
 
 The weekly shared pool is the limit Grok enforces for unified-billing accounts. The old monthly credits meter is no longer shown. Accounts not yet migrated to unified billing have no weekly pool, so the Weekly tile reads "No data".
 
 ## Where credentials come from
 
-Sign in once with the Grok CLI (`grok login`). Runway reads the same `~/.grok/auth.json`. Access tokens refresh automatically before expiry, and rotated tokens are written back to the file.
+Sign in once with the Grok CLI (`grok login`). GodUsage reads the same `~/.grok/auth.json`. Access tokens refresh automatically before expiry, and rotated tokens are written back to the file.
 
 ## The spend tiles
 
-Today, Yesterday, and Last 30 Days are computed locally from Grok CLI's session activity under `~/.grok/sessions/` (or `$GROK_HOME/sessions/`). Grok 1.x records measured token buckets and per-model totals when each turn completes. Runway reads those records, includes nested subagent and resumed sessions, and removes replayed turns from forked sessions. For older Grok CLI versions, Runway falls back to `~/.grok/logs/unified.jsonl`.
+Today, Yesterday, and Last 30 Days are computed locally from Grok CLI's session activity under `~/.grok/sessions/` (or `$GROK_HOME/sessions/`). Grok 1.x records measured token buckets and per-model totals when each turn completes. GodUsage reads those records, includes nested subagent and resumed sessions, and removes replayed turns from forked sessions. For older Grok CLI versions, GodUsage falls back to `~/.grok/logs/unified.jsonl`.
 
 Each period is one tile showing cost and tokens together (`$4.08 · 1.2M tokens`), the same as Claude, Codex, and Cursor. The dollars are estimated from measured token counts at public API rates using the shared [model pricing](../pricing.md). These estimates are separate from the weekly subscription pool that Grok's billing API reports. No session data leaves your Mac. A period with no recorded usage reads "No data".
 
@@ -29,13 +29,13 @@ Each period is one tile showing cost and tokens together (`$4.08 · 1.2M tokens`
 
 - **"Session expired" / auth errors**: run `grok login` again, then refresh.
 - **Weekly shows "No data"**: your account still reports a monthly period, which means it has not been migrated to unified weekly billing yet.
-- **Spend tiles show "No data"**: complete a Grok CLI turn so its usage is saved under `~/.grok/sessions/`, then refresh. On older Grok CLI versions, Runway needs token-bearing rows in `~/.grok/logs/unified.jsonl`.
+- **Spend tiles show "No data"**: complete a Grok CLI turn so its usage is saved under `~/.grok/sessions/`, then refresh. On older Grok CLI versions, GodUsage needs token-bearing rows in `~/.grok/logs/unified.jsonl`.
 
 ## Under the hood
 
 `GET https://cli-chat-proxy.grok.com/v1/billing?format=credits` for the weekly pool and pay-as-you-go cap (the call the Grok CLI itself makes), and `…/v1/settings` for the plan name. Token refresh via `auth.x.ai`. A 401/403 triggers one token refresh and retry.
 
-The "Rate Limit Resets" row comes from a best-effort `POST https://grok.com/prod_mc_billing.ConsumerUiSvc/GetRemainingResets` (gRPC-web, same Grok CLI OAuth token). That is the Settings → Usage "Reset Available" card. Each still-valid token has an id and a `validity_end`. Hover the value for a timeline of those expiries, soonest first, the same popover Codex uses but read-only. Runway never redeems a Grok reset. If that RPC fails, the row is omitted rather than shown as `0 available`. A successful empty list reads `0 available`.
+The "Rate Limit Resets" row comes from a best-effort `POST https://grok.com/prod_mc_billing.ConsumerUiSvc/GetRemainingResets` (gRPC-web, same Grok CLI OAuth token). That is the Settings → Usage "Reset Available" card. Each still-valid token has an id and a `validity_end`. Hover the value for a timeline of those expiries, soonest first, the same popover Codex uses but read-only. GodUsage never redeems a Grok reset. If that RPC fails, the row is omitted rather than shown as `0 available`. A successful empty list reads `0 available`.
 
 Enable **Reset Expiry Reminders** in [Notifications settings](../settings.md#reset-expiry-reminders) for reminders 48 hours, 24 hours, 2 hours, 1 hour, and 15 minutes before a known token expiry. Each reminder replaces the previous one for that expiry. Use the reset on grok.com before it expires.
 

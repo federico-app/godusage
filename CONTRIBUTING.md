@@ -1,10 +1,10 @@
-# Contributing to Runway
+# Contributing to GodUsage
 
-Runway uses an issue-first workflow. External pull requests must link an issue a maintainer has approved with the `approved` label. PRs without one are closed without review. Read this page before opening a PR.
+GodUsage uses an issue-first workflow. External pull requests must link an issue a maintainer has approved with the `approved` label. PRs without one are closed without review. Read this page before opening a PR.
 
 ## Scope
 
-Runway tracks AI coding subscription usage. That is the whole feature set. It is opinionated about clean design, speed, and a simple UX. Changes that expand the scope, add complexity, or hurt the UX are closed.
+GodUsage tracks AI coding subscription usage. That is the whole feature set. It is opinionated about clean design, speed, and a simple UX. Changes that expand the scope, add complexity, or hurt the UX are closed.
 
 If you are unsure whether an idea fits, open an issue first.
 
@@ -32,17 +32,17 @@ By submitting a pull request you agree your contribution is licensed under the [
 
 ### Adding a provider
 
-A provider is a small Swift module under `Sources/Runway/Providers/<Name>/` that conforms to `ProviderRuntime`: an auth store reads credentials already on the machine, a usage client calls the provider API, and a mapper turns the response into metric lines. See [docs/adding-a-provider.md](docs/adding-a-provider.md) and [docs/architecture.md](docs/architecture.md).
+A provider is a small Swift module under `Sources/GodUsage/Providers/<Name>/` that conforms to `ProviderRuntime`: an auth store reads credentials already on the machine, a usage client calls the provider API, and a mapper turns the response into metric lines. See [docs/adding-a-provider.md](docs/adding-a-provider.md) and [docs/architecture.md](docs/architecture.md).
 
 1. Open an issue and get it approved. Say why the provider fits and how its usage data is accessible.
-2. Create `Sources/Runway/Providers/<Name>/` and implement `ProviderRuntime`.
+2. Create `Sources/GodUsage/Providers/<Name>/` and implement `ProviderRuntime`.
 3. Register the provider in `AppContainer`.
-4. Add tests under `Tests/RunwayTests/`.
+4. Add tests under `Tests/GodUsageTests/`.
 5. Add a page in `docs/providers/` (metrics, credential sources, endpoints, troubleshooting).
 6. Test it with `./script/build_and_run.sh`.
 7. Open a PR that says how you verified it.
 
-You can also [request a provider](https://github.com/mstallone/runway/issues/new?template=new_provider.yml) without building it.
+You can also [request a provider](https://github.com/federico-app/godusage/issues/new?template=new_provider.yml) without building it.
 
 ### Fixing a bug
 
@@ -50,7 +50,7 @@ Reference the approved issue, describe the root cause and fix, and add a regress
 
 ### Requesting a feature
 
-[Open an issue](https://github.com/mstallone/runway/issues/new?template=feature_request.yml) and wait for the `approved` label before writing code.
+[Open an issue](https://github.com/federico-app/godusage/issues/new?template=feature_request.yml) and wait for the `approved` label before writing code.
 
 ## What gets accepted
 
@@ -86,4 +86,4 @@ All PRs need maintainer approval to merge. Only the owner can create release tag
 
 ## Questions
 
-Open a [bug report](https://github.com/mstallone/runway/issues/new?template=bug_report.yml) or [feature request](https://github.com/mstallone/runway/issues/new?template=feature_request.yml).
+Open a [bug report](https://github.com/federico-app/godusage/issues/new?template=bug_report.yml) or [feature request](https://github.com/federico-app/godusage/issues/new?template=feature_request.yml).

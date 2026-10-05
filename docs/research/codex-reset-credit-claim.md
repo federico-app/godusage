@@ -1,6 +1,6 @@
 # Codex Rate-Limit Reset Credits: How Claiming Works
 
-Research and live verification of the Codex "reset credit" claim flow, done 2026-07-12. This is the protocol reference for the claim flow in `Sources/Runway/Providers/Codex/CodexResetClaimService.swift`.
+Research and live verification of the Codex "reset credit" claim flow, done 2026-07-12. This is the protocol reference for the claim flow in `Sources/GodUsage/Providers/Codex/CodexResetClaimService.swift`.
 
 Sources: the open-source Codex CLI (`openai/codex`, `codex-rs/backend-client/src/client/rate_limit_resets.rs`, `codex-rs/tui/src/chatwidget/reset_credits.rs`, `codex-rs/tui/src/chatwidget/usage.rs`, `codex-rs/app-server/src/request_processors/account_processor/rate_limit_resets.rs`), plus a live end-to-end claim against a real account (one credit, hours before it expired).
 
@@ -10,9 +10,9 @@ OpenAI grants Codex users occasional free "rate limit resets". Redeeming one imm
 
 ## Endpoints
 
-Both live under the ChatGPT backend base URL (`https://chatgpt.com/backend-api`). The CLI also has a `PathStyle::CodexApi` variant (`/api/codex/...` instead of `/wham/...`) for enterprise or alternative base URLs. Runway uses the ChatGPT style.
+Both live under the ChatGPT backend base URL (`https://chatgpt.com/backend-api`). The CLI also has a `PathStyle::CodexApi` variant (`/api/codex/...` instead of `/wham/...`) for enterprise or alternative base URLs. GodUsage uses the ChatGPT style.
 
-Headers on every call (the same ones Runway's Codex usage client sends):
+Headers on every call (the same ones GodUsage's Codex usage client sends):
 
 - `Authorization: Bearer <access_token>` (the ChatGPT OAuth access token from `~/.codex/auth.json`)
 - `ChatGPT-Account-Id: <account_id>` (from the same file)
@@ -96,7 +96,7 @@ The run was a one-shot Python script with hard guards (claim at most one credit,
 
 ## Implementation notes
 
-- The claim is a single POST on infrastructure Runway already talks to. Auth, headers, and account id handling are the same as `CodexUsageClient`'s existing calls.
+- The claim is a single POST on infrastructure GodUsage already talks to. Auth, headers, and account id handling are the same as `CodexUsageClient`'s existing calls.
 - Mint the `redeem_request_id` UUID when the user is shown the claim control (per credit), keep it for the duration of the interaction, and reuse it on retry. That is the CLI's double-spend protection.
 - Always pass an explicit `credit_id`. Default the selection to the soonest-expiring available credit (the CLI's sort order).
 - Treat `already_redeemed` as success. Surface `nothing_to_reset` as an informational message (the credit is not lost). On `no_credit` with a `credit_id`, refresh the list, because the credit raced away.

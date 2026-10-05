@@ -48,7 +48,7 @@ let namePrefix = arguments[0]
 let teamID = arguments[1]
 
 // Identity discovery is non-interactive. A prompt here would authorize this short-lived Swift
-// helper rather than codesign or Runway, and a locked Keychain should fail the build explicitly.
+// helper rather than codesign or GodUsage, and a locked Keychain should fail the build explicitly.
 let authenticationContext = LAContext()
 authenticationContext.interactionNotAllowed = true
 let query: [String: Any] = [

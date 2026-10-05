@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Runs the Memory-window UI performance harness end to end and prints a stats summary.
 #
-# Builds and stages the dev app, relaunches it with RUNWAY_UI_PROFILE_MEMORY=1 so the in-app driver
-# (see Sources/Runway/Support/UIProfiler.swift, startMemoryDriverIfEnabled) walks the Memory
+# Builds and stages the dev app, relaunches it with GODUSAGE_UI_PROFILE_MEMORY=1 so the in-app driver
+# (see Sources/GodUsage/Support/UIProfiler.swift, startMemoryDriverIfEnabled) walks the Memory
 # Explorer through scripted phases — cold open with the initial scan, 6 close/open cycles (each a
 # full store rebuild by design), 12 file-document selection switches, 6 database-row loads, 3
 # re-scans, and a 10s idle soak — then aggregates the phase timings from the app log.
@@ -14,15 +14,15 @@ set -euo pipefail
 # that touch the Memory window's render or load paths.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOG="$HOME/Library/Logs/Runway/Runway.log"
-APP_BINARY="$ROOT_DIR/dist/Runway.app/Contents/MacOS/Runway"
+LOG="$HOME/Library/Logs/GodUsage/GodUsage.log"
+APP_BINARY="$ROOT_DIR/dist/GodUsage.app/Contents/MacOS/GodUsage"
 
 if [ "${1:-}" != "--skip-build" ]; then
     "$ROOT_DIR/script/build_and_run.sh" build
 fi
 [ -x "$APP_BINARY" ] || { echo "error: $APP_BINARY not staged; run without --skip-build" >&2; exit 1; }
 
-pkill -x Runway >/dev/null 2>&1 || true
+pkill -x GodUsage >/dev/null 2>&1 || true
 sleep 1
 
 # Fresh log file so the run cannot rotate its own markers away mid-run (see profile_ui.sh).
@@ -35,11 +35,11 @@ echo "$(date -u +%Y-%m-%dT%H:%M:%S.000Z) [INFO] [uiprofile] $START_MARKER" >> "$
 # CLAUDE_CONFIG_DIR must not leak into the app's shell snapshot (it flips Claude account
 # resolution and would also skew which memory homes the scan sees); `open` can't pass env vars,
 # so exec the binary directly.
-env -u CLAUDE_CONFIG_DIR RUNWAY_UI_PROFILE_MEMORY=1 "$APP_BINARY" >/dev/null 2>&1 &
+env -u CLAUDE_CONFIG_DIR GODUSAGE_UI_PROFILE_MEMORY=1 "$APP_BINARY" >/dev/null 2>&1 &
 APP_PID=$!
 trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
 trap 'exit 130' INT TERM
-echo "==> Runway (pid $APP_PID) profiling the Memory window; the script takes ~1.5 minutes"
+echo "==> GodUsage (pid $APP_PID) profiling the Memory window; the script takes ~1.5 minutes"
 
 for _ in $(seq 1 180); do
     if grep -a -A100000 "$START_MARKER" "$LOG" | grep -aq "PHASE done"; then
@@ -49,7 +49,7 @@ for _ in $(seq 1 180); do
 done
 grep -a -A100000 "$START_MARKER" "$LOG" | grep -aq "PHASE done" || { echo "error: run never reached PHASE done" >&2; exit 1; }
 
-RUN_LOG="$(mktemp -t runway_memory_ui_profile)"
+RUN_LOG="$(mktemp -t godusage_memory_ui_profile)"
 grep -a -A100000 "$START_MARKER" "$LOG" | grep -a uiprofile > "$RUN_LOG"
 
 # A phase that silently did no work must fail the run, not masquerade as a clean result.
@@ -88,6 +88,6 @@ echo
 echo "== Process at end of run =="
 ps -o cputime=,rss= -p "$APP_PID" | awk '{printf "cpu %s  rss %.0fMB\n", $1, $2/1024}'
 
-pkill -x Runway >/dev/null 2>&1 || true
+pkill -x GodUsage >/dev/null 2>&1 || true
 echo
 echo "full phase log: $RUN_LOG"

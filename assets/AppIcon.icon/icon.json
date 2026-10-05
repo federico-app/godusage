@@ -15,8 +15,8 @@
           "fill" : "automatic",
           "glass" : false,
           "hidden" : false,
-          "image-name" : "runway.png",
-          "name" : "runway",
+          "image-name" : "godusage.png",
+          "name" : "godusage",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [

@@ -1,11 +1,11 @@
 ---
 name: pricing-update
-description: Sync Runway's pricing supplement with Cursor's published model pricing. Pulls https://cursor.com/docs/models-and-pricing.md, diffs it against pricing_supplement.json, updates entries/aliases/multipliers, validates, and opens a PR. Use when Cursor adds or re-prices models, a spend tile shows a warning triangle for an unpriced model, or a periodic pricing check is due.
+description: Sync GodUsage's pricing supplement with Cursor's published model pricing. Pulls https://cursor.com/docs/models-and-pricing.md, diffs it against pricing_supplement.json, updates entries/aliases/multipliers, validates, and opens a PR. Use when Cursor adds or re-prices models, a spend tile shows a warning triangle for an unpriced model, or a periodic pricing check is due.
 ---
 
 # Pricing Update
 
-`Sources/Runway/Resources/pricing_supplement.json` prices the models no public catalog carries (Cursor-native models like `auto`, `composer-*`, `github_bugbot`), supplies fast-variant multipliers, and maps provider log and CSV slugs to canonical pricing keys. On merge to `main`, `.github/workflows/pricing-supplement.yml` validates it and publishes it to GitHub Pages. Installed apps pick it up within about an hour. No release needed. Background: `docs/pricing.md`.
+`Sources/GodUsage/Resources/pricing_supplement.json` prices the models no public catalog carries (Cursor-native models like `auto`, `composer-*`, `github_bugbot`), supplies fast-variant multipliers, and maps provider log and CSV slugs to canonical pricing keys. On merge to `main`, `.github/workflows/pricing-supplement.yml` validates it and publishes it to GitHub Pages. Installed apps pick it up within about an hour. No release needed. Background: `docs/pricing.md`.
 
 Only the supplement needs manual care. Normal API models (new Claude, GPT, Gemini, Grok releases) are priced by the hourly LiteLLM and models.dev fetches. Do not add them to the supplement unless they need an alias rule or the catalogs are wrong.
 
@@ -22,7 +22,7 @@ Fetch https://cursor.com/docs/models-and-pricing.md and read the whole thing. It
 
 ### 2. Diff against the current supplement
 
-Read `Sources/Runway/Resources/pricing_supplement.json` and compare:
+Read `Sources/GodUsage/Resources/pricing_supplement.json` and compare:
 
 - **Price changes** on existing `pricing` entries.
 - **New Cursor-native models** missing from `pricing`.
@@ -45,7 +45,7 @@ Run the same checks CI runs, plus the pricing tests:
 ```sh
 python3 - << 'PY'
 import json, re, sys
-with open("Sources/Runway/Resources/pricing_supplement.json") as f:
+with open("Sources/GodUsage/Resources/pricing_supplement.json") as f:
     s = json.load(f)
 problems = []
 for m, e in s["pricing"].items():
@@ -65,7 +65,7 @@ PY
 swift test --filter "ModelPricing|PricingBundledResource"
 ```
 
-If a new alias rule maps a slug that appears in real usage, add a resolution test case in `Tests/RunwayTests/ModelPricingTests.swift`.
+If a new alias rule maps a slug that appears in real usage, add a resolution test case in `Tests/GodUsageTests/ModelPricingTests.swift`.
 
 ### 5. Open a PR
 
@@ -77,7 +77,7 @@ Once merged, the `Publish Pricing Supplement` workflow runs. Confirm it landed:
 
 ```sh
 gh run list --workflow=pricing-supplement.yml --limit 1
-curl -s https://mstallone.github.io/runway/pricing_supplement.json | python3 -c "import json,sys; print(json.load(sys.stdin)['updated_at'])"
+curl -s https://federico-app.github.io/godusage/pricing_supplement.json | python3 -c "import json,sys; print(json.load(sys.stdin)['updated_at'])"
 ```
 
 The served `updated_at` must match the merged file. Publishing is two hops: the supplement workflow pushes the file to the `update-feed` branch, then `.github/workflows/deploy-update-feed.yml` on `main` deploys that branch to the live site (Pages source is "GitHub Actions"). If the URL is stale after about 10 minutes, check `gh run list --workflow=deploy-update-feed.yml` and re-run `gh workflow run deploy-update-feed.yml --ref main` (not `--ref update-feed`).

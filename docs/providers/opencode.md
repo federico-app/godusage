@@ -12,13 +12,13 @@ Tracks your OpenCode-hosted usage: the **Go** subscription and the **Zen** pay-a
 | Today / Yesterday / Last 30 Days | Local cost and tokens across all your OpenCode-hosted usage (Go and Zen) |
 | Usage Trend | A day-by-day chart of tokens over the last month |
 
-When you have the Go subscription, Runway shows "Go" beside the provider name.
+When you have the Go subscription, GodUsage shows "Go" beside the provider name.
 
 The Session, Weekly, and Monthly meters are account-wide, the same percents the OpenCode dashboard shows, including usage from other machines. If you only use the Zen gateway (no Go subscription), the cap meters are hidden and you see the spend tiles.
 
 ## Where credentials come from
 
-Use OpenCode as usual. Runway reads the `opencode-go` API key from OpenCode's local data directory (`~/.local/share/opencode/auth.json`, or `$OPENCODE_DATA_DIR` / `$XDG_DATA_HOME` if set) and sends it as a Bearer token to the usage API. There is no login prompt and no token to paste. Spend tiles read the local SQLite logs in that same directory.
+Use OpenCode as usual. GodUsage reads the `opencode-go` API key from OpenCode's local data directory (`~/.local/share/opencode/auth.json`, or `$OPENCODE_DATA_DIR` / `$XDG_DATA_HOME` if set) and sends it as a Bearer token to the usage API. There is no login prompt and no token to paste. Spend tiles read the local SQLite logs in that same directory.
 
 ## The meters and spend tiles
 
@@ -30,7 +30,7 @@ Go meters are percents from `GET https://opencode.ai/zen/go/v1/usage`, OpenCode'
 - **"OpenCode Go key was rejected"**: the local key was not accepted. Log into OpenCode Go again so `auth.json` is rewritten.
 - **"No OpenCode Go subscription on this key"**: the key is valid but this account is not on Go. The spend tiles still work if you use Zen locally.
 - **"Couldn't read OpenCode's auth.json"**: the file exists but is unreadable or not valid JSON. Check its permissions, or log into OpenCode Go again to rewrite it.
-- **Spend tiles show "No data"**: Runway needs OpenCode's local database at `~/.local/share/opencode/opencode*.db`. Run an OpenCode session, then refresh.
+- **Spend tiles show "No data"**: GodUsage needs OpenCode's local database at `~/.local/share/opencode/opencode*.db`. Run an OpenCode session, then refresh.
 - **"Couldn't read OpenCode's local database"**: the database or data directory exists but could not be read this refresh. If you are on Go, the percent meters still refresh. Quit OpenCode and refresh to restore the tiles. If it persists, check the permissions on `~/.local/share/opencode`.
 
 ## Under the hood

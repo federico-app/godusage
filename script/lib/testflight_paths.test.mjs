@@ -8,7 +8,7 @@ import {
 
 test("iOS source and dedicated TestFlight pipeline changes are relevant", () => {
   const relevant = [
-    "ios/RunwayMobile/App/RunwayMobileApp.swift",
+    "ios/GodUsageMobile/App/GodUsageMobileApp.swift",
     "ios/Shared/SyncWire.swift",
     ".github/workflows/release-ios.yml",
     "script/decode_provisioning_profile.sh",
@@ -29,7 +29,7 @@ test("unrelated macOS release and application changes are not relevant", () => {
     ".github/workflows/release.yml",
     ".github/workflows/landing-page.yml",
     "script/release.sh",
-    "Sources/Runway/App/AppContainer.swift",
+    "Sources/GodUsage/App/AppContainer.swift",
     "website/index.html",
   ];
 
