@@ -79,6 +79,11 @@ jobs:
             else
               echo "update-feed exists but has no appcast.xml yet (pre-first-release); continuing."
             fi
+            # The DEV channel's feed (release-dev.yml) lives on the same branch; carry it too, or
+            # installed GodUsage DEV apps lose their updates.
+            if git cat-file -e FETCH_HEAD:appcast-dev.xml 2>/dev/null; then
+              git show FETCH_HEAD:appcast-dev.xml > public/appcast-dev.xml
+            fi
           elif [ "$status" -eq 2 ]; then
             echo "update-feed branch does not exist yet; bootstrapping it without an appcast."
           else
