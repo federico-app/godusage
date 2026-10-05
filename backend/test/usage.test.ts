@@ -101,7 +101,7 @@ describe("team stats", () => {
     const response = await api("GET", `/v1/teams/${team.id}/stats?range=7d`, { token: owner.token });
     expect(response.status).toBe(200);
     const { stats } = response.body;
-    expect(stats.range).toEqual({ name: "7d", from: "2026-09-29", to: "2026-10-05" });
+    expect(stats.range).toEqual({ name: "7d", from: "2026-09-29", to: "2026-10-05", previousFrom: "2026-09-22", previousTo: "2026-09-28" });
     expect(stats.members.map((m: { displayName: string; rank: number; costUSD: number }) => [m.displayName, m.rank, m.costUSD])).toEqual([
       ["Bea", 1, 4],
       ["Owner", 2, 1.5],
@@ -185,5 +185,65 @@ describe("team stats", () => {
     const stats = (await api("GET", `/v1/teams/${team.id}/stats?range=today`, { token: owner.token })).body.stats;
     expect(stats.members.map((m: { displayName: string }) => m.displayName)).toEqual(["Owner"]);
     expect(stats.totals.costUSD).toBe(0);
+  });
+
+  it("reports each member's rank and totals in the previous period", async () => {
+    const { owner, team, members } = await teamWith(["Bea"]);
+    const [bea] = members as [typeof owner];
+    // Last week Owner led; this week Bea overtook.
+    await put(owner.token, DEVICE_A, upload([{ provider: "claude", days: [
+      { date: "2026-09-25", tokens: 10, costUSD: 9 },
+      { date: "2026-10-05", tokens: 10, costUSD: 1 },
+    ] }]));
+    await put(bea.token, DEVICE_A, upload([{ provider: "claude", days: [{ date: "2026-10-04", tokens: 10, costUSD: 5 }] }]));
+
+    const stats = (await api("GET", `/v1/teams/${team.id}/stats?range=7d`, { token: owner.token })).body.stats;
+    const byName = Object.fromEntries(stats.members.map((m: { displayName: string }) => [m.displayName, m]));
+    expect(byName.Bea.rank).toBe(1);
+    expect(byName.Bea.previous).toBeNull();
+    expect(byName.Owner.rank).toBe(2);
+    expect(byName.Owner.previous).toEqual({ rank: 1, tokens: 10, costUSD: 9 });
+  });
+
+  it("offers a year range", async () => {
+    const { owner, team } = await teamWith([]);
+    const stats = (await api("GET", `/v1/teams/${team.id}/stats?range=365d`, { token: owner.token })).body.stats;
+    expect(stats.range).toMatchObject({ name: "365d", from: "2025-10-06", to: "2026-10-05" });
+    expect(stats.daily).toHaveLength(365);
+  });
+});
+
+describe("usage history", () => {
+  it("keeps days older than the upload's window", async () => {
+    const { owner, team } = await teamWith([]);
+    // Uploaded a month ago, when the app still had these days in its window.
+    await api("PUT", `/v1/devices/${DEVICE_A}/usage`, {
+      token: owner.token,
+      now: new Date("2026-09-01T12:00:00Z"),
+      body: upload([{ provider: "claude", days: [{ date: "2026-08-25", tokens: 100, costUSD: 10 }] }]),
+    });
+    // Today's upload only covers the last 30 days.
+    await put(owner.token, DEVICE_A, {
+      ...upload([{ provider: "claude", days: [{ date: "2026-10-05", tokens: 1, costUSD: 1 }] }]),
+      windowStart: "2026-09-05",
+    });
+
+    const year = (await api("GET", `/v1/teams/${team.id}/stats?range=365d`, { token: owner.token })).body.stats;
+    expect(year.totals).toEqual({ tokens: 101, costUSD: 11 });
+  });
+
+  it("replaces every day from the window start, even ones the new upload no longer has", async () => {
+    const { owner, team } = await teamWith([]);
+    await put(owner.token, DEVICE_A, upload([{ provider: "codex", days: [{ date: "2026-09-20", tokens: 5, costUSD: 5 }] }]));
+    // Codex was turned off: the new upload has no Codex days, but its window covers 2026-09-20.
+    await put(owner.token, DEVICE_A, { ...upload([]), windowStart: "2026-09-05" });
+    const month = (await api("GET", `/v1/teams/${team.id}/stats?range=30d`, { token: owner.token })).body.stats;
+    expect(month.totals).toEqual({ tokens: 0, costUSD: 0 });
+  });
+
+  it("rejects a window start that is not recent", async () => {
+    const { token } = await signIn();
+    expect((await put(token, DEVICE_A, { ...upload([]), windowStart: "2025-01-01" })).status).toBe(400);
+    expect((await put(token, DEVICE_A, { ...upload([]), windowStart: "nope" })).status).toBe(400);
   });
 });

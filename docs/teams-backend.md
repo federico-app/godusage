@@ -7,20 +7,20 @@ The teams backend lets people create a team, invite friends with a link, and com
 - **Accounts:** the Sign in with Apple user id (`sub`) and a display name the user chooses. No email, no Apple name.
 - **Sessions:** only the SHA-256 hash of each session token. A session expires after 180 days without use.
 - **Teams:** name, owner, one invite code, and an optional public-board token.
-- **Usage:** for each of the user's Macs, daily tokens and spend per provider and per model, for the last 30 days. No credentials, logs, prompts, project names, or account ids.
+- **Usage:** for each of the user's Macs, daily tokens and spend per provider and per model. The full history is kept: each upload replaces only the days in its window. No credentials, logs, prompts, project names, or account ids.
 
 Deleting an account deletes its sessions, Macs, usage, memberships, and the teams it owns.
 
 ## How usage is combined
 
-Each Mac uploads its own window, which replaces everything that Mac uploaded before. Every provider entry has a scope:
+Each Mac uploads its own last 30 days. An upload replaces that Mac's days from its `windowStart` on (all of them, so a provider turned off disappears from those days) and keeps older days, so history builds up beyond the app's window. Signing out of a Mac removes all of that Mac's days. Every provider entry has a scope:
 
 - **device:** usage read from this Mac's own logs (Claude, Codex, Grok, and so on). A user's Macs are summed.
 - **account:** usage that is already account-wide (Cursor). Only the Mac that uploaded most recently counts, so it is never double counted.
 
 This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
 
-Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today`; the server accepts it if it is within one day of the UTC date and uses the UTC date otherwise. Ranges are Today, 7 Days, and 30 Days. Members are ranked by spend or by tokens; tied members share a rank.
+Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today`; the server accepts it if it is within one day of the UTC date and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, and Year (365 days). Members are ranked by spend or by tokens; tied members share a rank. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
 
 ## Invites and roles
 
@@ -55,7 +55,7 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `GET`, `PATCH`, `DELETE /v1/teams/:id` | Team with members; owner can change `{ name?, publicBoard? }` or delete it. |
 | `POST /v1/teams/:id/invite` | Owner rotates the invite link. |
 | `DELETE /v1/teams/:id/members/:userID` | Leave (yourself) or remove a member (owner). |
-| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d&sort=cost\|tokens&today=YYYY-MM-DD`. Leaderboard, provider totals, top 20 models, and per-day totals. |
+| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d&sort=cost\|tokens&today=YYYY-MM-DD`. Leaderboard (with each member's previous-period rank), provider totals, top 20 models, and per-day totals by member and by provider. |
 | `GET /v1/invites/:code` | Invite preview: team name, member count, `alreadyMember`. |
 | `POST /v1/invites/:code/accept` | Join the team. Joining again is a no-op. |
 | `GET /v1/devices` | My Macs that have uploaded usage. |
@@ -68,6 +68,7 @@ Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
 {
   "schema": "godusage.team-usage.v1",
   "deviceName": "MacBook Pro",
+  "windowStart": "2026-09-05",
   "providers": [
     {
       "provider": "claude",
@@ -84,6 +85,8 @@ Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
   ]
 }
 ```
+
+`windowStart` is the first day of the app's window; the Mac's stored days from there on are replaced. It must be within the last 40 days. Without it, the earliest day sent is used.
 
 `costUSD` may be `null` when a model has no price. Days more than 40 days old or more than one day in the future are dropped. Anything else malformed is rejected with 400.
 

@@ -11,8 +11,8 @@ function requireDeviceID(value: string | undefined): string {
 }
 
 /**
- * PUT /v1/devices/:deviceID/usage — replaces everything this device has uploaded with the new
- * window, atomically. All rows go in through `json_each`, so the upload is five statements no
+ * PUT /v1/devices/:deviceID/usage — replaces this device's days from the upload's window start on,
+ * atomically, and keeps its older days, so the server holds the full history. All rows go in through `json_each`, so the upload is five statements no
  * matter how many days and models it carries.
  */
 export const putDeviceUsage: Handler = async ({ request, env, params, deps }) => {
@@ -20,6 +20,8 @@ export const putDeviceUsage: Handler = async ({ request, env, params, deps }) =>
   const deviceID = requireDeviceID(params.deviceID);
   const now = deps.now();
   const upload = parseUsageUpload(await readJSONObject(request), now);
+  // No days and no window: nothing to replace. "9999-12-31" matches no stored day.
+  const replaceFrom = upload.replaceFrom ?? "9999-12-31";
 
   const dayRows = JSON.stringify(upload.days.map((row) => [row.provider, row.day, row.scope, row.tokens, row.costUSD]));
   const modelRows = JSON.stringify(
@@ -31,8 +33,8 @@ export const putDeviceUsage: Handler = async ({ request, env, params, deps }) =>
       `INSERT INTO devices (user_id, id, name, updated_at) VALUES (?1, ?2, ?3, ?4)
        ON CONFLICT (user_id, id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at`,
     ).bind(user.id, deviceID, upload.deviceName, now.toISOString()),
-    env.DB.prepare("DELETE FROM usage_days WHERE user_id = ? AND device_id = ?").bind(user.id, deviceID),
-    env.DB.prepare("DELETE FROM usage_model_days WHERE user_id = ? AND device_id = ?").bind(user.id, deviceID),
+    env.DB.prepare("DELETE FROM usage_days WHERE user_id = ? AND device_id = ? AND day >= ?").bind(user.id, deviceID, replaceFrom),
+    env.DB.prepare("DELETE FROM usage_model_days WHERE user_id = ? AND device_id = ? AND day >= ?").bind(user.id, deviceID, replaceFrom),
     env.DB.prepare(
       `INSERT INTO usage_days (user_id, device_id, provider, day, scope, tokens, cost_usd)
        SELECT ?1, ?2, json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]'), json_extract(value, '$[3]'), json_extract(value, '$[4]') FROM json_each(?3)`,

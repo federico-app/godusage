@@ -1,10 +1,10 @@
 import { badRequest } from "./http";
 import { addDays, dayKey, isValidDay } from "./usagePayload";
 
-export type RangeName = "today" | "7d" | "30d";
+export type RangeName = "today" | "7d" | "30d" | "365d";
 export type SortMetric = "cost" | "tokens";
 
-const RANGE_DAYS: Record<RangeName, number> = { today: 1, "7d": 7, "30d": 30 };
+const RANGE_DAYS: Record<RangeName, number> = { today: 1, "7d": 7, "30d": 30, "365d": 365 };
 const TOP_MODELS = 20;
 
 export interface StatsQuery {
@@ -24,10 +24,12 @@ export interface MemberStats extends Totals {
   displayName: string;
   rank: number;
   providers: (Totals & { provider: string })[];
+  /** The same member in the period just before this one, or null if they had no usage then. */
+  previous: (Totals & { rank: number }) | null;
 }
 
 export interface TeamStats {
-  range: { name: RangeName; from: string; to: string };
+  range: { name: RangeName; from: string; to: string; previousFrom: string; previousTo: string };
   sort: SortMetric;
   totals: Totals;
   members: MemberStats[];
@@ -42,7 +44,7 @@ export interface TeamStats {
  */
 export function parseStatsQuery(url: URL, now: Date): StatsQuery {
   const range = url.searchParams.get("range") ?? "7d";
-  if (!(range in RANGE_DAYS)) throw badRequest("range must be today, 7d, or 30d.");
+  if (!(range in RANGE_DAYS)) throw badRequest("range must be today, 7d, 30d, or 365d.");
   const sort = url.searchParams.get("sort") ?? "cost";
   if (sort !== "cost" && sort !== "tokens") throw badRequest("sort must be cost or tokens.");
 
@@ -88,16 +90,21 @@ const EFFECTIVE_MODELS = `
 
 export async function teamStats(db: D1Database, teamID: string, query: StatsQuery): Promise<TeamStats> {
   const to = query.today;
-  const from = addDays(to, -(RANGE_DAYS[query.range] - 1));
+  const length = RANGE_DAYS[query.range];
+  const from = addDays(to, -(length - 1));
+  const previousTo = addDays(from, -1);
+  const previousFrom = addDays(previousTo, -(length - 1));
 
-  const [memberRows, dayRows, modelRows] = await db.batch([
+  const [memberRows, dayRows, modelRows, previousRows] = await db.batch([
     db.prepare(
       `SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id
        WHERE m.team_id = ? ORDER BY m.joined_at, u.id`,
     ).bind(teamID),
     db.prepare(EFFECTIVE_DAYS).bind(teamID, from, to),
     db.prepare(EFFECTIVE_MODELS).bind(teamID, from, to),
+    db.prepare(EFFECTIVE_DAYS).bind(teamID, previousFrom, previousTo),
   ]);
+  const previousDays = previousRows!.results as { user_id: string; tokens: number; cost: number }[];
   const members = (memberRows!.results as { id: string; display_name: string }[]);
   const days = dayRows!.results as { user_id: string; provider: string; day: string; tokens: number; cost: number }[];
   const models = modelRows!.results as { user_id: string; provider: string; model: string; tokens: number; cost: number }[];
@@ -116,6 +123,16 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
   }
 
   const metric = (totals: Totals) => (query.sort === "cost" ? totals.costUSD : totals.tokens);
+
+  // Ranks in the previous period, among today's members, for the ▲▼ movement next to each name.
+  const previousTotals = new Map<string, Totals>();
+  for (const row of previousDays) add(entry(previousTotals, row.user_id), row);
+  const previousRanked = members
+    .map((member) => ({ userID: member.id, name: member.display_name, rank: 0, ...round(previousTotals.get(member.id) ?? zero()) }))
+    .sort((a, b) => metric(b) - metric(a) || a.name.localeCompare(b.name));
+  denseRank(previousRanked, metric);
+  const previousByUser = new Map(previousRanked.map((member) => [member.userID, member]));
+
   const ranked = members
     .map((member) => {
       const totals = memberTotals.get(member.id) ?? zero();
@@ -125,14 +142,11 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
         rank: 0,
         ...round(totals),
         providers: sortedTotals(memberProviders.get(member.id), "provider", metric),
+        previous: previousSnapshot(previousByUser.get(member.id)),
       };
     })
     .sort((a, b) => metric(b) - metric(a) || a.displayName.localeCompare(b.displayName));
-  // Dense ranking: members with the same value share a rank.
-  ranked.forEach((member, index) => {
-    const previous = ranked[index - 1];
-    member.rank = previous && metric(previous) === metric(member) ? previous.rank : (previous?.rank ?? 0) + 1;
-  });
+  denseRank(ranked, metric);
 
   const modelGroups = new Map<string, { model: string; provider: string; totals: Totals; members: Map<string, Totals> }>();
   for (const row of models) {
@@ -168,7 +182,7 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
   for (const value of memberTotals.values()) add(totals, { tokens: value.tokens, cost: value.costUSD });
 
   return {
-    range: { name: query.range, from, to },
+    range: { name: query.range, from, to, previousFrom, previousTo },
     sort: query.sort,
     totals: round(totals),
     members: ranked,
@@ -176,6 +190,19 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
     models: topModels,
     daily,
   };
+}
+
+/** Dense ranking: members with the same value share a rank. */
+function denseRank<T extends Totals & { rank: number }>(list: T[], metric: (totals: Totals) => number): void {
+  list.forEach((member, index) => {
+    const previous = list[index - 1];
+    member.rank = previous && metric(previous) === metric(member) ? previous.rank : (previous?.rank ?? 0) + 1;
+  });
+}
+
+function previousSnapshot(member: (Totals & { rank: number }) | undefined): (Totals & { rank: number }) | null {
+  if (!member || (member.tokens === 0 && member.costUSD === 0)) return null;
+  return { rank: member.rank, tokens: member.tokens, costUSD: member.costUSD };
 }
 
 function zero(): Totals {

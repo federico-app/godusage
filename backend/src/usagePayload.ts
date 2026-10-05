@@ -24,6 +24,11 @@ export interface ModelRow extends DayRow {
 
 export interface UsageUpload {
   deviceName: string;
+  /**
+   * The first day this upload speaks for. The device's stored days from here on are replaced; older
+   * days are kept, so history outlives the app's 30-day window. Null when the upload covers no days.
+   */
+  replaceFrom: string | null;
   days: DayRow[];
   models: ModelRow[];
 }
@@ -58,6 +63,13 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
   const today = dayKey(now);
   const earliest = addDays(today, -UPLOAD_WINDOW_DAYS);
   const latest = addDays(today, 1);
+  let windowStart: string | null = null;
+  if (body.windowStart !== undefined) {
+    if (!isValidDay(body.windowStart) || body.windowStart < earliest || body.windowStart > latest) {
+      throw badRequest("windowStart must be a recent YYYY-MM-DD date.");
+    }
+    windowStart = body.windowStart;
+  }
 
   const seenProviders = new Set<string>();
   const days: DayRow[] = [];
@@ -107,7 +119,9 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
       }
     }
   }
-  return { deviceName, days, models };
+  // Without an explicit window (older apps), the earliest day sent marks it.
+  const replaceFrom = windowStart ?? days.reduce<string | null>((min, row) => (min === null || row.day < min ? row.day : min), null);
+  return { deviceName, replaceFrom, days, models };
 }
 
 function parseTokens(value: unknown): number {
