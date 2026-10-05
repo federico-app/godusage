@@ -172,8 +172,12 @@ describe("team stats", () => {
     const { owner, team } = await teamWith([]);
     const local = (await api("GET", `/v1/teams/${team.id}/stats?range=today&today=2026-10-06`, { token: owner.token })).body.stats;
     expect(local.range).toMatchObject({ from: "2026-10-06", to: "2026-10-06" });
-    const far = (await api("GET", `/v1/teams/${team.id}/stats?range=today&today=2026-12-25`, { token: owner.token })).body.stats;
-    expect(far.range).toMatchObject({ from: "2026-10-05", to: "2026-10-05" });
+    const future = (await api("GET", `/v1/teams/${team.id}/stats?range=today&today=2026-12-25`, { token: owner.token })).body.stats;
+    expect(future.range).toMatchObject({ from: "2026-10-05", to: "2026-10-05" });
+    const lastWeek = (await api("GET", `/v1/teams/${team.id}/stats?range=7d&today=2026-10-04`, { token: owner.token })).body.stats;
+    expect(lastWeek.range).toMatchObject({ from: "2026-09-28", to: "2026-10-04" });
+    const tooOld = (await api("GET", `/v1/teams/${team.id}/stats?range=today&today=2024-01-01`, { token: owner.token })).body.stats;
+    expect(tooOld.range).toMatchObject({ from: "2026-10-05", to: "2026-10-05" });
     expect((await api("GET", `/v1/teams/${team.id}/stats?range=1y`, { token: owner.token })).status).toBe(400);
     expect((await api("GET", `/v1/teams/${team.id}/stats?sort=fun`, { token: owner.token })).status).toBe(400);
   });

@@ -20,7 +20,7 @@ Each Mac uploads its own last 30 days. An upload replaces that Mac's days from i
 
 This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
 
-Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today`; the server accepts it if it is within one day of the UTC date and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, and Year (365 days). Members are ranked by spend or by tokens; tied members share a rank. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
+Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, and Year (365 days). Members are ranked by spend or by tokens; tied members share a rank. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
 
 ## Invites and roles
 

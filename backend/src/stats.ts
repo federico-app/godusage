@@ -39,8 +39,9 @@ export interface TeamStats {
 }
 
 /**
- * Reads `range`, `sort`, and `today` from the query string. `today` may differ from the UTC date
- * by at most one day (any real time zone); otherwise the UTC date is used.
+ * Reads `range`, `sort`, and `today` from the query string. `today` is the period's last day: up to
+ * one day ahead of the UTC date (any real time zone) and up to 400 days back (last week's recap, a
+ * past month or year). Anything else falls back to the UTC date.
  */
 export function parseStatsQuery(url: URL, now: Date): StatsQuery {
   const range = url.searchParams.get("range") ?? "7d";
@@ -53,7 +54,7 @@ export function parseStatsQuery(url: URL, now: Date): StatsQuery {
   const requested = url.searchParams.get("today");
   if (requested !== null) {
     if (!isValidDay(requested)) throw badRequest("today must be a YYYY-MM-DD date.");
-    if (requested >= addDays(utcToday, -1) && requested <= addDays(utcToday, 1)) today = requested;
+    if (requested >= addDays(utcToday, -400) && requested <= addDays(utcToday, 1)) today = requested;
   }
   return { range: range as RangeName, sort, today };
 }
