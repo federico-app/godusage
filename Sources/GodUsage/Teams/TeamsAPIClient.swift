@@ -25,6 +25,8 @@ protocol TeamsAPI: Sendable {
     func me(token: String) async throws -> TeamsUser
     func rename(token: String, displayName: String) async throws -> TeamsUser
     func deleteAccount(token: String) async throws
+    /// Everything the server keeps about the account, as JSON.
+    func exportData(token: String) async throws -> Data
     func teams(token: String) async throws -> [TeamSummary]
     func team(token: String, id: String) async throws -> TeamDetail
     func createTeam(token: String, name: String) async throws -> TeamDetail
@@ -90,6 +92,14 @@ struct TeamsAPIClient: TeamsAPI {
     func deleteAccount(token: String) async throws {
         try await sendEmpty("DELETE", "/v1/me", token: token)
     }
+
+    func exportData(token: String) async throws -> Data {
+        try await perform("GET", "/v1/me/export", token: token, body: NoBody?.none).body
+    }
+
+    /// The service's privacy policy and terms, linked from the sign-in.
+    var privacyURL: URL { baseURL.appendingPathComponent("privacy") }
+    var termsURL: URL { baseURL.appendingPathComponent("terms") }
 
     func teams(token: String) async throws -> [TeamSummary] {
         struct Envelope: Decodable { var teams: [TeamSummary] }

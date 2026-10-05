@@ -41,6 +41,18 @@ final class TeamsStoreTests: XCTestCase {
         XCTAssertNil(store.errorMessage)
     }
 
+    func testExportReturnsTheServerDocumentOrShowsTheError() async {
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        let store = makeStore()
+        let data = await store.exportData()
+        XCTAssertEqual(data.map { String(decoding: $0, as: UTF8.self) }, #"{"schema":"godusage.export.v1"}"#)
+
+        api.exportError = TeamsAPIError(kind: .network, message: "Offline.")
+        let failed = await store.exportData()
+        XCTAssertNil(failed)
+        XCTAssertEqual(store.errorMessage, "Offline.")
+    }
+
     func testCancelledSignInShowsNoError() async {
         signIn.error = AppleSignInError.cancelled
         let store = makeStore()
@@ -285,6 +297,11 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
 
     func rename(token: String, displayName: String) async throws -> TeamsUser { TeamsUser(id: "u1", displayName: displayName) }
     func deleteAccount(token: String) async throws { log.append("deleteAccount") }
+    var exportError: Error?
+    func exportData(token: String) async throws -> Data {
+        if let exportError { throw exportError }
+        return Data(#"{"schema":"godusage.export.v1"}"#.utf8)
+    }
     func teams(token: String) async throws -> [TeamSummary] { teamsResult }
     func team(token: String, id: String) async throws -> TeamDetail { crew }
     func createTeam(token: String, name: String) async throws -> TeamDetail { crew }

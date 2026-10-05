@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### New Features
+- Rename the app to GodUsage, with its own bundle ids (`com.montinovo.godusage`), iCloud containers, update feed, and repository
+- Add Teams: sign in with Apple, create teams, invite friends with a link, and compare AI spend and tokens per provider and model on a leaderboard on the dashboard and in the Teams window
+- Add rank movement, efficiency (cost per million tokens), a two-member comparison, Who Uses What, By Day, Efficiency, and Top Models charts, and a Year range
+- Add reactions, 👑 for today's top spender, a monthly Hall of Fame (🏆), month-end projections, and timed challenges
+- Add Team Overtakes, Weekly Team Recap, and Team Challenges notifications (off by default)
+- Add Share Wrapped images and an optional team rank and share of spend in the menu bar
+- Add members-only and public web leaderboards, a privacy policy, terms, and Export My Data
+- Add a GodUsage DEV channel: every push to `develop` ships a signed, notarized DEV build with its own update feed
+
+### Bug Fixes
+- Fix a crash when the Apple sign-in sheet returned on a background queue
+
+
 ## v0.8.16
 
 ### New Features

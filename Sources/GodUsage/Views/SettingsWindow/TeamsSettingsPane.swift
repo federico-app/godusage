@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The Settings window's Teams pane, top to bottom: the account, the team list, the selected
@@ -83,8 +84,27 @@ private struct TeamsSignedOutSection: View {
             }
             TeamsSignInButton(teams: teams)
                 .padding(.horizontal, 12)
-                .padding(.bottom, 10)
+            TeamsLegalLinks(prefix: "By signing in you agree to the")
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
         }
+    }
+}
+
+/// "… the Terms and the Privacy Policy" of the Teams service (served by the backend).
+struct TeamsLegalLinks: View {
+    var prefix: String? = nil
+
+    var body: some View {
+        let client = TeamsAPIClient()
+        HStack(spacing: 4) {
+            if let prefix { Text(prefix) }
+            Link("Terms", destination: client.termsURL)
+            Text("and the")
+            Link("Privacy Policy", destination: client.privacyURL)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 }
 
@@ -272,6 +292,24 @@ private struct TeamsListSection: View {
 private struct TeamsAccountActionsSection: View {
     let teams: TeamsStore
     @State private var confirmingDelete = false
+    @State private var exportMessage: String?
+
+    private func export() {
+        Task {
+            guard let data = await teams.exportData() else { return }
+            let panel = NSSavePanel()
+            panel.nameFieldStringValue = "godusage-export.json"
+            panel.allowedContentTypes = [.json]
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            do {
+                try data.write(to: url, options: .atomic)
+                exportMessage = "Saved \(url.lastPathComponent)."
+            } catch {
+                AppLog.error(.teams, "export save failed: \(error.localizedDescription)")
+                exportMessage = "Couldn't save the file: \(error.localizedDescription)"
+            }
+        }
+    }
 
     var body: some View {
         SettingsSection("Account Actions") {
@@ -281,11 +319,23 @@ private struct TeamsAccountActionsSection: View {
             }
             SettingsCaption("Removes this Mac's usage from your teams. Other Macs keep sharing until they sign out.")
             Divider()
+            SettingsRow("Your Data") {
+                Button("Export My Data…") { export() }
+                    .disabled(teams.isBusy)
+            }
+            SettingsCaption("Saves everything the Teams service keeps about you as a JSON file.")
+            if let exportMessage {
+                SettingsCaption(exportMessage)
+            }
+            Divider()
             SettingsRow("Delete Account") {
                 Button("Delete…", role: .destructive) { confirmingDelete = true }
                     .disabled(teams.isBusy)
             }
             SettingsCaption("Deletes your account, the usage every Mac shared, and the teams you own.")
+            TeamsLegalLinks(prefix: "See the")
+                .padding(.horizontal, 12)
+                .padding(.bottom, 10)
         }
         .alert("Delete Teams Account?", isPresented: $confirmingDelete) {
             Button("Delete Account", role: .destructive) { Task { await teams.deleteAccount() } }

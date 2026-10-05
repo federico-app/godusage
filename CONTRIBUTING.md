@@ -80,7 +80,7 @@ Reference the approved issue, describe the root cause and fix, and add a regress
 
 ## Maintainers
 
-- [@mstallone](https://github.com/mstallone) (owner)
+- [@federico-app](https://github.com/federico-app) (owner)
 
 All PRs need maintainer approval to merge. Only the owner can create release tags (`v*`).
 

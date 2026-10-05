@@ -183,6 +183,14 @@ final class TeamsStore {
         }
     }
 
+    /// Everything the server keeps about the account, as JSON, or nil after an error (shown).
+    func exportData() async -> Data? {
+        guard let token = session?.token else { return nil }
+        var data: Data?
+        await perform { data = try await api.exportData(token: token) }
+        return data
+    }
+
     /// Deletes the account, its usage on every Mac, and the teams it owns.
     func deleteAccount() async {
         guard let token = session?.token else { return }

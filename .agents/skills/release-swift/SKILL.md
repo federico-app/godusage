@@ -74,7 +74,7 @@ Wait for explicit approval of the changelog before changing any files. Accept ed
 
 ### 4. Record it in CHANGELOG.md
 
-`main` is protected, so the changelog lands through a PR. Prepend the approved section right after the `# Changelog` header, then:
+`main` is protected, so the changelog lands through a PR. If `CHANGELOG.md` starts with an `## Unreleased` section, use it as input when you write the changelog, then replace it with the approved section; otherwise prepend the approved section right after the `# Changelog` header. Then:
 
 ```sh
 git switch main && git pull

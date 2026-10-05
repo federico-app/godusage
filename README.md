@@ -4,7 +4,7 @@ AI usage across every provider and account, in the macOS menu bar.
 
 **Website:** [federico-app.github.io/godusage](https://federico-app.github.io/godusage/)
 
-GodUsage shows limits, credits, and spend for Claude, Codex, Cursor, Grok, Devin, and more in one place. Cached data appears instantly, refreshes run in the background, and the metrics you care about can sit in the menu bar.
+GodUsage shows limits, credits, and spend for Claude, Codex, Cursor, Grok, Devin, and more in one place, and (optionally) lets you compare usage with friends in [Teams](docs/teams.md). Cached data appears instantly, refreshes run in the background, and the metrics you care about can sit in the menu bar.
 
 <p align="center">
   <img src="assets/hero.png" alt="GodUsage hero: menu bar pins and the dashboard popover with the Total Spend ring plus Claude and Codex meters in normal, warning, and critical states" width="900">
@@ -59,6 +59,7 @@ Most providers read the credentials already on your Mac (keychain, auth files, a
 - **[Proxy support](docs/proxy.md).** Route provider requests through SOCKS5 or HTTP(S) via `~/.godusage/config.json`.
 - **Native settings.** Launch at login, global shortcut, icon style, theme, 12/24-hour time. See [Settings](docs/settings.md).
 - **[Automatic updates](docs/updates.md).** Signed, notarized updates via Sparkle.
+- **[Teams](docs/teams.md).** Optional: sign in with Apple, invite friends with a link, and compare AI spend on a leaderboard right on the dashboard. Rank movement, efficiency, head-to-head comparisons, reactions, challenges, a monthly Hall of Fame, and a shareable Wrapped. Only daily totals per provider and model are shared; never credentials, prompts, or logs.
 
 ## iPhone companion
 
