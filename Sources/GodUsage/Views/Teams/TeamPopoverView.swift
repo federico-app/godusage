@@ -185,6 +185,7 @@ struct TeamPopoverView: View {
                                 .padding(.vertical, 1)
                                 .background(.secondary.opacity(0.12), in: Capsule())
                         }
+                        RankChangeBadge(member: member, range: range, sort: sort)
                         Spacer(minLength: 6)
                         Text(TeamsFormat.value(member.totals, sort: sort))
                             .font(.callout.monospacedDigit().weight(.semibold))
@@ -223,6 +224,14 @@ struct TeamPopoverView: View {
         VStack(alignment: .leading, spacing: 4) {
             if providers.isEmpty {
                 Text("No usage in this period.").font(.caption).foregroundStyle(.secondary)
+            }
+            if let perMillion = TeamsFormat.perMillion(member.totals) {
+                HStack {
+                    Text("Efficiency").font(.caption).foregroundStyle(.secondary)
+                    Spacer(minLength: 6)
+                    Text(perMillion).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                }
+                .padding(.bottom, 2)
             }
             ForEach(providers) { provider in
                 detailRow(color: TotalSpendPalette.color(for: provider.provider), title: providerName(provider.provider), totals: provider.totals)

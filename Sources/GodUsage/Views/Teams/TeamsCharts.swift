@@ -18,6 +18,12 @@ struct TeamsCharts: View {
                 "Who Uses What",
                 subtitle: "\(metricName) per member, split by provider."
             ) { memberChart }
+            if efficiencyRows.count > 0 {
+                chartSection(
+                    "Efficiency",
+                    subtitle: "What each member pays per million tokens. Lower means cheaper models or more cache use."
+                ) { efficiencyChart }
+            }
             if stats.daily.count > 1 {
                 chartSection(
                     "By Day",
@@ -115,6 +121,45 @@ struct TeamsCharts: View {
 
     private var maxMemberValue: Double {
         max(stats.members.map { $0.totals.value(for: sort) }.max() ?? 0, sort == .cost ? 1 : 1000)
+    }
+
+    // MARK: - Efficiency
+
+    private struct EfficiencyRow: Identifiable {
+        var member: String
+        var perMillion: Double
+        var id: String { member }
+    }
+
+    private var efficiencyRows: [EfficiencyRow] {
+        stats.members
+            .compactMap { member in member.totals.costPerMillionTokens.map { EfficiencyRow(member: member.displayName, perMillion: $0) } }
+            .sorted { $0.perMillion < $1.perMillion }
+    }
+
+    private var efficiencyChart: some View {
+        let rows = efficiencyRows
+        return Chart(rows) { row in
+            BarMark(x: .value("Per 1M tokens", row.perMillion), y: .value("Member", row.member), height: .fixed(14))
+                .foregroundStyle(Color.accentColor)
+                .cornerRadius(3)
+                .annotation(position: .trailing, alignment: .leading, spacing: 6) {
+                    Text("\(Formatters.currency(row.perMillion)) / 1M")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+        }
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 4)) { value in
+                AxisGridLine().foregroundStyle(.secondary.opacity(0.15))
+                AxisValueLabel {
+                    if let number = value.as(Double.self) { Text(Formatters.currency(number, fractionDigits: 0)) }
+                }
+            }
+        }
+        .chartXScale(domain: 0...((rows.map(\.perMillion).max() ?? 1) * 1.3))
+        .chartYScale(domain: rows.map(\.member))
+        .frame(height: CGFloat(rows.count) * 28 + 36)
     }
 
     // MARK: - By Day
@@ -282,5 +327,42 @@ enum TeamsFormat {
 
     static func dayLabel(_ dayKey: String) -> String {
         date(dayKey).map(Formatters.monthDayLabel) ?? dayKey
+    }
+}
+
+/// Movement since the previous period: ▲2 (gained two places), ▼1, or "New" for a member who had no
+/// usage then. Arrow and number carry the meaning; the color only reinforces it.
+struct RankChangeBadge: View {
+    let member: TeamStats.Member
+    let range: StatsRange
+    let sort: StatsSort
+
+    var body: some View {
+        if let change = member.rankChange {
+            if change != 0 {
+                HStack(spacing: 1) {
+                    Image(systemName: change > 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                        .font(.system(size: 7))
+                    Text("\(abs(change))")
+                }
+                .font(.caption2.monospacedDigit().weight(.semibold))
+                .foregroundStyle(change > 0 ? AnyShapeStyle(Theme.positive) : AnyShapeStyle(.secondary))
+                .accessibilityLabel(change > 0
+                    ? "Up \(change) since \(range.previousLabel)"
+                    : "Down \(-change) since \(range.previousLabel)")
+            }
+        } else if member.totals.value(for: sort) > 0 {
+            Text("New")
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("No usage in \(range.previousLabel)")
+        }
+    }
+}
+
+extension TeamsFormat {
+    /// "$3.21 / 1M" — what a member pays per million tokens.
+    static func perMillion(_ totals: UsageTotals) -> String? {
+        totals.costPerMillionTokens.map { "\(Formatters.currency($0)) / 1M" }
     }
 }

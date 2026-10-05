@@ -34,6 +34,9 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
 
     var schema = Self.schema
     var deviceName: String
+    /// The first day of this Mac's window. The server replaces this Mac's days from here on and
+    /// keeps older ones, so history builds up beyond the 30-day window.
+    var windowStart: String?
     var providers: [Provider]
 
     /// Builds the upload from this Mac's cards. Account cards (`claude@ab12cd34`) fold into their
@@ -87,7 +90,7 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
             guard !days.isEmpty else { return nil }
             return Provider(provider: family, scope: entry.scope == .accountWide ? "account" : "device", days: days)
         }
-        return TeamUsageUpload(deviceName: deviceName, providers: providers)
+        return TeamUsageUpload(deviceName: deviceName, windowStart: dayKeys.min(), providers: providers)
     }
 
     /// Unknown plus a known cost stays the known part: spend tiles also count only priced usage.

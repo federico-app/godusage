@@ -6,6 +6,14 @@ struct TeamsLeaderboardView: View {
     @Environment(AppContainer.self) private var container
     @AppStorage("godusage.teams.window.range") private var range: StatsRange = .week
     @AppStorage("godusage.teams.window.sort") private var sort: StatsSort = .cost
+    @AppStorage("godusage.teams.window.mode") private var mode: Mode = .leaderboard
+
+    enum Mode: String, CaseIterable {
+        case leaderboard
+        case compare
+
+        var label: String { self == .leaderboard ? "Leaderboard" : "Compare" }
+    }
     @State private var stats: TeamStats?
     @State private var loadError: String?
     @State private var isLoading = false
@@ -75,6 +83,12 @@ struct TeamsLeaderboardView: View {
             }
             .labelsHidden()
             .fixedSize()
+            Picker("View", selection: $mode) {
+                ForEach(Mode.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
             Spacer()
             if isLoading { ProgressView().controlSize(.small) }
             Picker("Range", selection: $range) {
@@ -116,8 +130,13 @@ struct TeamsLeaderboardView: View {
                         Text(loadError).font(.caption).foregroundStyle(Theme.notice)
                     }
                     summary(stats)
-                    TeamsRankingList(stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName)
-                    TeamsCharts(stats: stats, sort: sort, providerName: providerName)
+                    switch mode {
+                    case .leaderboard:
+                        TeamsRankingList(stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName)
+                        TeamsCharts(stats: stats, sort: sort, providerName: providerName)
+                    case .compare:
+                        TeamCompareView(stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName)
+                    }
                 }
                 .padding(16)
             }
@@ -227,6 +246,7 @@ private struct TeamsRankingList: View {
                                     .padding(.vertical, 1)
                                     .background(.secondary.opacity(0.12), in: Capsule())
                             }
+                            RankChangeBadge(member: member, range: stats.range.name, sort: sort)
                         }
                         ProviderSplitBar(providers: member.providers, top: top, sort: sort, height: 6)
                     }

@@ -64,12 +64,24 @@ enum StatsRange: String, CaseIterable, Codable, Hashable, Sendable {
     case today
     case week = "7d"
     case month = "30d"
+    case year = "365d"
 
     var label: String {
         switch self {
         case .today: "Today"
         case .week: "7 Days"
         case .month: "30 Days"
+        case .year: "Year"
+        }
+    }
+
+    /// The period before this one, in words, for the movement arrows' tooltips and captions.
+    var previousLabel: String {
+        switch self {
+        case .today: "yesterday"
+        case .week: "the previous 7 days"
+        case .month: "the previous 30 days"
+        case .year: "the previous year"
         }
     }
 }
@@ -92,6 +104,11 @@ struct UsageTotals: Codable, Hashable, Sendable {
 
     func value(for sort: StatsSort) -> Double {
         sort == .cost ? costUSD : Double(tokens)
+    }
+
+    /// Dollars per million tokens: what a member pays for the same amount of work. Nil without tokens.
+    var costPerMillionTokens: Double? {
+        tokens > 0 ? costUSD / Double(tokens) * 1_000_000 : nil
     }
 }
 
@@ -117,6 +134,12 @@ struct TeamStats: Codable, Hashable, Sendable {
         var totals: UsageTotals { UsageTotals(tokens: tokens, costUSD: costUSD) }
     }
 
+    struct Previous: Codable, Hashable, Sendable {
+        var rank: Int
+        var tokens: Int
+        var costUSD: Double
+    }
+
     struct Member: Codable, Hashable, Sendable, Identifiable {
         var userID: String
         var displayName: String
@@ -124,8 +147,14 @@ struct TeamStats: Codable, Hashable, Sendable {
         var tokens: Int
         var costUSD: Double
         var providers: [ProviderTotals]
+        /// The member in the period before (nil: no usage then, or an older backend).
+        var previous: Previous?
         var id: String { userID }
         var totals: UsageTotals { UsageTotals(tokens: tokens, costUSD: costUSD) }
+
+        /// Places gained (positive) or lost (negative) since the previous period; nil when the
+        /// member had no usage then.
+        var rankChange: Int? { previous.map { $0.rank - rank } }
     }
 
     struct Model: Codable, Hashable, Sendable, Identifiable {
