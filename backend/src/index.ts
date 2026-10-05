@@ -16,6 +16,8 @@ import {
   updateTeam,
 } from "./routes/teams";
 import { deleteDevice, listDevices, putDeviceUsage } from "./routes/usage";
+import { createChallenge, deleteChallenge, listChallenges } from "./routes/challenges";
+import { addReaction, removeReaction } from "./routes/social";
 import { browserSignOut, memberBoardPage, memberBoardSignIn } from "./routes/webBoard";
 import { exchangeWebSignIn, finishWebSignIn, startWebSignIn } from "./routes/webSignIn";
 
@@ -51,6 +53,11 @@ const ROUTES: Route[] = [
   route("POST", "/v1/teams/:teamID/invite", rotateInvite),
   route("DELETE", "/v1/teams/:teamID/members/:userID", removeMember),
   route("GET", "/v1/teams/:teamID/stats", getTeamStats),
+  route("PUT", "/v1/teams/:teamID/members/:userID/reactions/:emoji", addReaction),
+  route("DELETE", "/v1/teams/:teamID/members/:userID/reactions/:emoji", removeReaction),
+  route("GET", "/v1/teams/:teamID/challenges", listChallenges),
+  route("POST", "/v1/teams/:teamID/challenges", createChallenge),
+  route("DELETE", "/v1/teams/:teamID/challenges/:challengeID", deleteChallenge),
   route("GET", "/v1/invites/:code", getInvite),
   route("POST", "/v1/invites/:code/accept", acceptInvite),
   route("GET", "/v1/devices", listDevices),

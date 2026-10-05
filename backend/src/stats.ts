@@ -1,10 +1,32 @@
 import { badRequest } from "./http";
 import { addDays, dayKey, isValidDay } from "./usagePayload";
 
-export type RangeName = "today" | "7d" | "30d" | "365d";
+export type RangeName = "today" | "7d" | "30d" | "365d" | "mtd";
 export type SortMetric = "cost" | "tokens";
 
-const RANGE_DAYS: Record<RangeName, number> = { today: 1, "7d": 7, "30d": 30, "365d": 365 };
+/** Fixed-length ranges. "mtd" (the calendar month so far) is computed from `today`. */
+const RANGE_DAYS: Record<Exclude<RangeName, "mtd">, number> = { today: 1, "7d": 7, "30d": 30, "365d": 365 };
+const RANGE_NAMES = new Set<string>([...Object.keys(RANGE_DAYS), "mtd"]);
+
+/** The period's days and the period just before it (for "mtd": the same days of the previous month). */
+export function rangeBounds(range: RangeName, today: string): { from: string; to: string; previousFrom: string; previousTo: string } {
+  if (range === "mtd") {
+    const from = `${today.slice(0, 7)}-01`;
+    const elapsed = daysBetween(from, today) + 1;
+    const previousFrom = `${addDays(from, -1).slice(0, 7)}-01`;
+    const lastOfPrevious = addDays(from, -1);
+    const sameDay = addDays(previousFrom, elapsed - 1);
+    return { from, to: today, previousFrom, previousTo: sameDay < lastOfPrevious ? sameDay : lastOfPrevious };
+  }
+  const length = RANGE_DAYS[range];
+  const from = addDays(today, -(length - 1));
+  const previousTo = addDays(from, -1);
+  return { from, to: today, previousFrom: addDays(previousTo, -(length - 1)), previousTo };
+}
+
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}
 const TOP_MODELS = 20;
 
 export interface StatsQuery {
@@ -45,7 +67,7 @@ export interface TeamStats {
  */
 export function parseStatsQuery(url: URL, now: Date): StatsQuery {
   const range = url.searchParams.get("range") ?? "7d";
-  if (!(range in RANGE_DAYS)) throw badRequest("range must be today, 7d, 30d, or 365d.");
+  if (!RANGE_NAMES.has(range)) throw badRequest("range must be today, 7d, 30d, 365d, or mtd.");
   const sort = url.searchParams.get("sort") ?? "cost";
   if (sort !== "cost" && sort !== "tokens") throw badRequest("sort must be cost or tokens.");
 
@@ -63,7 +85,7 @@ export function parseStatsQuery(url: URL, now: Date): StatsQuery {
  * Account-scope rows (usage that is already account-wide, like Cursor) count once per user: the
  * newest device wins. Device-scope rows are summed across the user's Macs.
  */
-const EFFECTIVE_DAYS = `
+export const EFFECTIVE_DAYS = `
   WITH ranked AS (
     SELECT u.user_id, u.provider, u.day, u.scope, u.tokens, u.cost_usd,
       ROW_NUMBER() OVER (
@@ -76,7 +98,7 @@ const EFFECTIVE_DAYS = `
   FROM ranked WHERE scope = 'device' OR rn = 1
   GROUP BY user_id, provider, day`;
 
-const EFFECTIVE_MODELS = `
+export const EFFECTIVE_MODELS = `
   WITH ranked AS (
     SELECT u.user_id, u.provider, u.model, u.scope, u.tokens, u.cost_usd,
       ROW_NUMBER() OVER (
@@ -91,10 +113,7 @@ const EFFECTIVE_MODELS = `
 
 export async function teamStats(db: D1Database, teamID: string, query: StatsQuery): Promise<TeamStats> {
   const to = query.today;
-  const length = RANGE_DAYS[query.range];
-  const from = addDays(to, -(length - 1));
-  const previousTo = addDays(from, -1);
-  const previousFrom = addDays(previousTo, -(length - 1));
+  const { from, previousFrom, previousTo } = rangeBounds(query.range, to);
 
   const [memberRows, dayRows, modelRows, previousRows] = await db.batch([
     db.prepare(

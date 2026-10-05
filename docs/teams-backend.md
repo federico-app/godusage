@@ -20,7 +20,13 @@ Each Mac uploads its own last 30 days. An upload replaces that Mac's days from i
 
 This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
 
-Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, and Year (365 days). Members are ranked by spend or by tokens; tied members share a rank. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
+Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
+
+## Reactions, champions, and challenges
+
+- **Reactions:** a member can give each teammate 🔥 (`fire`), 👏 (`clap`), and 🤡 (`clown`), one of each per week. Reactions belong to the ISO week (UTC) they were given in, so every Monday starts clean. Nobody can react to themselves.
+- **Champions:** the stats response lists the top spender of each of the last 12 complete calendar months among current members (the current month never counts until it is over).
+- **Challenges:** any member starts one for 7, 14, or 30 days, from today. Kinds: `lowest_spend` (least spend among members who spent anything), `most_models` (most different models), `most_tokens`, and `best_efficiency` (lowest cost per million tokens, with at least 100K tokens). Standings update live from usage in the window; once it has ended, the leaders are the winners. A team runs at most five at once. The creator or the owner can cancel one.
 
 ## Invites and roles
 
@@ -55,7 +61,10 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `GET`, `PATCH`, `DELETE /v1/teams/:id` | Team with members; owner can change `{ name?, publicBoard? }` or delete it. |
 | `POST /v1/teams/:id/invite` | Owner rotates the invite link. |
 | `DELETE /v1/teams/:id/members/:userID` | Leave (yourself) or remove a member (owner). |
-| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d&sort=cost\|tokens&today=YYYY-MM-DD`. Leaderboard (with each member's previous-period rank), provider totals, top 20 models, and per-day totals by member and by provider. |
+| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD`. Leaderboard (with each member's previous-period rank), provider totals, top 20 models, per-day totals by member and by provider, this week's `reactions`, and the last 12 months' `champions`. |
+| `PUT`, `DELETE /v1/teams/:id/members/:userID/reactions/:emoji` | Give or take back `fire`, `clap`, or `clown` for this week. |
+| `GET`, `POST /v1/teams/:id/challenges` | List active challenges and the last five finished (with standings and winners), or start one (`{ kind, days, today? }`). |
+| `DELETE /v1/teams/:id/challenges/:challengeID` | Cancel a challenge (creator or owner). |
 | `GET /v1/invites/:code` | Invite preview: team name, member count, `alreadyMember`. |
 | `POST /v1/invites/:code/accept` | Join the team. Joining again is a no-op. |
 | `GET /v1/devices` | My Macs that have uploaded usage. |
