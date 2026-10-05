@@ -82,7 +82,7 @@ jobs:
     needs: ios-gate
     if: needs.ios-gate.outputs.ship == 'true'
     env:
-      APPLE_TEAM_ID: 8KZBNZJBAX
+      APPLE_TEAM_ID: S6X72K86R8
     outputs:
       version: ${{ steps.meta.outputs.version }}
       build: ${{ steps.meta.outputs.build }}
@@ -146,10 +146,10 @@ jobs:
           IOS_WIDGET_PROFILE_BASE64: ${{ secrets.APPLE_IOS_WIDGET_APP_STORE_PROFILE }}
         run: |
           set -euo pipefail
-          printf '%s' "$IOS_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/runway-ios-appstore.mobileprovision"
-          echo "IOS_PROVISIONING_PROFILE=$RUNNER_TEMP/runway-ios-appstore.mobileprovision" >> "$GITHUB_ENV"
-          printf '%s' "$IOS_WIDGET_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/runway-ios-widgets-appstore.mobileprovision"
-          echo "IOS_WIDGET_PROVISIONING_PROFILE=$RUNNER_TEMP/runway-ios-widgets-appstore.mobileprovision" >> "$GITHUB_ENV"
+          printf '%s' "$IOS_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/godusage-ios-appstore.mobileprovision"
+          echo "IOS_PROVISIONING_PROFILE=$RUNNER_TEMP/godusage-ios-appstore.mobileprovision" >> "$GITHUB_ENV"
+          printf '%s' "$IOS_WIDGET_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/godusage-ios-widgets-appstore.mobileprovision"
+          echo "IOS_WIDGET_PROVISIONING_PROFILE=$RUNNER_TEMP/godusage-ios-widgets-appstore.mobileprovision" >> "$GITHUB_ENV"
 
       - name: Write App Store Connect API key
         env:
@@ -166,8 +166,8 @@ jobs:
         env:
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
-          RUNWAY_VERSION: ${{ steps.meta.outputs.version }}
-          RUNWAY_BUILD: ${{ steps.meta.outputs.build }}
+          GODUSAGE_VERSION: ${{ steps.meta.outputs.version }}
+          GODUSAGE_BUILD: ${{ steps.meta.outputs.build }}
         run: ./script/release_ios.sh
 
       - name: Remove release credentials
@@ -175,8 +175,8 @@ jobs:
         env:
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
         run: |
-          rm -f "$RUNNER_TEMP/runway-ios-appstore.mobileprovision"
-          rm -f "$RUNNER_TEMP/runway-ios-widgets-appstore.mobileprovision"
+          rm -f "$RUNNER_TEMP/godusage-ios-appstore.mobileprovision"
+          rm -f "$RUNNER_TEMP/godusage-ios-widgets-appstore.mobileprovision"
           if [[ -n "$APPLE_NOTARY_KEY_ID" ]]; then
             rm -f "$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           fi
@@ -211,8 +211,8 @@ jobs:
         env:
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
-          RUNWAY_VERSION: ${{ needs.testflight.outputs.version }}
-          RUNWAY_BUILD: ${{ needs.testflight.outputs.build }}
+          GODUSAGE_VERSION: ${{ needs.testflight.outputs.version }}
+          GODUSAGE_BUILD: ${{ needs.testflight.outputs.build }}
         run: node script/testflight_distribute.mjs
 
       - name: Remove release credentials

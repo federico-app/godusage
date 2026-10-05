@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Builds, signs, and uploads the RunwayMobile iOS app to TestFlight. iOS has no notarization step —
+# Builds, signs, and uploads the GodUsageMobile iOS app to TestFlight. iOS has no notarization step —
 # uploading to App Store Connect is the platform's equivalent: Apple processes the build and makes
 # it available to TestFlight testers. Signing is MANUAL with an Apple Distribution certificate
 # (imported into the keychain beforehand) and an App Store provisioning profile, mirroring the
@@ -11,40 +11,40 @@ set -euo pipefail
 # with the same env. The one-time App Store Connect setup lives in .agents/skills/release-swift/.
 #
 # Required env:
-#   RUNWAY_VERSION        human version, e.g. 0.7.1 (CFBundleShortVersionString / MARKETING_VERSION).
+#   GODUSAGE_VERSION        human version, e.g. 0.7.1 (CFBundleShortVersionString / MARKETING_VERSION).
 #                         Shared with the macOS release: both platforms ship the tag's version.
 #   IOS_PROVISIONING_PROFILE  path to the App Store provisioning profile (.mobileprovision) for
-#                         com.mattstallone.runway.mobile, matching the imported distribution cert.
+#                         com.montinovo.godusage.mobile, matching the imported distribution cert.
 #   IOS_WIDGET_PROVISIONING_PROFILE  path to the App Store provisioning profile for the widget
-#                         extension (com.mattstallone.runway.mobile.widgets), same cert.
+#                         extension (com.montinovo.godusage.mobile.widgets), same cert.
 #   APPLE_NOTARY_KEY_PATH / APPLE_NOTARY_KEY_ID / APPLE_NOTARY_ISSUER_ID
 #                         App Store Connect API private key path, key ID, and issuer ID — the same
 #                         key release.sh uses for notarization; used here only to upload.
 # Optional env:
-#   RUNWAY_BUILD          CFBundleVersion (monotonic; TestFlight rejects reused build numbers per
+#   GODUSAGE_BUILD          CFBundleVersion (monotonic; TestFlight rejects reused build numbers per
 #                         version). Default: git commit count, same scheme as the macOS app.
-#   APPLE_TEAM_ID         defaults to 8KZBNZJBAX.
+#   APPLE_TEAM_ID         defaults to S6X72K86R8.
 #   SKIP_TESTFLIGHT_UPLOAD=1  Export the signed .ipa into dist/ios/ instead of uploading, for a
 #                         LOCAL dry run. Without it the build is uploaded to TestFlight.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-: "${RUNWAY_VERSION:?set RUNWAY_VERSION, e.g. 0.7.1}"
+: "${GODUSAGE_VERSION:?set GODUSAGE_VERSION, e.g. 0.7.1}"
 : "${IOS_PROVISIONING_PROFILE:?set IOS_PROVISIONING_PROFILE to the App Store .mobileprovision path}"
 : "${IOS_WIDGET_PROVISIONING_PROFILE:?set IOS_WIDGET_PROVISIONING_PROFILE to the widget extension App Store .mobileprovision path}"
 : "${APPLE_NOTARY_KEY_PATH:?set APPLE_NOTARY_KEY_PATH to the App Store Connect API .p8 key}"
 : "${APPLE_NOTARY_KEY_ID:?set APPLE_NOTARY_KEY_ID}"
 : "${APPLE_NOTARY_ISSUER_ID:?set APPLE_NOTARY_ISSUER_ID}"
 
-BUNDLE_ID="com.mattstallone.runway.mobile"
-WIDGET_BUNDLE_ID="com.mattstallone.runway.mobile.widgets"
-EXPECTED_TEAM_ID="${APPLE_TEAM_ID:-8KZBNZJBAX}"
-VERSION="$RUNWAY_VERSION"
+BUNDLE_ID="com.montinovo.godusage.mobile"
+WIDGET_BUNDLE_ID="com.montinovo.godusage.mobile.widgets"
+EXPECTED_TEAM_ID="${APPLE_TEAM_ID:-S6X72K86R8}"
+VERSION="$GODUSAGE_VERSION"
 "$ROOT_DIR/script/validate_release_tag.sh" "v$VERSION" >/dev/null
 # TestFlight orders builds by the monotonic CFBundleVersion within a CFBundleShortVersionString.
 # The git commit count matches the macOS DMG's build number, so one tag produces one build number.
-BUILD="${RUNWAY_BUILD:-$(git rev-list --count HEAD)}"
+BUILD="${GODUSAGE_BUILD:-$(git rev-list --count HEAD)}"
 
 [ -f "$APPLE_NOTARY_KEY_PATH" ] || { echo "APPLE_NOTARY_KEY_PATH does not exist: $APPLE_NOTARY_KEY_PATH" >&2; exit 1; }
 # xcodebuild resolves the key path against its own working directory; make it absolute.
@@ -76,7 +76,7 @@ WIDGET_PROFILE_NAME="$(install_profile "$IOS_WIDGET_PROVISIONING_PROFILE" "$EXPE
 # each target's specifier into its Release build settings in the project file for the duration of
 # the archive, anchored on the unique entitlements lines. The original is restored on exit, so a
 # local SKIP_TESTFLIGHT_UPLOAD dry run leaves the working tree untouched.
-PBXPROJ="$ROOT_DIR/ios/RunwayMobile.xcodeproj/project.pbxproj"
+PBXPROJ="$ROOT_DIR/ios/GodUsageMobile.xcodeproj/project.pbxproj"
 PBXPROJ_BACKUP="$PBXPROJ.pre-release-signing"
 cp "$PBXPROJ" "$PBXPROJ_BACKUP"
 trap 'mv "$PBXPROJ_BACKUP" "$PBXPROJ"' EXIT
@@ -87,8 +87,8 @@ path, app_profile, widget_profile = sys.argv[1:4]
 with open(path) as f:
     source = f.read()
 anchors = [
-    ("CODE_SIGN_ENTITLEMENTS = Config/RunwayMobile.Release.entitlements;", app_profile),
-    ("CODE_SIGN_ENTITLEMENTS = Config/RunwayMobileWidgets.Release.entitlements;", widget_profile),
+    ("CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobile.Release.entitlements;", app_profile),
+    ("CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobileWidgets.Release.entitlements;", widget_profile),
 ]
 for anchor, profile in anchors:
     if source.count(anchor) != 1:
@@ -99,7 +99,7 @@ with open(path, "w") as f:
 PY
 
 DIST_DIR="$ROOT_DIR/dist/ios"
-ARCHIVE_PATH="$DIST_DIR/RunwayMobile.xcarchive"
+ARCHIVE_PATH="$DIST_DIR/GodUsageMobile.xcarchive"
 EXPORT_OPTIONS="$DIST_DIR/ExportOptions.plist"
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
@@ -111,12 +111,12 @@ AUTH_FLAGS=(
   -authenticationKeyIssuerID "$APPLE_NOTARY_ISSUER_ID"
 )
 
-echo "==> Archiving RunwayMobile $VERSION ($BUILD) with profiles '$PROFILE_NAME' + '$WIDGET_PROFILE_NAME'"
+echo "==> Archiving GodUsageMobile $VERSION ($BUILD) with profiles '$PROFILE_NAME' + '$WIDGET_PROFILE_NAME'"
 # Style/identity/team are the same for both targets, so they stay command-line settings; the
 # per-target profile specifiers were injected into the project file above.
 xcodebuild \
-  -project ios/RunwayMobile.xcodeproj \
-  -scheme RunwayMobile \
+  -project ios/GodUsageMobile.xcodeproj \
+  -scheme GodUsageMobile \
   -configuration Release \
   -destination "generic/platform=iOS" \
   -archivePath "$ARCHIVE_PATH" \
@@ -128,7 +128,7 @@ xcodebuild \
   archive
 
 # Verify the archive is what we intend to ship before it goes anywhere near App Store Connect.
-APP_PLIST="$ARCHIVE_PATH/Products/Applications/RunwayMobile.app/Info.plist"
+APP_PLIST="$ARCHIVE_PATH/Products/Applications/GodUsageMobile.app/Info.plist"
 for expected in \
   "CFBundleIdentifier=$BUNDLE_ID" \
   "CFBundleShortVersionString=$VERSION" \
@@ -139,7 +139,7 @@ do
   [ "$got" = "$want" ] || { echo "Archive $key is '$got', expected '$want'" >&2; exit 1; }
 done
 # The embedded widget must ship with the version the app claims, or App Store validation rejects.
-APPEX_PLIST="$ARCHIVE_PATH/Products/Applications/RunwayMobile.app/PlugIns/RunwayMobileWidgets.appex/Info.plist"
+APPEX_PLIST="$ARCHIVE_PATH/Products/Applications/GodUsageMobile.app/PlugIns/GodUsageMobileWidgets.appex/Info.plist"
 for expected in \
   "CFBundleIdentifier=$WIDGET_BUNDLE_ID" \
   "CFBundleShortVersionString=$VERSION" \
@@ -152,8 +152,8 @@ done
 # Both the app and the embedded widget must carry the team's Apple Distribution signature.
 # Capture first, then parse: awk's early exit would SIGPIPE codesign and trip pipefail.
 for artifact in \
-  "$ARCHIVE_PATH/Products/Applications/RunwayMobile.app" \
-  "$ARCHIVE_PATH/Products/Applications/RunwayMobile.app/PlugIns/RunwayMobileWidgets.appex"
+  "$ARCHIVE_PATH/Products/Applications/GodUsageMobile.app" \
+  "$ARCHIVE_PATH/Products/Applications/GodUsageMobile.app/PlugIns/GodUsageMobileWidgets.appex"
 do
   CODESIGN_INFO="$(codesign -dvv "$artifact" 2>&1)"
   TEAM_IN_ARCHIVE="$(printf '%s\n' "$CODESIGN_INFO" \
@@ -203,7 +203,7 @@ xcodebuild \
   "${AUTH_FLAGS[@]}"
 
 if [ "$DESTINATION" = "upload" ]; then
-  echo "==> Uploaded RunwayMobile $VERSION ($BUILD) to App Store Connect."
+  echo "==> Uploaded GodUsageMobile $VERSION ($BUILD) to App Store Connect."
   echo "    TestFlight serves it to internal testers once Apple finishes processing (usually minutes)."
 else
   echo "==> Exported $(ls "$DIST_DIR"/*.ipa)"

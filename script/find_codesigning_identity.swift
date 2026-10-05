@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import LocalAuthentication
 import Security
@@ -40,15 +41,31 @@ private func isValidForCodeSigning(_ certificate: SecCertificate) -> Bool {
     return SecTrustEvaluateWithError(trust, nil)
 }
 
-let arguments = Array(CommandLine.arguments.dropFirst())
-guard arguments.count == 2 else {
-    fail("usage: find_codesigning_identity.swift <certificate-name-prefix> <team-id>")
+private func sha1Hex(of certificate: SecCertificate) -> String {
+    let data = SecCertificateCopyData(certificate) as Data
+    return Insecure.SHA1.hash(data: data).map { String(format: "%02X", $0) }.joined()
 }
-let namePrefix = arguments[0]
-let teamID = arguments[1]
+
+// Two modes:
+//   <certificate-name-prefix> <team-id>  prints the first valid identity's display name
+//   --sha1 <hex>...                       prints the first listed SHA-1 that is a valid identity
+//                                         (a provisioning profile's certificates, in profile order)
+let arguments = Array(CommandLine.arguments.dropFirst())
+let wantedSHA1s: [String]?
+if arguments.first == "--sha1" {
+    wantedSHA1s = arguments.dropFirst().map { $0.uppercased() }
+    guard wantedSHA1s?.isEmpty == false else { fail("usage: find_codesigning_identity.swift --sha1 <hex>...") }
+} else {
+    wantedSHA1s = nil
+    guard arguments.count == 2 else {
+        fail("usage: find_codesigning_identity.swift <certificate-name-prefix> <team-id> | --sha1 <hex>...")
+    }
+}
+let namePrefix = arguments.first ?? ""
+let teamID = arguments.count > 1 ? arguments[1] : ""
 
 // Identity discovery is non-interactive. A prompt here would authorize this short-lived Swift
-// helper rather than codesign or Runway, and a locked Keychain should fail the build explicitly.
+// helper rather than codesign or GodUsage, and a locked Keychain should fail the build explicitly.
 let authenticationContext = LAContext()
 authenticationContext.interactionNotAllowed = true
 let query: [String: Any] = [
@@ -67,6 +84,21 @@ guard queryStatus == errSecSuccess else {
 }
 guard let identities = result as? [SecIdentity] else {
     fail("the Keychain returned an unexpected identity result", status: 2)
+}
+
+if let wantedSHA1s {
+    var available: Set<String> = []
+    for identity in identities {
+        var certificate: SecCertificate?
+        guard SecIdentityCopyCertificate(identity, &certificate) == errSecSuccess,
+              let certificate,
+              isValidForCodeSigning(certificate)
+        else { continue }
+        available.insert(sha1Hex(of: certificate))
+    }
+    guard let match = wantedSHA1s.first(where: available.contains) else { exit(1) }
+    print(match)
+    exit(0)
 }
 
 for identity in identities {

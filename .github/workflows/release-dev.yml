@@ -1,0 +1,220 @@
+name: Release Dev
+
+# Every push to `develop` ships "GodUsage DEV" (com.montinovo.godusage.dev) as a GitHub prerelease
+# tagged dev-<build>, and updates appcast-dev.xml so installed DEV apps update themselves. The DEV
+# app has its own bundle id, iCloud container, teams backend, and feed, so it never touches the
+# release app or its users. Production releases stay on stable tags (release.yml).
+on:
+  push:
+    branches: [develop]
+    # Only changes that reach the app ship a new DEV build: docs, the backend (deployed by
+    # backend-deploy.yml), the website, and Markdown never do.
+    paths-ignore: ["docs/**", "backend/**", "website/**", "**/*.md", ".github/ISSUE_TEMPLATE/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-dev:
+    runs-on: macos-26
+    permissions:
+      contents: write
+    # Shares the update-feed lock with release.yml: both read, regenerate, and publish update-feed.
+    concurrency:
+      group: update-feed-publish
+      cancel-in-progress: false
+    env:
+      APPLE_TEAM_ID: S6X72K86R8
+      CHANNEL: dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0          # full history + tags: the build number and base version come from them
+          persist-credentials: true
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Resolve version
+        id: meta
+        run: |
+          set -euo pipefail
+          # Base the dev version on the newest stable tag so DEV builds read as "after 0.8.16".
+          BASE="$(git describe --tags --match 'v*' --exclude '*-*' --abbrev=0 | sed 's/^v//')"
+          BUILD="$(git rev-list --count HEAD)"
+          {
+            echo "version=$BASE-dev.$BUILD"
+            echo "build=$BUILD"
+            echo "tag=dev-$BUILD"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Validate required secrets
+        env:
+          DEVELOPER_ID_CERTIFICATE_BASE64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_BASE64 }}
+          DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          APPLE_NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY_BASE64 }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          APPLE_DEVELOPER_ID_DEV_PROFILE: ${{ secrets.APPLE_DEVELOPER_ID_DEV_PROFILE }}
+          SPARKLE_PUBLIC_KEY: ${{ secrets.SPARKLE_PUBLIC_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          for name in \
+            DEVELOPER_ID_CERTIFICATE_BASE64 \
+            DEVELOPER_ID_CERTIFICATE_PASSWORD \
+            APPLE_NOTARY_PRIVATE_KEY_BASE64 \
+            APPLE_NOTARY_KEY_ID \
+            APPLE_NOTARY_ISSUER_ID \
+            APPLE_DEVELOPER_ID_DEV_PROFILE \
+            SPARKLE_PUBLIC_KEY \
+            SPARKLE_PRIVATE_KEY
+          do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Missing required repository secret: $name"
+              exit 1
+            fi
+          done
+
+      - name: Run tests
+        run: swift test
+
+      - name: Import Developer ID certificate
+        uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
+        with:
+          p12-file-base64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+
+      - name: Resolve signing identity
+        run: |
+          if ! IDENTITY="$(xcrun swift "$GITHUB_WORKSPACE/script/find_codesigning_identity.swift" \
+            "Developer ID Application:" "$APPLE_TEAM_ID")"; then
+            echo "No valid Developer ID Application identity found in the imported cert" >&2
+            exit 1
+          fi
+          echo "CODESIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Write signing inputs
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          DEV_PROFILE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_DEV_PROFILE }}
+          APPLE_NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY_BASE64 }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle_ed_private_key"
+          printf '%s' "$DEV_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/godusage-dev.provisionprofile"
+          key_path="$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
+          printf '%s' "$APPLE_NOTARY_PRIVATE_KEY_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          {
+            echo "SPARKLE_PRIVATE_KEY_FILE=$RUNNER_TEMP/sparkle_ed_private_key"
+            echo "ICLOUD_PROVISIONING_PROFILE=$RUNNER_TEMP/godusage-dev.provisionprofile"
+            echo "APPLE_NOTARY_KEY_PATH=$key_path"
+          } >> "$GITHUB_ENV"
+
+      - name: Carry forward the dev appcast
+        run: |
+          set -euo pipefail
+          # generate_appcast names the feed after the app's SUFeedURL, so in this folder it reads and
+          # rewrites appcast-dev.xml. The dev feed keeps only recent builds, so a missing feed (first
+          # dev release) simply starts fresh.
+          mkdir -p feed
+          if git ls-remote --exit-code --heads origin update-feed >/dev/null 2>&1; then
+            git fetch origin update-feed
+            git show origin/update-feed:appcast-dev.xml > feed/appcast-dev.xml 2>/dev/null || rm -f feed/appcast-dev.xml
+          fi
+
+      - name: Build, sign, and notarize the DMG
+        env:
+          SPARKLE_PUBLIC_KEY: ${{ secrets.SPARKLE_PUBLIC_KEY }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          GODUSAGE_VERSION: ${{ steps.meta.outputs.version }}
+          GODUSAGE_BUILD: ${{ steps.meta.outputs.build }}
+        run: ./script/release.sh
+
+      - name: Publish the prerelease
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.5
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: GodUsage DEV ${{ steps.meta.outputs.version }}
+          body: |
+            Development build of `develop` at ${{ github.sha }}. It installs as **GodUsage DEV**, next to the release app, and uses the development teams backend.
+          prerelease: true
+          make_latest: false
+          files: |
+            dist/GodUsage-DEV-${{ steps.meta.outputs.version }}.dmg
+            dist/GodUsage-DEV-${{ steps.meta.outputs.version }}.dmg.sha256
+
+      - name: Generate the dev appcast
+        env:
+          DMG: GodUsage-DEV-${{ steps.meta.outputs.version }}.dmg
+          DOWNLOAD_PREFIX: https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.tag }}/
+        run: |
+          set -euo pipefail
+          GA="$(find .build/artifacts -type f -name generate_appcast 2>/dev/null | head -n1)"
+          [ -x "$GA" ] || { echo "generate_appcast not found under .build/artifacts" >&2; exit 1; }
+          cp "dist/$DMG" "feed/$DMG"
+          cat "$SPARKLE_PRIVATE_KEY_FILE" | "$GA" \
+            --ed-key-file - \
+            --download-url-prefix "$DOWNLOAD_PREFIX" \
+            --maximum-versions 10 \
+            feed
+          "$GITHUB_WORKSPACE/script/normalize_appcast_title.sh" feed/appcast-dev.xml "GodUsage DEV"
+          grep -Eq "$DMG\"[^>]*sparkle:edSignature" feed/appcast-dev.xml \
+            || { echo "New item for $DMG is missing or unsigned (SUPublicEDKey/private-key mismatch?)." >&2; exit 1; }
+          mkdir -p public
+          cp feed/appcast-dev.xml public/appcast-dev.xml
+
+      - name: Publish update feed branch
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: update-feed
+          publish_dir: ./public
+          # Only appcast-dev.xml is published here; keep the release appcast, site, and pricing.
+          keep_files: true
+
+      - name: Remove release credentials
+        if: always()
+        env:
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+        run: |
+          rm -f "$RUNNER_TEMP/godusage-dev.provisionprofile" "$RUNNER_TEMP/sparkle_ed_private_key"
+          if [[ -n "$APPLE_NOTARY_KEY_ID" ]]; then
+            rm -f "$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
+          fi
+
+  # Puts the freshly published update-feed branch live on GitHub Pages. Done here rather than by
+  # dispatching deploy-update-feed.yml, which only exists on the default branch, so a develop push
+  # never depends on main. Same steps and lock as deploy-update-feed.yml.
+  deploy-feed:
+    needs: release-dev
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: update-feed-deploy
+      cancel-in-progress: false
+    environment:
+      name: Update Feed
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: update-feed
+          persist-credentials: false
+
+      - name: Upload update feed artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: .
+
+      - name: Deploy update feed
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5

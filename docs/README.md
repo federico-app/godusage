@@ -1,4 +1,4 @@
-# Runway Documentation
+# GodUsage Documentation
 
 What the app does and how it behaves. These pages describe behavior, not visuals. If the app and a page disagree, that is a bug.
 
@@ -10,6 +10,7 @@ What the app does and how it behaves. These pages describe behavior, not visuals
 - [Memory Explorer](memory-explorer.md): view and edit each AI harness's memory and instruction files
 - [Refreshing and caching](refreshing.md): when data updates and what happens when a fetch fails
 - [iCloud Sync](icloud-sync.md): how spend history is combined across Macs
+- [Teams](teams.md): invite friends and compare usage on leaderboards
 - [iOS companion app](ios-app.md): the iPhone and iPad viewer for synced usage
 - [Model pricing](pricing.md): how spend tiles price tokens and where the rates come from
 - [Updates](updates.md): automatic updates and manual checks
@@ -46,3 +47,4 @@ What each provider tracks, where its credentials come from, and what its errors 
 - [Debugging and logs](debugging.md): running a local build and streaming logs
 - [Logging](logging.md): the file log, log levels, subsystem tags, and what is never logged
 - [Releasing](releasing.md): the release pipeline and its one-time setup (maintainer only)
+- [Teams backend](teams-backend.md): the Cloudflare Worker behind teams, invites, and leaderboards

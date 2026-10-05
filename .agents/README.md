@@ -2,7 +2,7 @@
 
 Skills that agents (Claude Code, Codex, Cursor) can load from this repo. `.claude` is a symlink to `.agents` so Claude Code finds them.
 
-## Runway skills
+## GodUsage skills
 
 - `release-swift/`: cut a stable release (version, changelog, tag, publish notes, verify).
 - `pricing-update/`: sync `pricing_supplement.json` with Cursor's published model pricing and open a PR.

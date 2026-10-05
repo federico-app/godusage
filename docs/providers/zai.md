@@ -10,13 +10,13 @@ Tracks [Z.ai](https://z.ai) (Zhipu AI) GLM Coding Plan usage quotas.
 | Weekly | 7-day rolling window token usage (percentage) |
 | Web Searches | Monthly web-search, web-reader, and Zread calls (used / limit) |
 
-When Z.ai reports your plan name, Runway shows it beside the provider name.
+When Z.ai reports your plan name, GodUsage shows it beside the provider name.
 
 ## Where credentials come from
 
-Z.ai has no companion CLI or app that Runway can reuse a credential from, so you supply an API key. Runway reads it from the first place it finds one, in this order:
+Z.ai has no companion CLI or app that GodUsage can reuse a credential from, so you supply an API key. GodUsage reads it from the first place it finds one, in this order:
 
-1. `~/.config/runway/zai.json`: `{"apiKey":"…"}` (the file Settings writes to)
+1. `~/.config/godusage/zai.json`: `{"apiKey":"…"}` (the file Settings writes to)
 2. `~/.config/zai/key.json`
 3. The `ZAI_API_KEY` environment variable
 4. The `GLM_API_KEY` environment variable (the legacy Zhipu name)
@@ -26,7 +26,7 @@ You can also add and rotate the key from **Settings → API Keys**. Either way, 
 ## Setup
 
 1. [Subscribe to a GLM Coding plan](https://z.ai/subscribe) and get your API key from the [Z.ai console](https://z.ai/manage-apikey/apikey-list).
-2. Add the key to Runway via **Settings → API Keys**, or export it:
+2. Add the key to GodUsage via **Settings → API Keys**, or export it:
 
 ```bash
 export ZAI_API_KEY="YOUR_API_KEY"

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Builds Runway, stages a signed .app bundle under dist/, and launches it in place — no install
+# Builds GodUsage, stages a signed .app bundle under dist/, and launches it in place — no install
 # to /Applications. The dev build:
 #   - is signed with a stable Apple Development identity, so keychain/permission grants stick across
 #     rebuilds (macOS keys those to the signing identity + bundle id, not the install location);
-#   - uses its own bundle id (com.mattstallone.runway.dev), so it never touches the real installed
+#   - uses its own bundle id (com.montinovo.godusage.dev), so it never touches the real installed
 #     app's settings or keychain. To run against the real app's data instead, set BUNDLE_ID to
-#     com.mattstallone.runway below;
+#     com.montinovo.godusage below;
 #   - ships no Sparkle feed, so it never checks for or installs updates (test updates with a real
 #     signed + notarized release build — that's the only honest way).
 #
@@ -23,11 +23,11 @@ set -euo pipefail
 MODE="${1:-run}"
 CONFIG="${CONFIG:-release}"
 
-TARGET_NAME="Runway"                 # SwiftPM target / binary name
-APP_DISPLAY="Runway"                 # user-facing app name
-BUNDLE_ID="${BUNDLE_ID:-com.mattstallone.runway.dev}"
-ICLOUD_CONTAINER_ID="iCloud.com.mattstallone.runway.dev"
-APPLE_TEAM_ID="${APPLE_TEAM_ID:-8KZBNZJBAX}"
+TARGET_NAME="GodUsage"                 # SwiftPM target / binary name
+APP_DISPLAY="GodUsage DEV"             # user-facing app name; DEV tells it apart from the release app
+BUNDLE_ID="${BUNDLE_ID:-com.montinovo.godusage.dev}"
+ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage.dev"
+APPLE_TEAM_ID="${APPLE_TEAM_ID:-S6X72K86R8}"
 export APPLE_TEAM_ID
 MIN_SYSTEM_VERSION="15.0"
 
@@ -46,11 +46,11 @@ APP_MACOS="$APP_CONTENTS/MacOS"
 APP_HELPERS="$APP_CONTENTS/Helpers"
 APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_BINARY="$APP_MACOS/$TARGET_NAME"
-CLI_BINARY="$APP_HELPERS/runway"
+CLI_BINARY="$APP_HELPERS/godusage"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 RESOURCE_BUNDLE_NAME="${TARGET_NAME}_${TARGET_NAME}.bundle"
-ENTITLEMENTS="$ROOT_DIR/script/Runway.dev.entitlements.plist"
-SIGN_ENTITLEMENTS="$ROOT_DIR/script/Runway.local.entitlements.plist"
+ENTITLEMENTS="$ROOT_DIR/script/GodUsage.dev.entitlements.plist"
+SIGN_ENTITLEMENTS="$ROOT_DIR/script/GodUsage.local.entitlements.plist"
 
 pkill -x "$TARGET_NAME" >/dev/null 2>&1 || true
 
@@ -58,7 +58,7 @@ echo "==> swift build ($CONFIG)"
 swift build -c "$CONFIG"
 BUILD_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
 BUILD_BINARY="$BUILD_DIR/$TARGET_NAME"
-BUILD_CLI_BINARY="$BUILD_DIR/runway-cli"
+BUILD_CLI_BINARY="$BUILD_DIR/godusage-cli"
 
 if [ ! -x "$BUILD_BINARY" ]; then
   echo "missing built binary: $BUILD_BINARY" >&2
@@ -90,8 +90,8 @@ vtool -set-build-version macos "$MIN_SYSTEM_VERSION" 26.0 -replace -output "$APP
 mv "$APP_BINARY.tmp" "$APP_BINARY"
 chmod +x "$APP_BINARY"
 # Stage every SwiftPM resource bundle produced by the build (the app's own
-# Runway_Runway.bundle, which carries the provider SVGs + model manifest)
-# into Contents/Resources, the standard app layout. Bundle.runwayResources
+# GodUsage_GodUsage.bundle, which carries the provider SVGs + model manifest)
+# into Contents/Resources, the standard app layout. Bundle.godUsageResources
 # (see Support/ResourceBundle.swift) loads it from there.
 shopt -s nullglob
 for bundle in "$BUILD_DIR"/*.bundle; do
@@ -158,14 +158,25 @@ cat >"$INFO_PLIST" <<PLIST
   <string>NSApplication</string>
   <key>NSHighResolutionCapable</key>
   <true/>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>$BUNDLE_ID.invite</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>godusage</string>
+      </array>
+    </dict>
+  </array>
   <key>NSUbiquitousContainers</key>
   <dict>
-    <key>iCloud.com.mattstallone.runway.dev</key>
+    <key>iCloud.com.montinovo.godusage.dev</key>
     <dict>
       <key>NSUbiquitousContainerIsDocumentScopePublic</key>
       <false/>
       <key>NSUbiquitousContainerName</key>
-      <string>Runway</string>
+      <string>GodUsage</string>
       <key>NSUbiquitousContainerSupportedFolderLevels</key>
       <string>None</string>
     </dict>
@@ -184,18 +195,29 @@ if [ -z "${ICLOUD_PROVISIONING_PROFILE:-}" ]; then
     "$BUNDLE_ID" "$ICLOUD_CONTAINER_ID" || true)
 fi
 
+EMBEDDED_PROFILE=""
 if [ -n "${ICLOUD_PROVISIONING_PROFILE:-}" ]; then
   echo "==> using iCloud provisioning profile: $ICLOUD_PROVISIONING_PROFILE"
+  EMBEDDED_PROFILE="$ICLOUD_PROVISIONING_PROFILE"
   cp "$ICLOUD_PROVISIONING_PROFILE" "$APP_CONTENTS/embedded.provisionprofile"
-  SIGN_ENTITLEMENTS="$DIST_DIR/Runway.dev.resolved.entitlements.plist"
+  SIGN_ENTITLEMENTS="$DIST_DIR/GodUsage.dev.resolved.entitlements.plist"
   "$ROOT_DIR/script/render_icloud_entitlements.sh" \
     "$ENTITLEMENTS" "$ICLOUD_PROVISIONING_PROFILE" "$SIGN_ENTITLEMENTS" \
     "$ICLOUD_CONTAINER_ID"
+elif SIGNIN_PROFILE=$("$ROOT_DIR/script/find_signin_provisioning_profile.sh" "$BUNDLE_ID"); then
+  # A profile without the iCloud container still enables Sign in with Apple (Teams).
+  echo "==> using Sign in with Apple provisioning profile (no iCloud container): $SIGNIN_PROFILE"
+  echo "WARNING: the profile has no iCloud container; iCloud Sync will be unavailable in this build." >&2
+  EMBEDDED_PROFILE="$SIGNIN_PROFILE"
+  cp "$SIGNIN_PROFILE" "$APP_CONTENTS/embedded.provisionprofile"
+  SIGN_ENTITLEMENTS="$DIST_DIR/GodUsage.dev.resolved.entitlements.plist"
+  "$ROOT_DIR/script/render_icloud_entitlements.sh" \
+    "$ROOT_DIR/script/GodUsage.local.entitlements.plist" "$SIGNIN_PROFILE" "$SIGN_ENTITLEMENTS"
 else
-  echo "WARNING: no matching installed iCloud provisioning profile was found; iCloud Sync will be unavailable in this build." >&2
+  echo "WARNING: no matching installed provisioning profile was found; iCloud Sync and Teams sign-in will be unavailable in this build." >&2
 fi
 
-# Pick a stable Apple Development identity from the NextByte team so ad-hoc cdhash churn doesn't
+# Pick a stable Apple Development identity from the team so ad-hoc cdhash churn doesn't
 # re-trigger permission prompts on every rebuild. The native helper queries Security.framework
 # directly and checks the certificate subject's OU because its display-name suffix is the
 # developer certificate ID, not necessarily the team ID. Fall back to ad-hoc if none is installed.
@@ -205,7 +227,19 @@ find_apple_development_identity() {
 }
 
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:-}"
-if [ -z "$CODESIGN_IDENTITY" ]; then
+IDENTITY_FROM_PROFILE=0
+# An embedded profile only works with a certificate it lists, so prefer that one.
+if [ -z "$CODESIGN_IDENTITY" ] && [ -n "$EMBEDDED_PROFILE" ]; then
+  if profile_identity=$("$ROOT_DIR/script/profile_signing_identity.sh" "$EMBEDDED_PROFILE"); then
+    CODESIGN_IDENTITY="$profile_identity"
+    IDENTITY_FROM_PROFILE=1
+  else
+    echo "WARNING: none of the provisioning profile's certificates is installed; signing with another identity, so the app may refuse to launch." >&2
+  fi
+fi
+if [ "$IDENTITY_FROM_PROFILE" = 1 ]; then
+  : # found in the keychain by profile_signing_identity.sh
+elif [ -z "$CODESIGN_IDENTITY" ]; then
   if resolved_identity="$(find_apple_development_identity)"; then
     CODESIGN_IDENTITY="$resolved_identity"
   else
@@ -223,7 +257,7 @@ else
   else
     identity_status=$?
     if [ "$identity_status" -eq 1 ]; then
-      echo "CODESIGN_IDENTITY must name a valid identity from NextByte team $APPLE_TEAM_ID" >&2
+      echo "CODESIGN_IDENTITY must name a valid identity from team $APPLE_TEAM_ID" >&2
       exit 1
     else
       echo "could not inspect installed code-signing identities" >&2
@@ -260,15 +294,15 @@ launch_app() {
     /usr/bin/open -n "$APP_BUNDLE"
     return
   fi
-  # The app pins these identity keys to a persisted login-shell snapshot (runway.shellEnvSnapshot.v1)
+  # The app pins these identity keys to a persisted login-shell snapshot (godusage.shellEnvSnapshot.v1)
   # whenever the process environment lacks them, and the snapshot's capture subprocess inherits the
   # app's environment — so a past launch from an agent shell left the agent homes pinned there, and
   # unsetting the variables alone would still scan them for one more full session. Drop the snapshot
   # so this launch re-captures fresh facts from the login shell. A missing key is fine (first run /
   # already clean); a failed delete of an existing key aborts via set -e rather than launching with
   # the stale snapshot still pinned.
-  if /usr/bin/defaults read "$BUNDLE_ID" runway.shellEnvSnapshot.v1 >/dev/null 2>&1; then
-    /usr/bin/defaults delete "$BUNDLE_ID" runway.shellEnvSnapshot.v1
+  if /usr/bin/defaults read "$BUNDLE_ID" godusage.shellEnvSnapshot.v1 >/dev/null 2>&1; then
+    /usr/bin/defaults delete "$BUNDLE_ID" godusage.shellEnvSnapshot.v1
   fi
   env -u CLAUDE_CONFIG_DIR -u CODEX_HOME /usr/bin/open -n "$APP_BUNDLE"
 }

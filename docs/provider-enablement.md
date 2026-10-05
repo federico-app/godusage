@@ -1,14 +1,14 @@
 # Which Providers Are On
 
-How Runway decides which providers start on and what happens when an update adds a new provider. The one rule: your own toggles always win and are never overridden.
+How GodUsage decides which providers start on and what happens when an update adds a new provider. The one rule: your own toggles always win and are never overridden.
 
 ## First install
 
-A fresh install starts with Claude, Codex, and Cursor. It then checks which providers have credentials on your Mac: an existing local login, a saved API key, or a supported environment variable. The check is local. Nothing leaves your Mac. The app then switches to exactly the set it found. If it finds nothing, the Claude, Codex, and Cursor starter set stays. If the app closes before this setup starts, it resumes on the next launch. All providers are checked at once, so detection takes as long as the slowest single check. When the check turns a provider on, Runway fetches it right away. See [Dashboard § First launch](dashboard.md#first-launch) for how the dashboard presents this.
+A fresh install starts with Claude, Codex, and Cursor. It then checks which providers have credentials on your Mac: an existing local login, a saved API key, or a supported environment variable. The check is local. Nothing leaves your Mac. The app then switches to exactly the set it found. If it finds nothing, the Claude, Codex, and Cursor starter set stays. If the app closes before this setup starts, it resumes on the next launch. All providers are checked at once, so detection takes as long as the slowest single check. When the check turns a provider on, GodUsage fetches it right away. See [Dashboard § First launch](dashboard.md#first-launch) for how the dashboard presents this.
 
 ## When an update adds a new provider
 
-On the first launch after an update, Runway compares the providers it now ships with the ones this install has seen before. For each new one, it runs the same local credential check:
+On the first launch after an update, GodUsage compares the providers it now ships with the ones this install has seen before. For each new one, it runs the same local credential check:
 
 - **Credentials found**: the provider turns on and appears on the dashboard.
 - **No credentials**: it stays off. You can turn it on later in **Customize**.

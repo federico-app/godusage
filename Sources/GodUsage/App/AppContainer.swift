@@ -1,0 +1,309 @@
+import Foundation
+import Observation
+
+/// Composition root: owns the (constant) registry and the (mutable) stores, injected
+/// into the SwiftUI environment.
+@MainActor
+@Observable
+final class AppContainer {
+    let registry: WidgetRegistry
+    let layout: LayoutStore
+    let dataStore: WidgetDataStore
+    /// Default-on private CloudKit sync: one record per device carrying additive machine-local
+    /// daily history plus the live snapshot companion apps read.
+    let iCloudSync: ICloudUsageSyncStore
+    /// Opt-in teams: Sign in with Apple, invites, leaderboards, and this Mac's usage upload.
+    let teams: TeamsStore
+    /// Reactions, challenges, champions, and the end-of-month projection.
+    let teamsSocial: TeamsSocialStore
+    /// Single source of truth for which providers the user has turned off. Both stores consult it (via
+    /// injected closures) and the Customize provider list drives it.
+    let enablement: ProviderEnablementStore
+    /// Providers that need a user-supplied API key (currently OpenRouter and Z.ai), conforming to
+    /// `APIKeyManaging`. Each matching Customize provider detail shows an API Key section and writes
+    /// changes through the capability. Empty when no installed provider needs a user key.
+    let apiKeyProviders: [any APIKeyManaging]
+    /// Preferences shared by the pace and reset-credit notification evaluators and Settings.
+    let notificationSettings: NotificationSettingsStore
+    /// Source of truth for the popover's transparency: the persisted Increase Transparency toggle, the
+    /// ephemeral secret-code easter-egg state, and the system accessibility flags it yields to. Read by both
+    /// the SwiftUI surface and the AppKit panel (`StatusItemController`).
+    let transparency: PopoverTransparencyStore
+    /// Shared wall clock for the popover's time-relative text (footer countdown, row reset dates).
+    /// Started/stopped from the panel show/hide chokepoints; see `DashboardClock` for why this
+    /// replaces per-view `TimelineView`s.
+    let clock = DashboardClock()
+    /// The menu bar's screen-share privacy mode: the persisted Hide From Screen Share toggle
+    /// plus the live capture signal. Read by `StatusItemImageUpdater` to swap the strip for the
+    /// wordmark while the screen is shared or recorded.
+    let privacy: MenuBarPrivacyStore
+    /// One-time onboarding state (the first-run Customize hint card). Only ever marked pending by
+    /// `FirstRunSeeder` on a fresh install, so existing installs never see the card.
+    let onboarding: OnboardingStore
+    /// Exact-card router for Codex rate-limit reset claims (the app's only provider-API write).
+    /// Every service shares its own card runtime's scoped auth store and usage client.
+    let codexResetClaims: CodexResetClaimRouter
+    /// The account registry the launch pass reconciled. The UI observes it live: a rename
+    /// (`customLabel`) re-titles the card everywhere without a relaunch.
+    let accounts: ProviderAccountsStore
+    /// The provider runtimes, kept so on-demand credential detection (the Customize "Reset All" reseed)
+    /// can re-probe `hasLocalCredentials()` the same way first-run seeding does.
+    private let providers: [ProviderRuntime]
+    /// Read-only usage API on 127.0.0.1:6736 for other local apps (silently off when the port is taken).
+    private let localAPI: LocalUsageServer
+    // A `let` of a `Sendable` `Task` is implicitly nonisolated, so the nonisolated `deinit` can cancel it.
+    private let refreshTask: Task<Void, Never>
+    private let resetNotificationTask: Task<Void, Never>
+    /// The fresh-install credential-detection pass (see `FirstRunSeeder`); `nil` on every later launch.
+    private let seedTask: Task<Void, Never>?
+    /// The new-provider credential-detection pass (see `NewProviderSeeder`); `nil` unless this launch is
+    /// the first with a provider the install has never seen.
+    private let newProviderTask: Task<Void, Never>?
+    /// Persists a fresh `ShellEnvironmentSnapshot` once the login-shell capture completes, so the next
+    /// launch can read shell-exported facts (provider home overrides) even when its own capture is slow.
+    private let shellEnvironmentSnapshotTask: Task<Void, Never>
+    /// `shouldSeedFirstRun` includes a resumable marker captured before `SettingsMigrator.migrate()`.
+    /// See `AppDelegate`.
+    init(shouldSeedFirstRun: Bool = false) async {
+        // Capture the user's login-shell environment off-main so provider keys exported in a shell
+        // profile (e.g. OPENROUTER_API_KEY) resolve in a Finder/Dock-launched build, not only when
+        // run from a terminal. Account assembly needs identity-relevant home overrides on a genuine
+        // first launch, so suspend the main actor until the bounded capture finishes. Later launches
+        // already have pinned identity facts and can keep warming the live environment in parallel.
+        if ShellEnvironmentSnapshotStore.launchSnapshot == nil {
+            _ = await LoginShellEnvironment.shared.ensureCapturedAsync()
+        } else {
+            LoginShellEnvironment.shared.prewarm()
+        }
+        // Once the capture lands, persist its identity-relevant facts so the NEXT launch has them
+        // even if that launch's own capture is slow (see `ShellEnvironmentSnapshot`).
+        self.shellEnvironmentSnapshotTask = ShellEnvironmentSnapshotStore(defaults: .standard).startRefreshTask()
+        // The launch account pass: which account is signed in at each family's default home, plus
+        // the config-dir scan for extra Claude logins. Feeds the snapshot cache's account stamp,
+        // reconciles the account registry, and hands the catalog its extra-card build plan.
+        let accounts = ProviderAccountsStore()
+        let accountAssembly = await ProviderAccountAssembly.make(accountsStore: accounts, waitsForLoginShell: true)
+        self.accounts = accounts
+        let providers = ProviderCatalog.make(
+            claudeCards: accountAssembly.claudeCards,
+            claudeDefaultDisplayName: accountAssembly.claudeDefaultDisplayName,
+            defaultClaudeExtraLogRoots: accountAssembly.defaultClaudeExtraLogRoots,
+            codexCards: accountAssembly.codexCards,
+            codexIdentityCache: accountAssembly.codexIdentityCache
+        )
+        let registry = WidgetRegistry.from(providers)
+        let apiKeyProviders = providers.compactMap { $0 as? any APIKeyManaging }
+        let enablement = ProviderEnablementStore()
+        let notificationSettings = NotificationSettingsStore()
+        let layout = LayoutStore(
+            registry: registry,
+            isProviderEnabled: { [enablement] in enablement.isEnabled($0) }
+        )
+        let dataStore = WidgetDataStore(
+            registry: registry,
+            providers: providers,
+            isProviderEnabled: { [enablement] in enablement.isEnabled($0) },
+            orderedDescriptors: { [layout] in layout.visiblePlaced.compactMap { layout.descriptor(for: $0) } },
+            notificationSettings: { notificationSettings },
+            providerIdentityKeys: accountAssembly.identityKeysByCard,
+            providersRejectingAccountStampedCache: accountAssembly.cardsRejectingAccountStampedCache,
+            resolveDisplayName: { [accounts] in accounts.resolvedDisplayName(cardID: $0) }
+        )
+        let codexProviderIDs = Set(providers.compactMap { ($0 as? CodexProvider)?.provider.id })
+        dataStore.configureInteractiveRefreshPreparation(for: codexProviderIDs) {
+            accountAssembly.startCodexIdentityBindingTask()
+        }
+        let iCloudSync = ICloudUsageSyncStore(dataStore: dataStore)
+        let teams = TeamsStore(
+            historySources: { [weak dataStore] in dataStore?.localTeamHistorySources() ?? [] },
+            deviceID: { [weak iCloudSync] in iCloudSync?.durableDeviceID },
+            notificationSettings: { (notificationSettings.teamOvertakes, notificationSettings.teamWeeklyRecap) },
+            postNotification: { id, title, subtitle, body in
+                await AppNotifications.shared.post(idPrefix: id, title: title, subtitle: subtitle, body: body)
+            }
+        )
+        dataStore.addLocalStateObserver { [weak teams] in teams?.scheduleUpload() }
+        let teamsSocial = TeamsSocialStore(
+            teams: teams,
+            challengeAlertsEnabled: { notificationSettings.teamChallenges },
+            postNotification: { id, title, subtitle, body in
+                await AppNotifications.shared.post(idPrefix: id, title: title, subtitle: subtitle, body: body)
+            }
+        )
+        // Re-enabling a provider should fetch it promptly, so clear any leftover failure backoff before
+        // the enablement wake refreshes. `weak` breaks the cycle (dataStore already captures enablement).
+        enablement.onProviderEnabled = { [weak dataStore] id in dataStore?.clearFailureBackoff(for: id) }
+        enablement.onChange = { [weak dataStore, weak iCloudSync, weak teams] in
+            dataStore?.providerEnablementDidChange()
+            iCloudSync?.scheduleWrite()
+            teams?.scheduleUpload(force: true)
+        }
+        // Fresh installs start minimal: seed the enabled-provider list (Claude/Codex/Cursor right away,
+        // then the detected set once the local credential probe finishes). No-op on every later launch.
+        let onboarding = OnboardingStore()
+        self.seedTask = FirstRunSeeder.seedIfNeeded(
+            isFreshInstall: shouldSeedFirstRun,
+            providers: providers,
+            enablement: enablement,
+            onboarding: onboarding
+        )
+        if shouldSeedFirstRun {
+            SettingsMigrator.completeFirstRunSeed()
+        }
+        // Providers added by an update get the same credential detection on their first launch — enabled
+        // only when the user actually has the tool. Runs every launch; a no-op unless the registry has a
+        // provider this install has never seen (fresh installs were just baselined by FirstRunSeeder).
+        self.newProviderTask = NewProviderSeeder.reconcileIfNeeded(
+            providers: providers,
+            enablement: enablement
+        )
+        self.providers = providers
+        self.onboarding = onboarding
+        self.registry = registry
+        self.enablement = enablement
+        self.apiKeyProviders = apiKeyProviders
+        self.notificationSettings = notificationSettings
+        self.layout = layout
+        self.dataStore = dataStore
+        self.iCloudSync = iCloudSync
+        self.teams = teams
+        self.teamsSocial = teamsSocial
+
+        // One claim service per Codex card. Each shares that card's credential loading and HTTP client,
+        // and refreshes that exact card after a successful claim. The forced refresh returns `.skipped`
+        // when another refresh already owns the provider — and that in-flight probe may carry
+        // pre-claim usage — so retry until this refresh actually runs (bounded).
+        var codexResetServices: [String: CodexResetClaimService] = [:]
+        for codex in providers.compactMap({ $0 as? CodexProvider }) {
+            let providerID = codex.provider.id
+            codexResetServices[providerID] = CodexResetClaimService(
+                authStore: codex.authStore,
+                usageClient: codex.usageClient,
+                refreshAfterClaim: { [weak dataStore] in
+                    // The bound must outlast the provider's slowest refresh: usage fetch (10s timeout)
+                    // + token refresh (15s) + usage retry (10s) + reset-credit fetch (10s) ≈ 45s. The
+                    // common race (the periodic timer's probe) clears in a couple of seconds; the
+                    // pathological one keeps the popover's honest "Resetting…" up rather than showing
+                    // a success banner over pre-claim meters. A `.failed` probe is retried a few times
+                    // too — a transient flake right after the claim must not strand pre-claim meters
+                    // behind a success banner — before giving up loudly (the provider error already
+                    // shows on the card, so the staleness isn't silent).
+                    var failures = 0
+                    // 300 one-second waits: must outlast not just the provider's slowest refresh
+                    // (~45s of request budgets) but also the store's refresh deadline
+                    // (`defaultProviderRefreshTimeout`, 150s) PLUS a timed-out attempt's straggler
+                    // hold (`hungRefreshProviderIDs`), during which every probe returns `.skipped`
+                    // — giving up sooner would strand pre-claim meters behind a success banner
+                    // exactly when Codex was already struggling.
+                    for attempt in 0..<300 {
+                        guard let dataStore else { return }
+                        switch await dataStore.refresh(providerID: providerID, force: true) {
+                        case .refreshed, .cacheHit, .backedOff:
+                            return
+                        case .failed:
+                            failures += 1
+                            guard failures < 3 else {
+                                AppLog.error(LogTag.plugin("codex"), "\(providerID) post-claim refresh failed \(failures) times; meters may lag until the next cycle")
+                                return
+                            }
+                            try? await Task.sleep(for: .seconds(2))
+                        case .skipped:
+                            AppLog.info(LogTag.plugin("codex"), "\(providerID) post-claim refresh waiting out an in-flight refresh (attempt \(attempt + 1))")
+                            try? await Task.sleep(for: .seconds(1))
+                        }
+                    }
+                    AppLog.error(LogTag.plugin("codex"), "\(providerID) post-claim refresh kept being skipped; meters may lag until the next cycle")
+                }
+            )
+        }
+        self.codexResetClaims = CodexResetClaimRouter(servicesByProviderID: codexResetServices)
+
+        self.transparency = PopoverTransparencyStore()
+        self.privacy = MenuBarPrivacyStore()
+        self.localAPI = LocalUsageServer(state: { [layout, enablement, dataStore, accounts] in
+            LocalUsageAPI.State(
+                enabledOrderedIDs: layout.orderedProviderIDs().filter { enablement.isEnabled($0) },
+                knownIDs: Set(registry.providers.map(\.id)),
+                snapshots: dataStore.snapshots,
+                limitDescriptors: registry.limitDescriptorsByProvider,
+                errors: dataStore.providerErrors
+            )
+            // API output is human-read too: resolve card titles at respond time so renames show,
+            // exactly like every UI surface.
+            .resolvingDisplayNames(accounts.resolvedDisplayNamesByCardID)
+        })
+        self.refreshTask = Self.startPeriodicRefresh(dataStore: dataStore)
+        self.resetNotificationTask = ResetExpiryNotificationMonitor(
+            settings: notificationSettings, dataStore: dataStore
+        ).start()
+        localAPI.start()
+        Task { [teams] in await teams.refresh() }
+        // Become the notification-center delegate so banners show while frontmost — a menu-bar accessory
+        // effectively always is. Notification authorization is requested the first time a trigger is
+        // turned on in Settings, not at launch — triggers default off. No-op under tests.
+        AppNotifications.shared.registerAsDelegate()
+    }
+
+    deinit {
+        refreshTask.cancel()
+        resetNotificationTask.cancel()
+        seedTask?.cancel()
+        newProviderTask?.cancel()
+        shellEnvironmentSnapshotTask.cancel()
+    }
+
+    /// The name a card renders under right now — the app-side face of the one resolver
+    /// (`ProviderAccountsStore.resolvedDisplayName`). Live: a rename in the account registry
+    /// re-titles the card everywhere without a relaunch. Non-account providers (no record) keep
+    /// their static display name; `Provider.displayName` itself only ever carries the derived
+    /// default, so the fallback can never be a stale rename.
+    func displayName(for provider: Provider) -> String {
+        accounts.resolvedDisplayName(cardID: provider.id) ?? provider.displayName
+    }
+
+    /// Whether the card has an account record a rename can attach to (accounts-model families only,
+    /// and only once the account's identity has been observed at least once).
+    func canRename(_ providerID: String) -> Bool {
+        accounts.record(backingCardID: providerID) != nil
+    }
+
+    /// Re-runs first-launch credential detection on demand — the enablement half of the Customize
+    /// "Reset All" action (`LayoutStore.resetToDefault` handles metrics, order, pins, and expansion).
+    /// Delegates to `FirstRunSeeder.reseed`; returns its detection task so callers can await it.
+    @discardableResult
+    func reseedEnabledProviders() -> Task<Void, Never> {
+        FirstRunSeeder.reseed(providers: providers, enablement: enablement)
+    }
+
+    /// Drives live updates: refresh on launch, then again every refresh interval. Each pass honors the
+    /// cache, so it only hits the network once a snapshot has actually expired. `@Observable` propagates
+    /// the resulting snapshot changes to the menu-bar label and any open widgets, so the UI refreshes on
+    /// its own instead of only when the popover opens.
+    ///
+    /// Between passes the loop sleeps via `RefreshWakeSignal`, which wakes it early when the user
+    /// enables/disables a provider so a newly-enabled provider is fetched promptly instead of waiting out
+    /// the full interval. The signal subscribes BEFORE the first pass and buffers, so an enablement change
+    /// landing while a pass is still running (first-run credential detection, `NewProviderSeeder`, the
+    /// Customize "Reset All" reseed — all of which typically finish faster than the network fetches) is
+    /// never lost. Each pass still honors the cache (and the per-provider failure backoff), so an early
+    /// wake only hits the network for a provider whose snapshot has actually expired.
+    ///
+    /// The wake is deliberately scoped to `ProviderEnablementStore.didChangeNotification` — NOT the
+    /// firehose `UserDefaults.didChangeNotification`, which fires for the app's own snapshot-cache writes,
+    /// Sparkle's update bookkeeping, and unrelated global-domain changes from other processes. Waking on
+    /// that, with no minimum interval before re-refreshing, collapsed the fixed 5-minute cadence into a
+    /// refresh storm.
+    private static func startPeriodicRefresh(dataStore: WidgetDataStore) -> Task<Void, Never> {
+        Task {
+            let wakeSignal = RefreshWakeSignal()
+            while !Task.isCancelled {
+                await dataStore.refreshAll()
+                // Re-evaluate quota pace milestones every tick — after the refresh so it sees fresh data,
+                // and on every loop (not just on a fetch) so pace worsening from elapsed time alone still
+                // alerts even with the popover closed.
+                await dataStore.evaluateNotifications()
+                await wakeSignal.waitForWake(timeout: RefreshSetting.interval)
+            }
+        }
+    }
+}

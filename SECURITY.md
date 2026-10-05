@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Do not open a public issue. Open a [private vulnerability report](https://github.com/mstallone/runway/security/advisories/new) on GitHub instead. The report stays private until a fix is released.
+Do not open a public issue. Open a [private vulnerability report](https://github.com/federico-app/godusage/security/advisories/new) on GitHub instead. The report stays private until a fix is released.
 
 Include:
 
@@ -21,7 +21,7 @@ Include:
 
 In scope:
 
-- The Runway desktop application
+- The GodUsage desktop application
 - The built-in providers (credential handling, API calls)
 - The local HTTP API
 - Build and release infrastructure

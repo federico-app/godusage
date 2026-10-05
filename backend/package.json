@@ -1,0 +1,23 @@
+{
+  "name": "godusage-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --env dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "deploy:dev": "wrangler deploy --env dev",
+    "migrate": "wrangler d1 migrations apply godusage --remote",
+    "migrate:dev": "wrangler d1 migrations apply godusage-dev --env dev --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@vitest/runner": "~4.1",
+    "@vitest/snapshot": "~4.1",
+    "typescript": "^5.9.3",
+    "vitest": "~4.1",
+    "wrangler": "^4.147.0"
+  }
+}

@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Runway is a SwiftPM SwiftUI menu-bar app for macOS. It shows usage widgets for AI providers (Claude, Codex, Cursor, Grok, Devin, and more). This file holds the engineering conventions. Read it before you contribute.
+GodUsage is a SwiftPM SwiftUI menu-bar app for macOS. It shows usage widgets for AI providers (Claude, Codex, Cursor, Grok, Devin, and more). This file holds the engineering conventions. Read it before you contribute.
 
 AGENTS.md is the only place for agent instructions. CLAUDE.md contains `@AGENTS.md` and nothing else.
 
-Active development happens on `main`. The old Tauri edition is frozen on the `tauri-legacy` branch.
+Active development happens on `develop`; `main` holds what has shipped to production. The old Tauri edition is frozen on the `tauri-legacy` branch.
 
 ## Architecture
 
@@ -12,13 +12,14 @@ Active development happens on `main`. The old Tauri edition is frozen on the `ta
 - Swift 6 with strict concurrency.
 - Each provider implements `ProviderRuntime`: an auth store reads credentials already on the machine, a usage client calls the provider API, and a mapper turns the response into `MetricLine` values. The UI renders those values.
 - `docs/` holds the behavior docs and the developer docs (architecture, adding a provider).
+- `backend/` is the teams backend: a TypeScript Cloudflare Worker with D1. Run `npm test` there after changing it. See `docs/teams-backend.md`.
 
 ## Providers
 
-Provider modules live under `Sources/Runway/Providers/<Name>/`.
+Provider modules live under `Sources/GodUsage/Providers/<Name>/`.
 
 - **Structure.** One folder per provider: auth store, usage client, mapper. The module conforms to `ProviderRuntime` with `refresh()` and `hasLocalCredentials()`. `hasLocalCredentials()` is a local-only check. `FirstRunSeeder` calls it on a fresh install, and `NewProviderSeeder` calls it once when a new provider ships. It must check the same credential sources and usability filters that `refresh()` uses, through the same auth-store loaders. Do not add a second credential-reading path. See `docs/adding-a-provider.md` and `docs/provider-enablement.md`.
-- **Pricing.** All spend estimates (Claude, Codex, Cursor, Grok, Muse) go through `Sources/Runway/Pricing/` (see `docs/pricing.md`). Cursor-native model rates and alias rules live in `Sources/Runway/Resources/pricing_supplement.json`. Sync new or changed models from [Cursor models & pricing](https://cursor.com/docs/models-and-pricing.md): update `updated_at`, the pricing entries, and the `alias_rules`. A merge to `main` publishes the file to `update-feed`, so installed apps pick it up without a release. Regenerate the bundled LiteLLM and models.dev snapshots with `script/update_pricing_snapshots.sh` before a release.
+- **Pricing.** All spend estimates (Claude, Codex, Cursor, Grok, Muse) go through `Sources/GodUsage/Pricing/` (see `docs/pricing.md`). Cursor-native model rates and alias rules live in `Sources/GodUsage/Resources/pricing_supplement.json`. Sync new or changed models from [Cursor models & pricing](https://cursor.com/docs/models-and-pricing.md): update `updated_at`, the pricing entries, and the `alias_rules`. A merge to `main` publishes the file to `update-feed`, so installed apps pick it up without a release. Regenerate the bundled LiteLLM and models.dev snapshots with `script/update_pricing_snapshots.sh` before a release.
 - **Default order.** Claude, Codex, Cursor, then every other provider alphabetically by display name. The order is the array order in `AppContainer`, which seeds the default order in `LayoutStore`.
 - **Metric defaults.** When you add or change a metric, confirm these four defaults with the owner. Never pick them yourself:
   1. enabled on or off (`DefaultLayout.metricIDs`),
@@ -28,11 +29,11 @@ Provider modules live under `Sources/Runway/Providers/<Name>/`.
 
 ## Releases
 
-Releases ship from `.github/workflows/release.yml` with a Sparkle appcast on `update-feed`. Cut them with the release-swift skill. `docs/releasing.md` covers the secrets and one-time setup.
+Production releases ship from `.github/workflows/release.yml` with a Sparkle appcast on `update-feed`. Cut them with the release-swift skill. Every push to `develop` ships the dev channel (**GodUsage DEV**, `com.montinovo.godusage.dev`) from `.github/workflows/release-dev.yml` as a `dev-<build>` prerelease with its own `appcast-dev.xml`. `docs/releasing.md` covers both channels, the secrets, and one-time setup.
 
 - Versions are `0.7.x` and up. Never reuse a `0.6.x` number. Those belong to the Tauri edition (final release `v0.6.28`).
 - Never bump the version on your own. Propose a number and wait for the owner's explicit approval before tagging or releasing.
-- Tags are plain `vMAJOR.MINOR.PATCH` and become the GitHub "Latest" release. No prerelease suffixes and no Sparkle beta channel.
+- Production tags are plain `vMAJOR.MINOR.PATCH` and become the GitHub "Latest" release. No prerelease suffixes on them. The only other channel is the automatic dev channel above; do not add more.
 - Do not carry over the upstream fork's Tauri `latest.json`, release assets, appcast entries, or signing identity.
 - Never leave a release in Draft or with empty notes. The release-swift skill writes the changelog and verifies the published release.
 

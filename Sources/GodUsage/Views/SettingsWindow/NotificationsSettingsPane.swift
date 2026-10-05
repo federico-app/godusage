@@ -1,0 +1,166 @@
+import AppKit
+import SwiftUI
+import UserNotifications
+
+/// The Settings window's Notifications pane. Pace triggers and reset-credit expiry reminders.
+/// A warning glyph and action row appear when macOS permission isn't authorized
+/// and at least one trigger is on. Defaults are all off; the app requests authorization the first
+/// time a trigger is turned on.
+struct NotificationsSettingsPane: View {
+    @Environment(AppContainer.self) private var container
+
+    /// macOS notification authorization for GodUsage, so the warning glyph and action button can
+    /// appear when alerts can't be delivered. Refreshed on appear, when a trigger turns on, and when
+    /// the app becomes active again (e.g. the user returns from System Settings after re-enabling).
+    private enum AuthState { case authorized, denied, notDetermined }
+    @State private var auth: AuthState = .authorized
+    private let density = DensitySetting.compact
+
+    var body: some View {
+        @Bindable var notifications = container.notificationSettings
+        let needsAttention = auth != .authorized && anyToggleOn
+        return VStack(alignment: .leading, spacing: density.headerToCardSpacing) {
+            HStack(spacing: 6) {
+                Text("Notifications")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                if needsAttention {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .hoverTooltip(auth == .denied
+                            ? "Notifications are turned off for GodUsage. Enable them in System Settings."
+                            : "GodUsage needs permission to send alerts.")
+                }
+            }
+            .padding(.horizontal, 8)
+            VStack(spacing: 0) {
+                toggleRow(.underTenPercent, isOn: $notifications.underTenPercent)
+                toggleRow(.healthyToClose, isOn: $notifications.healthyToClose)
+                toggleRow(.closeToRunningOut, isOn: $notifications.closeToRunningOut)
+                Divider()
+                HStack {
+                    Text("Reset Expiry Reminders")
+                    Spacer(minLength: 8)
+                    Toggle("Reset Expiry Reminders", isOn: $notifications.resetExpiryReminders)
+                        .labelsHidden()
+                        .settingsSwitchStyle()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, density.controlRowPadding)
+                SettingsCaption("Remind me before unused Codex and Grok resets expire: 7 days, 48 hours, 24 hours, 2 hours, 1 hour, and 15 minutes. Each reminder replaces the previous one for that reset.")
+                if notifications.resetExpiryReminders {
+                    SettingsCaption("To keep notifications onscreen until dismissed, choose Alerts for GodUsage in System Settings → Notifications.")
+                    if let error = notifications.resetReminderError {
+                        SettingsInlineNotice(error)
+                    }
+                    if !needsAttention {
+                        Button("Open System Settings") {
+                            AppNotifications.shared.openSystemNotificationsSettings()
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(12)
+                    }
+                }
+                Divider()
+                teamToggle("Team Overtakes", isOn: $notifications.teamOvertakes)
+                SettingsCaption("Tells you when a teammate passes you by spend over the last 7 days.")
+                teamToggle("Weekly Team Recap", isOn: $notifications.teamWeeklyRecap)
+                SettingsCaption("Every Monday: your rank, spend, and top model in each team last week.")
+                teamToggle("Team Challenges", isOn: $notifications.teamChallenges)
+                SettingsCaption("Tells you who won when a team challenge ends.")
+                if needsAttention {
+                    actionRow
+                }
+            }
+            .cardSurface()
+        }
+        .onChange(of: anyToggleOn) { _, on in
+            if on {
+                authorizeAndRefresh()
+            }
+        }
+        .task { await refreshAuth() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await refreshAuth() }
+        }
+    }
+
+    private func teamToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(title)
+            Spacer(minLength: 8)
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .settingsSwitchStyle()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, density.controlRowPadding)
+    }
+
+    /// One trigger row: the setting label, an (i) info icon with a one-sentence tooltip, and the toggle.
+    private func toggleRow(_ milestone: PaceMilestone, isOn: Binding<Bool>) -> some View {
+        HStack(spacing: 6) {
+            Text(milestone.settingLabel)
+            Image(systemName: "info.circle")
+                .imageScale(.small)
+                .foregroundStyle(.secondary)
+                .hoverTooltip(milestone.tooltip)
+            Spacer(minLength: 8)
+            Toggle("", isOn: isOn)
+                .settingsSwitchStyle()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, density.controlRowPadding)
+    }
+
+    /// The conditional action under the toggles: a full-width "Open System Settings" button when macOS
+    /// denied permission, or "Allow Notifications" when still undecided. The reason lives in the header
+    /// triangle's tooltip. Shown only when a trigger is on.
+    private var actionRow: some View {
+        VStack(spacing: 0) {
+            Divider()
+            Button {
+                if auth == .denied {
+                    AppNotifications.shared.openSystemNotificationsSettings()
+                } else {
+                    authorizeAndRefresh()
+                }
+            } label: {
+                Text(auth == .denied ? "Open System Settings" : "Allow Notifications")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .padding(.horizontal, 12)
+            .padding(.vertical, density.controlRowPadding)
+        }
+    }
+
+    /// True when at least one trigger is on — the gate for the permission warning + action row.
+    /// Delegates to the store's `anyEnabled` so the disjunction lives in one place.
+    private var anyToggleOn: Bool {
+        container.notificationSettings.anyEnabled
+    }
+
+    private func authorizeAndRefresh() {
+        Task {
+            await AppNotifications.shared.requestAuthorization().value
+            await refreshAuth()
+        }
+    }
+
+    /// Read the live macOS authorization status into `auth`, but only when at least one trigger is
+    /// on so no warning shows while all alerts are off.
+    private func refreshAuth() async {
+        guard anyToggleOn else {
+            auth = .authorized
+            return
+        }
+        let status = await AppNotifications.shared.authorizationStatus()
+        switch status {
+        case .denied: auth = .denied
+        case .notDetermined: auth = .notDetermined
+        default: auth = .authorized
+        }
+    }
+}

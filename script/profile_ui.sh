@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Runs the UI performance harness end to end and prints a stats summary.
 #
-# Builds and stages the dev app, relaunches it with RUNWAY_UI_PROFILE=1 so the in-app driver
-# (see Sources/Runway/Support/UIProfiler.swift) walks the popover through scripted phases —
+# Builds and stages the dev app, relaunches it with GODUSAGE_UI_PROFILE=1 so the in-app driver
+# (see Sources/GodUsage/Support/UIProfiler.swift) walks the popover through scripted phases —
 # cold open, 12 warm open/close cycles, 10 screen switches, 10 caret toggles, a forced refresh
 # with the panel open, and a 40s idle soak — then aggregates the phase timings from the app log.
 #
@@ -13,19 +13,19 @@ set -euo pipefail
 # changes that touch the popover render path.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOG="$HOME/Library/Logs/Runway/Runway.log"
-APP_BINARY="$ROOT_DIR/dist/Runway.app/Contents/MacOS/Runway"
+LOG="$HOME/Library/Logs/GodUsage/GodUsage.log"
+APP_BINARY="$ROOT_DIR/dist/GodUsage DEV.app/Contents/MacOS/GodUsage"
 
 if [ "${1:-}" != "--skip-build" ]; then
     "$ROOT_DIR/script/build_and_run.sh" build
 fi
 [ -x "$APP_BINARY" ] || { echo "error: $APP_BINARY not staged; run without --skip-build" >&2; exit 1; }
 
-pkill -x Runway >/dev/null 2>&1 || true
+pkill -x GodUsage >/dev/null 2>&1 || true
 sleep 1
 
-# Start the run on a fresh log file: a Runway.log near its 10 MB rotation cap could rotate the
-# marker (or the run itself) into Runway.1.log mid-run, and the polls below only read the active
+# Start the run on a fresh log file: a GodUsage.log near its 10 MB rotation cap could rotate the
+# marker (or the run itself) into GodUsage.1.log mid-run, and the polls below only read the active
 # file. The app is down at this point, so the move is safe; every prior log stays inspectable
 # under its own timestamped name (a fixed name would erase the previous run's diagnostics in the
 # very before/after workflow this script exists for).
@@ -38,7 +38,7 @@ echo "$(date -u +%Y-%m-%dT%H:%M:%S.000Z) [INFO] [uiprofile] $START_MARKER" >> "$
 
 # CLAUDE_CONFIG_DIR must not leak into the app's shell snapshot (it flips Claude account
 # resolution); `open` can't pass env vars, so exec the binary directly.
-env -u CLAUDE_CONFIG_DIR RUNWAY_UI_PROFILE=1 "$APP_BINARY" >/dev/null 2>&1 &
+env -u CLAUDE_CONFIG_DIR GODUSAGE_UI_PROFILE=1 "$APP_BINARY" >/dev/null 2>&1 &
 APP_PID=$!
 # The profiled app must not outlive the script (it runs with the log-floor override and the stall
 # watchdog): kill it on ANY exit — poll timeout, a failed command under `set -e`, or Ctrl-C. A trap
@@ -46,7 +46,7 @@ APP_PID=$!
 # leave the polling loop running with no producer.
 trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
 trap 'exit 130' INT TERM
-echo "==> Runway (pid $APP_PID) profiling; the script takes ~2 minutes"
+echo "==> GodUsage (pid $APP_PID) profiling; the script takes ~2 minutes"
 
 for _ in $(seq 1 240); do
     if grep -a -A100000 "$START_MARKER" "$LOG" | grep -aq "PHASE done"; then
@@ -56,7 +56,7 @@ for _ in $(seq 1 240); do
 done
 grep -a -A100000 "$START_MARKER" "$LOG" | grep -aq "PHASE done" || { echo "error: run never reached PHASE done" >&2; exit 1; }
 
-RUN_LOG="$(mktemp -t runway_ui_profile)"
+RUN_LOG="$(mktemp -t godusage_ui_profile)"
 grep -a -A100000 "$START_MARKER" "$LOG" | grep -a uiprofile > "$RUN_LOG"
 
 # A phase that silently did no or partial work must fail the run, not masquerade as a clean result.
@@ -99,6 +99,6 @@ echo
 echo "== Process at end of run =="
 ps -o cputime=,rss= -p "$APP_PID" | awk '{printf "cpu %s  rss %.0fMB\n", $1, $2/1024}'
 
-pkill -x Runway >/dev/null 2>&1 || true
+pkill -x GodUsage >/dev/null 2>&1 || true
 echo
 echo "full phase log: $RUN_LOG"

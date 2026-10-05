@@ -1,26 +1,26 @@
-# Runway
+# GodUsage
 
 AI usage across every provider and account, in the macOS menu bar.
 
-**Website:** [runway.page](https://runway.page/)
+**Website:** [federico-app.github.io/godusage](https://federico-app.github.io/godusage/)
 
-Runway shows limits, credits, and spend for Claude, Codex, Cursor, Grok, Devin, and more in one place. Cached data appears instantly, refreshes run in the background, and the metrics you care about can sit in the menu bar.
+GodUsage shows limits, credits, and spend for Claude, Codex, Cursor, Grok, Devin, and more in one place, and (optionally) lets you compare usage with friends in [Teams](docs/teams.md). Cached data appears instantly, refreshes run in the background, and the metrics you care about can sit in the menu bar.
 
 <p align="center">
-  <img src="assets/hero.png" alt="Runway hero: menu bar pins and the dashboard popover with the Total Spend ring plus Claude and Codex meters in normal, warning, and critical states" width="900">
+  <img src="assets/hero.png" alt="GodUsage hero: menu bar pins and the dashboard popover with the Total Spend ring plus Claude and Codex meters in normal, warning, and critical states" width="900">
 </p>
 
 ## Installation
 
-Download the latest universal DMG from the [releases page](https://github.com/mstallone/runway/releases/latest), open it, and drag Runway to Applications.
+Download the latest universal DMG from the [releases page](https://github.com/federico-app/godusage/releases/latest), open it, and drag GodUsage to Applications.
 
 The app updates itself through signed, notarized [Sparkle](docs/updates.md) updates. Requires macOS 15 (Sequoia) or later.
 
 ## Performance
 
-Runway is a fork of OpenUsage rebuilt for speed. We measured both on the same machine with the same providers and session logs. See [docs/performance.md](docs/performance.md) for the method.
+GodUsage is a fork of OpenUsage rebuilt for speed. We measured both on the same machine with the same providers and session logs. See [docs/performance.md](docs/performance.md) for the method.
 
-| | OpenUsage | Runway |
+| | OpenUsage | GodUsage |
 |---|---|---|
 | Launch to menu bar icon | 5.4 s | **0.29 s** |
 | Popover open to first frame | 61 ms | **23 ms** |
@@ -45,7 +45,7 @@ Runway is a fork of OpenUsage rebuilt for speed. We measured both on the same ma
 - **[Sakana Fugu](docs/providers/sakana.md)**: subscription quota plus local Fugu Ultra usage trend and estimated API-rate value
 - **[Z.ai](docs/providers/zai.md)**: session, weekly, and web-search quotas (GLM Coding Plan, API key)
 
-Most providers read the credentials already on your Mac (keychain, auth files, app state). OpenRouter and Z.ai have no local credential to reuse, so you supply an API key (see [OpenRouter setup](docs/providers/openrouter.md) or [Z.ai setup](docs/providers/zai.md)). Runway uses each credential only for that provider's requests. Runway collects no analytics. The [Privacy](docs/privacy.md) page covers the public pricing downloads and optional iCloud sync.
+Most providers read the credentials already on your Mac (keychain, auth files, app state). OpenRouter and Z.ai have no local credential to reuse, so you supply an API key (see [OpenRouter setup](docs/providers/openrouter.md) or [Z.ai setup](docs/providers/zai.md)). GodUsage uses each credential only for that provider's requests. GodUsage collects no analytics. The [Privacy](docs/privacy.md) page covers the public pricing downloads and optional iCloud sync.
 
 ## Features
 
@@ -54,20 +54,21 @@ Most providers read the credentials already on your Mac (keychain, auth files, a
 - **Global shortcut.** Toggle the popover from anywhere. Record any combo in Settings.
 - **Customize.** Turn providers and metrics on or off, choose which rows are Always Visible or On Demand, and drag to reorder.
 - **Cache first.** Cached values show instantly at launch. Refresh runs every 5 minutes.
-- **[CLI](docs/cli.md).** `runway` prints limit JSON from the same five-minute cache. `runway --force` refreshes first. The app does not need to be running.
+- **[CLI](docs/cli.md).** `godusage` prints limit JSON from the same five-minute cache. `godusage --force` refreshes first. The app does not need to be running.
 - **[Local HTTP API](docs/local-http-api.md).** Other apps can read limits from `127.0.0.1:6736/v1/limits`. The older `/v1/usage` route still works. Loopback only, never serves credentials. Browser pages can read it too. See the [privacy note](docs/local-http-api.md#cors-and-privacy).
-- **[Proxy support](docs/proxy.md).** Route provider requests through SOCKS5 or HTTP(S) via `~/.runway/config.json`.
+- **[Proxy support](docs/proxy.md).** Route provider requests through SOCKS5 or HTTP(S) via `~/.godusage/config.json`.
 - **Native settings.** Launch at login, global shortcut, icon style, theme, 12/24-hour time. See [Settings](docs/settings.md).
 - **[Automatic updates](docs/updates.md).** Signed, notarized updates via Sparkle.
+- **[Teams](docs/teams.md).** Optional: sign in with Apple, invite friends with a link, and compare AI spend on a leaderboard right on the dashboard. Rank movement, efficiency, head-to-head comparisons, reactions, challenges, a monthly Hall of Fame, and a shareable Wrapped. Only daily totals per provider and model are shared; never credentials, prompts, or logs.
 
 ## iPhone companion
 
-Runway for iOS shows combined usage from every Mac you run: spend today, yesterday, and over the last 30 days. Data syncs privately over iCloud. Lock screen and home screen widgets can show cost or tokens. See the [iOS app](docs/ios-app.md).
+GodUsage for iOS shows combined usage from every Mac you run: spend today, yesterday, and over the last 30 days. Data syncs privately over iCloud. Lock screen and home screen widgets can show cost or tokens. See the [iOS app](docs/ios-app.md).
 
 <p align="center">
-  <img src="assets/ios-lockscreen.png" width="270" alt="Runway lock screen widgets showing today's AI spend synced from your Macs">
+  <img src="assets/ios-lockscreen.png" width="270" alt="GodUsage lock screen widgets showing today's AI spend synced from your Macs">
   &nbsp;&nbsp;
-  <img src="assets/ios-home-widgets.png" width="510" alt="Runway home screen widgets with today, yesterday, and 30-day spend plus a usage trend chart">
+  <img src="assets/ios-home-widgets.png" width="510" alt="GodUsage home screen widgets with today, yesterday, and 30-day spend plus a usage trend chart">
 </p>
 
 ## Documentation
@@ -81,7 +82,7 @@ For working on the code: [architecture](docs/architecture.md), [adding a provide
 - macOS 15 (Sequoia) or later
 - Universal binary for Apple Silicon and Intel
 
-Runway computes the Today, Yesterday, and Last 30 Days spend tiles from local CLI logs (Claude, Codex, Grok, Sakana Fugu) or Cursor's usage export. No Node.js or other runtime is needed. Dollars are estimated with [model pricing](docs/pricing.md).
+GodUsage computes the Today, Yesterday, and Last 30 Days spend tiles from local CLI logs (Claude, Codex, Grok, Sakana Fugu) or Cursor's usage export. No Node.js or other runtime is needed. Dollars are estimated with [model pricing](docs/pricing.md).
 
 ## Development
 
@@ -91,13 +92,13 @@ swift test                  # run the test suite
 ./script/build_and_run.sh   # build and launch the dev app from dist/ (no install)
 ```
 
-Runway is a SwiftPM package: SwiftUI content hosted in an AppKit `NSStatusItem` and a custom key-capable `NSPanel`, Swift 6 strict concurrency. The app and CLI share one module. Providers implement a small `ProviderRuntime` protocol (auth store, usage client, mapper, `ProviderSnapshot`), and both surfaces read the same normalized data. See the [architecture overview](docs/architecture.md) and [AGENTS.md](AGENTS.md) for the conventions.
+GodUsage is a SwiftPM package: SwiftUI content hosted in an AppKit `NSStatusItem` and a custom key-capable `NSPanel`, Swift 6 strict concurrency. The app and CLI share one module. Providers implement a small `ProviderRuntime` protocol (auth store, usage client, mapper, `ProviderSnapshot`), and both surfaces read the same normalized data. See the [architecture overview](docs/architecture.md) and [AGENTS.md](AGENTS.md) for the conventions.
 
 Releases are automated. Pushing a stable tag on `main` tests, builds, signs, notarizes, and publishes the release. See [Releasing](docs/releasing.md).
 
 ## Contributing
 
-Issues are welcome. Pull requests are issue-first: an external PR must link an issue a maintainer has approved with the `approved` label, or it is closed. Read [CONTRIBUTING.md](CONTRIBUTING.md) first. Report security issues privately per [SECURITY.md](SECURITY.md). The Runway name and logo are covered by the [trademark policy](TRADEMARK.md).
+Issues are welcome. Pull requests are issue-first: an external PR must link an issue a maintainer has approved with the `approved` label, or it is closed. Read [CONTRIBUTING.md](CONTRIBUTING.md) first. Report security issues privately per [SECURITY.md](SECURITY.md). The GodUsage name and logo are covered by the [trademark policy](TRADEMARK.md).
 
 ## License
 

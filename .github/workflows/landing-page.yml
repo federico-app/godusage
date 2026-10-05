@@ -1,6 +1,6 @@
 # Publishes the landing page to the update feed whenever it changes on main.
 #
-# The site lives at https://mstallone.github.io/runway/ — the same GitHub Pages origin that serves
+# The site lives at https://federico-app.github.io/godusage/ — the same GitHub Pages origin that serves
 # appcast.xml and pricing_supplement.json from the update-feed branch. This workflow publishes
 # website/ onto that branch with keep_files, so the page coexists with the feed files and a merge
 # to main is all it takes to update the live site.
@@ -43,7 +43,7 @@ jobs:
         run: |
           python3 - << 'PY'
           import json, re, sys
-          with open("Sources/Runway/Resources/pricing_supplement.json") as f:
+          with open("Sources/GodUsage/Resources/pricing_supplement.json") as f:
               supplement = json.load(f)
           problems = []
           for model, entry in supplement["pricing"].items():
@@ -98,7 +98,7 @@ jobs:
             exit 1
           fi
           cp -R website/. public/
-          cp Sources/Runway/Resources/pricing_supplement.json public/pricing_supplement.json
+          cp Sources/GodUsage/Resources/pricing_supplement.json public/pricing_supplement.json
           # Keep the mock's footer on the latest released version instead of whatever the source
           # carried when it was last edited. No release yet (HTTP 404) is a legitimate bootstrap
           # state — keep the source's literal; any other API failure aborts loudly.

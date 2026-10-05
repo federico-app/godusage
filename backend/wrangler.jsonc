@@ -1,0 +1,59 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Top level is production. `--env dev` is a separate Worker with its own database, used by the
+  // dev build (com.montinovo.godusage.dev), so test data never reaches the real leaderboards.
+  "name": "godusage-api",
+  "account_id": "c8027ea307622cd1ac394bf73c18efc0",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vars": {
+    // Bundle IDs whose native Sign in with Apple identity tokens are accepted (the iOS app).
+    "APPLE_AUDIENCES": "com.montinovo.godusage",
+    // The Services ID of the web Sign in with Apple flow the Mac app uses. Its return URLs must list
+    // this Worker's /v1/auth/apple/callback.
+    "APPLE_WEB_CLIENT_ID": "com.montinovo.godusage.web",
+    // Where the invite page sends people who do not have the app yet.
+    "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest"
+  },
+  // Request limits per client; see src/rateLimit.ts. Namespace ids are per account and environment.
+  "ratelimits": [
+    { "name": "AUTH_LIMITER", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } },
+    { "name": "API_LIMITER", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "godusage",
+      "database_id": "7b70362b-aba7-4535-a1bf-beb32015da65",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "env": {
+    "dev": {
+      "name": "godusage-api-dev",
+      // vars and d1_databases are not inherited by environments, so they are repeated here.
+      "vars": {
+        "APPLE_AUDIENCES": "com.montinovo.godusage.dev",
+        "APPLE_WEB_CLIENT_ID": "com.montinovo.godusage.web.dev",
+        "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest"
+      },
+      "ratelimits": [
+        { "name": "AUTH_LIMITER", "namespace_id": "2001", "simple": { "limit": 20, "period": 60 } },
+        { "name": "API_LIMITER", "namespace_id": "2002", "simple": { "limit": 120, "period": 60 } }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "godusage-dev",
+          "database_id": "23c18ca9-a3e7-4fb3-896a-cf9c61e64cb5",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
+}

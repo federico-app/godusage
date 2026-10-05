@@ -1,8 +1,8 @@
 # Grok Banked Usage Resets: How Listing Works
 
-Research and a live list (not redeem) of Grok's "Reset Available" tokens, done 2026-08-23. This is the protocol reference for the read-only row in `Sources/Runway/Providers/Grok/GrokRemainingResetsDecoder.swift`.
+Research and a live list (not redeem) of Grok's "Reset Available" tokens, done 2026-08-23. This is the protocol reference for the read-only row in `Sources/GodUsage/Providers/Grok/GrokRemainingResetsDecoder.swift`.
 
-Sources: grok.com Settings → Usage, the `GetRemainingResets` and `RedeemReset` gRPC-web RPCs (`prod_mc_billing.ConsumerUiSvc`), plus a live list-only call with the Grok CLI OAuth token from `~/.grok/auth.json`. Runway does not call `RedeemReset`.
+Sources: grok.com Settings → Usage, the `GetRemainingResets` and `RedeemReset` gRPC-web RPCs (`prod_mc_billing.ConsumerUiSvc`), plus a live list-only call with the Grok CLI OAuth token from `~/.grok/auth.json`. GodUsage does not call `RedeemReset`.
 
 ## What a reset token is
 
@@ -20,7 +20,7 @@ Headers on the list call (gRPC-web empty request):
 - `Origin: https://grok.com` / `Referer: https://grok.com/?_s=usage`
 - Body: an uncompressed gRPC-web data frame of length 0 (`00 00 00 00 00`)
 
-### List (what Runway implements)
+### List (what GodUsage implements)
 
 `POST /prod_mc_billing.ConsumerUiSvc/GetRemainingResets`
 
@@ -40,7 +40,7 @@ A successful empty list is a known zero: an empty data frame plus `grpc-status: 
 
 ### Redeem (not implemented)
 
-`POST /prod_mc_billing.ConsumerUiSvc/RedeemReset` consumes a token. Runway never calls this. Claiming stays on grok.com. A display-only timeline is enough to see how many resets remain and when they expire.
+`POST /prod_mc_billing.ConsumerUiSvc/RedeemReset` consumes a token. GodUsage never calls this. Claiming stays on grok.com. A display-only timeline is enough to see how many resets remain and when they expire.
 
 ## Live list (2026-08-23)
 

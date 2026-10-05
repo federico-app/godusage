@@ -36,7 +36,7 @@ struct CombinedUsage {
     }
 }
 
-/// Stateless read-only consumer of Runway's private CloudKit database, shared by the app and the
+/// Stateless read-only consumer of GodUsage's private CloudKit database, shared by the app and the
 /// widget extension. Mirrors the Mac's transport exactly: fetch every record in the `UsageHistory`
 /// zone from a nil change token and rebuild from scratch — nothing here ever writes, so the Macs'
 /// single-writer-per-record invariant is preserved.
@@ -46,9 +46,9 @@ struct UsageSyncReader: Sendable {
     static let snapshotKey = "snapshot"
 
     #if DEBUG
-    static let containerID = "iCloud.com.mattstallone.runway.dev"
+    static let containerID = "iCloud.com.montinovo.godusage.dev"
     #else
-    static let containerID = "iCloud.com.mattstallone.runway"
+    static let containerID = "iCloud.com.montinovo.godusage"
     #endif
 
     /// Everything one full fetch yields. `unreadableNotice` is non-nil when any payload had to be
@@ -69,7 +69,7 @@ struct UsageSyncReader: Sendable {
     private let log: Logger
 
     init(logCategory: String = "sync") {
-        log = Logger(subsystem: "com.mattstallone.runway.mobile", category: logCategory)
+        log = Logger(subsystem: "com.montinovo.godusage.mobile", category: logCategory)
     }
 
     func accountStatus() async throws -> CKAccountStatus {
@@ -89,7 +89,7 @@ struct UsageSyncReader: Sendable {
     }
 
     /// Full fetch, decode, and combine. A missing zone (no Mac has published yet, or the user
-    /// deleted Runway's iCloud data) is an empty result, not an error.
+    /// deleted GodUsage's iCloud data) is an empty result, not an error.
     func fetchUsage(now: Date = Date()) async throws -> FetchResult {
         let container = CKContainer(identifier: Self.containerID)
         do {
@@ -156,7 +156,7 @@ struct UsageSyncReader: Sendable {
         }
         let unreadable = unreadableHistories + unreadableSnapshots
         let notice = unreadable == 0 ? nil :
-            "Some synced usage couldn’t be read here (\(unreadable) newer or unreadable payload\(unreadable == 1 ? "" : "s")). Update Runway on your Macs and this app."
+            "Some synced usage couldn’t be read here (\(unreadable) newer or unreadable payload\(unreadable == 1 ? "" : "s")). Update GodUsage on your Macs and this app."
         return FetchResult(
             devices: loaded.sorted { $0.snapshot.updatedAt > $1.snapshot.updatedAt },
             combined: Self.combine(histories, now: now),

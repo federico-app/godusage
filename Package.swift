@@ -2,13 +2,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "Runway",
+    name: "GodUsage",
     platforms: [
         .macOS(.v15)
     ],
     products: [
-        .executable(name: "Runway", targets: ["RunwayApp"]),
-        .executable(name: "runway-cli", targets: ["RunwayCLI"])
+        .executable(name: "GodUsage", targets: ["GodUsageApp"]),
+        .executable(name: "godusage-cli", targets: ["GodUsageCLI"])
     ],
     dependencies: [
         // The de-facto standard recorder + global hotkey for Mac apps (System Settings-style field).
@@ -19,12 +19,12 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "Runway",
+            name: "GodUsage",
             dependencies: [
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
                 .product(name: "Sparkle", package: "Sparkle")
             ],
-            path: "Sources/Runway",
+            path: "Sources/GodUsage",
             resources: [
                 .copy("Resources/ProviderIcons"),
                 .copy("Resources/pricing_supplement.json"),
@@ -36,33 +36,33 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "RunwayApp",
-            dependencies: ["Runway"],
-            path: "Sources/RunwayApp",
+            name: "GodUsageApp",
+            dependencies: ["GodUsage"],
+            path: "Sources/GodUsageApp",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
         ),
         .executableTarget(
-            name: "RunwayCLI",
-            dependencies: ["Runway"],
-            path: "Sources/RunwayCLI",
+            name: "GodUsageCLI",
+            dependencies: ["GodUsage"],
+            path: "Sources/GodUsageCLI",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
         ),
         .testTarget(
-            name: "RunwayTests",
-            dependencies: ["Runway"],
-            path: "Tests/RunwayTests",
+            name: "GodUsageTests",
+            dependencies: ["GodUsage"],
+            path: "Tests/GodUsageTests",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]
         ),
         .testTarget(
-            name: "RunwayCLITests",
-            dependencies: ["RunwayCLI"],
-            path: "Tests/RunwayCLITests",
+            name: "GodUsageCLITests",
+            dependencies: ["GodUsageCLI"],
+            path: "Tests/GodUsageCLITests",
             swiftSettings: [
                 .swiftLanguageMode(.v6)
             ]

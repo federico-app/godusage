@@ -8,7 +8,7 @@ set -euo pipefail
 #
 # Requires: gh CLI authenticated as a repo admin.
 
-REPO="${REPO:-mstallone/runway}"
+REPO="${REPO:-federico-app/godusage}"
 
 # No visibility pre-check: a private repo on a paid plan supports these
 # settings, so let GitHub be the judge and surface its error if not.

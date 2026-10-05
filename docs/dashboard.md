@@ -55,7 +55,7 @@ With [iCloud Sync](icloud-sync.md) on, the machine-local providers' spend rows, 
 
 Rows with a reset date tick every 30 seconds, so countdowns and pace stay live between refreshes.
 
-Runway honors the system Reduce Motion setting. Screen switches and panel growth use quick fades instead of springs and slides.
+GodUsage honors the system Reduce Motion setting. Screen switches and panel growth use quick fades instead of springs and slides.
 
 ## Right-click menus
 
@@ -70,11 +70,11 @@ Copy a branded PNG of one provider's usage to your clipboard:
 - Right-click a provider header and choose **Share Screenshot**.
 - Open the footer's **gear** menu and choose **Share Screenshot** ▸ *\<provider\>*. The submenu lists every provider on the dashboard.
 
-The image shows the provider's mark and name, the metric rows you currently see for that provider, and a small Runway mark at the bottom. It follows your Light/Dark appearance and shows everything on the card as-is. Nothing is hidden or blurred.
+The image shows the provider's mark and name, the metric rows you currently see for that provider, and a small GodUsage mark at the bottom. It follows your Light/Dark appearance and shows everything on the card as-is. Nothing is hidden or blurred.
 
 ## Footer
 
-The bar pinned to the bottom of the popover. On the left: the app version. On the right: a countdown to the next update (like `5m`) that you can click, or press **⌘R**, to refresh now, and a **gear** menu. The gear holds **Customize**, **Settings** (opens the [Settings window](settings.md)), **Memory** (opens the [Memory Explorer](memory-explorer.md)), **Share Screenshot**, **Check for Updates…**, **About Runway**, and **Quit Runway**.
+The bar pinned to the bottom of the popover. On the left: the app version. On the right: a countdown to the next update (like `5m`) that you can click, or press **⌘R**, to refresh now and a **gear** menu. The gear holds **Customize**, **Settings** (opens the [Settings window](settings.md)), **Memory** (opens the [Memory Explorer](memory-explorer.md)), **Team** (opens the [Teams](teams.md#leaderboards) window), **Share Screenshot**, **Check for Updates…**, **About GodUsage**, and **Quit GodUsage**.
 
 ## Customize
 
@@ -90,7 +90,7 @@ For Claude, the default layout keeps Session, Weekly, and Fable always visible. 
 
 Press **⌘Z** to undo. It works anywhere in the popover and steps back through your recent customization changes one at a time: hiding or showing a metric, reordering metrics or providers, starring or unstarring, and moving a metric across the divider. Undo is per session and resetting clears it.
 
-When Runway ships a new default metric, existing layouts get it once, in that provider's default position. If you turn it off, it stays off. A provider's **Reset** button restores that provider's default metrics, order, menu-bar stars, and On Demand set, and leaves other providers and the provider order alone. **Reset All Customization** at the top of the provider list does the same for every provider, restores the default provider order, and re-detects your installed tools. It turns providers on for exactly the tools set up on your Mac, like first launch (see [Which Providers Are On](provider-enablement.md)). It asks for confirmation first and cannot be undone.
+When GodUsage ships a new default metric, existing layouts get it once, in that provider's default position. If you turn it off, it stays off. A provider's **Reset** button restores that provider's default metrics, order, menu-bar stars, and On Demand set, and leaves other providers and the provider order alone. **Reset All Customization** at the top of the provider list does the same for every provider, restores the default provider order, and re-detects your installed tools. It turns providers on for exactly the tools set up on your Mac, like first launch (see [Which Providers Are On](provider-enablement.md)). It asks for confirmation first and cannot be undone.
 
 ## Keyboard
 
@@ -102,6 +102,7 @@ When Runway ships a new default metric, existing layouts get it once, in that pr
 | ⌘R | Refresh now from the dashboard (skips the cache) |
 | ⌘, | Open the [Settings window](settings.md) (closes the popover) |
 | ⌘M | Open the [Memory Explorer](memory-explorer.md) (closes the popover) |
+| ⌘T | Open the [Teams](teams.md#leaderboards) window |
 
 A global shortcut (recorded in Settings) toggles the popover from anywhere.
 

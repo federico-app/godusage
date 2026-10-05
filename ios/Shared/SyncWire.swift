@@ -1,13 +1,13 @@
 import Foundation
 
-/// Decode-only mirrors of the payloads Runway for Mac publishes to CloudKit (one `DeviceUsage`
+/// Decode-only mirrors of the payloads GodUsage for Mac publishes to CloudKit (one `DeviceUsage`
 /// record per device, `history` + `snapshot` byte fields). The wire contract is the schema string
-/// inside each payload — `runway.history.v2` and `runway.snapshot.v1` — written and round-trip
+/// inside each payload — `godusage.history.v2` and `godusage.snapshot.v1` — written and round-trip
 /// tested by the Mac app. Decoding ignores keys it doesn't render, so additive Mac-side changes
 /// never break this app; a schema bump surfaces as a friendly "update" message instead.
 enum SyncWire {
-    static let historySchemas: Set<String> = ["runway.history.v1", "runway.history.v2"]
-    static let snapshotSchemas: Set<String> = ["runway.snapshot.v1"]
+    static let historySchemas: Set<String> = ["godusage.history.v1", "godusage.history.v2"]
+    static let snapshotSchemas: Set<String> = ["godusage.snapshot.v1"]
 
     static func decoder() -> JSONDecoder {
         let decoder = JSONDecoder()

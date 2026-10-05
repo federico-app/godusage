@@ -1,13 +1,13 @@
 ---
 name: release-swift
-description: "Cut a stable release of Runway (Swift menu-bar app): pick a version, generate a categorized changelog, tag from `main`, and publish the GitHub Release with notes."
+description: "Cut a stable release of GodUsage (Swift menu-bar app): pick a version, generate a categorized changelog, tag from `main`, and publish the GitHub Release with notes."
 ---
 
 # Release Swift
 
-Pushing a `v*` tag on `main` runs `.github/workflows/release.yml`. It builds, signs, notarizes, attaches `Runway-<version>.dmg` to the GitHub Release, and updates the Sparkle `appcast.xml` on `update-feed`. The same run's **iOS Gate** job (`script/testflight_gate.mjs`) decides whether this tag ships the iOS companion app. It skips Mac-only releases (no iOS-relevant changes since the last build distributed to the external TestFlight group, and that build under 60 days old). When it ships, the **iOS TestFlight** job builds and uploads the iOS app, and the **TestFlight External** job adds the processed build to the external tester group and submits it for Beta App Review. CI creates the release with an empty body, so this skill generates the changelog, records it in `CHANGELOG.md`, and publishes the notes onto the release.
+Pushing a `v*` tag on `main` runs `.github/workflows/release.yml`. It builds, signs, notarizes, attaches `GodUsage-<version>.dmg` to the GitHub Release, and updates the Sparkle `appcast.xml` on `update-feed`. The same run's **iOS Gate** job (`script/testflight_gate.mjs`) decides whether this tag ships the iOS companion app. It skips Mac-only releases (no iOS-relevant changes since the last build distributed to the external TestFlight group, and that build under 60 days old). When it ships, the **iOS TestFlight** job builds and uploads the iOS app, and the **TestFlight External** job adds the processed build to the external tester group and submits it for Beta App Review. CI creates the release with an empty body, so this skill generates the changelog, records it in `CHANGELOG.md`, and publishes the notes onto the release.
 
-Runway has one release channel. Tags are `vMAJOR.MINOR.PATCH`. Suffixed prerelease tags are rejected. The tag is the version (`v0.7.1` becomes `CFBundleShortVersionString = 0.7.1`), and `CFBundleVersion` is the git commit count. There are no version files to bump.
+GodUsage has one release channel. Tags are `vMAJOR.MINOR.PATCH`. Suffixed prerelease tags are rejected. The tag is the version (`v0.7.1` becomes `CFBundleShortVersionString = 0.7.1`), and `CFBundleVersion` is the git commit count. There are no version files to bump.
 
 ## Cutting a release
 
@@ -19,12 +19,12 @@ Check this before tagging. A profile problem fails the iOS job during signing, b
 
 Both App Store profiles must exist and be `ACTIVE`:
 
-- `Runway Mobile App Store` → `com.mattstallone.runway.mobile`
-- `Runway Mobile Widgets App Store` → `com.mattstallone.runway.mobile.widgets`
+- `GodUsage Mobile App Store` → `com.montinovo.godusage.mobile`
+- `GodUsage Mobile Widgets App Store` → `com.montinovo.godusage.mobile.widgets`
 
 Editing an App ID's capabilities silently invalidates every existing profile built on it. The profile flips to `INVALID` and signing fails later with an unrelated-looking error. If capabilities changed since the last release, regenerate both profiles and refresh `APPLE_IOS_APP_STORE_PROFILE` and `APPLE_IOS_WIDGET_APP_STORE_PROFILE` together.
 
-Both App IDs must keep both iCloud containers enabled: `iCloud.com.mattstallone.runway` for Release and `iCloud.com.mattstallone.runway.dev` for Debug. A profile granting only one signs one configuration and breaks the other.
+Both App IDs must keep both iCloud containers enabled: `iCloud.com.montinovo.godusage` for Release and `iCloud.com.montinovo.godusage.dev` for Debug. A profile granting only one signs one configuration and breaks the other.
 
 Verify a downloaded profile before trusting it:
 
@@ -57,13 +57,13 @@ Author attribution is required on every entry:
 - With a PR number `(#123)`, resolve the PR from the commit rather than assuming its repository:
 
   ```sh
-  gh api "repos/mstallone/runway/commits/{full_hash}/pulls" \
+  gh api "repos/federico-app/godusage/commits/{full_hash}/pulls" \
     --jq 'map(select(.number == {pr}))[0] |
       if . == null then null else {url: .html_url, author: .user.login} end'
   ```
 
   Use the returned `url` and `author`. The endpoint returns fork PRs for commits merged in this repository, so overlapping PR-number namespaces are handled by commit provenance.
-- Without a PR number: `gh api /repos/mstallone/runway/commits/{full_hash} -q '.author.login'`.
+- Without a PR number: `gh api /repos/federico-app/godusage/commits/{full_hash} -q '.author.login'`.
 - If the PR lookup returns null, omit the PR link and use the commit attribution lookup. If that also returns null, use the git author name.
 
 Output the changelog in a code block (template below) for review.
@@ -74,7 +74,7 @@ Wait for explicit approval of the changelog before changing any files. Accept ed
 
 ### 4. Record it in CHANGELOG.md
 
-`main` is protected, so the changelog lands through a PR. Prepend the approved section right after the `# Changelog` header, then:
+`main` is protected, so the changelog lands through a PR. If `CHANGELOG.md` starts with an `## Unreleased` section, use it as input when you write the changelog, then replace it with the approved section; otherwise prepend the approved section right after the `# Changelog` header. Then:
 
 ```sh
 git switch main && git pull
@@ -121,13 +121,13 @@ A failed first-release run is safe to rerun. If the GitHub Release for the curre
 ```sh
 gh release view v{version} --json isDraft,isPrerelease,assets,body \
   --jq '{isDraft, isPrerelease, assets:[.assets[].name], bodyLen:(.body|length)}'
-git fetch origin update-feed && git show origin/update-feed:appcast.xml | grep -F "Runway-{version}.dmg"
-curl -s "https://mstallone.github.io/runway/appcast.xml" | grep -F "Runway-{version}.dmg"
+git fetch origin update-feed && git show origin/update-feed:appcast.xml | grep -F "GodUsage-{version}.dmg"
+curl -s "https://federico-app.github.io/godusage/appcast.xml" | grep -F "GodUsage-{version}.dmg"
 ```
 
 The last check matters. Publishing is two hops: Release (or pricing-supplement) pushes `appcast.xml` to the `update-feed` branch, then `.github/workflows/deploy-update-feed.yml` on `main` deploys that branch to the live site (Pages source is "GitHub Actions"). The Release macOS job dispatches the deploy right after publishing the branch, with `workflow_run` completion as a fallback trigger. GitHub sometimes returns "Deployment failed, try again later" even though `update-feed` is correct. If the branch has the version but the live URL does not after about 10 minutes, check `gh run list --workflow=deploy-update-feed.yml` and re-run `gh workflow run deploy-update-feed.yml --ref main` (it must be `main`; the workflow file is not on `update-feed`). Sparkle clients only see the live URL.
 
-Require `isDraft=false`, `isPrerelease=false`, the `Runway-<version>.dmg` and `Runway-<version>.dmg.sha256` assets, `bodyLen>0`, and the version in the appcast.
+Require `isDraft=false`, `isPrerelease=false`, the `GodUsage-<version>.dmg` and `GodUsage-<version>.dmg.sha256` assets, `bodyLen>0`, and the version in the appcast.
 
 Also confirm the iOS jobs did what the gate decided (`gh run view` shows all jobs). **iOS Gate** must be green. Its log says SHIP or SKIP and why. If SKIP, the **iOS TestFlight** and **TestFlight External** jobs are skipped. That is the expected outcome for a Mac-only release. If SHIP:
 
@@ -141,9 +141,9 @@ If a draft was left behind, migrate its notes and assets onto the published rele
 ```sh
 tag="v{version}"
 if [ "$(gh release view "$tag" --json isDraft --jq '.isDraft')" = "false" ]; then
-  gh api repos/mstallone/runway/releases --paginate \
+  gh api repos/federico-app/godusage/releases --paginate \
     --jq '.[] | select(.draft and .tag_name=="'"$tag"'") | .id' \
-    | xargs -I{} gh api -X DELETE repos/mstallone/runway/releases/{}
+    | xargs -I{} gh api -X DELETE repos/federico-app/godusage/releases/{}
 else
   echo "No published release for $tag yet - publish it first; do NOT delete the draft."
 fi
@@ -171,9 +171,9 @@ Only include category sections that have entries.
 ---
 
 ### Changelog
-**Full Changelog**: [{prev_tag}...v{version}](https://github.com/mstallone/runway/compare/{prev_tag}...v{version})
+**Full Changelog**: [{prev_tag}...v{version}](https://github.com/federico-app/godusage/compare/{prev_tag}...v{version})
 
-- [{short_hash}](https://github.com/mstallone/runway/commit/{full_hash}) {commit message} by @{author}
+- [{short_hash}](https://github.com/federico-app/godusage/commit/{full_hash}) {commit message} by @{author}
 ~~~
 
 `{prev_tag}` is the previous plain stable release tag. Ignore inherited suffixed beta tags.

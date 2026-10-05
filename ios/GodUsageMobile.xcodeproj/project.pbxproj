@@ -1,0 +1,406 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A200000000000000000000C5 /* GodUsageMobileWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A200000000000000000000B1 /* GodUsageMobileWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A200000000000000000000E2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A100000000000000000000F1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A200000000000000000000E1;
+			remoteInfo = GodUsageMobileWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A200000000000000000000C4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A200000000000000000000C5 /* GodUsageMobileWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		A100000000000000000000B1 /* GodUsageMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GodUsageMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A200000000000000000000B1 /* GodUsageMobileWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GodUsageMobileWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		A100000000000000000000A1 /* GodUsageMobile */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = GodUsageMobile;
+			sourceTree = "<group>";
+		};
+		A200000000000000000000A1 /* GodUsageMobileWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = GodUsageMobileWidgets;
+			sourceTree = "<group>";
+		};
+		A300000000000000000000A1 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A100000000000000000000C1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A200000000000000000000C1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A100000000000000000000D1 = {
+			isa = PBXGroup;
+			children = (
+				A100000000000000000000A1 /* GodUsageMobile */,
+				A200000000000000000000A1 /* GodUsageMobileWidgets */,
+				A300000000000000000000A1 /* Shared */,
+				A100000000000000000000D2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A100000000000000000000D2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A100000000000000000000B1 /* GodUsageMobile.app */,
+				A200000000000000000000B1 /* GodUsageMobileWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A100000000000000000000E1 /* GodUsageMobile */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A100000000000000000000F3 /* Build configuration list for PBXNativeTarget "GodUsageMobile" */;
+			buildPhases = (
+				A100000000000000000000C2 /* Sources */,
+				A100000000000000000000C1 /* Frameworks */,
+				A100000000000000000000C3 /* Resources */,
+				A200000000000000000000C4 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A200000000000000000000E3 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A100000000000000000000A1 /* GodUsageMobile */,
+				A300000000000000000000A1 /* Shared */,
+			);
+			name = GodUsageMobile;
+			productName = GodUsageMobile;
+			productReference = A100000000000000000000B1 /* GodUsageMobile.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A200000000000000000000E1 /* GodUsageMobileWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A200000000000000000000F3 /* Build configuration list for PBXNativeTarget "GodUsageMobileWidgets" */;
+			buildPhases = (
+				A200000000000000000000C2 /* Sources */,
+				A200000000000000000000C1 /* Frameworks */,
+				A200000000000000000000C3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A200000000000000000000A1 /* GodUsageMobileWidgets */,
+				A300000000000000000000A1 /* Shared */,
+			);
+			name = GodUsageMobileWidgets;
+			productName = GodUsageMobileWidgets;
+			productReference = A200000000000000000000B1 /* GodUsageMobileWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A100000000000000000000F1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A100000000000000000000E1 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					A200000000000000000000E1 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = A100000000000000000000F2 /* Build configuration list for PBXProject "GodUsageMobile" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A100000000000000000000D1;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A100000000000000000000D2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A100000000000000000000E1 /* GodUsageMobile */,
+				A200000000000000000000E1 /* GodUsageMobileWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A100000000000000000000C3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A200000000000000000000C3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A100000000000000000000C2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A200000000000000000000C2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A200000000000000000000E3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A200000000000000000000E1 /* GodUsageMobileWidgets */;
+			targetProxy = A200000000000000000000E2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A10000000000000000000101 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		A10000000000000000000102 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A10000000000000000000103 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobile.Debug.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = GodUsage;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.montinovo.godusage.mobile;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A10000000000000000000104 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobile.Release.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = GodUsage;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.montinovo.godusage.mobile;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A20000000000000000000103 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobileWidgets.Debug.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S6X72K86R8;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/GodUsageMobileWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "GodUsage Widgets";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.montinovo.godusage.mobile.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A20000000000000000000104 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobileWidgets.Release.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S6X72K86R8;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/GodUsageMobileWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "GodUsage Widgets";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.montinovo.godusage.mobile.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A100000000000000000000F2 /* Build configuration list for PBXProject "GodUsageMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000101 /* Debug */,
+				A10000000000000000000102 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A100000000000000000000F3 /* Build configuration list for PBXNativeTarget "GodUsageMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000103 /* Debug */,
+				A10000000000000000000104 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A200000000000000000000F3 /* Build configuration list for PBXNativeTarget "GodUsageMobileWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A20000000000000000000103 /* Debug */,
+				A20000000000000000000104 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A100000000000000000000F1 /* Project object */;
+}

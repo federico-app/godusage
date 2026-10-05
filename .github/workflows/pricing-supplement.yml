@@ -1,6 +1,6 @@
 # Publishes the pricing supplement to the update feed whenever it changes on main.
 #
-# Installed apps fetch https://mstallone.github.io/runway/pricing_supplement.json on their daily
+# Installed apps fetch https://federico-app.github.io/godusage/pricing_supplement.json on their daily
 # pricing refresh, so merging a change to the supplement updates Cursor-native model pricing (auto,
 # composer-*, github_bugbot), fast multipliers, and model alias rules in the field within ~a day —
 # no tag, no release, no Sparkle involvement.
@@ -15,7 +15,7 @@ on:
   push:
     branches: [main]
     paths:
-      - Sources/Runway/Resources/pricing_supplement.json
+      - Sources/GodUsage/Resources/pricing_supplement.json
       - .github/workflows/pricing-supplement.yml
   workflow_dispatch:
 
@@ -36,7 +36,7 @@ jobs:
         run: |
           python3 - << 'PY'
           import json, re, sys
-          with open("Sources/Runway/Resources/pricing_supplement.json") as f:
+          with open("Sources/GodUsage/Resources/pricing_supplement.json") as f:
               supplement = json.load(f)
           problems = []
           for model, entry in supplement["pricing"].items():
@@ -86,7 +86,7 @@ jobs:
             exit 1
           fi
           cp -R website/. public/
-          cp Sources/Runway/Resources/pricing_supplement.json public/pricing_supplement.json
+          cp Sources/GodUsage/Resources/pricing_supplement.json public/pricing_supplement.json
           # Keep the mock's footer on the latest released version instead of whatever the source
           # carried when it was last edited. No release yet (HTTP 404) is a legitimate bootstrap
           # state — keep the source's literal; any other API failure aborts loudly.
