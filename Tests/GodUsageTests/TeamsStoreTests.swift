@@ -34,7 +34,7 @@ final class TeamsStoreTests: XCTestCase {
         let store = makeStore()
         await store.signIn()
 
-        XCTAssertEqual(api.signInCalls, [FakeTeamsAPI.SignInCall(identityToken: "apple-token", displayName: "Fede")])
+        XCTAssertEqual(api.signInCalls, [FakeTeamsAPI.SignInCall(code: "one-time-code", codeVerifier: "verifier")])
         XCTAssertEqual(store.user?.displayName, "Fede")
         XCTAssertEqual(store.teams.map(\.id), ["t1"])
         XCTAssertEqual(sessions.saved?.token, "session")
@@ -175,14 +175,14 @@ final class FakeAppleSignIn: AppleSignInProviding {
     var error: Error?
     func signIn() async throws -> AppleSignInResult {
         if let error { throw error }
-        return AppleSignInResult(identityToken: "apple-token", displayName: "Fede")
+        return AppleSignInResult(code: "one-time-code", codeVerifier: "verifier")
     }
 }
 
 final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
     struct SignInCall: Equatable {
-        var identityToken: String
-        var displayName: String?
+        var code: String
+        var codeVerifier: String
     }
 
     var signInCalls: [SignInCall] = []
@@ -206,9 +206,9 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
         ]
     )
 
-    func signInWithApple(identityToken: String, displayName: String?) async throws -> TeamsSession {
-        signInCalls.append(SignInCall(identityToken: identityToken, displayName: displayName))
-        return TeamsSession(token: "session", user: TeamsUser(id: "u1", displayName: displayName ?? "User"))
+    func exchangeAppleSignIn(code: String, codeVerifier: String) async throws -> TeamsSession {
+        signInCalls.append(SignInCall(code: code, codeVerifier: codeVerifier))
+        return TeamsSession(token: "session", user: TeamsUser(id: "u1", displayName: "Fede"))
     }
 
     func signOut(token: String) async throws { log.append("signOut") }

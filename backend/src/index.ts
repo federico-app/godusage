@@ -16,6 +16,7 @@ import {
   updateTeam,
 } from "./routes/teams";
 import { deleteDevice, listDevices, putDeviceUsage } from "./routes/usage";
+import { exchangeWebSignIn, finishWebSignIn, startWebSignIn } from "./routes/webSignIn";
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -34,6 +35,9 @@ const route = (method: Method, pathname: string, handler: Handler): Route => ({
 const ROUTES: Route[] = [
   route("GET", "/v1/health", async () => json({ ok: true })),
   route("POST", "/v1/auth/apple", signInWithApple),
+  route("GET", "/v1/auth/apple/start", startWebSignIn),
+  route("POST", "/v1/auth/apple/callback", finishWebSignIn),
+  route("POST", "/v1/auth/apple/exchange", exchangeWebSignIn),
   route("POST", "/v1/auth/logout", signOut),
   route("GET", "/v1/me", getMe),
   route("PATCH", "/v1/me", updateMe),

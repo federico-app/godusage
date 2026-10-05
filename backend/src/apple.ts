@@ -28,6 +28,7 @@ export async function verifyAppleIdentityToken(
   audiences: string[],
   fetchKeys: AppleKeyFetcher,
   now: Date = new Date(),
+  expectedNonce?: string,
 ): Promise<AppleIdentity> {
   const parts = token.split(".");
   if (parts.length !== 3) throw unauthorized("The Apple sign-in token is malformed.");
@@ -65,6 +66,10 @@ export async function verifyAppleIdentityToken(
   }
   if (typeof payload.exp !== "number" || payload.exp * 1000 <= now.getTime()) {
     throw unauthorized("The Apple sign-in token has expired. Sign in again.");
+  }
+  // The web flow binds the token to its sign-in request, so a token from another request is refused.
+  if (expectedNonce !== undefined && payload.nonce !== expectedNonce) {
+    throw unauthorized("The Apple sign-in token belongs to a different sign-in attempt.");
   }
   if (typeof payload.sub !== "string" || payload.sub.length === 0) {
     throw unauthorized("The Apple sign-in token has no user id.");

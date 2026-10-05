@@ -39,7 +39,10 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 
 | Route | What it does |
 | --- | --- |
-| `POST /v1/auth/apple` | `{ identityToken, displayName? }` → `{ token, user, created }`. `displayName` is used only for a new account. |
+| `GET /v1/auth/apple/start` | `?state=…&code_challenge=…` (PKCE S256). Redirects to Apple's web sign-in. See [Sign in with Apple](#sign-in-with-apple). |
+| `POST /v1/auth/apple/callback` | Apple's form post. Redirects to `godusage://auth?state=…&code=…` (or `&error=cancelled\|invalid_token\|apple`). |
+| `POST /v1/auth/apple/exchange` | `{ code, codeVerifier }` → `{ token, user, created }`. The code works once, for five minutes. |
+| `POST /v1/auth/apple` | Native sign-in (for the iOS app): `{ identityToken, displayName? }` → `{ token, user, created }`. `displayName` is used only for a new account. |
 | `POST /v1/auth/logout` | Ends this session. |
 | `GET`, `PATCH`, `DELETE /v1/me` | Read, rename (`{ displayName }`, at most 40 characters), or delete the account. |
 | `GET`, `POST /v1/teams` | List my teams, or create one (`{ name }`, at most 60 characters). |
@@ -77,6 +80,21 @@ Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
 ```
 
 `costUSD` may be `null` when a model has no price. Days more than 40 days old or more than one day in the future are dropped. Anything else malformed is rejected with 400.
+
+## Sign in with Apple
+
+The Mac app signs in through the web, because Developer ID provisioning profiles never grant the native Sign in with Apple entitlement:
+
+1. The app opens `/v1/auth/apple/start` in a system sign-in sheet (`ASWebAuthenticationSession`) with its own random `state` and a PKCE `code_challenge`. The Worker stores a sign-in request (10 minutes) and redirects to Apple with its own state and a nonce.
+2. Apple posts the identity token to `/v1/auth/apple/callback`. The Worker checks that the request exists and has not expired (each is used once), and verifies the token: Apple's signature, issuer, expiry, audience = the Services ID (`APPLE_WEB_CLIENT_ID`), and the request's nonce. It finds or creates the account (with the name Apple shares on the first sign-in) and redirects to `godusage://auth` with a one-time code.
+3. The app checks the returned `state` and posts the code with its PKCE verifier to `/v1/auth/apple/exchange`. Only the app that started the sign-in can redeem the code.
+
+Apple setup, once: create a **Services ID** `com.montinovo.godusage.web` (Identifiers → Services IDs), enable Sign in with Apple on it with `com.montinovo.godusage` as the primary App ID, and add both Workers as domains and return URLs:
+
+- `godusage-api.federico-c80.workers.dev` → `https://godusage-api.federico-c80.workers.dev/v1/auth/apple/callback`
+- `godusage-api-dev.federico-c80.workers.dev` → `https://godusage-api-dev.federico-c80.workers.dev/v1/auth/apple/callback`
+
+Apple gives a person the same user id for every app and Services ID grouped under the same primary App ID, so web and native sign-ins reach the same account.
 
 ## Development
 

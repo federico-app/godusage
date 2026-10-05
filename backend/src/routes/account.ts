@@ -18,24 +18,34 @@ export const signInWithApple: Handler = async ({ request, env, deps }) => {
   const audiences = env.APPLE_AUDIENCES.split(",").map((value) => value.trim()).filter(Boolean);
   const identity = await verifyAppleIdentityToken(body.identityToken, audiences, deps.fetchAppleKeys, deps.now());
 
-  let user = await env.DB.prepare("SELECT id, display_name FROM users WHERE apple_sub = ?")
-    .bind(identity.sub)
-    .first<{ id: string; display_name: string }>();
-  let created = false;
-  if (!user) {
-    const displayName = body.displayName === undefined ? "GodUsage User" : requireName(body.displayName, "displayName", DISPLAY_NAME_MAX);
-    const id = crypto.randomUUID();
-    await env.DB.prepare("INSERT INTO users (id, apple_sub, display_name, created_at) VALUES (?, ?, ?, ?)")
-      .bind(id, identity.sub, displayName, nowISO())
-      .run();
-    user = { id, display_name: displayName };
-    created = true;
-  }
-
+  const displayName = body.displayName === undefined ? undefined : requireName(body.displayName, "displayName", DISPLAY_NAME_MAX);
+  const { user, created } = await findOrCreateUser(env.DB, identity.sub, displayName);
   const token = await createSession(env.DB, user.id);
   console.log(JSON.stringify({ event: "sign_in", userID: user.id, created }));
-  return json({ token, user: { id: user.id, displayName: user.display_name }, created }, created ? 201 : 200);
+  return json({ token, user, created }, created ? 201 : 200);
 };
+
+/**
+ * The account for an Apple user, created on first sign-in. `displayName` is used only for a new
+ * account; later sign-ins keep the chosen name.
+ */
+export async function findOrCreateUser(
+  db: D1Database,
+  appleSub: string,
+  displayName: string | undefined,
+): Promise<{ user: { id: string; displayName: string }; created: boolean }> {
+  const existing = await db.prepare("SELECT id, display_name FROM users WHERE apple_sub = ?")
+    .bind(appleSub)
+    .first<{ id: string; display_name: string }>();
+  if (existing) return { user: { id: existing.id, displayName: existing.display_name }, created: false };
+
+  const id = crypto.randomUUID();
+  const name = displayName ?? "GodUsage User";
+  await db.prepare("INSERT INTO users (id, apple_sub, display_name, created_at) VALUES (?, ?, ?, ?)")
+    .bind(id, appleSub, name, nowISO())
+    .run();
+  return { user: { id, displayName: name }, created: true };
+}
 
 /** POST /v1/auth/logout — ends this session only. */
 export const signOut: Handler = async ({ request, env }) => {

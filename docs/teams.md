@@ -4,7 +4,7 @@ Teams let you compare AI usage with friends. Create a team, share its invite lin
 
 ## Signing in
 
-Open **Settings → Teams** and choose **Sign In with Apple**. The first sign-in creates your account. Your display name starts as the name Apple shares (or "GodUsage User") and you can change it in the same pane. It is what teammates see. GodUsage never receives or stores your email.
+Open **Settings → Teams** and choose **Sign In with Apple**. A system sign-in sheet opens Apple's sign-in page; if Safari is already signed in to your Apple ID, you only confirm. The first sign-in creates your account. Your display name starts as the name Apple shares (or "GodUsage User") and you can change it in the same pane. It is what teammates see. GodUsage never receives or stores your email.
 
 The sign-in stays on this Mac until you sign out, delete the account, or it goes unused for 180 days. Each Mac signs in on its own. Signing in on another Mac with the same Apple ID uses the same account, so your Macs add up to one person on the leaderboard.
 
@@ -49,4 +49,4 @@ The owner can turn on **Public Leaderboard** for a team. That gives a read-only 
 
 ## Requirements
 
-Sign in with Apple needs a build signed with a provisioning profile that includes the Sign in with Apple capability. A build without one shows "This build isn't set up for Sign in with Apple." See [Releasing](releasing.md).
+Sign in goes through Apple's web sign-in, so it works in every build, including Developer ID releases (their provisioning profiles never grant the native Sign in with Apple entitlement). It needs the teams backend's Services ID; see [Teams backend](teams-backend.md#sign-in-with-apple).

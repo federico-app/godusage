@@ -27,6 +27,7 @@ export interface TokenClaims {
   kid?: string;
   alg?: string;
   key?: CryptoKey;
+  nonce?: string;
 }
 
 export async function appleToken(claims: TokenClaims = {}): Promise<string> {
@@ -37,6 +38,7 @@ export async function appleToken(claims: TokenClaims = {}): Promise<string> {
     exp: claims.exp ?? Math.floor(NOW.getTime() / 1000) + 600,
     iat: Math.floor(NOW.getTime() / 1000),
     sub: claims.sub ?? "000123.apple-user",
+    ...(claims.nonce === undefined ? {} : { nonce: claims.nonce }),
   };
   const encode = (value: object) => base64url(new TextEncoder().encode(JSON.stringify(value)));
   const signingInput = `${encode(header)}.${encode(payload)}`;

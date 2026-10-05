@@ -63,7 +63,7 @@ The iOS jobs only run when the release needs them. The iOS Gate job skips Mac-on
 
 ### iCloud Sync
 
-The profiles should also include **Sign in with Apple** (for Teams). The entitlements scripts add Sign in with Apple to the signed app only when the embedded profile grants it, because an entitlement the profile does not authorize stops the app from launching. A development profile that lacks the iCloud container but has Sign in with Apple still gives a dev build that can use Teams (without iCloud Sync). The dev build signs with a certificate the embedded profile lists, so include an installed **Apple Development** certificate when generating development profiles.
+Teams sign in through Apple's web flow, so the profiles do not need Sign in with Apple (Developer ID profiles never grant it). It needs the Services ID described in [Teams backend](teams-backend.md#sign-in-with-apple). The entitlements scripts still add Sign in with Apple when a profile grants it, and never otherwise, because an entitlement the profile does not authorize stops the app from launching. The dev build signs with a certificate the embedded profile lists, so include an installed **Apple Development** certificate when generating development profiles.
 
 Store the original development and Developer ID provisioning profiles in 1Password as secure documents. Install the development profile on each registered Mac. Base64-encode the Developer ID profile and store it only in the `APPLE_DEVELOPER_ID_ICLOUD_PROFILE` Actions secret. See [iCloud Sync](icloud-sync.md#development-and-release-setup) for the container identifiers, build command, and inspection command.
 

@@ -1,23 +1,21 @@
 import AppKit
 import AuthenticationServices
+import CryptoKit
 
-struct AppleSignInResult: Sendable {
-    var identityToken: String
-    /// Apple shares the name only on the very first authorization; later sign-ins get nil.
-    var displayName: String?
+/// What the web sign-in hands back: a one-time code and the PKCE verifier that redeems it.
+struct AppleSignInResult: Sendable, Equatable {
+    var code: String
+    var codeVerifier: String
 }
 
-enum AppleSignInError: Error, LocalizedError {
+enum AppleSignInError: Error, LocalizedError, Equatable {
     case cancelled
-    case notConfigured
     case failed(String)
 
     var errorDescription: String? {
         switch self {
         case .cancelled:
             "Sign in was cancelled."
-        case .notConfigured:
-            "This build isn’t set up for Sign in with Apple. Use a build signed with a provisioning profile that includes Sign in with Apple."
         case .failed(let message):
             "Sign in with Apple failed: \(message)"
         }
@@ -29,78 +27,110 @@ protocol AppleSignInProviding {
     func signIn() async throws -> AppleSignInResult
 }
 
-/// Runs one Sign in with Apple request. The sheet attaches to the key window (Settings or Teams).
+/// Sign in with Apple through the web, which works in every build. Developer ID builds cannot use
+/// the native flow: their provisioning profiles never grant the Sign in with Apple entitlement.
+/// The system sign-in sheet opens the teams backend's `/v1/auth/apple/start`, Apple posts back to the
+/// backend, and the backend returns to `godusage://auth` with a one-time code (see
+/// `docs/teams-backend.md`).
 @MainActor
-final class AppleSignInCoordinator: NSObject, AppleSignInProviding {
-    private var continuation: CheckedContinuation<AppleSignInResult, Error>?
-    private var controller: ASAuthorizationController?
+final class AppleWebSignIn: NSObject, AppleSignInProviding {
+    private let baseURL: URL
+    private var session: ASWebAuthenticationSession?
+
+    init(baseURL: URL = TeamsAPIClient.defaultBaseURL()) {
+        self.baseURL = baseURL
+    }
 
     func signIn() async throws -> AppleSignInResult {
-        guard continuation == nil else { throw AppleSignInError.failed("A sign-in is already in progress.") }
-        let request = ASAuthorizationAppleIDProvider().createRequest()
-        request.requestedScopes = [.fullName]
-        let controller = ASAuthorizationController(authorizationRequests: [request])
-        controller.delegate = self
-        controller.presentationContextProvider = self
-        self.controller = controller
-        return try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
-            controller.performRequests()
+        guard session == nil else { throw AppleSignInError.failed("A sign-in is already in progress.") }
+        let state = Self.randomToken()
+        let verifier = Self.randomToken()
+        guard let url = Self.startURL(baseURL: baseURL, state: state, codeVerifier: verifier) else {
+            throw AppleSignInError.failed("The sign-in address is invalid.")
+        }
+        let callbackURL: URL = try await withCheckedThrowingContinuation { continuation in
+            let session = ASWebAuthenticationSession(url: url, callback: .customScheme(TeamInviteLink.scheme)) { callbackURL, error in
+                if let callbackURL {
+                    continuation.resume(returning: callbackURL)
+                } else if let error = error as? ASWebAuthenticationSessionError, error.code == .canceledLogin {
+                    continuation.resume(throwing: AppleSignInError.cancelled)
+                } else {
+                    continuation.resume(throwing: AppleSignInError.failed(error?.localizedDescription ?? "No response."))
+                }
+            }
+            session.presentationContextProvider = self
+            // Reuse the browser's Apple ID session, so a signed-in Safari needs only a confirmation.
+            session.prefersEphemeralWebBrowserSession = false
+            self.session = session
+            if !session.start() {
+                continuation.resume(throwing: AppleSignInError.failed("The sign-in window couldn't open."))
+            }
+        }
+        session = nil
+        do {
+            return try Self.result(from: callbackURL, expectedState: state, codeVerifier: verifier)
+        } catch AppleSignInError.cancelled {
+            AppLog.info(.teams, "Sign in with Apple cancelled")
+            throw AppleSignInError.cancelled
+        } catch {
+            AppLog.error(.teams, "Sign in with Apple failed: \(error.localizedDescription)")
+            throw error
         }
     }
 
-    private func finish(_ result: Result<AppleSignInResult, Error>) {
-        continuation?.resume(with: result)
-        continuation = nil
-        controller = nil
+    static func startURL(baseURL: URL, state: String, codeVerifier: String) -> URL? {
+        var components = URLComponents(url: baseURL.appendingPathComponent("v1/auth/apple/start"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [
+            URLQueryItem(name: "state", value: state),
+            URLQueryItem(name: "code_challenge", value: codeChallenge(for: codeVerifier)),
+        ]
+        return components?.url
+    }
+
+    /// Reads `godusage://auth?state=…&code=…` (or `&error=…`). A state that isn't this attempt's is
+    /// refused, so a stray or forged callback cannot sign the app in.
+    static func result(from url: URL, expectedState: String, codeVerifier: String) throws -> AppleSignInResult {
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let value = { (name: String) in items.first { $0.name == name }?.value }
+        guard url.scheme == TeamInviteLink.scheme, url.host() == "auth", value("state") == expectedState else {
+            throw AppleSignInError.failed("The sign-in response didn't match this sign-in. Try again.")
+        }
+        switch value("error") {
+        case nil:
+            break
+        case "cancelled":
+            throw AppleSignInError.cancelled
+        case "invalid_token":
+            throw AppleSignInError.failed("Apple's response couldn't be verified. Try again.")
+        default:
+            throw AppleSignInError.failed("Apple couldn't complete the sign-in. Try again.")
+        }
+        guard let code = value("code"), !code.isEmpty else {
+            throw AppleSignInError.failed("The sign-in response had no code. Try again.")
+        }
+        return AppleSignInResult(code: code, codeVerifier: codeVerifier)
+    }
+
+    static func codeChallenge(for verifier: String) -> String {
+        base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))
+    }
+
+    /// 32 random bytes, base64url. `SystemRandomNumberGenerator` is cryptographically secure.
+    private static func randomToken() -> String {
+        var generator = SystemRandomNumberGenerator()
+        return base64URL(Data((0..<32).map { _ in UInt8.random(in: .min ... .max, using: &generator) }))
+    }
+
+    private static func base64URL(_ data: Data) -> String {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
 
-extension AppleSignInCoordinator: ASAuthorizationControllerDelegate {
-    nonisolated func authorizationController(
-        controller: ASAuthorizationController,
-        didCompleteWithAuthorization authorization: ASAuthorization
-    ) {
-        let credential = authorization.credential as? ASAuthorizationAppleIDCredential
-        let token = credential?.identityToken.flatMap { String(data: $0, encoding: .utf8) }
-        let name = credential?.fullName.map { PersonNameComponentsFormatter.localizedString(from: $0, style: .default) }
-        MainActor.assumeIsolated {
-            guard let token else {
-                AppLog.error(.teams, "Sign in with Apple returned no identity token")
-                finish(.failure(AppleSignInError.failed("Apple returned no identity token.")))
-                return
-            }
-            let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines)
-            finish(.success(AppleSignInResult(identityToken: token, displayName: trimmed?.isEmpty == false ? trimmed : nil)))
-        }
-    }
-
-    nonisolated func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
-        let nsError = error as NSError
-        MainActor.assumeIsolated {
-            guard nsError.domain == ASAuthorizationError.errorDomain else {
-                AppLog.error(.teams, "Sign in with Apple failed: \(nsError.domain) \(nsError.code) \(nsError.localizedDescription)")
-                finish(.failure(AppleSignInError.failed(nsError.localizedDescription)))
-                return
-            }
-            switch ASAuthorizationError.Code(rawValue: nsError.code) {
-            case .canceled:
-                AppLog.info(.teams, "Sign in with Apple cancelled")
-                finish(.failure(AppleSignInError.cancelled))
-            case .unknown:
-                // What a build without the Sign in with Apple entitlement (or its profile) gets.
-                AppLog.error(.teams, "Sign in with Apple unavailable (code \(nsError.code)): the build is likely missing the entitlement or provisioning profile")
-                finish(.failure(AppleSignInError.notConfigured))
-            default:
-                AppLog.error(.teams, "Sign in with Apple failed (code \(nsError.code)): \(nsError.localizedDescription)")
-                finish(.failure(AppleSignInError.failed(nsError.localizedDescription)))
-            }
-        }
-    }
-}
-
-extension AppleSignInCoordinator: ASAuthorizationControllerPresentationContextProviding {
-    nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+extension AppleWebSignIn: ASWebAuthenticationPresentationContextProviding {
+    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
         MainActor.assumeIsolated {
             NSApp.keyWindow ?? NSApp.windows.first { $0.isVisible } ?? NSWindow()
         }

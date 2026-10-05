@@ -38,7 +38,7 @@ final class TeamsStore {
     init(
         api: any TeamsAPI = TeamsAPIClient(),
         sessionStore: any TeamsSessionStoring = TeamsSessionFileStore(),
-        signInProvider: any AppleSignInProviding = AppleSignInCoordinator(),
+        signInProvider: any AppleSignInProviding = AppleWebSignIn(),
         historySources: @escaping @MainActor () -> [TeamHistorySource],
         deviceID: @escaping @MainActor () -> String?,
         deviceName: String = Host.current().localizedName ?? ProcessInfo.processInfo.hostName,
@@ -95,7 +95,7 @@ final class TeamsStore {
             return
         }
         await perform {
-            let session = try await api.signInWithApple(identityToken: result.identityToken, displayName: result.displayName)
+            let session = try await api.exchangeAppleSignIn(code: result.code, codeVerifier: result.codeVerifier)
             try saveSession(session)
             AppLog.info(.teams, "signed in to teams")
         }

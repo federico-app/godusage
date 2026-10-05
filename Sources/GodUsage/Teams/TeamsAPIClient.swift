@@ -19,7 +19,8 @@ struct TeamsAPIError: Error, LocalizedError, Equatable {
 }
 
 protocol TeamsAPI: Sendable {
-    func signInWithApple(identityToken: String, displayName: String?) async throws -> TeamsSession
+    /// Trades the web sign-in's one-time code (and its PKCE verifier) for a session.
+    func exchangeAppleSignIn(code: String, codeVerifier: String) async throws -> TeamsSession
     func signOut(token: String) async throws
     func me(token: String) async throws -> TeamsUser
     func rename(token: String, displayName: String) async throws -> TeamsUser
@@ -62,9 +63,9 @@ struct TeamsAPIClient: TeamsAPI {
         self.http = http
     }
 
-    func signInWithApple(identityToken: String, displayName: String?) async throws -> TeamsSession {
-        struct Body: Encodable { var identityToken: String; var displayName: String? }
-        return try await send("POST", "/v1/auth/apple", body: Body(identityToken: identityToken, displayName: displayName))
+    func exchangeAppleSignIn(code: String, codeVerifier: String) async throws -> TeamsSession {
+        struct Body: Encodable { var code: String; var codeVerifier: String }
+        return try await send("POST", "/v1/auth/apple/exchange", body: Body(code: code, codeVerifier: codeVerifier))
     }
 
     func signOut(token: String) async throws {

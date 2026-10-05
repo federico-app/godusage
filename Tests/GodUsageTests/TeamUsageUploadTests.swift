@@ -159,3 +159,41 @@ final class TeamsAPIClientTests: XCTestCase {
         XCTAssertEqual(http.requests.first?.method, "DELETE")
     }
 }
+
+@MainActor
+final class AppleWebSignInTests: XCTestCase {
+    /// base64url(SHA-256(verifier)), the S256 method the backend checks. Expected value from
+    /// `printf %s <verifier> | openssl dgst -sha256 -binary | openssl base64 -A | tr '+/' '-_' | tr -d =`.
+    func testCodeChallengeIsBase64URLSHA256() {
+        XCTAssertEqual(
+            AppleWebSignIn.codeChallenge(for: "dBjftJeZ4CVP-mJ92K9KyJ5Uq8iFMRtOXsWoVhJIjKs"),
+            "9p6i4Y_OvBa4C4GaHwICDKKq-VL3mq54gdaVJT1zpFI"
+        )
+    }
+
+    func testStartURLCarriesTheStateAndChallenge() throws {
+        let url = try XCTUnwrap(AppleWebSignIn.startURL(baseURL: URL(string: "https://api.example")!, state: "s1", codeVerifier: "v1"))
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        XCTAssertEqual(url.path(), "/v1/auth/apple/start")
+        XCTAssertEqual(items.first { $0.name == "state" }?.value, "s1")
+        XCTAssertEqual(items.first { $0.name == "code_challenge" }?.value, AppleWebSignIn.codeChallenge(for: "v1"))
+    }
+
+    func testReadsTheCodeOnlyForThisAttempt() throws {
+        let ok = try AppleWebSignIn.result(from: URL(string: "godusage://auth?state=s1&code=c1")!, expectedState: "s1", codeVerifier: "v1")
+        XCTAssertEqual(ok, AppleSignInResult(code: "c1", codeVerifier: "v1"))
+
+        XCTAssertThrowsError(try AppleWebSignIn.result(from: URL(string: "godusage://auth?state=other&code=c1")!, expectedState: "s1", codeVerifier: "v1"))
+        XCTAssertThrowsError(try AppleWebSignIn.result(from: URL(string: "godusage://join/abc?state=s1&code=c1")!, expectedState: "s1", codeVerifier: "v1"))
+        XCTAssertThrowsError(try AppleWebSignIn.result(from: URL(string: "godusage://auth?state=s1")!, expectedState: "s1", codeVerifier: "v1"))
+    }
+
+    func testMapsServerErrors() {
+        XCTAssertThrowsError(try AppleWebSignIn.result(from: URL(string: "godusage://auth?state=s1&error=cancelled")!, expectedState: "s1", codeVerifier: "v")) {
+            XCTAssertEqual($0 as? AppleSignInError, .cancelled)
+        }
+        XCTAssertThrowsError(try AppleWebSignIn.result(from: URL(string: "godusage://auth?state=s1&error=invalid_token")!, expectedState: "s1", codeVerifier: "v")) {
+            XCTAssertEqual($0 as? AppleSignInError, .failed("Apple's response couldn't be verified. Try again."))
+        }
+    }
+}

@@ -12,8 +12,11 @@
     "head_sampling_rate": 1
   },
   "vars": {
-    // Bundle IDs whose Sign in with Apple identity tokens are accepted.
+    // Bundle IDs whose native Sign in with Apple identity tokens are accepted (the iOS app).
     "APPLE_AUDIENCES": "com.montinovo.godusage",
+    // The Services ID of the web Sign in with Apple flow the Mac app uses. Its return URLs must list
+    // this Worker's /v1/auth/apple/callback.
+    "APPLE_WEB_CLIENT_ID": "com.montinovo.godusage.web",
     // Where the invite page sends people who do not have the app yet.
     "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest"
   },
@@ -31,6 +34,7 @@
       // vars and d1_databases are not inherited by environments, so they are repeated here.
       "vars": {
         "APPLE_AUDIENCES": "com.montinovo.godusage.dev",
+        "APPLE_WEB_CLIENT_ID": "com.montinovo.godusage.web",
         "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest"
       },
       "d1_databases": [
