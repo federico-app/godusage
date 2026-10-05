@@ -49,15 +49,11 @@ final class AppleWebSignIn: NSObject, AppleSignInProviding {
             throw AppleSignInError.failed("The sign-in address is invalid.")
         }
         let callbackURL: URL = try await withCheckedThrowingContinuation { continuation in
-            let session = ASWebAuthenticationSession(url: url, callback: .customScheme(TeamInviteLink.scheme)) { callbackURL, error in
-                if let callbackURL {
-                    continuation.resume(returning: callbackURL)
-                } else if let error = error as? ASWebAuthenticationSessionError, error.code == .canceledLogin {
-                    continuation.resume(throwing: AppleSignInError.cancelled)
-                } else {
-                    continuation.resume(throwing: AppleSignInError.failed(error?.localizedDescription ?? "No response."))
-                }
-            }
+            let session = ASWebAuthenticationSession(
+                url: url,
+                callback: .customScheme(TeamInviteLink.scheme),
+                completionHandler: Self.completionHandler(resuming: continuation)
+            )
             session.presentationContextProvider = self
             // Reuse the browser's Apple ID session, so a signed-in Safari needs only a confirmation.
             session.prefersEphemeralWebBrowserSession = false
@@ -75,6 +71,23 @@ final class AppleWebSignIn: NSObject, AppleSignInProviding {
         } catch {
             AppLog.error(.teams, "Sign in with Apple failed: \(error.localizedDescription)")
             throw error
+        }
+    }
+
+    /// The session calls this on an AuthenticationServices XPC queue, not the main thread. Built
+    /// outside the main-actor `signIn()` so it is not main-actor-isolated: a main-actor closure run
+    /// there trips Swift's isolation check and crashes the app.
+    nonisolated static func completionHandler(
+        resuming continuation: CheckedContinuation<URL, Error>
+    ) -> @Sendable (URL?, Error?) -> Void {
+        { callbackURL, error in
+            if let callbackURL {
+                continuation.resume(returning: callbackURL)
+            } else if let error = error as? ASWebAuthenticationSessionError, error.code == .canceledLogin {
+                continuation.resume(throwing: AppleSignInError.cancelled)
+            } else {
+                continuation.resume(throwing: AppleSignInError.failed(error?.localizedDescription ?? "No response."))
+            }
         }
     }
 

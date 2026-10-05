@@ -1,3 +1,4 @@
+import AuthenticationServices
 import XCTest
 @testable import GodUsage
 
@@ -162,6 +163,30 @@ final class TeamsAPIClientTests: XCTestCase {
 
 @MainActor
 final class AppleWebSignInTests: XCTestCase {
+    /// Regression: the session delivers its result on a background XPC queue. A main-actor
+    /// completion handler crashed there (dispatch_assert_queue_fail) on the first sign-in.
+    func testCompletionHandlerRunsOffTheMainThread() async throws {
+        let url: URL = try await withCheckedThrowingContinuation { continuation in
+            let handler = AppleWebSignIn.completionHandler(resuming: continuation)
+            DispatchQueue.global().async {
+                handler(URL(string: "godusage://auth?state=s&code=c"), nil)
+            }
+        }
+        XCTAssertEqual(url.absoluteString, "godusage://auth?state=s&code=c")
+
+        do {
+            _ = try await withCheckedThrowingContinuation { continuation in
+                let handler = AppleWebSignIn.completionHandler(resuming: continuation)
+                DispatchQueue.global().async {
+                    handler(nil, ASWebAuthenticationSessionError(.canceledLogin))
+                }
+            }
+            XCTFail("expected cancellation")
+        } catch {
+            XCTAssertEqual(error as? AppleSignInError, .cancelled)
+        }
+    }
+
     /// base64url(SHA-256(verifier)), the S256 method the backend checks. Expected value from
     /// `printf %s <verifier> | openssl dgst -sha256 -binary | openssl base64 -A | tr '+/' '-_' | tr -d =`.
     func testCodeChallengeIsBase64URLSHA256() {
