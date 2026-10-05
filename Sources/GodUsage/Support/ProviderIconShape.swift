@@ -112,6 +112,7 @@ enum ProviderMarks {
         case "openrouter": return "point.3.connected.trianglepath.dotted"
         case "sakana": return "fish.fill"
         case "zai": return "z.signal"
+        case TeamsStore.menuBarGroupID: return "person.2.fill"
         default: return "app.dashed"
         }
     }

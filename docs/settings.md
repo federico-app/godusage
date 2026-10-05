@@ -51,10 +51,12 @@ GodUsage can send a macOS notification when a metric runs low, its pace gets wor
 | Cutting It Close | On / Off | Alerts when a metric is projected to finish the period close to its limit. |
 | Will Run Out | On / Off | Alerts when a metric is projected to run out before it resets. |
 | Reset Expiry Reminders | On / Off | Reminds you before unused Codex and Grok reset credits expire: 48 hours, 24 hours, 2 hours, 1 hour, and 15 minutes. |
+| Team Overtakes | On / Off | Tells you when a teammate passes you by spend over the last 7 days. See [Teams](teams.md#notifications). |
+| Weekly Team Recap | On / Off | Every Monday from 9:00, your rank, spend, and top model in each team last week. |
 
 Pace alerts fire on a new crossing or when pace worsens, then stay quiet while that condition is unchanged. A quota already in a bad state when GodUsage launches sets the baseline without alerting. If it recovers and later worsens again, the alert fires again. A new reset period also clears the reset-based history. **Almost Out** uses only the remaining share, so it also works for balances without a reset window. **Cutting It Close** and **Will Run Out** need a reset window. Metrics whose data cannot be read never alert. Turn all four settings off to silence everything. Several alerts at once stack into one grouped banner.
 
-All four default off. The first time you turn one on, GodUsage asks for notification permission. If you decline, or later turn notifications off for GodUsage in System Settings, a warning mark appears on the Notifications header and an "Open System Settings" button shows under the toggles. Permission is checked for each delivery; re-enabling notifications does not require restarting GodUsage. A notification's title is the alert name, its subtitle names the provider and metric, and its body is the plain-language verdict. Tapping an alert opens the popover.
+All of them default off. The first time you turn one on, GodUsage asks for notification permission. If you decline, or later turn notifications off for GodUsage in System Settings, a warning mark appears on the Notifications header and an "Open System Settings" button shows under the toggles. Permission is checked for each delivery; re-enabling notifications does not require restarting GodUsage. A notification's title is the alert name, its subtitle names the provider and metric, and its body is the plain-language verdict. Tapping an alert opens the popover.
 
 ### Reset Expiry Reminders
 
@@ -72,7 +74,7 @@ Signed out, the pane shows **Sign In with Apple**. Signed in, it has four sectio
 
 | Section | What it holds |
 |---|---|
-| Account | Your display name (**Edit Name…**), and when this Mac last shared its usage or why it isn't. |
+| Account | Your display name (**Edit Name…**), when this Mac last shared its usage or why it isn't, and **Show Rank in Menu Bar** (off by default). |
 | Teams | Your teams; select one to manage it (the popover and Teams window follow). **New Team…** and **Join Team…** (paste an invite link). |
 | *Selected team* | Members, **Invite Link** (Copy; the owner can make a **New Link**), **Web Leaderboard** (members-only, Copy or Open), the owner's **Public Leaderboard** switch, **Open Leaderboards**, and **Leave Team…** or the owner's **Delete Team…**. The owner can **Remove** members. |
 | Account Actions | **Sign Out** removes this Mac's usage from your teams, then signs out. **Delete…** deletes the account, the usage every Mac shared, and the teams you own. |

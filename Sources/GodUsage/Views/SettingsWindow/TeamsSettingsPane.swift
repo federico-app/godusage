@@ -155,6 +155,12 @@ private struct TeamsAccountSection: View {
             if let error = teams.uploadError {
                 SettingsInlineNotice(error)
             }
+            Divider()
+            SettingsRow("Show Rank in Menu Bar") {
+                Toggle("", isOn: Binding(get: { teams.showRankInMenuBar }, set: { teams.showRankInMenuBar = $0 }))
+                    .settingsSwitchStyle()
+            }
+            SettingsCaption("Your rank and today's spend in the selected team, next to your pinned metrics.")
         }
         .alert("Display Name", isPresented: $isRenaming) {
             TextField("Name", text: $newName)

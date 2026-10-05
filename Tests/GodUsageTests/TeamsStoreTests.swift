@@ -153,6 +153,62 @@ final class TeamsStoreTests: XCTestCase {
         XCTAssertTrue(api.log.contains("removeMember t1 u1"))
     }
 
+    private func board(_ members: [(String, String, Int, Double)]) -> TeamStats {
+        TeamStats(
+            range: .init(name: .today, from: "2026-10-05", to: "2026-10-05"),
+            sort: .cost,
+            totals: UsageTotals(tokens: 0, costUSD: 0),
+            members: members.map { TeamStats.Member(userID: $0.0, displayName: $0.1, rank: $0.2, tokens: 1, costUSD: $0.3, providers: []) },
+            providers: [],
+            models: [],
+            daily: []
+        )
+    }
+
+    func testMenuBarStandingFollowsTheSettingAndTheSelectedTeam() async {
+        let defaults = UserDefaults(suiteName: "TeamsStoreTests-\(UUID().uuidString)")!
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        api.teamsResult = [TeamSummary(id: "t1", name: "Crew", role: .member, memberCount: 2)]
+        api.statsResult = board([("ada", "Ada", 1, 9), ("u1", "Fede", 2, 5)])
+        let store = TeamsStore(
+            api: api, sessionStore: sessions, signInProvider: signIn, historySources: { [] }, deviceID: { "device-0001" },
+            deviceName: "Mac", uploadDebounce: .zero, defaults: defaults
+        )
+        await store.refresh()
+        await store.loadStats(teamID: "t1", range: .today, sort: .cost)
+        XCTAssertNil(store.menuBarStanding, "off by default")
+
+        store.showRankInMenuBar = true
+        XCTAssertEqual(store.menuBarStanding?.rank, "#2")
+        XCTAssertEqual(store.menuBarStanding?.spend, "$5.00")
+    }
+
+    func testOvertakesNotifyAfterTheBaseline() async {
+        let defaults = UserDefaults(suiteName: "TeamsStoreTests-\(UUID().uuidString)")!
+        var posted: [String] = []
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        api.teamsResult = [TeamSummary(id: "t1", name: "Crew", role: .member, memberCount: 2)]
+        let store = TeamsStore(
+            api: api, sessionStore: sessions, signInProvider: signIn, historySources: { [] }, deviceID: { "device-0001" },
+            deviceName: "Mac", uploadDebounce: .zero,
+            notificationSettings: { (true, false) },
+            postNotification: { _, title, _, _ in posted.append(title); return true },
+            defaults: defaults
+        )
+        await store.refresh()
+
+        api.statsResult = board([("u1", "Fede", 1, 9), ("ada", "Ada", 2, 5)])
+        await store.checkTeamEvents()
+        XCTAssertTrue(posted.isEmpty, "the first check only records the baseline")
+
+        api.statsResult = board([("ada", "Ada", 1, 12), ("u1", "Fede", 2, 9)])
+        await store.checkTeamEvents()
+        XCTAssertEqual(posted, ["Ada Passed You"])
+
+        await store.checkTeamEvents()
+        XCTAssertEqual(posted.count, 1, "an unchanged standing does not alert again")
+    }
+
     private func waitUntil(_ condition: @escaping @MainActor () -> Bool) async throws {
         for _ in 0..<100 where !condition() {
             try await Task.sleep(for: .milliseconds(10))
@@ -238,8 +294,10 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
 
     func acceptInvite(token: String, code: String) async throws -> TeamDetail { crew }
 
+    var statsResult: TeamStats?
     func stats(token: String, teamID: String, range: StatsRange, sort: StatsSort, today: String) async throws -> TeamStatsResponse {
-        throw TeamsAPIError(kind: .server, message: "unused")
+        guard let statsResult else { throw TeamsAPIError(kind: .server, message: "unused") }
+        return TeamStatsResponse(team: .init(id: teamID, name: "Crew"), stats: statsResult)
     }
 
     func uploadUsage(token: String, deviceID: String, upload: TeamUsageUpload) async throws {

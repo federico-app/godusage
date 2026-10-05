@@ -62,6 +62,11 @@ struct NotificationsSettingsPane: View {
                         .padding(12)
                     }
                 }
+                Divider()
+                teamToggle("Team Overtakes", isOn: $notifications.teamOvertakes)
+                SettingsCaption("Tells you when a teammate passes you by spend over the last 7 days.")
+                teamToggle("Weekly Team Recap", isOn: $notifications.teamWeeklyRecap)
+                SettingsCaption("Every Monday: your rank, spend, and top model in each team last week.")
                 if needsAttention {
                     actionRow
                 }
@@ -77,6 +82,18 @@ struct NotificationsSettingsPane: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             Task { await refreshAuth() }
         }
+    }
+
+    private func teamToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+        HStack {
+            Text(title)
+            Spacer(minLength: 8)
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .settingsSwitchStyle()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, density.controlRowPadding)
     }
 
     /// One trigger row: the setting label, an (i) info icon with a one-sentence tooltip, and the toggle.

@@ -21,6 +21,10 @@ Settings → Appearance → Icon Style:
 - **Text**: provider icon plus values. Two starred metrics from the same provider stack as a labeled pair. Hover an account segment to see that card's current name.
 - **Bars**: a compact glyph with the first four starred metrics that have a limit. Metrics without limits only appear in Text style.
 
+## Team rank
+
+With **Show Rank in Menu Bar** on (Settings → Teams), the strip ends with a team segment: your rank in the selected team over today's spend, for example **#2** over **$12.40**. It updates with each team upload, at most every 15 minutes, and whenever the popover's Team screen loads Today. See [Teams](teams.md).
+
 ## Login unavailable
 
 A pinned account with an expired, invalid, missing, or unreadable login stays in the menu bar as a faded provider icon with no values, even when no usage has loaded. This also applies when a login failure leaves cached usage or local spend history available. Both Text and Bars styles restore the normal icon and values after a successful refresh. Open the dashboard for the login notice and recovery steps. Unpinned and disabled accounts stay hidden. Temporary network failures do not count as login failures and cannot clear an already-known login failure.

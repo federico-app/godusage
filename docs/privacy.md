@@ -35,7 +35,7 @@ iCloud Sync is on by default. You can turn it off in Settings. With [iCloud Sync
 
 ## Teams
 
-Teams are off until you sign in with Apple. While you are signed in and in a team, each Mac uploads its own daily tokens and spend per provider and per model for the last 30 days to the GodUsage teams server (a Cloudflare Worker), and your teammates can see them with your display name. Account ids, credentials, logs, prompts, and project names are never uploaded, and the server never receives your email. The session token is kept in a private file in GodUsage's Application Support folder, readable only by your macOS account. Sign out or delete the account to remove what you shared. See [Teams](teams.md).
+Teams are off until you sign in with Apple. While you are signed in and in a team, each Mac uploads its own daily tokens and spend per provider and per model for the last 30 days to the GodUsage teams server (a Cloudflare Worker), and your teammates can see them with your display name. Account ids, credentials, logs, prompts, and project names are never uploaded, and the server never receives your email. The session token is kept in a private file in GodUsage's Application Support folder, readable only by your macOS account. The server keeps the history each Mac shares until that Mac signs out (which removes all of its days) or the account is deleted. See [Teams](teams.md).
 
 ## Local diagnostics
 

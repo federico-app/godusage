@@ -114,7 +114,11 @@ final class AppContainer {
         let iCloudSync = ICloudUsageSyncStore(dataStore: dataStore)
         let teams = TeamsStore(
             historySources: { [weak dataStore] in dataStore?.localTeamHistorySources() ?? [] },
-            deviceID: { [weak iCloudSync] in iCloudSync?.durableDeviceID }
+            deviceID: { [weak iCloudSync] in iCloudSync?.durableDeviceID },
+            notificationSettings: { (notificationSettings.teamOvertakes, notificationSettings.teamWeeklyRecap) },
+            postNotification: { id, title, subtitle, body in
+                await AppNotifications.shared.post(idPrefix: id, title: title, subtitle: subtitle, body: body)
+            }
         )
         dataStore.addLocalStateObserver { [weak teams] in teams?.scheduleUpload() }
         // Re-enabling a provider should fetch it promptly, so clear any leftover failure backoff before

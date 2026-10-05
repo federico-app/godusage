@@ -295,6 +295,12 @@ private struct MenuBarTextSegment: View {
             ProviderIconShape(mark: mark, inset: 0.04)
                 .fill(Color.black)
                 .frame(width: Self.glyphSide, height: Self.glyphSide)
+        } else if icon.providerID == TeamsStore.menuBarGroupID {
+            Image(systemName: ProviderMarks.symbolFallback(for: icon.providerID))
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(Color.black)
+                .frame(width: Self.glyphSide - 2, height: Self.glyphSide - 2)
         } else {
             Circle().fill(Color.black).frame(width: Self.glyphSide - 1, height: Self.glyphSide - 1)
         }

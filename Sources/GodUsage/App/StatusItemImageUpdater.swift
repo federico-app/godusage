@@ -59,13 +59,26 @@ final class StatusItemImageUpdater {
                 ?? MenuBarStripRenderer.fallbackIcon
             return MenuBarStripPresentation(image: image, toolTipRegions: [])
         }
-        let content = MenuBarContentBuilder.build(
+        var content = MenuBarContentBuilder.build(
             groups: container.layout.pinnedGroups,
             data: { container.dataStore.data(for: $0) },
             title: { container.displayName(for: $0) },
             quotaDescriptors: { container.registry.descriptors(for: $0).filter(container.dataStore.isMetricApplicable) },
             loginRequired: container.dataStore.loginRequired(for:)
         )
+        // The team standing rides as one more group after the pinned providers ("#2" over today's spend).
+        if let standing = container.teams.menuBarStanding {
+            let team = MenuBarContent.Group(
+                providerID: TeamsStore.menuBarGroupID,
+                displayName: "Team",
+                icon: .providerMark(TeamsStore.menuBarGroupID),
+                metrics: [
+                    .init(id: "team.rank", label: "Rank", value: standing.rank, fraction: 0, isBounded: false, hasData: true),
+                    .init(id: "team.today", label: "T", value: standing.spend, fraction: 0, isBounded: false, hasData: true),
+                ]
+            )
+            content = MenuBarContent(groups: content.groups + [team], bars: content.bars)
+        }
         if let presentation = MenuBarStripRenderer.presentation(
             for: content,
             style: container.layout.menuBarStyle

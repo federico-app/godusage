@@ -53,6 +53,34 @@ final class TeamsStore {
     @ObservationIgnored private let uploadDebounce: Duration
     @ObservationIgnored private let minimumUploadInterval: TimeInterval
     @ObservationIgnored private var uploadTask: Task<Void, Never>?
+    @ObservationIgnored private let notificationSettings: @MainActor () -> (overtakes: Bool, weeklyRecap: Bool)
+    @ObservationIgnored private let postNotification: @MainActor (_ id: String, _ title: String, _ subtitle: String, _ body: String) async -> Bool
+    @ObservationIgnored private let defaults: UserDefaults
+    private static let overtakeSnapshotKey = "godusage.teams.overtakeSnapshot.v1"
+    private static let menuBarRankKey = "godusage.teams.menuBarRank.v1"
+    /// The menu-bar strip group id for the team standing (not a provider).
+    static let menuBarGroupID = "team"
+
+    /// Shows your rank and today's spend in the selected team on the menu bar. Off by default.
+    var showRankInMenuBar: Bool {
+        didSet {
+            defaults.set(showRankInMenuBar, forKey: Self.menuBarRankKey)
+            if showRankInMenuBar, let teamID = selectedTeamID {
+                Task { await loadStats(teamID: teamID, range: .today, sort: .cost) }
+            }
+        }
+    }
+
+    /// Your rank and today's spend in the selected team, from the latest loaded stats; nil when off or
+    /// not loaded yet.
+    var menuBarStanding: (rank: String, spend: String)? {
+        guard showRankInMenuBar, let teamID = selectedTeamID, let me = user?.id,
+              let stats = cachedStats[StatsKey(teamID: teamID, range: .today, sort: .cost)],
+              let mine = stats.members.first(where: { $0.userID == me })
+        else { return nil }
+        return ("#\(mine.rank)", Formatters.currency(mine.costUSD))
+    }
+    private static let weeklyRecapWeekKey = "godusage.teams.weeklyRecapWeek.v1"
 
     init(
         api: any TeamsAPI = TeamsAPIClient(),
@@ -63,8 +91,15 @@ final class TeamsStore {
         deviceName: String = Host.current().localizedName ?? ProcessInfo.processInfo.hostName,
         now: @escaping @Sendable () -> Date = { Date() },
         uploadDebounce: Duration = .seconds(5),
-        minimumUploadInterval: TimeInterval = 15 * 60
+        minimumUploadInterval: TimeInterval = 15 * 60,
+        notificationSettings: @escaping @MainActor () -> (overtakes: Bool, weeklyRecap: Bool) = { (false, false) },
+        postNotification: @escaping @MainActor (String, String, String, String) async -> Bool = { _, _, _, _ in false },
+        defaults: UserDefaults = .standard
     ) {
+        self.notificationSettings = notificationSettings
+        self.postNotification = postNotification
+        self.defaults = defaults
+        self.showRankInMenuBar = defaults.bool(forKey: Self.menuBarRankKey)
         self.api = api
         self.sessionStore = sessionStore
         self.signInProvider = signInProvider
@@ -222,9 +257,10 @@ final class TeamsStore {
         }
     }
 
-    func stats(for teamID: String, range: StatsRange, sort: StatsSort) async throws -> TeamStats {
+    /// `endingOn` picks the period's last day (a past week, month, or year); nil means today.
+    func stats(for teamID: String, range: StatsRange, sort: StatsSort, endingOn: String? = nil) async throws -> TeamStats {
         guard let token = session?.token else { throw TeamsAPIError(kind: .unauthorized, message: "Sign in to see team stats.") }
-        let today = DailyUsageAccumulator.dayKey(from: now(), calendar: .current)
+        let today = endingOn ?? DailyUsageAccumulator.dayKey(from: now(), calendar: .current)
         do {
             return try await api.stats(token: token, teamID: teamID, range: range, sort: sort, today: today).stats
         } catch let error as TeamsAPIError where error.kind == .unauthorized {
@@ -303,12 +339,65 @@ final class TeamsStore {
             lastUploadAt = now()
             uploadError = nil
             AppLog.info(.teams, "teams usage uploaded (\(upload.providers.count) providers)")
+            await checkTeamEvents()
         } catch let error as TeamsAPIError where error.kind == .unauthorized {
             sessionExpired()
         } catch {
             uploadError = error.localizedDescription
             AppLog.error(.teams, "teams usage upload failed: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: - Team notifications
+
+    /// Overtake alerts and the weekly recap. Runs after each upload, so at most every 15 minutes,
+    /// and only while one of the two is turned on.
+    func checkTeamEvents() async {
+        let settings = notificationSettings()
+        guard let me = user?.id, !teams.isEmpty else { return }
+        if showRankInMenuBar, let teamID = selectedTeamID {
+            await loadStats(teamID: teamID, range: .today, sort: .cost)
+        }
+        if settings.overtakes {
+            await checkOvertakes(me: me)
+        } else {
+            // A stale baseline would alert about old moves when the setting is turned back on.
+            defaults.removeObject(forKey: Self.overtakeSnapshotKey)
+        }
+        if settings.weeklyRecap {
+            await sendWeeklyRecapIfDue(me: me)
+        }
+    }
+
+    private func checkOvertakes(me: String) async {
+        var snapshots = (defaults.dictionary(forKey: Self.overtakeSnapshotKey) as? [String: [String]]) ?? [:]
+        for team in teams {
+            let range = TeamEvents.overtakeRange, sort = TeamEvents.overtakeSort
+            guard let stats = try? await stats(for: team.id, range: range, sort: sort) else { continue }
+            cachedStats[StatsKey(teamID: team.id, range: range, sort: sort)] = stats
+            let overtakers = TeamEvents.newOvertakers(previousAbove: snapshots[team.id].map(Set.init), stats: stats, me: me)
+            if !overtakers.isEmpty {
+                let message = TeamEvents.overtakeMessage(overtakers, team: team.name)
+                _ = await postNotification("team-overtake", message.title, team.name, message.body)
+            }
+            snapshots[team.id] = Array(TeamEvents.membersAbove(me, in: stats))
+        }
+        defaults.set(snapshots, forKey: Self.overtakeSnapshotKey)
+    }
+
+    private func sendWeeklyRecapIfDue(me: String) async {
+        guard let due = TeamEvents.weeklyRecapDue(now: now(), lastSentWeek: defaults.string(forKey: Self.weeklyRecapWeekKey)) else { return }
+        var delivered = false
+        for team in teams {
+            guard let stats = try? await stats(for: team.id, range: .week, sort: .cost, endingOn: due.endDay),
+                  let message = TeamEvents.weeklyRecapMessage(stats: stats, team: team.name, me: me)
+            else { continue }
+            if await postNotification("team-weekly-recap", message.title, "Week ending \(TeamsFormat.dayLabel(due.endDay))", message.body) {
+                delivered = true
+            }
+        }
+        // Retried on the next check when nothing could be delivered (no permission yet, offline).
+        if delivered { defaults.set(due.week, forKey: Self.weeklyRecapWeekKey) }
     }
 
     // MARK: - Helpers

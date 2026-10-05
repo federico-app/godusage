@@ -85,6 +85,8 @@ final class TeamUsageUploadTests: XCTestCase {
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(upload)) as? [String: Any])
         XCTAssertEqual(object["schema"] as? String, "godusage.team-usage.v1")
         XCTAssertEqual(object["deviceName"] as? String, "Mac")
+        // The window's first day, so the server keeps this Mac's older history.
+        XCTAssertEqual(object["windowStart"] as? String, "2026-10-04")
         XCTAssertEqual((object["providers"] as? [Any])?.count, 0)
     }
 }

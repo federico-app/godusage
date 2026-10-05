@@ -7,6 +7,8 @@ struct TeamsLeaderboardView: View {
     @AppStorage("godusage.teams.window.range") private var range: StatsRange = .week
     @AppStorage("godusage.teams.window.sort") private var sort: StatsSort = .cost
     @AppStorage("godusage.teams.window.mode") private var mode: Mode = .leaderboard
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var wrappedNotice: String?
 
     enum Mode: String, CaseIterable {
         case leaderboard
@@ -103,6 +105,17 @@ struct TeamsLeaderboardView: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             .fixedSize()
+            if let wrappedNotice {
+                Text(wrappedNotice).font(.caption).foregroundStyle(.secondary).transition(.opacity)
+            }
+            Menu {
+                ForEach(TeamWrapped.Period.allCases, id: \.self) { period in
+                    Button(period.menuTitle) { shareWrapped(period) }
+                }
+            } label: {
+                Label("Share Wrapped", systemImage: "square.and.arrow.up")
+            }
+            .fixedSize()
             Button {
                 Task {
                     await container.teams.uploadNow()
@@ -164,6 +177,19 @@ struct TeamsLeaderboardView: View {
         let total = sort == .cost ? "Total spend" : "Total tokens"
         guard stats.range.from != stats.range.to else { return "\(total) · \(TeamsFormat.dayLabel(stats.range.to))" }
         return "\(total) · \(TeamsFormat.dayLabel(stats.range.from)) – \(TeamsFormat.dayLabel(stats.range.to))"
+    }
+
+    private func shareWrapped(_ period: TeamWrapped.Period) {
+        guard let teamID = currentTeamID, let team = container.teams.teams.first(where: { $0.id == teamID }) else { return }
+        Task {
+            let copied = await TeamWrapped.share(
+                period: period, teamID: teamID, teamName: team.name, teams: container.teams,
+                appearance: colorScheme, providerName: providerName
+            )
+            withAnimation { wrappedNotice = copied ? "Wrapped copied to clipboard" : "Couldn't make the image" }
+            try? await Task.sleep(for: .seconds(2.5))
+            withAnimation { wrappedNotice = nil }
+        }
     }
 
     private func providerName(_ id: String) -> String {
