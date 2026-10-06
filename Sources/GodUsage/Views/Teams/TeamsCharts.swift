@@ -93,7 +93,7 @@ struct TeamsCharts: View {
                 return value > 0 ? MemberSegment(member: member.displayName, provider: providerName(provider.provider), value: value) : nil
             }
         }
-        let shared = stats.sharedAccounts(for: sort).map { account in
+        let shared = stats.sharedAccounts(for: TeamMetric(sort)).map { account in
             MemberSegment(member: sharedRowName(account), provider: providerName(account.provider), value: account.totals.value(for: sort))
         }
         return members + shared
@@ -101,7 +101,7 @@ struct TeamsCharts: View {
 
     /// Rows of the member chart: every member, then each shared account (counted in no member's bar).
     private var memberRows: [(name: String, totals: UsageTotals)] {
-        stats.members.map { ($0.displayName, $0.totals) } + stats.sharedAccounts(for: sort).map { (sharedRowName($0), $0.totals) }
+        stats.members.map { ($0.displayName, $0.totals) } + stats.sharedAccounts(for: TeamMetric(sort)).map { (sharedRowName($0), $0.totals) }
     }
 
     private func sharedRowName(_ account: TeamStats.SharedAccount) -> String {
@@ -138,7 +138,7 @@ struct TeamsCharts: View {
     }
 
     private var maxMemberValue: Double {
-        max(stats.rankingTop(for: sort), sort == .cost ? 1 : 1000)
+        max(stats.rankingTop(for: TeamMetric(sort)), sort == .cost ? 1 : 1000)
     }
 
     // MARK: - Efficiency

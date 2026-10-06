@@ -5,7 +5,7 @@ import SwiftUI
 struct TeamSharedAccountRow: View {
     let account: TeamStats.SharedAccount
     let stats: TeamStats
-    let sort: StatsSort
+    let metric: TeamMetric
     let top: Double
     let providerName: (String) -> String
     var barHeight: CGFloat = 5
@@ -24,14 +24,17 @@ struct TeamSharedAccountRow: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                     Spacer(minLength: 6)
-                    Text(TeamsFormat.value(account.totals, sort: sort))
+                    Text(metric.format(account.totals))
                         .font(.callout.monospacedDigit().weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
                 ProviderSplitBar(
-                    providers: [TeamStats.ProviderTotals(provider: account.provider, tokens: account.tokens, costUSD: account.costUSD)],
+                    providers: metric.barSegments(
+                        [TeamStats.ProviderTotals(provider: account.provider, tokens: account.tokens, costUSD: account.costUSD)],
+                        total: account.totals
+                    ),
                     top: top,
-                    sort: sort,
+                    sort: metric.sort,
                     height: barHeight
                 )
                 .opacity(0.6)
@@ -44,12 +47,12 @@ struct TeamSharedAccountRow: View {
 
 extension TeamStats {
     /// Shared accounts with usage in this metric, largest first.
-    func sharedAccounts(for sort: StatsSort) -> [SharedAccount] {
-        (shared ?? []).filter { $0.totals.value(for: sort) > 0 }
+    func sharedAccounts(for metric: TeamMetric) -> [SharedAccount] {
+        (shared ?? []).filter { metric.value($0.totals) > 0 }.sorted { metric.value($0.totals) > metric.value($1.totals) }
     }
 
     /// The longest bar on the ranking, so member and shared bars share one scale.
-    func rankingTop(for sort: StatsSort) -> Double {
-        (members.map { $0.totals.value(for: sort) } + sharedAccounts(for: sort).map { $0.totals.value(for: sort) }).max() ?? 0
+    func rankingTop(for metric: TeamMetric) -> Double {
+        (members.map { metric.value($0.totals) } + sharedAccounts(for: metric).map { metric.value($0.totals) }).max() ?? 0
     }
 }

@@ -100,3 +100,35 @@ final class TeamsFormatTests: XCTestCase {
         XCTAssertEqual(TeamsFormat.axisCurrency(500), Formatters.currency(500, fractionDigits: 0))
     }
 }
+
+final class TeamMetricTests: XCTestCase {
+    private func member(_ name: String, tokens: Int, cost: Double, rank: Int) -> TeamStats.Member {
+        TeamStats.Member(
+            userID: name, displayName: name, rank: rank, tokens: tokens, costUSD: cost,
+            providers: [
+                .init(provider: "claude", tokens: tokens / 2, costUSD: cost * 0.75),
+                .init(provider: "cursor", tokens: tokens / 2, costUSD: cost * 0.25),
+            ],
+            previous: nil
+        )
+    }
+
+    func testCostPerMtokRanksByRateOnTheMac() {
+        // Bea spends less but pays more per token, so she leads on Cost/MTok.
+        let ada = member("Ada", tokens: 10_000_000, cost: 20, rank: 1)
+        let bea = member("Bea", tokens: 1_000_000, cost: 5, rank: 2)
+        let ranked = TeamMetric.costPerMtok.ranked([ada, bea])
+        XCTAssertEqual(ranked.map(\.displayName), ["Bea", "Ada"])
+        XCTAssertEqual(ranked.map(\.rank), [1, 2])
+        XCTAssertEqual(TeamMetric.costPerMtok.value(bea.totals), 5, accuracy: 0.0001)
+        XCTAssertEqual(TeamMetric.spend.ranked([ada, bea]).map(\.displayName), ["Ada", "Bea"])
+    }
+
+    func testCostPerMtokBarSplitsTheRateBySpendShare() {
+        let ada = member("Ada", tokens: 10_000_000, cost: 20, rank: 1)
+        let segments = TeamMetric.costPerMtok.barSegments(ada.providers, total: ada.totals)
+        XCTAssertEqual(segments.map(\.costUSD), [1.5, 0.5])
+        XCTAssertEqual(TeamMetric(StatsSort.tokens).sort, .tokens)
+        XCTAssertEqual(TeamMetric(TotalSpendMetric.costPerMtok).sort, .cost)
+    }
+}
