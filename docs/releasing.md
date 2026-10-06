@@ -5,6 +5,8 @@ Releases are automated and come in two channels:
 - **Production.** When you push a stable tag such as `v0.7.1` on `main`, the pipeline tests, builds, signs, notarizes, and publishes a new version with its SHA-256 checksum. Prerelease suffixes are rejected.
 - **Dev.** Every push to `develop` publishes **GodUsage DEV** as a GitHub prerelease. See [Dev channel](#dev-channel). The macOS pipeline is [.github/workflows/release.yml](../.github/workflows/release.yml), which calls the [iOS TestFlight pipeline](../.github/workflows/release-ios.yml) in parallel. The step-by-step is in the `release-swift` skill.
 
+**The DMG.** `script/build_dmg.sh` (called by `script/release.sh`) makes a drag-to-install window: the app on the left, an Applications link on the right, and an arrow between them on a background from `assets/dmg/`. Finder lays the window out through AppleScript, so the build needs a GUI session (GitHub's macOS runners have one); if Finder does not save the layout, the build fails. To change the background, edit and run `swift script/render_dmg_background.swift`, and keep the icon positions in `build_dmg.sh` in step with it.
+
 Release tags are owner-managed. See [CONTRIBUTING.md](../CONTRIBUTING.md). Everything below is one-time setup for the maintainer's fork, not something contributors need.
 
 ## Release setup (one-time)

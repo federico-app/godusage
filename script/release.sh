@@ -261,12 +261,11 @@ if [ "$NOTARIZE" = "1" ]; then
 fi
 
 echo "==> building $DMG_PATH"
-STAGE="$(mktemp -d)"
-cp -R "$APP_BUNDLE" "$STAGE/$APP_DISPLAY_NAME.app"
-ln -s /Applications "$STAGE/Applications"
-rm -f "$DMG_PATH"
-hdiutil create -volname "$APP_DISPLAY_NAME" -srcfolder "$STAGE" -ov -format UDZO "$DMG_PATH" >/dev/null
-rm -rf "$STAGE"
+# Drag-to-install window: background, app on the left, Applications on the right.
+STAGED_APP="$(mktemp -d)/$APP_DISPLAY_NAME.app"
+cp -R "$APP_BUNDLE" "$STAGED_APP"
+"$ROOT_DIR/script/build_dmg.sh" "$STAGED_APP" "$APP_DISPLAY_NAME" "$DMG_PATH"
+rm -rf "$(dirname "$STAGED_APP")"
 codesign --force --timestamp --sign "$CODESIGN_IDENTITY" "$DMG_PATH"
 
 # Notarize + staple the DMG too, so the first manual download isn't Gatekeeper-blocked.
