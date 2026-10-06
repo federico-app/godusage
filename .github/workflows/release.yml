@@ -178,11 +178,12 @@ jobs:
               rm -f feed/appcast.xml
 
               # Two tags are enough to distinguish an empty fork / first-release retry from real
-              # history. A rerun after action-gh-release published the current tag but before the
+              # history. DEV prereleases (dev-<build>) have their own appcast-dev.xml, so they are not
+              # history for this feed: exclude them before the limit, or they crowd out real releases. A rerun after action-gh-release published the current tag but before the
               # appcast reached update-feed must be recoverable; any other release history still fails
               # closed so a missing feed can never silently discard prior Sparkle entries.
               release_state="$(
-                gh release list --limit 2 --json tagName --jq '.[].tagName' \
+                gh release list --exclude-pre-releases --limit 2 --json tagName --jq '.[].tagName' \
                   | "$GITHUB_WORKSPACE/script/classify_appcast_bootstrap.sh" "$RELEASE_TAG"
               )"
               case "$release_state" in
