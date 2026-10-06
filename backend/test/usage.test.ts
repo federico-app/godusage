@@ -1,5 +1,8 @@
+import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import { api, signIn, teamWith, upload } from "./support";
+import { storeDeviceUsage } from "../src/routes/usage";
+import { addDays, parseUsageUpload } from "../src/usagePayload";
+import { api, NOW, signIn, teamWith, upload } from "./support";
 
 const DEVICE_A = "device-aaaa-0001";
 const DEVICE_B = "device-bbbb-0002";
@@ -287,5 +290,39 @@ describe("usage history", () => {
     const { token } = await signIn();
     expect((await put(token, DEVICE_A, { ...upload([]), windowStart: "2025-01-01" })).status).toBe(400);
     expect((await put(token, DEVICE_A, { ...upload([]), windowStart: "nope" })).status).toBe(400);
+  });
+});
+
+describe("upload writes", () => {
+  // A month of Claude days with two models each, as a Mac sends every 15 minutes.
+  function month(todayTokens: number, todayModels = ["claude-opus-4-1", "claude-sonnet-4-5"]) {
+    const days = Array.from({ length: 30 }, (_, index) => {
+      const date = addDays("2026-10-05", -index);
+      const tokens = index === 0 ? todayTokens : 100;
+      const models = index === 0 ? todayModels : ["claude-opus-4-1", "claude-sonnet-4-5"];
+      return { date, tokens, costUSD: tokens / 100, models: models.map((model) => ({ model, tokens: tokens / 2, costUSD: tokens / 200 })) };
+    });
+    return parseUsageUpload({ ...upload([{ provider: "claude", days }]), windowStart: "2026-09-06" }, NOW);
+  }
+
+  it("writes only the device row when the upload repeats the last one", async () => {
+    const { userID } = await signIn();
+    const first = await storeDeviceUsage(env.DB, userID, DEVICE_A, month(200), NOW);
+    expect(first).toBeGreaterThan(90);
+    expect(await storeDeviceUsage(env.DB, userID, DEVICE_A, month(200), NOW)).toBe(1);
+  });
+
+  it("rewrites only the rows that changed and deletes the ones that are gone", async () => {
+    const { owner, team } = await teamWith([]);
+    await storeDeviceUsage(env.DB, owner.userID, DEVICE_A, month(200), NOW);
+    // Today grew and dropped Sonnet: one day row and one model row change, one model row goes.
+    const written = await storeDeviceUsage(env.DB, owner.userID, DEVICE_A, month(400, ["claude-opus-4-1"]), NOW);
+    expect(written).toBeLessThan(15);
+
+    const today = (await api("GET", `/v1/teams/${team.id}/stats?range=today`, { token: owner.token })).body.stats;
+    expect(today.totals).toEqual({ tokens: 400, costUSD: 4 });
+    expect(today.models.map((model: { model: string }) => model.model)).toEqual(["claude-opus-4-1"]);
+    const recent = (await api("GET", `/v1/teams/${team.id}/stats?range=30d`, { token: owner.token })).body.stats;
+    expect(recent.totals).toEqual({ tokens: 400 + 29 * 100, costUSD: 4 + 29 });
   });
 });

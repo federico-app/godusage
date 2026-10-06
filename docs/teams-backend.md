@@ -13,7 +13,7 @@ Deleting an account deletes its sessions, Macs, usage, memberships, and the team
 
 ## How usage is combined
 
-Each Mac uploads its own last 30 days. An upload replaces that Mac's days from its `windowStart` on (all of them, so a provider turned off disappears from those days) and keeps older days, so history builds up beyond the app's window. Signing out of a Mac removes all of that Mac's days. Every provider entry has a scope:
+Each Mac uploads its own last 30 days. An upload replaces that Mac's days from its `windowStart` on (all of them, so a provider turned off disappears from those days) and keeps older days, so history builds up beyond the app's window. The server writes only what changed: rows the upload no longer has are deleted, changed rows are updated, and identical rows are left alone. Most uploads repeat the last one except for today, and D1 bills every row written. Signing out of a Mac removes all of that Mac's days. Every provider entry has a scope:
 
 - **device:** usage read from this Mac's own logs (Claude, Codex, Grok, and so on). A user's Macs are summed.
 - **account:** usage that is already account-wide (Cursor). Only the Mac that uploaded most recently counts, so it is never double counted.
