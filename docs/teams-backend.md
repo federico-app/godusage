@@ -22,7 +22,7 @@ An account entry may carry `account`, an anonymous fingerprint of the provider a
 
 This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
 
-Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
+Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member carries `lastSyncAt`, the newest upload time across their Macs (ISO 8601, or null if none has uploaded); the apps and web boards show "not synced for N days" once it is more than 24 hours old. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
 
 ## Reactions, champions, and challenges
 
