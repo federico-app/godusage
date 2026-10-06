@@ -23,6 +23,7 @@ struct TeamPlansSection: View {
                     Text("No plans yet.").font(.callout).foregroundStyle(.secondary)
                 }
                 ForEach($drafts) { $plan in
+                    Divider()
                     planRow($plan)
                 }
                 if let error = store.errorMessage {
@@ -40,6 +41,7 @@ struct TeamPlansSection: View {
                         .disabled(!hasChanges || !isValid || store.isSaving)
                 }
             }
+            .padding(12)
         }
         .task(id: teamID) {
             await store.load(teamID: teamID)
@@ -73,36 +75,43 @@ struct TeamPlansSection: View {
         )
     }
 
+    /// Two lines so a plan fits the Settings width: provider and name, then cost and renewal day.
     private func planRow(_ plan: Binding<TeamPlan>) -> some View {
-        HStack(spacing: 8) {
-            Picker("Provider", selection: plan.provider) {
-                ForEach(container.registry.providers, id: \.id) { provider in
-                    Text(provider.displayName).tag(provider.id)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Picker("Provider", selection: plan.provider) {
+                    ForEach(container.registry.providers, id: \.id) { provider in
+                        Text(provider.displayName).tag(provider.id)
+                    }
                 }
+                .labelsHidden()
+                .fixedSize()
+                TextField("Name", text: plan.name)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: .infinity)
+                Button {
+                    drafts.removeAll { $0.id == plan.wrappedValue.id }
+                } label: {
+                    Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove \(plan.wrappedValue.name)")
             }
-            .labelsHidden()
-            .frame(width: 120)
-            TextField("Name", text: plan.name)
-                .textFieldStyle(.roundedBorder)
-                .frame(minWidth: 110)
-            TextField("Monthly Cost", value: plan.monthlyCostUSD, format: .currency(code: "USD"))
-                .textFieldStyle(.roundedBorder)
-                .multilineTextAlignment(.trailing)
-                .frame(width: 90)
-            Text("/ mo").font(.caption).foregroundStyle(.secondary)
-            Picker("Renews", selection: plan.renewalDay) {
-                ForEach(1...31, id: \.self) { day in Text("Renews on day \(day)").tag(day) }
+            HStack(spacing: 8) {
+                TextField("Monthly Cost", value: plan.monthlyCostUSD, format: .currency(code: "USD"))
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 90)
+                Text("/ mo").font(.caption).foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Picker("Renews", selection: plan.renewalDay) {
+                    ForEach(1...31, id: \.self) { day in Text("Renews on day \(day)").tag(day) }
+                }
+                .labelsHidden()
+                .fixedSize()
             }
-            .labelsHidden()
-            .frame(width: 150)
-            Button {
-                drafts.removeAll { $0.id == plan.wrappedValue.id }
-            } label: {
-                Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Remove \(plan.wrappedValue.name)")
         }
+        .padding(.vertical, 4)
     }
 
     private func providerName(_ id: String) -> String {

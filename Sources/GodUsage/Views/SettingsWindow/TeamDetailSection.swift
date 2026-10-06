@@ -2,7 +2,8 @@ import AppKit
 import SwiftUI
 
 /// The selected team in the Teams pane: its members, its invite and leaderboard links, and
-/// leaving or deleting it. Owner-only controls appear only for the owner.
+/// leaving or deleting it. Owner-only controls appear only for owners. A team can have several
+/// owners; the last one cannot leave.
 struct TeamDetailSection: View {
     let teams: TeamsStore
     let summary: TeamSummary
@@ -13,6 +14,7 @@ struct TeamDetailSection: View {
         case leave
         case delete
         case remove(TeamMember)
+        case makeOwner(TeamMember)
         case newLink
 
         var id: String {
@@ -20,6 +22,7 @@ struct TeamDetailSection: View {
             case .leave: "leave"
             case .delete: "delete"
             case .remove(let member): "remove-\(member.id)"
+            case .makeOwner(let member): "owner-\(member.id)"
             case .newLink: "new-link"
             }
         }
@@ -27,6 +30,11 @@ struct TeamDetailSection: View {
 
     private var detail: TeamDetail? { teams.details[summary.id] }
     private var isOwner: Bool { summary.role == .owner }
+
+    /// Owners can leave only while another owner stays to run the team.
+    private func canLeave(_ detail: TeamDetail) -> Bool {
+        !isOwner || detail.members.contains { $0.role == .owner && $0.id != teams.user?.id }
+    }
 
     var body: some View {
         SettingsSection(summary.name) {
@@ -38,10 +46,11 @@ struct TeamDetailSection: View {
                 HStack {
                     Button("Open Leaderboards") { TeamsWindowLink.open() }
                     Spacer()
+                    if canLeave(detail) {
+                        Button("Leave Team…", role: .destructive) { confirmation = .leave }
+                    }
                     if isOwner {
                         Button("Delete Team…", role: .destructive) { confirmation = .delete }
-                    } else {
-                        Button("Leave Team…", role: .destructive) { confirmation = .leave }
                     }
                 }
                 .disabled(teams.isBusy)
@@ -68,10 +77,23 @@ struct TeamDetailSection: View {
                 Spacer(minLength: 8)
                 if member.role == .owner {
                     Text("Owner").font(.caption).foregroundStyle(.secondary)
-                } else if isOwner {
-                    Button("Remove") { confirmation = .remove(member) }
-                        .buttonStyle(.borderless)
-                        .controlSize(.small)
+                }
+                if isOwner, member.id != teams.user?.id {
+                    Menu {
+                        if member.role == .owner {
+                            Button("Make Member") { Task { await teams.setRole(.member, of: member.id, in: summary.id) } }
+                        } else {
+                            Button("Make Owner…") { confirmation = .makeOwner(member) }
+                        }
+                        Button("Remove…", role: .destructive) { confirmation = .remove(member) }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .disabled(teams.isBusy)
+                    .accessibilityLabel("Manage \(member.displayName)")
                 }
             }
             .padding(.horizontal, 12)
@@ -146,6 +168,15 @@ struct TeamDetailSection: View {
                 message: Text("They can rejoin only with the current invite link. Make a new link to keep them out."),
                 primaryButton: .destructive(Text("Remove")) {
                     Task { await teams.removeMember(member.id, from: summary.id) }
+                },
+                secondaryButton: .cancel()
+            )
+        case .makeOwner(let member):
+            Alert(
+                title: Text("Make \(member.displayName) an Owner?"),
+                message: Text("Owners can manage plans, links, and members, and delete the team."),
+                primaryButton: .default(Text("Make Owner")) {
+                    Task { await teams.setRole(.owner, of: member.id, in: summary.id) }
                 },
                 secondaryButton: .cancel()
             )

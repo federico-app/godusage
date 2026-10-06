@@ -1,10 +1,11 @@
 import Foundation
 import Observation
 
-/// User preferences for quota pace and reset-credit expiry notifications. All default OFF;
-/// the app requests authorization the first time a trigger is turned on.
+/// User preferences for quota pace and reset-credit expiry notifications. All default ON; the
+/// dashboard's Enable Notifications card asks for macOS permission, and the first delivery asks
+/// if the user never used the card.
 ///
-/// Persisted in `UserDefaults` (each key independently, with an unset key defaulting to `false`).
+/// Persisted in `UserDefaults` (each key independently, with an unset key defaulting to `true`).
 /// `@Observable` lets the Settings toggles and `WidgetDataStore` evaluation read live values.
 @MainActor
 @Observable
@@ -64,14 +65,14 @@ final class NotificationSettingsStore {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        self.underTenPercent = defaults.bool(forKey: Self.underTenKey, default: false)
-        self.healthyToClose = defaults.bool(forKey: Self.healthyToCloseKey, default: false)
-        self.closeToRunningOut = defaults.bool(forKey: Self.closeToRunningOutKey, default: false)
-        self.resetExpiryReminders = defaults.bool(forKey: Self.resetExpiryKey, default: false)
-        self.teamOvertakes = defaults.bool(forKey: Self.teamOvertakesKey, default: false)
-        self.teamWeeklyRecap = defaults.bool(forKey: Self.teamWeeklyRecapKey, default: false)
-        self.teamChallenges = defaults.bool(forKey: Self.teamChallengesKey, default: false)
-        self.usageSuggestions = defaults.bool(forKey: Self.usageSuggestionsKey, default: false)
+        self.underTenPercent = defaults.bool(forKey: Self.underTenKey, default: true)
+        self.healthyToClose = defaults.bool(forKey: Self.healthyToCloseKey, default: true)
+        self.closeToRunningOut = defaults.bool(forKey: Self.closeToRunningOutKey, default: true)
+        self.resetExpiryReminders = defaults.bool(forKey: Self.resetExpiryKey, default: true)
+        self.teamOvertakes = defaults.bool(forKey: Self.teamOvertakesKey, default: true)
+        self.teamWeeklyRecap = defaults.bool(forKey: Self.teamWeeklyRecapKey, default: true)
+        self.teamChallenges = defaults.bool(forKey: Self.teamChallengesKey, default: true)
+        self.usageSuggestions = defaults.bool(forKey: Self.usageSuggestionsKey, default: true)
     }
 
     /// The per-milestone toggles as the pure logic consumes them.

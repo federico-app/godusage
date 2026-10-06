@@ -128,8 +128,27 @@ private final class GodUsageUpdaterDelegate: NSObject, SPUUpdaterDelegate {
         } else if code == Int(SUError.installationCanceledError.rawValue) {
             AppLog.info(.updates, "check finished (user canceled)")
         } else {
-            AppLog.warn(.updates, "check/download failed: \(error.localizedDescription)")
+            AppLog.warn(.updates, "check/download failed: \(UpdateErrorDescription.chain(error))")
         }
+    }
+}
+
+/// Sparkle's own error only says "An error occurred in retrieving update information". The real
+/// cause (a blocked http:// redirect, a TLS or DNS failure) sits in its `NSUnderlyingError` chain,
+/// so the log names every link: domain, code, message, and the failing URL when there is one.
+enum UpdateErrorDescription {
+    static func chain(_ error: Error) -> String {
+        var parts: [String] = []
+        var current: NSError? = error as NSError
+        while let nsError = current, parts.count < 5 {
+            var part = "\(nsError.domain) \(nsError.code): \(nsError.localizedDescription)"
+            if let url = nsError.userInfo[NSURLErrorFailingURLErrorKey] as? URL {
+                part += " (\(url.absoluteString))"
+            }
+            parts.append(part)
+            current = nsError.userInfo[NSUnderlyingErrorKey] as? NSError
+        }
+        return parts.joined(separator: " <- ")
     }
 }
 

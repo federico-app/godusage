@@ -11,7 +11,7 @@ While Settings is open, GodUsage briefly appears in the Dock, the same as during
 | Setting | Options | What it does |
 |---|---|---|
 | Show Total Spend | on/off | Whether the cross-provider [Total Spend](dashboard.md#total-spend) card shows at the top of the dashboard. On by default. The card appears whenever at least one enabled provider tracks spend (Claude, Codex, Cursor, Grok, Muse, OpenCode, Sakana Fugu). |
-| Launch at Login | on/off | Registers the app as a login item. The system's login-item registry is the source of truth. |
+| Launch at Login | on/off | Registers the app as a login item. The system's login-item registry is the source of truth. The dashboard recommends it with a [setup card](dashboard.md#setup-cards) until you turn it on or close the card. |
 | Global Shortcut | record a shortcut | Toggles the popover from anywhere. Click the field and press a combo. The ⓧ clears it. |
 
 ### iCloud Sync
@@ -56,9 +56,9 @@ GodUsage can send a macOS notification when a metric runs low, its pace gets wor
 | Weekly Team Recap | On / Off | Every Monday from 9:00, your rank, spend, and top model in each team last week. |
 | Team Challenges | On / Off | Who won, when a team challenge ends. |
 
-Pace alerts fire on a new crossing or when pace worsens, then stay quiet while that condition is unchanged. A quota already in a bad state when GodUsage launches sets the baseline without alerting. If it recovers and later worsens again, the alert fires again. A new reset period also clears the reset-based history. **Almost Out** uses only the remaining share, so it also works for balances without a reset window. **Cutting It Close** and **Will Run Out** need a reset window. Metrics whose data cannot be read never alert. Turn all four settings off to silence everything. Several alerts at once stack into one grouped banner.
+Pace alerts fire on a new crossing or when pace worsens, then stay quiet while that condition is unchanged. A quota already in a bad state when GodUsage launches sets the baseline without alerting. If it recovers and later worsens again, the alert fires again. A new reset period also clears the reset-based history. **Almost Out** uses only the remaining share, so it also works for balances without a reset window. **Cutting It Close** and **Will Run Out** need a reset window. Metrics whose data cannot be read never alert. Turn all three pace settings off to silence pace alerts. Several alerts at once stack into one grouped banner.
 
-All of them default off. The first time you turn one on, GodUsage asks for notification permission. If you decline, or later turn notifications off for GodUsage in System Settings, a warning mark appears on the Notifications header and an "Open System Settings" button shows under the toggles. Permission is checked for each delivery; re-enabling notifications does not require restarting GodUsage. A notification's title is the alert name, its subtitle names the provider and metric, and its body is the plain-language verdict. Tapping an alert opens the popover.
+All of them default on. The dashboard's [Enable Notifications](dashboard.md#setup-cards) card asks for macOS permission. If you never use it, macOS asks before the first alert. Turning an alert on in Settings also asks if macOS has not decided yet. If you decline, or later turn notifications off for GodUsage in System Settings, a warning mark appears on the Notifications header and an "Open System Settings" button shows under the toggles. Permission is checked for each delivery; re-enabling notifications does not require restarting GodUsage. A notification's title is the alert name, its subtitle names the provider and metric, and its body is the plain-language verdict. Tapping an alert opens the popover.
 
 ### Reset Expiry Reminders
 
@@ -78,7 +78,7 @@ Signed out, the pane shows **Sign In with Apple**. Signed in, it has four sectio
 |---|---|
 | Account | Your display name (**Edit Name…**), when this Mac last shared its usage or why it isn't, and **Show Rank in Menu Bar** (off by default). |
 | Teams | Your teams; select one to manage it (the popover and Teams window follow). **New Team…** and **Join Team…** (paste an invite link). |
-| *Selected team* | Members, **Invite Link** (Copy; the owner can make a **New Link**), **Web Leaderboard** (members-only, Copy or Open), the owner's **Public Leaderboard** switch, **Open Leaderboards**, and **Leave Team…** or the owner's **Delete Team…**. The owner can **Remove** members. |
+| *Selected team* | Members, **Invite Link** (Copy; owners can make a **New Link**), **Web Leaderboard** (members-only, Copy or Open), the owners' **Public Leaderboard** switch, **Open Leaderboards**, **Leave Team…** (hidden for the last owner), and the owners' **Delete Team…**. Owners manage each member from the **⋯** menu: **Make Owner…**, **Make Member**, **Remove…**. |
 | Account Actions | **Sign Out** removes this Mac's usage from your teams, then signs out. **Export My Data…** saves everything the Teams service keeps about you as JSON. **Delete…** deletes the account, the usage every Mac shared, and the teams you own. Links to the service's Terms and Privacy Policy. |
 
 An invite link opened from the web lands here and asks you to confirm joining. See [Teams](teams.md).

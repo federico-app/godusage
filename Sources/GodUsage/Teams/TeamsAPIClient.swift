@@ -34,6 +34,7 @@ protocol TeamsAPI: Sendable {
     func deleteTeam(token: String, id: String) async throws
     func rotateInvite(token: String, teamID: String) async throws -> TeamDetail
     func removeMember(token: String, teamID: String, userID: String) async throws
+    func setMemberRole(token: String, teamID: String, userID: String, role: TeamRole) async throws -> TeamDetail
     func invite(token: String, code: String) async throws -> InvitePreview
     func acceptInvite(token: String, code: String) async throws -> TeamDetail
     func stats(token: String, teamID: String, range: StatsRange, sort: StatsSort, today: String) async throws -> TeamStatsResponse
@@ -139,6 +140,14 @@ struct TeamsAPIClient: TeamsAPI {
 
     func removeMember(token: String, teamID: String, userID: String) async throws {
         try await sendEmpty("DELETE", "/v1/teams/\(escaped(teamID))/members/\(escaped(userID))", token: token)
+    }
+
+    func setMemberRole(token: String, teamID: String, userID: String, role: TeamRole) async throws -> TeamDetail {
+        struct Body: Encodable { var role: TeamRole }
+        let response: TeamEnvelope = try await send(
+            "PATCH", "/v1/teams/\(escaped(teamID))/members/\(escaped(userID))", token: token, body: Body(role: role)
+        )
+        return response.team
     }
 
     func invite(token: String, code: String) async throws -> InvitePreview {

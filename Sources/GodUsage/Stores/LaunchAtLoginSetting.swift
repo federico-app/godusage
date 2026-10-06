@@ -29,6 +29,11 @@ final class LaunchAtLoginSetting {
         self.isEnabled = currentStatus()
     }
 
+    /// Re-read macOS, which the user can change in System Settings → Login Items at any time.
+    func refresh() {
+        isEnabled = currentStatus()
+    }
+
     func update(to enabled: Bool) {
         guard enabled != isEnabled else { return }
         do {

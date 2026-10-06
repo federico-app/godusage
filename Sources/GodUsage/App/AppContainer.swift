@@ -43,6 +43,8 @@ final class AppContainer {
     /// One-time onboarding state (the first-run Customize hint card). Only ever marked pending by
     /// `FirstRunSeeder` on a fresh install, so existing installs never see the card.
     let onboarding: OnboardingStore
+    /// The Launch at Login switch, shared by Settings → General and the dashboard's setup card.
+    let launchAtLogin = LaunchAtLoginSetting()
     /// Exact-card router for Codex rate-limit reset claims (the app's only provider-API write).
     /// Every service shares its own card runtime's scoped auth store and usage client.
     let codexResetClaims: CodexResetClaimRouter

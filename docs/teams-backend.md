@@ -6,7 +6,7 @@ The teams backend lets people create a team, invite friends with a link, and com
 
 - **Accounts:** the Sign in with Apple user id (`sub`) and a display name the user chooses. No email, no Apple name.
 - **Sessions:** only the SHA-256 hash of each session token. A session expires after 180 days without use.
-- **Teams:** name, owner, one invite code, and an optional public-board token.
+- **Teams:** name, the account whose deletion deletes the team (`owner_id`, always one of its owners), one invite code, and an optional public-board token. Roles (`owner` or `member`) live on each membership; a team can have several owners.
 - **Usage:** for each of the user's Macs, daily tokens and spend per provider and per model. The full history is kept: each upload replaces only the days in its window. No credentials, logs, prompts, project names, or account ids.
 
 Deleting an account deletes its sessions, Macs, usage, memberships, and the teams it owns.
@@ -22,19 +22,20 @@ An account entry may carry `account`, an anonymous fingerprint of the provider a
 
 This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
 
-Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member carries `lastSyncAt`, the newest upload time across their Macs (ISO 8601, or null if none has uploaded); the apps and web boards show "not synced for N days" once it is more than 24 hours old. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
+Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member carries `lastSyncAt`, the newest upload time across their Macs (ISO 8601, or null if none has uploaded); the apps and web boards show it as "updated 5m ago", then "not synced for N days" once it is more than 24 hours old. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
 
 ## Reactions, champions, and challenges
 
 - **Reactions:** a member can give each teammate 🔥 (`fire`), 👏 (`clap`), and 🤡 (`clown`), one of each per week. Reactions belong to the ISO week (UTC) they were given in, so every Monday starts clean. Nobody can react to themselves.
 - **Champions:** the stats response lists the top spender of each of the last 12 complete calendar months among current members (the current month never counts until it is over).
-- **Challenges:** any member starts one for 7, 14, or 30 days, from today. Kinds: `lowest_spend` (least spend among members who spent anything), `most_models` (most different models), `most_tokens`, and `best_efficiency` (lowest cost per million tokens, with at least 100K tokens). Standings update live from usage in the window; once it has ended, the leaders are the winners. A team runs at most five at once. The creator or the owner can cancel one.
+- **Challenges:** any member starts one for 7, 14, or 30 days, from today. Kinds: `lowest_spend` (least spend among members who spent anything), `most_models` (most different models), `most_tokens`, and `best_efficiency` (lowest cost per million tokens, with at least 100K tokens). Standings update live from usage in the window; once it has ended, the leaders are the winners. A team runs at most five at once. The creator or an owner can cancel one.
 
 ## Invites and roles
 
 - Every member can see the invite link: `https://<worker>/join/<code>`. The page shows the team name and member count, an **Open in GodUsage** button (`godusage://join/<code>`), and a download link.
-- Only the owner can rotate the link (the old one stops working), rename the team, remove members, share or unshare the public board, and delete the team.
-- A member can leave. The owner cannot leave; they delete the team instead.
+- Only owners can rotate the link (the old one stops working), rename the team, change roles, remove members, share or unshare the public board, edit plans, and delete the team.
+- Anyone can leave. A team always keeps at least one owner: the last owner can neither leave nor be made a member (409). When the account behind `owner_id` leaves or is made a member, `owner_id` moves to the earliest-joined remaining owner.
+- Deleting an account deletes the teams where it is the only owner. Teams with another owner stay.
 - Limits: 50 members per team, 20 teams per user.
 
 ## Rate limits
@@ -55,7 +56,7 @@ It sits beside the public board below: the public link needs no sign-in, the mem
 
 ## Public board
 
-While the owner shares it, `https://<worker>/t/<token>` shows the leaderboard without sign-in: ranks, display names, spend or tokens split by provider, and the top models. Turning sharing off makes the link return 404. Turning it on again keeps the same link until it is turned off.
+While an owner shares it, `https://<worker>/t/<token>` shows the leaderboard without sign-in: ranks, display names, spend or tokens split by provider, and the top models. Turning sharing off makes the link return 404. Turning it on again keeps the same link until it is turned off.
 
 ## API
 
@@ -73,6 +74,7 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `GET`, `POST /v1/teams` | List my teams, or create one (`{ name }`, at most 60 characters). |
 | `GET`, `PATCH`, `DELETE /v1/teams/:id` | Team with members; owner can change `{ name?, publicBoard? }` or delete it. |
 | `POST /v1/teams/:id/invite` | Owner rotates the invite link. |
+| `PATCH /v1/teams/:id/members/:userID` | Owner sets `{ role: "owner" \| "member" }`. |
 | `DELETE /v1/teams/:id/members/:userID` | Leave (yourself) or remove a member (owner). |
 | `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD`. Leaderboard (with each member's previous-period rank), provider totals, top 20 models, per-day totals by member and by provider, this week's `reactions`, and the last 12 months' `champions`. |
 | `PUT`, `DELETE /v1/teams/:id/members/:userID/reactions/:emoji` | Give or take back `fire`, `clap`, or `clown` for this week. |

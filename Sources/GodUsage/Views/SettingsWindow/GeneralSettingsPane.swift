@@ -6,12 +6,12 @@ import SwiftUI
 struct GeneralSettingsPane: View {
     @Environment(AppContainer.self) private var container
 
-    @State private var launchAtLogin = LaunchAtLoginSetting()
     @AppStorage(TotalSpendSetting.key) private var showTotalSpend = true
     private let density = DensitySetting.compact
 
     var body: some View {
         @Bindable var privacy = container.privacy
+        let launchAtLogin = container.launchAtLogin
         return VStack(alignment: .leading, spacing: density.sectionSpacing) {
             SettingsSection("General") {
                 // The dashboard's cross-provider Total Spend card; at least one enabled spend-capable
@@ -45,5 +45,6 @@ struct GeneralSettingsPane: View {
                 SettingsCaption("While your screen is shared or recorded, the menu bar shows “GodUsage” instead of your usage.")
             }
         }
+        .onAppear { container.launchAtLogin.refresh() }
     }
 }

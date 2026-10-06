@@ -155,6 +155,15 @@ final class TeamsStoreTests: XCTestCase {
         XCTAssertEqual(store.errorMessage, "This invite link is no longer valid.")
     }
 
+    func testChangingARoleStoresTheUpdatedTeam() async {
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        let store = makeStore()
+        await store.setRole(.owner, of: "u2", in: "t1")
+        XCTAssertTrue(api.log.contains("setMemberRole t1 u2 owner"))
+        XCTAssertNotNil(store.details["t1"])
+        XCTAssertNil(store.errorMessage)
+    }
+
     func testLeavingForgetsTheTeam() async {
         sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
         api.teamsResult = [TeamSummary(id: "t1", name: "Crew", role: .member, memberCount: 2)]
@@ -311,6 +320,11 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
 
     func removeMember(token: String, teamID: String, userID: String) async throws {
         log.append("removeMember \(teamID) \(userID)")
+    }
+
+    func setMemberRole(token: String, teamID: String, userID: String, role: TeamRole) async throws -> TeamDetail {
+        log.append("setMemberRole \(teamID) \(userID) \(role.rawValue)")
+        return crew
     }
 
     func invite(token: String, code: String) async throws -> InvitePreview {

@@ -4,8 +4,8 @@ import UserNotifications
 
 /// The Settings window's Notifications pane. Pace triggers and reset-credit expiry reminders.
 /// A warning glyph and action row appear when macOS permission isn't authorized
-/// and at least one trigger is on. Defaults are all off; the app requests authorization the first
-/// time a trigger is turned on.
+/// and at least one trigger is on. Defaults are all on; turning a trigger back on after all were off
+/// requests authorization again if macOS hasn't decided yet.
 struct NotificationsSettingsPane: View {
     @Environment(AppContainer.self) private var container
 

@@ -89,3 +89,29 @@ final class UpdaterUserDriverDelegateTests: XCTestCase {
         XCTAssertTrue(resolved)
     }
 }
+
+/// Regression: the update log only kept Sparkle's generic message, hiding why checks failed.
+final class UpdateErrorDescriptionTests: XCTestCase {
+    func testChainIncludesUnderlyingErrorAndFailingURL() {
+        let url = URL(string: "http://godusage.com/appcast.xml")!
+        let transport = NSError(
+            domain: NSURLErrorDomain,
+            code: NSURLErrorAppTransportSecurityRequiresSecureConnection,
+            userInfo: [NSLocalizedDescriptionKey: "insecure", NSURLErrorFailingURLErrorKey: url]
+        )
+        let sparkle = NSError(
+            domain: "SUSparkleErrorDomain",
+            code: 2001,
+            userInfo: [
+                NSLocalizedDescriptionKey: "An error occurred in retrieving update information.",
+                NSUnderlyingErrorKey: transport,
+            ]
+        )
+
+        XCTAssertEqual(
+            UpdateErrorDescription.chain(sparkle),
+            "SUSparkleErrorDomain 2001: An error occurred in retrieving update information. <- "
+                + "NSURLErrorDomain -1022: insecure (http://godusage.com/appcast.xml)"
+        )
+    }
+}

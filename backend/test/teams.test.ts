@@ -105,6 +105,53 @@ describe("members", () => {
     expect((await api("GET", `/v1/teams/${team.id}`, { token: members[0]!.token })).status).toBe(404);
   });
 
+  it("deleting an account keeps teams that have another owner", async () => {
+    const { owner, team, members } = await teamWith(["Bea"]);
+    const bea = members[0]!;
+    await api("PATCH", `/v1/teams/${team.id}/members/${bea.userID}`, { token: owner.token, body: { role: "owner" } });
+    expect((await api("DELETE", "/v1/me", { token: owner.token })).status).toBe(204);
+    const kept = await api("GET", `/v1/teams/${team.id}`, { token: bea.token });
+    expect(kept.status).toBe(200);
+    expect(kept.body.team.members.map((m: { id: string; role: string }) => [m.id, m.role])).toEqual([[bea.userID, "owner"]]);
+  });
+
+  it("lets owners promote and demote members, keeping at least one owner", async () => {
+    const { owner, team, members } = await teamWith(["Bea", "Cy"]);
+    const [bea, cy] = members as [typeof owner, typeof owner];
+    const setRole = (token: string, userID: string, role: unknown) =>
+      api("PATCH", `/v1/teams/${team.id}/members/${userID}`, { token, body: { role } });
+
+    expect((await setRole(bea.token, bea.userID, "owner")).status).toBe(403);
+    expect((await setRole(owner.token, bea.userID, "admin")).status).toBe(400);
+    expect((await setRole(owner.token, "nobody", "owner")).status).toBe(404);
+    expect((await setRole(owner.token, owner.userID, "member")).status).toBe(409);
+
+    const promoted = await setRole(owner.token, bea.userID, "owner");
+    expect(promoted.status).toBe(200);
+    expect(promoted.body.team.members.filter((m: { role: string }) => m.role === "owner").length).toBe(2);
+
+    // A second owner has every owner power, including removing the first and the public board.
+    expect((await api("PATCH", `/v1/teams/${team.id}`, { token: bea.token, body: { publicBoard: true } })).status).toBe(200);
+    const demoted = await setRole(bea.token, owner.userID, "member");
+    expect(demoted.body.team.role).toBe("owner");
+    expect((await api("GET", `/v1/teams/${team.id}`, { token: owner.token })).body.team.role).toBe("member");
+    expect((await setRole(owner.token, cy.userID, "owner")).status).toBe(403);
+
+    // The old creator is a plain member now: deleting their account leaves the team alone.
+    expect((await api("DELETE", "/v1/me", { token: owner.token })).status).toBe(204);
+    expect((await api("GET", `/v1/teams/${team.id}`, { token: cy.token })).status).toBe(200);
+  });
+
+  it("lets an owner leave while another owner remains", async () => {
+    const { owner, team, members } = await teamWith(["Bea"]);
+    const bea = members[0]!;
+    await api("PATCH", `/v1/teams/${team.id}/members/${bea.userID}`, { token: owner.token, body: { role: "owner" } });
+    expect((await api("DELETE", `/v1/teams/${team.id}/members/${owner.userID}`, { token: owner.token })).status).toBe(204);
+    const lastLeaves = await api("DELETE", `/v1/teams/${team.id}/members/${bea.userID}`, { token: bea.token });
+    expect(lastLeaves.status).toBe(409);
+    expect(lastLeaves.body.error.message).toMatch(/last owner/);
+  });
+
   it("renames the team and toggles the public board (owner only)", async () => {
     const { owner, team, members } = await teamWith(["Bea"]);
     expect((await api("PATCH", `/v1/teams/${team.id}`, { token: members[0]!.token, body: { name: "X" } })).status).toBe(403);

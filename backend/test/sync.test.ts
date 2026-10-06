@@ -13,9 +13,11 @@ describe("member sync time", () => {
     expect(byName).toEqual({ Owner: "2026-10-04T09:00:00.000Z", Bea: null });
   });
 
-  it("notes a member only after 24 hours without a sync", () => {
+  it("shows the last update, then warns after 24 hours without a sync", () => {
     const now = new Date("2026-10-05T12:00:00Z");
-    expect(syncNote("2026-10-04T13:00:00.000Z", now)).toBeNull();
+    expect(syncNote("2026-10-05T11:59:30.000Z", now)).toBe("updated just now");
+    expect(syncNote("2026-10-05T11:55:00.000Z", now)).toBe("updated 5m ago");
+    expect(syncNote("2026-10-04T13:00:00.000Z", now)).toBe("updated 23h ago");
     expect(syncNote("2026-10-04T11:00:00.000Z", now)).toBe("not synced for 1 day");
     expect(syncNote("2026-10-01T12:00:00.000Z", now)).toBe("not synced for 4 days");
     expect(syncNote(null, now)).toBeNull();

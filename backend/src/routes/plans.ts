@@ -54,7 +54,7 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
   const user = await requireUser(request, env.DB);
   const teamID = params.teamID!;
   const role = await memberRole(env.DB, teamID, user.id);
-  if (role !== "owner") throw forbidden("Only the team owner can change plans.");
+  if (role !== "owner") throw forbidden("Only team owners can change plans.");
   const plans = parsePlans(await readJSONObject(request));
   const updatedAt = nowISO();
   await env.DB.batch([

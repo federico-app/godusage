@@ -45,31 +45,46 @@ struct TeamSharedAccountRow: View {
     }
 }
 
-/// "Not synced for 3 days" under a member whose newest upload is more than 24 hours old, so stale
-/// numbers aren't read as no usage. Shows nothing otherwise.
+/// When a member last synced: "Updated 5m ago" within a day, then "Not synced for 3 days" with a
+/// warning icon, so stale numbers aren't read as no usage. Shows nothing if they never synced.
 struct TeamSyncNote: View {
     let member: TeamStats.Member
     var now = Date()
 
     var body: some View {
         if let note = TeamsFormat.syncNote(member.lastSyncAt, now: now) {
-            Label(note, systemImage: "exclamationmark.arrow.triangle.2.circlepath")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .labelStyle(.titleAndIcon)
-                .lineLimit(1)
+            Group {
+                if note.stale {
+                    Label(note.text, systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                        .labelStyle(.titleAndIcon)
+                } else {
+                    Text(note.text)
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
         }
     }
 }
 
 extension TeamsFormat {
-    /// "Not synced for 2 days" once `lastSyncAt` is more than 24 hours old; nil when recent or unknown.
-    static func syncNote(_ lastSyncAt: String?, now: Date) -> String? {
+    struct SyncNote: Equatable {
+        let text: String
+        /// More than 24 hours since the last sync.
+        let stale: Bool
+    }
+
+    /// "Updated just now", "Updated 5m ago", "Updated 3h ago", then "Not synced for 2 days" once
+    /// `lastSyncAt` is more than 24 hours old; nil when unknown.
+    static func syncNote(_ lastSyncAt: String?, now: Date) -> SyncNote? {
         guard let lastSyncAt, let date = syncDate(lastSyncAt) else { return nil }
-        let hours = now.timeIntervalSince(date) / 3600
-        guard hours > 24 else { return nil }
-        let days = Int(hours / 24)
-        return "Not synced for \(days) \(days == 1 ? "day" : "days")"
+        let minutes = Int(max(0, now.timeIntervalSince(date)) / 60)
+        if minutes < 1 { return SyncNote(text: "Updated just now", stale: false) }
+        if minutes < 60 { return SyncNote(text: "Updated \(minutes)m ago", stale: false) }
+        if minutes <= 24 * 60 { return SyncNote(text: "Updated \(minutes / 60)h ago", stale: false) }
+        let days = minutes / (24 * 60)
+        return SyncNote(text: "Not synced for \(days) \(days == 1 ? "day" : "days")", stale: true)
     }
 
     private static func syncDate(_ value: String) -> Date? {

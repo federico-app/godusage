@@ -246,6 +246,11 @@ final class TeamsStore {
         }
     }
 
+    func setRole(_ role: TeamRole, of userID: String, in teamID: String) async {
+        guard let token = session?.token else { return }
+        await perform { store(try await api.setMemberRole(token: token, teamID: teamID, userID: userID, role: role)) }
+    }
+
     func leaveTeam(_ id: String) async {
         guard let token = session?.token, let userID = user?.id else { return }
         await perform {

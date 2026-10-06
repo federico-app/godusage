@@ -145,12 +145,14 @@ function memberMarks(extras: BoardExtras | undefined, userID: string): string {
   return marks;
 }
 
-/** "not synced for 3 days" once a member's newest upload is more than 24 hours old; otherwise nothing. */
+/** "updated 5m ago" within a day, then "not synced for 3 days"; null if the member never synced. */
 export function syncNote(lastSyncAt: string | null, now: Date): string | null {
   if (!lastSyncAt) return null;
-  const hours = (now.getTime() - Date.parse(lastSyncAt)) / 3_600_000;
-  if (!(hours > 24)) return null;
-  const days = Math.floor(hours / 24);
+  const minutes = Math.floor(Math.max(0, now.getTime() - Date.parse(lastSyncAt)) / 60_000);
+  if (minutes < 1) return "updated just now";
+  if (minutes < 60) return `updated ${minutes}m ago`;
+  if (minutes <= 24 * 60) return `updated ${Math.floor(minutes / 60)}h ago`;
+  const days = Math.floor(minutes / (24 * 60));
   return `not synced for ${days} ${days === 1 ? "day" : "days"}`;
 }
 

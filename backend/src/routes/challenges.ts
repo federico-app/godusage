@@ -173,7 +173,7 @@ export const deleteChallenge: Handler = async ({ request, env, params }) => {
     .bind(params.challengeID!, params.teamID!)
     .first<{ created_by: string | null }>();
   if (!row) throw notFound("Challenge not found.");
-  if (row.created_by !== user.id && role !== "owner") throw forbidden("Only the creator or the team owner can cancel a challenge.");
+  if (row.created_by !== user.id && role !== "owner") throw forbidden("Only the creator or a team owner can cancel a challenge.");
   await env.DB.prepare("DELETE FROM challenges WHERE id = ?").bind(params.challengeID!).run();
   return noContent();
 };

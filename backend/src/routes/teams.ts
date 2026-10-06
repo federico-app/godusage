@@ -41,9 +41,33 @@ async function requireMembership(db: D1Database, teamID: string, user: SessionUs
 
 async function requireOwner(db: D1Database, teamID: string, user: SessionUser): Promise<TeamRow> {
   const { team, role } = await requireMembership(db, teamID, user);
-  if (role !== "owner") throw forbidden("Only the team owner can do this.");
+  if (role !== "owner") throw forbidden("Only team owners can do this.");
   return team;
 }
+
+/**
+ * `teams.owner_id` is the account whose deletion takes the team with it. After an owner leaves or
+ * is made a member, it moves to the earliest-joined remaining owner.
+ */
+async function keepCreatorAnOwner(db: D1Database, teamID: string): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE teams SET owner_id = (SELECT user_id FROM team_members WHERE team_id = teams.id AND role = 'owner' ORDER BY joined_at, user_id LIMIT 1)
+       WHERE id = ? AND owner_id NOT IN (SELECT user_id FROM team_members WHERE team_id = teams.id AND role = 'owner')`,
+    )
+    .bind(teamID)
+    .run();
+}
+
+/** Why a change to `targetID` matched no row: the member is missing, or they are the last owner. */
+async function explainNoChange(db: D1Database, teamID: string, targetID: string, lastOwnerMessage: string): Promise<never> {
+  const exists = await db.prepare("SELECT 1 AS found FROM team_members WHERE team_id = ? AND user_id = ?").bind(teamID, targetID).first<number>("found");
+  if (exists) throw conflict(lastOwnerMessage);
+  throw notFound("Member not found.");
+}
+
+/** Matches a row only if it is a member, or an owner with another owner left in the team. */
+const NOT_LAST_OWNER = `(role = 'member' OR (SELECT COUNT(*) FROM team_members o WHERE o.team_id = team_members.team_id AND o.role = 'owner') > 1)`;
 
 async function teamDetail(context: RouteContext, team: TeamRow, role: Role) {
   const members = await context.env.DB.prepare(
@@ -161,19 +185,50 @@ export const rotateInvite: Handler = async (context) => {
 
 /**
  * DELETE /v1/teams/:teamID/members/:userID
- * A member can remove themself (leave). The owner can remove anyone else. The owner cannot leave;
- * they delete the team instead.
+ * Anyone can remove themself (leave). Owners can remove anyone else. The last owner cannot leave;
+ * they make someone else an owner first, or delete the team.
  */
 export const removeMember: Handler = async ({ request, env, params }) => {
   const user = await requireUser(request, env.DB);
   const { team, role } = await requireMembership(env.DB, params.teamID!, user);
   const targetID = params.userID!;
-  if (targetID === team.owner_id) throw conflict("The owner cannot leave the team. Delete the team instead.");
-  if (targetID !== user.id && role !== "owner") throw forbidden("Only the team owner can remove members.");
+  if (targetID !== user.id && role !== "owner") throw forbidden("Only team owners can remove members.");
 
-  const result = await env.DB.prepare("DELETE FROM team_members WHERE team_id = ? AND user_id = ?").bind(team.id, targetID).run();
-  if (result.meta.changes === 0) throw notFound("Member not found.");
+  const result = await env.DB.prepare(`DELETE FROM team_members WHERE team_id = ? AND user_id = ? AND ${NOT_LAST_OWNER}`)
+    .bind(team.id, targetID)
+    .run();
+  if (result.meta.changes === 0) {
+    await explainNoChange(env.DB, team.id, targetID, "The last owner cannot leave. Make someone else an owner, or delete the team.");
+  }
+  await keepCreatorAnOwner(env.DB, team.id);
   return noContent();
+};
+
+/**
+ * PATCH /v1/teams/:teamID/members/:userID { role: "owner" | "member" } — owners only. A team keeps at
+ * least one owner.
+ */
+export const setMemberRole: Handler = async (context) => {
+  const { request, env, params } = context;
+  const user = await requireUser(request, env.DB);
+  const team = await requireOwner(env.DB, params.teamID!, user);
+  const body = await readJSONObject(request);
+  if (body.role !== "owner" && body.role !== "member") throw badRequest('role must be "owner" or "member".');
+  const targetID = params.userID!;
+
+  const result =
+    body.role === "owner"
+      ? await env.DB.prepare("UPDATE team_members SET role = 'owner' WHERE team_id = ? AND user_id = ?").bind(team.id, targetID).run()
+      : await env.DB.prepare(`UPDATE team_members SET role = 'member' WHERE team_id = ? AND user_id = ? AND ${NOT_LAST_OWNER}`)
+          .bind(team.id, targetID)
+          .run();
+  if (result.meta.changes === 0) {
+    await explainNoChange(env.DB, team.id, targetID, "A team needs at least one owner.");
+  }
+  await keepCreatorAnOwner(env.DB, team.id);
+  // The caller may have just made themself a member.
+  const { team: updated, role } = await requireMembership(env.DB, team.id, user);
+  return json({ team: await teamDetail(context, updated, role) });
 };
 
 async function teamForInvite(db: D1Database, code: string): Promise<TeamRow> {
