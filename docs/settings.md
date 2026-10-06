@@ -78,7 +78,7 @@ Signed out, the pane shows **Sign In with Apple**. Signed in, it has four sectio
 |---|---|
 | Account | Your display name (**Edit Name…**), when this Mac last shared its usage or why it isn't, and **Show Rank in Menu Bar** (off by default). |
 | Teams | Your teams; select one to manage it (the popover and Teams window follow). **New Team…** and **Join Team…** (paste an invite link). |
-| *Selected team* | Members, **Invite Link** (Copy; the owner can make a **New Link**), **Web Leaderboard** (members-only, Copy or Open), the owner's **Public Leaderboard** switch, **Open Leaderboards**, and **Leave Team…** or the owner's **Delete Team…**. The owner can **Remove** members. |
+| *Selected team* | Members, **Invite Link** (Copy; owners can make a **New Link**), **Web Leaderboard** (members-only, Copy or Open), the owners' **Public Leaderboard** switch, **Open Leaderboards**, **Leave Team…** (hidden for the last owner), and the owners' **Delete Team…**. Owners manage each member from the **⋯** menu: **Make Owner…**, **Make Member**, **Remove…**. |
 | Account Actions | **Sign Out** removes this Mac's usage from your teams, then signs out. **Export My Data…** saves everything the Teams service keeps about you as JSON. **Delete…** deletes the account, the usage every Mac shared, and the teams you own. Links to the service's Terms and Privacy Policy. |
 
 An invite link opened from the web lands here and asks you to confirm joining. See [Teams](teams.md).

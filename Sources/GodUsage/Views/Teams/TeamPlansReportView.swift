@@ -39,7 +39,7 @@ struct TeamPlansReportView: View {
             Text("No Plans Yet").font(.headline)
             Text(canEdit
                 ? "Add the subscriptions this team pays for to see what each one is worth at API prices."
-                : "The team owner adds the team's subscriptions in Settings → Teams.")
+                : "Team owners add the team's subscriptions in Settings → Teams.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

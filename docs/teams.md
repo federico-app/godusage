@@ -14,8 +14,8 @@ Development builds (`com.montinovo.godusage.dev`) use a separate backend with se
 
 - **Create a team** under **Add a Team**. You are its owner.
 - **Invite people** by copying the team's **Invite Link** in **Your Teams**. Anyone with the link can join. Opening it shows the team name and an **Open in GodUsage** button. GodUsage then opens Settings → Teams and asks you to confirm. You can also paste a link into **Invite Link** under **Add a Team**.
-- **The owner** can make a **New Link** (the old one stops working; members stay), remove members, share a public leaderboard, and delete the team.
-- **Members** can leave. The owner cannot leave; they delete the team instead.
+- **Owners** can make a **New Link** (the old one stops working; members stay), share a public leaderboard, edit plans, and delete the team. From the **⋯** menu next to a member, they can **Make Owner…**, **Make Member** (for another owner), or **Remove…**. A team can have several owners, all with the same powers.
+- **Anyone** can leave. The last owner cannot; they make someone else an owner first, or delete the team.
 
 A team holds up to 50 members, and you can be in up to 20 teams.
 
@@ -55,7 +55,7 @@ Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac
 
 The gear button in its toolbar opens Settings → Teams.
 
-**Plans.** The team owner lists the subscriptions the team pays for in Settings → Teams → Plans: provider, name, monthly cost, and the day of the month it renews (29–31 fall on the last day of shorter months). Every member sees the **Plans** tab in the Teams window. For each plan it shows the current billing cycle (last renewal to the day before the next), the team's usage of that provider in the cycle at API prices, the projection to the end of the cycle at the current pace, and the value per dollar (projected value ÷ monthly cost). Plans projected under 1× are flagged as underused. Usage counts like the leaderboard, shared accounts once; several plans of one provider split its usage by cost. An underused plan that renews within 7 days also shows as a [suggestion](dashboard.md#suggestions) on the dashboard of members who use its provider.
+**Plans.** Team owners list the subscriptions the team pays for in Settings → Teams → Plans: provider, name, monthly cost, and the day of the month it renews (29–31 fall on the last day of shorter months). Every member sees the **Plans** tab in the Teams window. For each plan it shows the current billing cycle (last renewal to the day before the next), the team's usage of that provider in the cycle at API prices, the projection to the end of the cycle at the current pace, and the value per dollar (projected value ÷ monthly cost). Plans projected under 1× are flagged as underused. Usage counts like the leaderboard, shared accounts once; several plans of one provider split its usage by cost. An underused plan that renews within 7 days also shows as a [suggestion](dashboard.md#suggestions) on the dashboard of members who use its provider.
 
 **Last update.** Each member shows when their Macs last uploaded, on the dashboard, in the Teams window, and on the web boards: **Updated 5m ago** (or **just now**, **3h ago**) within the last 24 hours, then **Not synced for N days** with a warning icon, so their numbers aren't read as no usage. Members who never synced show nothing.
 
@@ -64,7 +64,7 @@ The gear button in its toolbar opens Settings → Teams.
 - **👑** marks today's top spender and **🏆** last month's champion; hover either for its meaning (the **Hall of Fame** in the Teams window lists every month's champion; a month counts once it's over).
 - **Reactions:** give a teammate 🔥, 👏, or 🤡, one of each per week; click again to take it back. Counts start clean every Monday. On the dashboard's team section, click a member to react; the Teams window has the buttons on each row.
 - **Projection:** "Team on pace for $X in October" stretches this month's spend so far over the whole month, for the team and for each member.
-- **Challenges** (Teams window, **New Challenge**): any member starts one for 7, 14, or 30 days: **Lowest Spend** (among members who spend something), **Most Models**, **Most Tokens**, or **Best Efficiency** (with at least 100K tokens). Standings update live; when it ends, the leader wins. The creator or the owner can cancel it. Active challenges also show under the dashboard's team ranking.
+- **Challenges** (Teams window, **New Challenge**): any member starts one for 7, 14, or 30 days: **Lowest Spend** (among members who spend something), **Most Models**, **Most Tokens**, or **Best Efficiency** (with at least 100K tokens). Standings update live; when it ends, the leader wins. The creator or an owner can cancel it. Active challenges also show under the dashboard's team ranking.
 
 Every ranking shows each member's movement since the period before: ▲ places gained, ▼ places lost, or **New** for someone who had no usage then. Each member also shows **Efficiency**, what they pay per million tokens (lower means cheaper models or more cache use); the Teams window charts it for the whole team.
 
@@ -82,7 +82,7 @@ Days are calendar days on each Mac. Refresh uploads this Mac's latest usage and 
 
 Every member can open the team's **Web Leaderboard** in a browser. It shows the same board after you sign in with your Apple ID, and only to members.
 
-The owner can also turn on **Public Leaderboard** for a team. That gives a read-only web page anyone with its link can open without signing in. It shows display names, ranks, spend or tokens by provider, and top models. Turning it off makes the link stop working.
+An owner can also turn on **Public Leaderboard** for a team. That gives a read-only web page anyone with its link can open without signing in. It shows display names, ranks, spend or tokens by provider, and top models. Turning it off makes the link stop working.
 
 ## Notifications
 

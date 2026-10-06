@@ -70,11 +70,24 @@ export const updateMe: Handler = async ({ request, env }) => {
 
 /**
  * DELETE /v1/me — deletes the account and everything tied to it: sessions, devices, usage,
- * memberships, and the teams this user owns (their members lose those teams).
+ * memberships, and the teams where this user is the only owner (their members lose those teams).
+ * Teams with another owner stay, and pass to it.
  */
 export const deleteMe: Handler = async ({ request, env }) => {
   const user = await requireUser(request, env.DB);
-  await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id).run();
+  await env.DB.batch([
+    env.DB.prepare(
+      `DELETE FROM teams WHERE id IN (
+         SELECT m.team_id FROM team_members m WHERE m.user_id = ?1 AND m.role = 'owner'
+         AND NOT EXISTS (SELECT 1 FROM team_members o WHERE o.team_id = m.team_id AND o.role = 'owner' AND o.user_id != ?1))`,
+    ).bind(user.id),
+    // teams.owner_id cascades on delete, so it moves to another owner first.
+    env.DB.prepare(
+      `UPDATE teams SET owner_id = (SELECT user_id FROM team_members WHERE team_id = teams.id AND role = 'owner' AND user_id != ?1 ORDER BY joined_at, user_id LIMIT 1)
+       WHERE owner_id = ?1`,
+    ).bind(user.id),
+    env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
+  ]);
   console.log(JSON.stringify({ event: "account_deleted", userID: user.id }));
   return noContent();
 };
