@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.4
+
+### Bug Fixes
+- Write only changed usage rows on upload by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.0.3...v1.0.4](https://github.com/federico-app/godusage/compare/v1.0.3...v1.0.4)
+
+- [41aafdb](https://github.com/federico-app/godusage/commit/41aafdb04aa0e7f66fb4de7be9b143a43752daf1) Write only changed usage rows on upload by @andreaAppload
+
 ## v1.0.3
 
 ### New Features
