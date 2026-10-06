@@ -261,7 +261,10 @@ struct TeamsCharts: View {
 
     // MARK: - Top Models
 
-    private var topModels: [TeamStats.Model] { Array(stats.models.prefix(8)) }
+    /// The eight largest models with usage in this metric; free models are left out of a spend board.
+    private var topModels: [TeamStats.Model] {
+        Array(stats.models.filter { $0.totals.value(for: sort) > 0 }.prefix(8))
+    }
 
     private var modelsChart: some View {
         applyProviderColors(
@@ -297,7 +300,8 @@ struct TeamsCharts: View {
 
     /// Row names for the horizontal bar charts, in a column left of the bars.
     private var categoryAxis: some AxisContent {
-        AxisMarks(position: .leading) { _ in
+        // `.extended` keeps the names in a column left of the plot; the default insets them over the bars.
+        AxisMarks(preset: .extended, position: .leading) { _ in
             AxisValueLabel(horizontalSpacing: 8)
                 .font(.caption)
                 .foregroundStyle(.primary)
