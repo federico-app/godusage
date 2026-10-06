@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.0.2
+
+### New Features
+- Add team plans and a report of their value at API prices by @andreaAppload
+- Suggest which provider to use from quotas, resets, and team plans by @andreaAppload
+- Flag team members who haven't synced for over a day by @andreaAppload
+- Drive the dashboard team period from the Total Spend switcher by @andreaAppload
+- Show a DEV badge on the GodUsage DEV dashboard by @andreaAppload
+- Install with Homebrew from the federico-app tap by @andreaAppload
+- Show the latest version on the landing page's Download buttons by @andreaAppload
+
+### Bug Fixes
+- Put the DEV badge next to the Total Spend title by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.0.1...v1.0.2](https://github.com/federico-app/godusage/compare/v1.0.1...v1.0.2)
+
+- [d5ba67c](https://github.com/federico-app/godusage/commit/d5ba67c232908c40bd9086f6afc9a73c46ff6d60) Install with Homebrew from the federico-app tap by @andreaAppload
+- [5dfb389](https://github.com/federico-app/godusage/commit/5dfb389cf2b17404bc2b85d2c42c27ce128702f5) Show the latest version on the landing page's Download buttons by @andreaAppload
+- [339db5f](https://github.com/federico-app/godusage/commit/339db5f8dc00615c92c4bde0f6a9854e669ce5aa) Flag team members who haven't synced for over a day by @andreaAppload
+- [a537d0b](https://github.com/federico-app/godusage/commit/a537d0bce1a671780ca4399000b4dbc88d6d6975) Suggest which provider to use from quotas, resets, and team plans by @andreaAppload
+- [3fb04d9](https://github.com/federico-app/godusage/commit/3fb04d92c275cee3a0b993c7d1c422d268e5d7df) Put the DEV badge next to the Total Spend title by @andreaAppload
+- [4feeac1](https://github.com/federico-app/godusage/commit/4feeac15d33c3a1e08f3bd4b3de1922523c74cd1) Add team plans and a report of their value at API prices by @andreaAppload
+- [9130633](https://github.com/federico-app/godusage/commit/91306336bc0d13d449b6ff22b8099b4162984f20) Drive the dashboard team period from the Total Spend switcher by @andreaAppload
+- [6cd58e8](https://github.com/federico-app/godusage/commit/6cd58e83a6910e8c6faee46889e13eac04bfcdbd) Show a DEV badge on the GodUsage DEV dashboard by @andreaAppload
+
 ## v1.0.1
 
 ### New Features
