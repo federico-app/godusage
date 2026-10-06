@@ -43,6 +43,8 @@ protocol TeamsAPI: Sendable {
     func createChallenge(token: String, teamID: String, kind: ChallengeKind, days: Int, today: String) async throws -> TeamChallenge
     func deleteChallenge(token: String, teamID: String, challengeID: String) async throws
     func deleteDevice(token: String, deviceID: String) async throws
+    func plans(token: String, teamID: String, today: String) async throws -> TeamPlansReport
+    func savePlans(token: String, teamID: String, plans: [TeamPlan], today: String) async throws -> TeamPlansReport
 }
 
 /// The teams backend over HTTPS. Dev builds (`….dev` bundle id) talk to the dev Worker, which has
@@ -58,7 +60,7 @@ struct TeamsAPIClient: TeamsAPI {
         if let override = defaults.string(forKey: baseURLOverrideKey), let url = URL(string: override), url.scheme != nil {
             return url
         }
-        return bundleIdentifier?.hasSuffix(".dev") == true ? developmentBaseURL : productionBaseURL
+        return AppChannel.isDev(bundleIdentifier: bundleIdentifier) ? developmentBaseURL : productionBaseURL
     }
 
     let baseURL: URL
@@ -189,6 +191,15 @@ struct TeamsAPIClient: TeamsAPI {
         } catch let error as TeamsAPIError where error.kind == .notFound {
             // This Mac never uploaded, so there is nothing to remove.
         }
+    }
+
+    func plans(token: String, teamID: String, today: String) async throws -> TeamPlansReport {
+        try await send("GET", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))", token: token)
+    }
+
+    func savePlans(token: String, teamID: String, plans: [TeamPlan], today: String) async throws -> TeamPlansReport {
+        struct Body: Encodable { var plans: [TeamPlan] }
+        return try await send("PUT", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))", token: token, body: Body(plans: plans))
     }
 
     // MARK: - Transport

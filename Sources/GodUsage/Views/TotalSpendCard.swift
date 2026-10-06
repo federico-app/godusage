@@ -82,6 +82,8 @@ struct TotalSpendCard: View {
                 .foregroundStyle(.secondary)
                 .hoverTooltip(infoTooltip)
             Spacer(minLength: 8)
+            DevBuildBadge()
+            Spacer(minLength: 8)
             shareButton
         }
         .padding(.leading, 4)

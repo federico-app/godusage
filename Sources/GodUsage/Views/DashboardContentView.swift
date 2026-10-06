@@ -55,6 +55,11 @@ struct DashboardContentView: View {
         if showTotalSpend, layout.hasSpendCapableProvider {
             TotalSpendCard()
                 .padding(.bottom, density.sectionSpacing)
+        } else if AppChannel.isDev() {
+            // The DEV badge normally sits in the Total Spend header; without that card it gets a row.
+            DevBuildBadge()
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, density.sectionSpacing)
         }
         // The team ranking sits right under Total Spend (above the provider cards) once you're
         // signed in and in a team; Advanced Stats inside it opens the Teams window.

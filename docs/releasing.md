@@ -38,7 +38,7 @@ Export the Developer ID Application cert (with its private key) from Keychain Ac
 
 [.github/workflows/release-dev.yml](../.github/workflows/release-dev.yml) runs on every push to `develop` that changes the app: pushes that only touch `docs/`, `backend/`, `website/`, or Markdown files are skipped (run it by hand from Actions if needed). It builds `script/release.sh` with `CHANNEL=dev`:
 
-- the app is **GodUsage DEV** (`com.montinovo.godusage.dev`, iCloud container `iCloud.com.montinovo.godusage.dev`), so it installs beside the release app and keeps its own settings, iCloud data, and teams backend;
+- the app is **GodUsage DEV** (`com.montinovo.godusage.dev`, iCloud container `iCloud.com.montinovo.godusage.dev`), so it installs beside the release app and keeps its own settings, iCloud data, and teams backend; its dashboard shows an orange **DEV** badge in the Total Spend header (or in its own row when that card is hidden);
 - the version is the newest stable tag plus the build number, for example `0.8.16-dev.642`;
 - it is Developer ID-signed and notarized like production, published as the prerelease `dev-<build>` with `GodUsage-DEV-<version>.dmg`, and never becomes the GitHub "Latest" release;
 - it updates `appcast-dev.xml` on `update-feed` (last 10 builds) and deploys `update-feed` to GitHub Pages itself, so it does not depend on workflows on `main`. Installed DEV apps update from that feed and never see production releases, and production apps never see DEV builds. The production pipeline ignores `dev-*` prereleases when it checks the feed's release history.
