@@ -132,3 +132,32 @@ final class TeamMetricTests: XCTestCase {
         XCTAssertEqual(TeamMetric(TotalSpendMetric.costPerMtok).sort, .cost)
     }
 }
+
+@MainActor
+final class TeamPlansTests: XCTestCase {
+    func testPlanEncodesWithoutItsLocalID() throws {
+        let plan = TeamPlan(id: "local", provider: "claude", name: "Claude Max", monthlyCostUSD: 200, renewalDay: 12)
+        let json = try XCTUnwrap(String(data: JSONEncoder().encode(plan), encoding: .utf8))
+        XCTAssertFalse(json.contains("local"))
+        XCTAssertTrue(json.contains("\"renewalDay\":12"))
+    }
+
+    func testDecodesTheServerReport() throws {
+        let body = """
+        {"plans":[{"id":"p1","provider":"cursor","name":"Cursor Ultra","monthlyCostUSD":200,"renewalDay":1,
+          "cycle":{"from":"2026-10-01","to":"2026-10-31","daysElapsed":5,"daysTotal":31,"daysLeft":26},
+          "valueUSD":10,"projectedValueUSD":62,"projectedMultiple":0.31,"underused":true}],
+         "totals":{"monthlyCostUSD":200,"valueUSD":10,"projectedValueUSD":62},"canEdit":false}
+        """
+        let report = try JSONDecoder().decode(TeamPlansReport.self, from: Data(body.utf8))
+        XCTAssertEqual(report.plans.first?.plan, TeamPlan(id: "p1", provider: "cursor", name: "Cursor Ultra", monthlyCostUSD: 200, renewalDay: 1))
+        XCTAssertEqual(report.plans.first?.underused, true)
+        XCTAssertEqual(TeamPlansReportView.multiple(0.31), "0.3×")
+        XCTAssertEqual(TeamPlansReportView.multiple(12.4), "12×")
+    }
+
+    func testDevChannelFollowsTheBundleID() {
+        XCTAssertTrue(AppChannel.isDev(bundleIdentifier: "com.montinovo.godusage.dev"))
+        XCTAssertFalse(AppChannel.isDev(bundleIdentifier: "com.montinovo.godusage"))
+    }
+}

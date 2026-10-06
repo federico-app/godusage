@@ -349,4 +349,10 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
         return TeamChallenge(id: "c-new", kind: kind, startsOn: today, endsOn: today, createdBy: "u1", finished: false, daysLeft: days, standings: [], winners: [])
     }
     func deleteChallenge(token: String, teamID: String, challengeID: String) async throws { log.append("deleteChallenge \(challengeID)") }
+    var plansResult = TeamPlansReport(plans: [], totals: .init(monthlyCostUSD: 0, valueUSD: 0, projectedValueUSD: 0), canEdit: true)
+    func plans(token: String, teamID: String, today: String) async throws -> TeamPlansReport { plansResult }
+    func savePlans(token: String, teamID: String, plans: [TeamPlan], today: String) async throws -> TeamPlansReport {
+        log.append("savePlans \(plans.map(\.name).joined(separator: ","))")
+        return plansResult
+    }
 }

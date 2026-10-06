@@ -108,6 +108,8 @@ Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
 }
 ```
 
+Plans (`GET /v1/teams/:id/plans?today=` for members, `PUT` with `{ plans: [{ provider, name, monthlyCostUSD, renewalDay }] }` for the owner, replacing the list, at most 30): the response carries each plan with its `cycle` (`from`, `to`, `daysElapsed`, `daysTotal`, `daysLeft`), `valueUSD` (the team's effective spend on the provider from `cycle.from` to today, shared accounts once, split by cost across plans of one provider), `projectedValueUSD`, `projectedMultiple`, and `underused` (projected under 1×), plus `totals` and `canEdit`.
+
 Account-scope entries may add `"account": "<64 hex characters>"`; it is rejected on device scope.
 
 `windowStart` is the first day of the app's window; the Mac's stored days from there on are replaced. It must be within the last 40 days. Without it, the earliest day sent is used.

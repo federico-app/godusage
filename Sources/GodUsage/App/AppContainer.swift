@@ -16,6 +16,7 @@ final class AppContainer {
     let teams: TeamsStore
     /// Reactions, challenges, champions, and the end-of-month projection.
     let teamsSocial: TeamsSocialStore
+    let teamPlans: TeamPlansStore
     /// Single source of truth for which providers the user has turned off. Both stores consult it (via
     /// injected closures) and the Customize provider list drives it.
     let enablement: ProviderEnablementStore
@@ -168,6 +169,7 @@ final class AppContainer {
         self.iCloudSync = iCloudSync
         self.teams = teams
         self.teamsSocial = teamsSocial
+        self.teamPlans = TeamPlansStore(teams: teams)
 
         // One claim service per Codex card. Each shares that card's credential loading and HTTP client,
         // and refreshes that exact card after a successful claim. The forced refresh returns `.skipped`

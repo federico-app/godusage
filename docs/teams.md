@@ -44,7 +44,7 @@ Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Code
 
 Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac uploaded, so the Year range fills in from the day you start sharing.
 
-**On the dashboard.** Once you're signed in and in a team, a Team section sits right under Total Spend, above the provider cards. It shows the selected team's ranking for Today, 7 Days, 30 Days, or Year. The metric follows the Total Spend card's menu: Cost, Cost/MTok (what each member pays per million tokens, highest first, without movement arrows), or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. **Advanced Stats** at the bottom opens the Teams window. With more than one team, pick one from the team name. Press **⌘T**, or choose **Team** in the gear menu, to open the Teams window directly.
+**On the dashboard.** Once you're signed in and in a team, a Team section sits right under Total Spend, above the provider cards. It shows the selected team's ranking. The period follows the Total Spend card's switcher (Today, Yesterday, 30 Days; 7 Days and Year are in the Teams window), and the metric follows its menu: Cost, Cost/MTok (what each member pays per million tokens, highest first, without movement arrows), or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. **Advanced Stats** at the bottom opens the Teams window. With more than one team, pick one from the team name. Press **⌘T**, or choose **Team** in the gear menu, to open the Teams window directly.
 
 **In the Teams window** (the popover's chart button, or **Open Leaderboards** in Settings → Teams):
 
@@ -54,6 +54,8 @@ Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac
 - **Top Models**: the team's most used models, colored by provider.
 
 The gear button in its toolbar opens Settings → Teams.
+
+**Plans.** The team owner lists the subscriptions the team pays for in Settings → Teams → Plans: provider, name, monthly cost, and the day of the month it renews (29–31 fall on the last day of shorter months). Every member sees the **Plans** tab in the Teams window. For each plan it shows the current billing cycle (last renewal to the day before the next), the team's usage of that provider in the cycle at API prices, the projection to the end of the cycle at the current pace, and the value per dollar (projected value ÷ monthly cost). Plans projected under 1× are flagged as underused. Usage counts like the leaderboard, shared accounts once; several plans of one provider split its usage by cost.
 
 **Team life.** Around the ranking:
 
