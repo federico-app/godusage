@@ -29,6 +29,7 @@ The release workflow needs these repository secrets (Settings → Secrets and va
 | `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD` | the password set when exporting that `.p12` |
 | `APPLE_IOS_APP_STORE_PROFILE` | base64 App Store provisioning profile for the iOS app |
 | `APPLE_IOS_WIDGET_APP_STORE_PROFILE` | base64 App Store provisioning profile for the iOS widget extension |
+| `HOMEBREW_TAP_DEPLOY_KEY` | private half of an SSH deploy key with write access to `federico-app/homebrew-tap` (see [Homebrew](#homebrew)) |
 
 ### macOS signing and notarization
 
@@ -47,6 +48,25 @@ Export the Developer ID Application cert (with its private key) from Keychain Ac
 Merge `develop` into `main` and tag it to ship production.
 
 The dev container needs its CloudKit schema deployed to **Production** too, because a Developer ID build uses the Production environment (see [iCloud Sync](icloud-sync.md#development-and-release-setup)).
+
+## Homebrew
+
+`brew install --cask federico-app/tap/godusage` installs the latest production DMG. The cask lives in the public tap repo [`federico-app/homebrew-tap`](https://github.com/federico-app/homebrew-tap) as `Casks/godusage.rb`.
+
+After each production release, the **Update Homebrew Cask** job in [.github/workflows/release.yml](../.github/workflows/release.yml) renders the cask from [script/homebrew/godusage.rb.template](../script/homebrew/godusage.rb.template) with the new version and the DMG's SHA-256 (`script/render_homebrew_cask.sh`) and pushes it to the tap. It skips the push when the tag is not the latest release, so rerunning an old tag never rolls the cask back. It fails loudly when `HOMEBREW_TAP_DEPLOY_KEY` is missing, without blocking the update feed or the iOS jobs. The DEV channel has no cask.
+
+The cask declares `auto_updates true`: Sparkle updates the installed app, and `brew upgrade` leaves it alone.
+
+One-time setup:
+
+1. Create the public repo `federico-app/homebrew-tap` with a first commit (an empty repo cannot be checked out).
+2. Generate a key pair: `ssh-keygen -t ed25519 -N "" -C "godusage release" -f homebrew_tap_key`.
+3. Add `homebrew_tap_key.pub` to the tap repo as a deploy key with **Allow write access**.
+4. Store `homebrew_tap_key` (the private half) as the `HOMEBREW_TAP_DEPLOY_KEY` secret on this repo, then delete both files.
+
+To check the cask locally: `brew style --cask federico-app/tap/godusage && brew audit --cask --online federico-app/tap/godusage`.
+
+The tap name means the command is not just `brew install godusage`. That needs the cask in the official `homebrew/cask` repo, which only accepts apps that are notable enough on GitHub.
 
 ## Teams backend
 

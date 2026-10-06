@@ -14,6 +14,12 @@ GodUsage shows limits, credits, and spend for Claude, Codex, Cursor, Grok, Devin
 
 Download the latest universal DMG from the [releases page](https://github.com/federico-app/godusage/releases/latest), open it, and drag GodUsage to Applications.
 
+Or install it with [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask federico-app/tap/godusage
+```
+
 The app updates itself through signed, notarized [Sparkle](docs/updates.md) updates. Requires macOS 15 (Sequoia) or later.
 
 ## Performance

@@ -323,6 +323,64 @@ jobs:
             rm -f "$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           fi
 
+  # Point the Homebrew cask (federico-app/homebrew-tap, Casks/godusage.rb) at the DMG the release
+  # job just published, so `brew install --cask federico-app/tap/godusage` installs it. A separate
+  # job: a tap failure must not hold up the update feed or the iOS pipeline, but it still fails
+  # loudly here. Pushes with a write deploy key on the tap repo (HOMEBREW_TAP_DEPLOY_KEY).
+  homebrew:
+    name: Update Homebrew Cask
+    needs: release
+    runs-on: ubuntu-latest
+    concurrency:
+      group: homebrew-tap-publish
+      cancel-in-progress: false
+    steps:
+      # The renderer comes from main, not the tag: an older tag may predate it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      - name: Check the deploy key
+        env:
+          HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+        run: |
+          [[ -n "$HOMEBREW_TAP_DEPLOY_KEY" ]] || {
+            echo "HOMEBREW_TAP_DEPLOY_KEY is not set — the cask was not updated. See docs/releasing.md." >&2
+            exit 1
+          }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: federico-app/homebrew-tap
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          path: tap
+
+      - name: Render and push the cask
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          # Re-running an older tag after a newer release must not roll the cask back.
+          LATEST="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)"
+          if [[ "$TAG" != "$LATEST" ]]; then
+            echo "$TAG is not the latest release ($LATEST); leaving the cask alone."
+            exit 0
+          fi
+          VERSION="${TAG#v}"
+          SHA256="$(gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p "GodUsage-$VERSION.dmg.sha256" -O - | awk '{print $1}')"
+          ./script/render_homebrew_cask.sh "$VERSION" "$SHA256" tap/Casks/godusage.rb
+
+          cd tap
+          if git diff --quiet -- Casks/godusage.rb && git ls-files --error-unmatch Casks/godusage.rb >/dev/null 2>&1; then
+            echo "Cask already at $VERSION."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/godusage.rb
+          git commit -m "godusage $VERSION"
+          git push origin HEAD
+
   # Keep the TestFlight pipeline in a dedicated reusable workflow. Besides making its ownership
   # clear, this gives the iOS gate an exact workflow path to track: unrelated Mac release and
   # update-feed edits in this file no longer cause a TestFlight upload.
