@@ -128,6 +128,13 @@ struct TeamsLeaderboardView: View {
                 Image(systemName: "arrow.clockwise")
             }
             .accessibilityLabel("Refresh")
+            // Teams settings: account, teams, invites, and sharing.
+            Button {
+                SettingsWindowLink.open(pane: .teams)
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .accessibilityLabel("Team Settings")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

@@ -53,6 +53,8 @@ Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac
 - **By Day**: the team's usage per day, split by provider; hover a day for its numbers,
 - **Top Models**: the team's most used models, colored by provider.
 
+The gear button in its toolbar opens Settings → Teams.
+
 **Team life.** Around the ranking:
 
 - **👑** marks today's top spender and **🏆** last month's champion; hover either for its meaning (the **Hall of Fame** in the Teams window lists every month's champion; a month counts once it's over).
