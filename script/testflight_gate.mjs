@@ -2,7 +2,8 @@
 // Decides whether a release tag needs the iOS TestFlight jobs at all. Every tag carries a new
 // marketing version, so every upload puts the app through a fresh Beta App Review and pushes an
 // update at every tester — pure overhead when the iOS app is byte-identical to the last release.
-// Mac-only releases therefore skip the upload. Ships when ANY of:
+// Mac-only releases therefore skip the upload. Skips (with a warning) while the app has no App
+// Store Connect record yet. Otherwise ships when ANY of:
 //   - FORCE_IOS=1 (the workflow_dispatch override),
 //   - there is no previous stable release tag (first release),
 //   - iOS-relevant paths changed since the newest valid build distributed to every external
@@ -65,6 +66,23 @@ const git = (...args) =>
 
 if (process.env.FORCE_IOS === "1") decide(true, "FORCE_IOS is set.");
 
+// iOS isn't on TestFlight until its App Store Connect app record exists. Until then every release
+// skips iOS (with a warning) instead of failing, and FORCE_IOS above is the way to try a first
+// upload once the record is created.
+const api = createClient({
+  keyPath: env("APPLE_NOTARY_KEY_PATH"),
+  keyId: env("APPLE_NOTARY_KEY_ID"),
+  issuerId: env("APPLE_NOTARY_ISSUER_ID"),
+});
+
+const apps = await api("GET", `/v1/apps?filter[bundleId]=${encodeURIComponent(BUNDLE_ID)}`);
+if (apps.status !== 200) fail("Could not query App Store Connect apps.", apps);
+const app = apps.json.data?.[0];
+if (!app) {
+  console.log(`::warning::No App Store Connect app record for ${BUNDLE_ID}; iOS is not set up yet (docs/releasing.md "Release setup").`);
+  decide(false, `no App Store Connect app record for ${BUNDLE_ID}.`);
+}
+
 // Previous stable release = highest stable tag whose version is below this one — the same range
 // rule the release changelog uses. Deliberately NOT ancestry-based: a tag created before its
 // changelog squash-merge sits off main forever (it has happened), yet its tree is still what
@@ -104,18 +122,6 @@ if (sincePrevious.length) {
 // asynchronous and pending for up to a day after every ship, and requiring it would re-ship
 // byte-identical builds — the exact overhead this gate removes. A review rejection is
 // owner-visible in App Store Connect.)
-const api = createClient({
-  keyPath: env("APPLE_NOTARY_KEY_PATH"),
-  keyId: env("APPLE_NOTARY_KEY_ID"),
-  issuerId: env("APPLE_NOTARY_ISSUER_ID"),
-});
-
-const apps = await api("GET", `/v1/apps?filter[bundleId]=${encodeURIComponent(BUNDLE_ID)}`);
-if (apps.status !== 200) fail("Could not query App Store Connect apps.", apps);
-const app = apps.json.data?.[0];
-if (!app) {
-  fail(`No App Store Connect app record for ${BUNDLE_ID} — create it first (docs/releasing.md "Release setup").`);
-}
 
 const groupNames = (process.env.TESTFLIGHT_EXTERNAL_GROUPS || "External")
   .split(",")
