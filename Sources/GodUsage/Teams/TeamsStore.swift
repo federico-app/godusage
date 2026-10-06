@@ -69,6 +69,10 @@ final class TeamsStore {
     @ObservationIgnored private let uploadDebounce: Duration
     @ObservationIgnored private let minimumUploadInterval: TimeInterval
     @ObservationIgnored private var uploadTask: Task<Void, Never>?
+    /// A forced upload stays forced when a plain schedule replaces its pending task.
+    @ObservationIgnored private var uploadForcePending = false
+    /// The last body the server accepted, so an unchanged one waits for `minimumUploadInterval`.
+    @ObservationIgnored private var lastUploaded: TeamUsageUpload?
     @ObservationIgnored private let notificationSettings: @MainActor () -> (overtakes: Bool, weeklyRecap: Bool)
     @ObservationIgnored private let postNotification: @MainActor (_ id: String, _ title: String, _ subtitle: String, _ body: String) async -> Bool
     @ObservationIgnored private let defaults: UserDefaults
@@ -333,20 +337,23 @@ final class TeamsStore {
 
     // MARK: - Upload
 
-    /// Debounced; at most one upload per `minimumUploadInterval` unless `force` (sign-in, joining
-    /// or creating a team), so a refresh storm costs one request.
+    /// Debounced, so a refresh storm costs one request. Changed usage uploads right away; unchanged
+    /// usage at most once per `minimumUploadInterval`, so teammates still see this Mac as synced.
+    /// `force` (sign-in, joining or creating a team) always uploads.
     func scheduleUpload(force: Bool = false) {
         guard session != nil, !teams.isEmpty || force else { return }
-        if !force, let lastUploadAt, now().timeIntervalSince(lastUploadAt) < minimumUploadInterval { return }
+        uploadForcePending = uploadForcePending || force
         uploadTask?.cancel()
         uploadTask = Task { [weak self, uploadDebounce] in
             try? await Task.sleep(for: uploadDebounce)
-            guard !Task.isCancelled else { return }
-            await self?.uploadNow()
+            guard !Task.isCancelled, let self else { return }
+            let force = self.uploadForcePending
+            self.uploadForcePending = false
+            await self.uploadNow(force: force)
         }
     }
 
-    func uploadNow() async {
+    func uploadNow(force: Bool = true) async {
         guard let token = session?.token else { return }
         guard let deviceID = deviceID() else {
             AppLog.warn(.teams, "teams upload skipped: this Mac's device identity is unresolved")
@@ -358,9 +365,14 @@ final class TeamsStore {
             deviceName: deviceName,
             dayKeys: UsageHistoryWindow.dayKeys(through: now())
         )
+        if !force, upload == lastUploaded, let lastUploadAt,
+           now().timeIntervalSince(lastUploadAt) < minimumUploadInterval {
+            return
+        }
         do {
             try await api.uploadUsage(token: token, deviceID: deviceID, upload: upload)
             lastUploadAt = now()
+            lastUploaded = upload
             uploadError = nil
             AppLog.info(.teams, "teams usage uploaded (\(upload.providers.count) providers)")
             await checkTeamEvents()
@@ -375,8 +387,8 @@ final class TeamsStore {
 
     // MARK: - Team notifications
 
-    /// Overtake alerts and the weekly recap. Runs after each upload, so at most every 15 minutes,
-    /// and only while one of the two is turned on.
+    /// Overtake alerts and the weekly recap. Runs after each upload, so after a refresh that changed
+    /// usage or at least every 15 minutes, and only while one of the two is turned on.
     func checkTeamEvents() async {
         let settings = notificationSettings()
         guard let me = user?.id, !teams.isEmpty else { return }
@@ -481,7 +493,9 @@ final class TeamsStore {
         session = nil
         teams = []
         details = [:]
+        uploadForcePending = false
         lastUploadAt = nil
+        lastUploaded = nil
         uploadError = nil
         cachedStats = [:]
         reactionsByTeam = [:]

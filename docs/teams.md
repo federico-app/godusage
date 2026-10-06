@@ -30,7 +30,7 @@ Extra accounts of a provider are added into that provider; account ids never lea
 
 The server keeps everything each Mac shared, so history grows beyond the app's 30-day window; each upload replaces only that Mac's last 30 days.
 
-Uploads happen after a refresh, at most every 15 minutes, and right away when you sign in, create or join a team, or change which providers are enabled. Each upload replaces this Mac's previous one. The Account section shows when this Mac last shared. A Mac whose [iCloud Sync](icloud-sync.md) identity is unresolved does not upload, so it is never counted twice.
+Uploads happen after each refresh (every 5 minutes) when your usage changed, at least every 15 minutes even when it didn't, and right away when you sign in, create or join a team, or change which providers are enabled. So a teammate's new usage reaches the board within about 5 minutes. Each upload replaces this Mac's previous one. The Account section shows when this Mac last shared. A Mac whose [iCloud Sync](icloud-sync.md) identity is unresolved does not upload, so it is never counted twice.
 
 Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Codex, Grok, and others) adds up across Macs. Cursor's usage is already account-wide, so only your most recently updated Mac counts.
 
@@ -44,7 +44,7 @@ Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Code
 
 Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac uploaded, so the Year range fills in from the day you start sharing.
 
-**On the dashboard.** Once you're signed in and in a team, a Team section sits right under Total Spend, above the provider cards. It shows the selected team's ranking. The period follows the Total Spend card's switcher (Today, Yesterday, 30 Days; 7 Days and Year are in the Teams window), and the metric follows its menu: Cost, Cost/MTok (what each member pays per million tokens, highest first, without movement arrows), or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. **Advanced Stats** at the bottom opens the Teams window. With more than one team, pick one from the team name. Press **⌘T**, or choose **Team** in the gear menu, to open the Teams window directly.
+**On the dashboard.** Once you're signed in and in a team, a Team section sits right under Total Spend, above the provider cards. It shows the selected team's ranking. The period follows the Total Spend card's switcher (Today, Yesterday, 30 Days; 7 Days and Year are in the Teams window), and the metric follows its menu: Cost, Cost/MTok (what each member pays per million tokens, highest first, without movement arrows), or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. **Advanced Stats** at the bottom opens the Teams window. With more than one team, pick one from the team name. The section reloads each time you open the popover and every 2 minutes while it stays open; the Teams window also reloads every 2 minutes while open. Press **⌘T**, or choose **Team** in the gear menu, to open the Teams window directly.
 
 **In the Teams window** (the popover's chart button, or **Open Leaderboards** in Settings → Teams):
 
@@ -93,7 +93,7 @@ Three team alerts in **Settings → Notifications**, all on by default:
 
 - **Team Challenges**: who won, when a challenge ends. Challenges that had already ended when you turned it on are never announced.
 
-All three are checked after each upload, so at most every 15 minutes, and only while GodUsage is running.
+All three are checked after each upload, so after a refresh that changed your usage or at least every 15 minutes, and only while GodUsage is running.
 
 ## Requirements
 

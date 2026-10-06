@@ -7,6 +7,7 @@ final class TeamsStoreTests: XCTestCase {
     private var sessions: InMemoryTeamsSessionStore!
     private var signIn: FakeAppleSignIn!
     private var deviceID: String?
+    private var sources: [TeamHistorySource] = []
 
     override func setUp() async throws {
         api = FakeTeamsAPI()
@@ -20,7 +21,7 @@ final class TeamsStoreTests: XCTestCase {
             api: api,
             sessionStore: sessions,
             signInProvider: signIn,
-            historySources: { [] },
+            historySources: { [unowned self] in self.sources },
             deviceID: { [unowned self] in self.deviceID },
             deviceName: "Test Mac",
             now: { Date(timeIntervalSince1970: 1_791_200_000) },
@@ -115,9 +116,37 @@ final class TeamsStoreTests: XCTestCase {
 
         store.scheduleUpload()
         try await Task.sleep(for: .milliseconds(50))
-        XCTAssertEqual(api.uploads.count, 1, "a second upload inside the interval is skipped")
+        XCTAssertEqual(api.uploads.count, 1, "unchanged usage inside the interval is skipped")
 
         store.scheduleUpload(force: true)
+        try await waitUntil { self.api.uploads.count == 2 }
+    }
+
+    func testChangedUsageUploadsInsideTheInterval() async throws {
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        api.teamsResult = [TeamSummary(id: "t1", name: "Crew", role: .member, memberCount: 2)]
+        let store = makeStore()
+        await store.refresh()
+        try await waitUntil { self.api.uploads.count == 1 }
+
+        let history = ProviderUsageHistory(series: DailyUsageSeries(daily: [
+            DailyUsageEntry(date: "2026-10-05", totalTokens: 1_000, costUSD: 1.5),
+        ]))
+        sources = [TeamHistorySource(cardID: "claude", scope: .machineLocal, history: history)]
+        store.scheduleUpload()
+        try await waitUntil { self.api.uploads.count == 2 }
+        XCTAssertEqual(api.uploads.last?.upload.providers.map(\.provider), ["claude"])
+    }
+
+    func testAForcedUploadSurvivesALaterPlainSchedule() async throws {
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        api.teamsResult = [TeamSummary(id: "t1", name: "Crew", role: .member, memberCount: 2)]
+        let store = makeStore()
+        await store.refresh()
+        try await waitUntil { self.api.uploads.count == 1 }
+
+        store.scheduleUpload(force: true)
+        store.scheduleUpload()
         try await waitUntil { self.api.uploads.count == 2 }
     }
 
