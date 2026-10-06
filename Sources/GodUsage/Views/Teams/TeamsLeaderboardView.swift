@@ -52,9 +52,20 @@ struct TeamsLeaderboardView: View {
         .background(Theme.traySurface)
         .task { await teams.refresh() }
         .task(id: LoadKey(teamID: currentTeamID, range: range, sort: sort, teamCount: teams.teams.count)) {
-            await load()
+            await keepLoaded()
         }
     }
+
+    /// Keeps reloading while the window is open, so teammates' new usage shows up on its own. The
+    /// window's view is torn down on close, which cancels the task.
+    private func keepLoaded() async {
+        while !Task.isCancelled {
+            await load()
+            try? await Task.sleep(for: Self.reloadInterval)
+        }
+    }
+
+    private static let reloadInterval: Duration = .seconds(120)
 
     private struct LoadKey: Hashable {
         var teamID: String?

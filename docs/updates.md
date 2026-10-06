@@ -5,7 +5,7 @@ GodUsage updates itself with [Sparkle](https://sparkle-project.org), the standar
 ## How it works
 
 - **Automatic checks.** The app checks for a new version in the background about once an hour. When one is found, an **Update Available** banner appears at the top of the popover. Click **Install Update** to open the update window (release notes, download, install). The banner's close button snoozes it until the next time the app finds the update.
-- **Manual check.** Open **Settings → Advanced → Updates** and click **Check for Updates…**. For manual checks and banner installs, GodUsage brings itself to the foreground before opening Sparkle so the update window is not buried behind another app. Because GodUsage normally lives only in the menu bar, it briefly shows a Dock icon for the update session, then hides it again.
+- **Manual check.** Open **Settings → Advanced → Updates** and click **Check for Updates…**. For manual checks and banner installs, GodUsage closes the popover and brings itself to the foreground before opening Sparkle so the update window is not buried behind another app. Because GodUsage normally lives only in the menu bar, it briefly shows a Dock icon for the update session, then hides it again.
 - **Homebrew installs.** An app installed with `brew install --cask federico-app/tap/godusage` updates itself the same way. `brew upgrade` skips it because the cask is marked as auto-updating. See [Releasing](releasing.md#homebrew).
 - **Turn it off.** The **Update Automatically** switch in **Settings → Advanced → Updates** stops the background checks. You can still check manually.
 

@@ -10,6 +10,8 @@ struct TeamDashboardSection: View {
     @AppStorage("godusage.totalSpend.period") private var totalSpendPeriod = TotalSpendPeriod.today.rawValue
     /// The Total Spend card's metric menu drives this section too (Cost, Cost/MTok, Tokens).
     @AppStorage("godusage.totalSpend.metric") private var totalSpendMetric = TotalSpendMetric.cost.rawValue
+    /// The popover's tree survives closing, so reloads key off visibility, not appearance.
+    @Environment(\.popoverIsVisible) private var popoverIsVisible
     @State private var expandedMemberID: String?
     @State private var isLoading = false
 
@@ -31,10 +33,11 @@ struct TeamDashboardSection: View {
             content
         }
         .frame(maxWidth: .infinity)
-        .task(id: loadKey) { await load() }
+        .task(id: loadKey) { await keepLoaded() }
     }
 
     private struct LoadKey: Hashable {
+        var isVisible: Bool
         var teamID: String?
         var range: StatsRange
         var sort: StatsSort
@@ -42,13 +45,29 @@ struct TeamDashboardSection: View {
     }
 
     private var loadKey: LoadKey {
-        LoadKey(teamID: container.teams.selectedTeamID, range: range, sort: sort, endingOn: endingOn)
+        LoadKey(isVisible: popoverIsVisible, teamID: container.teams.selectedTeamID, range: range, sort: sort, endingOn: endingOn)
     }
 
     private var stats: TeamStats? {
         guard let teamID = container.teams.selectedTeamID else { return nil }
         return container.teams.cachedStats[TeamsStore.StatsKey(teamID: teamID, range: range, sort: sort, endingOn: endingOn)]
     }
+
+    /// Loads on every open and keeps reloading while the popover stays open, so teammates' new
+    /// usage shows up without reopening. Stops when the popover closes (the task is cancelled).
+    private func keepLoaded() async {
+        guard popoverIsVisible else {
+            // Prewarm while hidden, so the first open isn't a spinner.
+            if stats == nil { await load() }
+            return
+        }
+        while !Task.isCancelled {
+            await load()
+            try? await Task.sleep(for: Self.reloadInterval)
+        }
+    }
+
+    private static let reloadInterval: Duration = .seconds(120)
 
     private func load() async {
         let teams = container.teams
