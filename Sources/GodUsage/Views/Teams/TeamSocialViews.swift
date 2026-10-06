@@ -67,10 +67,14 @@ struct MemberBadges: View {
         let social = container.teamsSocial
         HStack(spacing: 2) {
             if social.kingOfTheDay(teamID: teamID)?.userID == userID {
-                Text("👑").accessibilityLabel("Top spender today")
+                Text("👑")
+                    .accessibilityLabel("Top spender today")
+                    .hoverTooltip("Top spender today")
             }
             if let champion = social.lastMonthChampion(teamID: teamID), champion.userID == userID {
-                Text("🏆").accessibilityLabel("\(champion.monthLabel) champion")
+                Text("🏆")
+                    .accessibilityLabel("\(champion.monthLabel) champion")
+                    .hoverTooltip("\(champion.monthLabel) champion: top spender of the month")
             }
         }
         .font(.caption)

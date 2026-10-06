@@ -34,6 +34,8 @@ Uploads happen after a refresh, at most every 15 minutes, and right away when yo
 
 Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Codex, Grok, and others) adds up across Macs. Cursor's usage is already account-wide, so only your most recently updated Mac counts.
 
+**Shared accounts.** Cursor reports usage per account, not per person. When two or more members log into the same Cursor account, their usage is counted once: it is in the team total, the providers, By Day, and Top Models, but in no member's total. It shows as an unranked **Shared Cursor** row after the members, with who shares it, on the dashboard, in the Teams window, and on the web boards. To tell accounts apart, each Mac sends an anonymous fingerprint of its Cursor account (a one-way hash); the account id itself never leaves the Mac.
+
 **Export My Data** (Settings → Teams) saves everything the service keeps about you as a JSON file. The service's [Terms](https://godusage-api.federico-c80.workers.dev/terms) and [Privacy Policy](https://godusage-api.federico-c80.workers.dev/privacy) are linked at sign-in.
 
 **Sign Out** removes this Mac's usage from your teams first, then ends the session. If removing it fails, you stay signed in and see the error. **Delete Account** removes your account, the usage all your Macs shared, and the teams you own.
@@ -42,7 +44,7 @@ Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Code
 
 Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac uploaded, so the Year range fills in from the day you start sharing.
 
-**On the dashboard.** Once you're signed in and in a team, a Team section sits under the provider cards. It shows the selected team's ranking for Today, 7 Days, 30 Days, or Year, by Spend or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. **Advanced Stats** at the bottom opens the Teams window. With more than one team, pick one from the team name. Press **⌘T**, or choose **Team** in the gear menu, to open the Teams window directly.
+**On the dashboard.** Once you're signed in and in a team, a Team section sits right under Total Spend, above the provider cards. It shows the selected team's ranking for Today, 7 Days, 30 Days, or Year. The metric follows the Total Spend card's menu: Cost, Cost/MTok (what each member pays per million tokens, highest first, without movement arrows), or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. **Advanced Stats** at the bottom opens the Teams window. With more than one team, pick one from the team name. Press **⌘T**, or choose **Team** in the gear menu, to open the Teams window directly.
 
 **In the Teams window** (the popover's chart button, or **Open Leaderboards** in Settings → Teams):
 
@@ -51,9 +53,11 @@ Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac
 - **By Day**: the team's usage per day, split by provider; hover a day for its numbers,
 - **Top Models**: the team's most used models, colored by provider.
 
+The gear button in its toolbar opens Settings → Teams.
+
 **Team life.** Around the ranking:
 
-- **👑** marks today's top spender and **🏆** last month's champion (the **Hall of Fame** in the Teams window lists every month's champion; a month counts once it's over).
+- **👑** marks today's top spender and **🏆** last month's champion; hover either for its meaning (the **Hall of Fame** in the Teams window lists every month's champion; a month counts once it's over).
 - **Reactions:** give a teammate 🔥, 👏, or 🤡, one of each per week; click again to take it back. Counts start clean every Monday. On the dashboard's team section, click a member to react; the Teams window has the buttons on each row.
 - **Projection:** "Team on pace for $X in October" stretches this month's spend so far over the whole month, for the team and for each member.
 - **Challenges** (Teams window, **New Challenge**): any member starts one for 7, 14, or 30 days: **Lowest Spend** (among members who spend something), **Most Models**, **Most Tokens**, or **Best Efficiency** (with at least 100K tokens). Standings update live; when it ends, the leader wins. The creator or the owner can cancel it. Active challenges also show under the dashboard's team ranking.

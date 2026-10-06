@@ -20,9 +20,12 @@ jobs:
     runs-on: macos-26
     permissions:
       contents: write
-    # Shares the update-feed lock with release.yml: both read, regenerate, and publish update-feed.
+    # Its own lock, not release.yml's: a group keeps only one pending run and cancels the older one,
+    # so sharing it let any develop push cancel a waiting production release. The two never write
+    # the same file (appcast-dev.xml here, appcast.xml there) and both publish with keep_files, so
+    # the only risk is a push race on update-feed; the loser fails and needs a rerun.
     concurrency:
-      group: update-feed-publish
+      group: update-feed-publish-dev
       cancel-in-progress: false
     env:
       APPLE_TEAM_ID: S6X72K86R8

@@ -298,7 +298,10 @@ final class CursorProvider: ProviderRuntime {
                     "usage CSV ignored \(parsed.rejectedRowCount) malformed row\(parsed.rejectedRowCount == 1 ? "" : "s")"
                 )
             }
-            return CursorUsageMapper.appendSpendLines(rows: parsed.rows, now: end, pricing: pricing, to: &lines)
+            var history = CursorUsageMapper.appendSpendLines(rows: parsed.rows, now: end, pricing: pricing, to: &lines)
+            history.accountKey = CursorUsageClient.session(from: accessToken)
+                .map { TeamAccountKey.make(provider: "cursor", accountID: $0.userID) }
+            return history
         } catch let error as CursorUsageCSVError {
             switch error {
             case .missingColumns(let columns):

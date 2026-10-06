@@ -118,10 +118,18 @@ export interface DayInput {
   models?: { model: string; tokens: number; costUSD?: number | null }[];
 }
 
-export function upload(providers: { provider: string; scope?: "device" | "account"; days: DayInput[] }[], deviceName = "MacBook") {
+export function upload(
+  providers: { provider: string; scope?: "device" | "account"; account?: string; days: DayInput[] }[],
+  deviceName = "MacBook",
+) {
   return {
     schema: "godusage.team-usage.v1",
     deviceName,
-    providers: providers.map((p) => ({ provider: p.provider, scope: p.scope ?? "device", days: p.days })),
+    providers: providers.map((p) => ({
+      provider: p.provider,
+      scope: p.scope ?? "device",
+      ...(p.account === undefined ? {} : { account: p.account }),
+      days: p.days,
+    })),
   };
 }

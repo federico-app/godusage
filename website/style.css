@@ -83,7 +83,7 @@ a { color: inherit; }
 header { padding: 28px 0; }
 header .wrap { display: flex; align-items: center; justify-content: space-between; }
 .wordmark { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 650; text-decoration: none; }
-.wordmark svg { width: 22px; height: 22px; color: var(--accent); }
+.wordmark img { width: 22px; height: 22px; border-radius: 24.5%; }
 .gh-link { font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
 .gh-link:hover { color: var(--ink); }
 
@@ -347,7 +347,7 @@ header .wrap { display: flex; align-items: center; justify-content: space-betwee
 footer { border-top: 1px solid var(--hairline); padding: 26px 0 40px; }
 footer .wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); }
 footer .wordmark { font-size: 14px; }
-footer .wordmark svg { width: 16px; height: 16px; }
+footer .wordmark img { width: 16px; height: 16px; }
 footer a { color: var(--ink-2); text-decoration: none; }
 footer a:hover { color: var(--ink); }
 footer .push { margin-left: auto; }

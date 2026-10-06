@@ -14,6 +14,8 @@ export interface DayRow {
   provider: string;
   day: string;
   scope: Scope;
+  /** The account's anonymous fingerprint, for account-scope rows whose app sent one. */
+  accountKey: string | null;
   tokens: number;
   costUSD: number | null;
 }
@@ -35,6 +37,7 @@ export interface UsageUpload {
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PROVIDER_PATTERN = /^[a-z0-9][a-z0-9-]{0,39}$/;
+const ACCOUNT_KEY_PATTERN = /^[a-f0-9]{32,64}$/;
 
 export function dayKey(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -52,7 +55,7 @@ export function isValidDay(value: unknown): value is string {
 
 /**
  * Validates one device's upload (the system boundary for usage data) and flattens it into rows.
- * Shape: { schema, deviceName, providers: [{ provider, scope, days: [{ date, tokens, costUSD, models? }] }] }
+ * Shape: { schema, deviceName, providers: [{ provider, scope, account?, days: [{ date, tokens, costUSD, models? }] }] }
  */
 export function parseUsageUpload(body: Record<string, unknown>, now: Date): UsageUpload {
   if (body.schema !== USAGE_SCHEMA) throw badRequest(`schema must be "${USAGE_SCHEMA}". Update GodUsage.`);
@@ -83,6 +86,14 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
     seenProviders.add(provider);
     if (entry.scope !== "device" && entry.scope !== "account") throw badRequest(`Invalid scope for ${provider}.`);
     const scope: Scope = entry.scope;
+    let accountKey: string | null = null;
+    if (entry.account !== undefined && entry.account !== null) {
+      if (scope !== "account") throw badRequest(`account is only allowed on account-scope usage (${provider}).`);
+      if (typeof entry.account !== "string" || !ACCOUNT_KEY_PATTERN.test(entry.account)) {
+        throw badRequest(`Invalid account for ${provider}.`);
+      }
+      accountKey = entry.account;
+    }
     if (!Array.isArray(entry.days)) throw badRequest(`days must be an array for ${provider}.`);
     if (entry.days.length > UPLOAD_WINDOW_DAYS + 2) throw badRequest(`Too many days for ${provider}.`);
 
@@ -96,7 +107,7 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
       // Days outside the window are dropped, not rejected: the client's window can drift by a day.
       if (day < earliest || day > latest) continue;
 
-      days.push({ provider, day, scope, tokens: parseTokens(dayEntry.tokens), costUSD: parseCost(dayEntry.costUSD) });
+      days.push({ provider, day, scope, accountKey, tokens: parseTokens(dayEntry.tokens), costUSD: parseCost(dayEntry.costUSD) });
 
       const dayModels = dayEntry.models ?? [];
       if (!Array.isArray(dayModels)) throw badRequest(`models must be an array (${provider} ${day}).`);
@@ -112,6 +123,7 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
           provider,
           day,
           scope,
+          accountKey,
           model,
           tokens: parseTokens(modelEntry.tokens),
           costUSD: parseCost(modelEntry.costUSD),

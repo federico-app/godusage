@@ -1,17 +1,21 @@
 import SwiftUI
 
-/// The dashboard's Team section, under the provider cards once you're signed in and in a team: the
+/// The dashboard's Team section, under Total Spend once you're signed in and in a team: the
 /// selected team's ranking at a glance, with each member's split by provider. Click a member for their
 /// providers and top models. Advanced Stats opens the Teams window with the full charts.
 struct TeamDashboardSection: View {
     @Environment(AppContainer.self) private var container
 
     @AppStorage("godusage.teams.popover.range") private var range: StatsRange = .today
-    @AppStorage("godusage.teams.popover.sort") private var sort: StatsSort = .cost
+    /// The Total Spend card's metric menu drives this section too (Cost, Cost/MTok, Tokens).
+    @AppStorage("godusage.totalSpend.metric") private var totalSpendMetric = TotalSpendMetric.cost.rawValue
     @State private var expandedMemberID: String?
     @State private var isLoading = false
 
     private let density = DensitySetting.compact
+
+    private var metric: TeamMetric { TeamMetric(TotalSpendMetric(rawValue: totalSpendMetric) ?? .cost) }
+    private var sort: StatsSort { metric.sort }
 
     var body: some View {
         VStack(alignment: .leading, spacing: density.sectionSpacing) {
@@ -76,13 +80,6 @@ struct TeamDashboardSection: View {
                 teamPicker
                 Spacer(minLength: 4)
                 if isLoading { ProgressView().controlSize(.mini) }
-                Picker("Metric", selection: $sort) {
-                    ForEach(StatsSort.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .controlSize(.small)
-                .fixedSize()
             }
             Picker("Range", selection: $range) {
                 ForEach(StatsRange.pickerCases, id: \.self) { Text($0.label).tag($0) }
@@ -126,9 +123,9 @@ struct TeamDashboardSection: View {
     private func summary(_ stats: TeamStats) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline) {
-                Text(TeamsFormat.value(stats.totals, sort: sort))
+                Text(metric.format(stats.totals))
                     .font(.system(size: 22, weight: .semibold).monospacedDigit())
-                Text(sort == .cost ? "team spend" : "team tokens")
+                Text(metric.teamLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -160,11 +157,17 @@ struct TeamDashboardSection: View {
     }
 
     private func ranking(_ stats: TeamStats) -> some View {
-        let top = stats.members.map { $0.totals.value(for: sort) }.max() ?? 0
+        let top = stats.rankingTop(for: metric)
         return VStack(spacing: 0) {
-            ForEach(Array(stats.members.enumerated()), id: \.element.id) { index, member in
+            ForEach(Array(metric.ranked(stats.members).enumerated()), id: \.element.id) { index, member in
                 if index > 0 { Divider().padding(.leading, 12) }
                 memberRow(member, top: top, stats: stats)
+            }
+            ForEach(stats.sharedAccounts(for: metric)) { account in
+                Divider().padding(.leading, 12)
+                TeamSharedAccountRow(account: account, stats: stats, metric: metric, top: top, providerName: providerName)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
             }
             Divider()
             advancedStatsRow
@@ -218,7 +221,10 @@ struct TeamDashboardSection: View {
                                 .padding(.vertical, 1)
                                 .background(.secondary.opacity(0.12), in: Capsule())
                         }
-                        RankChangeBadge(member: member, range: range, sort: sort)
+                        // Movement compares server ranks, which Cost/MTok re-ranks.
+                        if metric != .costPerMtok {
+                            RankChangeBadge(member: member, range: range, sort: sort)
+                        }
                         if let teamID = container.teams.selectedTeamID {
                             MemberBadges(teamID: teamID, userID: member.userID)
                         }
@@ -226,7 +232,7 @@ struct TeamDashboardSection: View {
                         if let teamID = container.teams.selectedTeamID {
                             ReactionCounts(reactions: container.teamsSocial.reactions(teamID: teamID, userID: member.userID))
                         }
-                        Text(TeamsFormat.value(member.totals, sort: sort))
+                        Text(metric.format(member.totals))
                             .font(.callout.monospacedDigit().weight(.semibold))
                     }
                     providerBar(member, top: top)
@@ -246,19 +252,19 @@ struct TeamDashboardSection: View {
     }
 
     private func providerBar(_ member: TeamStats.Member, top: Double) -> some View {
-        ProviderSplitBar(providers: member.providers, top: top, sort: sort)
+        ProviderSplitBar(providers: metric.barSegments(member.providers, total: member.totals), top: top, sort: sort)
     }
 
     @ViewBuilder
     private func memberDetail(_ member: TeamStats.Member, stats: TeamStats) -> some View {
-        let providers = member.providers.filter { $0.totals.value(for: sort) > 0 }
+        let providers = member.providers.filter { metric.value($0.totals) > 0 }
         let models = stats.models
             .compactMap { model -> (TeamStats.Model, UsageTotals)? in
                 guard let mine = model.members.first(where: { $0.userID == member.userID }) else { return nil }
                 return (model, mine.totals)
             }
-            .filter { $0.1.value(for: sort) > 0 }
-            .sorted { $0.1.value(for: sort) > $1.1.value(for: sort) }
+            .filter { metric.value($0.1) > 0 }
+            .sorted { metric.value($0.1) > metric.value($1.1) }
             .prefix(3)
         VStack(alignment: .leading, spacing: 4) {
             if let teamID = container.teams.selectedTeamID {
@@ -271,7 +277,8 @@ struct TeamDashboardSection: View {
             if providers.isEmpty {
                 Text("No usage in this period.").font(.caption).foregroundStyle(.secondary)
             }
-            if let perMillion = TeamsFormat.perMillion(member.totals) {
+            // Cost/MTok already shows the member's rate on their row.
+            if metric != .costPerMtok, let perMillion = TeamsFormat.perMillion(member.totals) {
                 HStack {
                     Text("Efficiency").font(.caption).foregroundStyle(.secondary)
                     Spacer(minLength: 6)
@@ -299,7 +306,7 @@ struct TeamDashboardSection: View {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(title).font(.caption).lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 6)
-            Text(TeamsFormat.value(totals, sort: sort))
+            Text(metric.format(totals))
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
         }

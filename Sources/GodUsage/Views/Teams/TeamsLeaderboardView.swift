@@ -128,6 +128,13 @@ struct TeamsLeaderboardView: View {
                 Image(systemName: "arrow.clockwise")
             }
             .accessibilityLabel("Refresh")
+            // Teams settings: account, teams, invites, and sharing.
+            Button {
+                SettingsWindowLink.open(pane: .teams)
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .accessibilityLabel("Team Settings")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -261,7 +268,7 @@ private struct TeamsRankingList: View {
     let teamID: String?
 
     var body: some View {
-        let top = stats.members.map { $0.totals.value(for: sort) }.max() ?? 0
+        let top = stats.rankingTop(for: TeamMetric(sort))
         VStack(spacing: 0) {
             ForEach(Array(stats.members.enumerated()), id: \.element.id) { index, member in
                 if index > 0 { Divider() }
@@ -295,6 +302,12 @@ private struct TeamsRankingList: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
+            }
+            ForEach(stats.sharedAccounts(for: TeamMetric(sort))) { account in
+                Divider()
+                TeamSharedAccountRow(account: account, stats: stats, metric: TeamMetric(sort), top: top, providerName: providerName, barHeight: 6)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
             }
         }
         .cardSurface()

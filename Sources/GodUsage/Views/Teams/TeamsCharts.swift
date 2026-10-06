@@ -59,9 +59,13 @@ struct TeamsCharts: View {
     /// Providers in this period, in the team's order (largest first). Only the legend order follows
     /// usage; each provider's color comes from its id.
     private var providerIDs: [String] {
-        var ids = stats.providers.map(\.provider)
-        for day in stats.daily { for provider in day.providers ?? [] where !ids.contains(provider.provider) { ids.append(provider.provider) } }
-        for model in stats.models where !ids.contains(model.provider) { ids.append(model.provider) }
+        var ids = stats.providers.filter { $0.totals.value(for: sort) > 0 }.map(\.provider)
+        for day in stats.daily {
+            for provider in day.providers ?? [] where provider.totals.value(for: sort) > 0 && !ids.contains(provider.provider) {
+                ids.append(provider.provider)
+            }
+        }
+        for model in topModels where model.totals.value(for: sort) > 0 && !ids.contains(model.provider) { ids.append(model.provider) }
         return ids
     }
 
@@ -83,12 +87,25 @@ struct TeamsCharts: View {
     }
 
     private var memberSegments: [MemberSegment] {
-        stats.members.flatMap { member in
+        let members = stats.members.flatMap { member in
             member.providers.compactMap { provider in
                 let value = provider.totals.value(for: sort)
                 return value > 0 ? MemberSegment(member: member.displayName, provider: providerName(provider.provider), value: value) : nil
             }
         }
+        let shared = stats.sharedAccounts(for: TeamMetric(sort)).map { account in
+            MemberSegment(member: sharedRowName(account), provider: providerName(account.provider), value: account.totals.value(for: sort))
+        }
+        return members + shared
+    }
+
+    /// Rows of the member chart: every member, then each shared account (counted in no member's bar).
+    private var memberRows: [(name: String, totals: UsageTotals)] {
+        stats.members.map { ($0.displayName, $0.totals) } + stats.sharedAccounts(for: TeamMetric(sort)).map { (sharedRowName($0), $0.totals) }
+    }
+
+    private func sharedRowName(_ account: TeamStats.SharedAccount) -> String {
+        "Shared \(providerName(account.provider))"
     }
 
     private var memberChart: some View {
@@ -101,11 +118,11 @@ struct TeamsCharts: View {
                 }
                 // Each member's total, labeled once at the end of their bar. A point (unlike a bar)
                 // does not stack onto the segments.
-                ForEach(stats.members) { member in
-                    PointMark(x: .value(metricName, member.totals.value(for: sort)), y: .value("Member", member.displayName))
+                ForEach(memberRows, id: \.name) { row in
+                    PointMark(x: .value(metricName, row.totals.value(for: sort)), y: .value("Member", row.name))
                         .opacity(0)
                         .annotation(position: .trailing, alignment: .leading, spacing: 6) {
-                            Text(TeamsFormat.value(member.totals, sort: sort))
+                            Text(TeamsFormat.value(row.totals, sort: sort))
                                 .font(.caption.monospacedDigit().weight(.semibold))
                                 .foregroundStyle(.secondary)
                         }
@@ -113,14 +130,15 @@ struct TeamsCharts: View {
             }
             .chartXAxis { valueAxis }
             .chartXScale(domain: 0...(maxMemberValue * 1.18))
-            .chartYScale(domain: stats.members.map(\.displayName))
+            .chartYScale(domain: memberRows.map(\.name))
+            .chartYAxis { categoryAxis }
             .chartLegend(position: .bottom, alignment: .leading, spacing: 10)
-            .frame(height: max(110, CGFloat(stats.members.count) * 30 + 56))
+            .frame(height: max(110, CGFloat(memberRows.count) * 30 + 56))
         )
     }
 
     private var maxMemberValue: Double {
-        max(stats.members.map { $0.totals.value(for: sort) }.max() ?? 0, sort == .cost ? 1 : 1000)
+        max(stats.rankingTop(for: TeamMetric(sort)), sort == .cost ? 1 : 1000)
     }
 
     // MARK: - Efficiency
@@ -153,12 +171,13 @@ struct TeamsCharts: View {
             AxisMarks(values: .automatic(desiredCount: 4)) { value in
                 AxisGridLine().foregroundStyle(.secondary.opacity(0.15))
                 AxisValueLabel {
-                    if let number = value.as(Double.self) { Text(Formatters.currency(number, fractionDigits: 0)) }
+                    if let number = value.as(Double.self) { Text(TeamsFormat.axisCurrency(number)) }
                 }
             }
         }
         .chartXScale(domain: 0...((rows.map(\.perMillion).max() ?? 1) * 1.3))
         .chartYScale(domain: rows.map(\.member))
+        .chartYAxis { categoryAxis }
         .frame(height: CGFloat(rows.count) * 28 + 36)
     }
 
@@ -192,7 +211,7 @@ struct TeamsCharts: View {
                 if let selectedDay, let day = dayStats(for: selectedDay) {
                     RuleMark(x: .value("Day", selectedDay, unit: .day))
                         .foregroundStyle(.secondary.opacity(0.35))
-                        .annotation(position: .top, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        .annotation(position: .top, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))) {
                             dayTooltip(day)
                         }
                 }
@@ -242,7 +261,10 @@ struct TeamsCharts: View {
 
     // MARK: - Top Models
 
-    private var topModels: [TeamStats.Model] { Array(stats.models.prefix(8)) }
+    /// The eight largest models with usage in this metric; free models are left out of a spend board.
+    private var topModels: [TeamStats.Model] {
+        Array(stats.models.filter { $0.totals.value(for: sort) > 0 }.prefix(8))
+    }
 
     private var modelsChart: some View {
         applyProviderColors(
@@ -259,6 +281,7 @@ struct TeamsCharts: View {
             .chartXAxis { valueAxis }
             .chartXScale(domain: 0...((topModels.map { $0.totals.value(for: sort) }.max() ?? 1) * 1.22))
             .chartYScale(domain: topModels.map(\.model))
+            .chartYAxis { categoryAxis }
             .chartLegend(position: .bottom, alignment: .leading, spacing: 10)
             .frame(height: CGFloat(topModels.count) * 26 + 56)
         )
@@ -269,9 +292,21 @@ struct TeamsCharts: View {
             AxisGridLine().foregroundStyle(.secondary.opacity(0.15))
             AxisValueLabel {
                 if let number = value.as(Double.self) {
-                    Text(sort == .cost ? Formatters.currency(number, fractionDigits: 0) : TeamsFormat.tokens(Int(number)))
+                    Text(sort == .cost ? TeamsFormat.axisCurrency(number) : TeamsFormat.tokens(Int(number)))
                 }
             }
+        }
+    }
+
+    /// Row names for the horizontal bar charts, in a column left of the bars.
+    private var categoryAxis: some AxisContent {
+        // `.extended` keeps the names in a column left of the plot; the default insets them over the bars.
+        AxisMarks(preset: .extended, position: .leading) { _ in
+            AxisValueLabel(horizontalSpacing: 8)
+                .font(.caption)
+                // `Color.primary`, not `.primary`: inside a chart the hierarchical style resolves to the
+                // accent color, which tints the names blue.
+                .foregroundStyle(Color.primary)
         }
     }
 }
@@ -306,6 +341,12 @@ struct ProviderSplitBar: View {
 enum TeamsFormat {
     static func value(_ totals: UsageTotals, sort: StatsSort) -> String {
         sort == .cost ? Formatters.currency(totals.costUSD) : tokens(totals.tokens)
+    }
+
+    /// Axis ticks: whole dollars once the scale reaches $10, cents below so small scales do not
+    /// repeat "$0".
+    static func axisCurrency(_ value: Double) -> String {
+        Formatters.currency(value, fractionDigits: value == 0 || value >= 10 ? 0 : 2)
     }
 
     static func tokens(_ value: Int) -> String {

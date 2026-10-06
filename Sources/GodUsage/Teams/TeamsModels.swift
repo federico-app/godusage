@@ -174,6 +174,17 @@ struct TeamStats: Codable, Hashable, Sendable {
         var totals: UsageTotals { UsageTotals(tokens: tokens, costUSD: costUSD) }
     }
 
+    /// An account several members log into (one shared Cursor seat). It counts once in the team's
+    /// totals, providers, days, and models, and in no member's: the provider does not split it.
+    struct SharedAccount: Codable, Hashable, Sendable, Identifiable {
+        var provider: String
+        var tokens: Int
+        var costUSD: Double
+        var members: [String]
+        var id: String { "\(provider)/\(members.joined(separator: ","))" }
+        var totals: UsageTotals { UsageTotals(tokens: tokens, costUSD: costUSD) }
+    }
+
     struct Day: Codable, Hashable, Sendable, Identifiable {
         var day: String
         var members: [MemberTotals]
@@ -189,6 +200,14 @@ struct TeamStats: Codable, Hashable, Sendable {
     var providers: [ProviderTotals]
     var models: [Model]
     var daily: [Day]
+    /// Optional so an older backend's responses still decode.
+    var shared: [SharedAccount]?
+
+    /// Who shares an account, by display name ("Andrea & Federico").
+    func sharedMemberNames(_ account: SharedAccount) -> String {
+        let names = account.members.compactMap { id in members.first { $0.userID == id }?.displayName }
+        return ListFormatter.localizedString(byJoining: names)
+    }
 }
 
 struct TeamStatsResponse: Codable, Hashable, Sendable {

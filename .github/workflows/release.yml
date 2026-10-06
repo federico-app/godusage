@@ -36,7 +36,8 @@ jobs:
     # generate_appcast, and force-publishes the backing branch. Without this, two publishers could
     # race and drop a feed entry. Job-level (not workflow-level) so the lock is held only while this
     # job runs — the iOS TestFlight jobs never touch update-feed, and the distribute job can spend
-    # up to an hour polling Apple, which must not block pricing-supplement publishes.
+    # up to an hour polling Apple, which must not block pricing-supplement publishes. DEV builds
+    # (release-dev.yml) use their own group so a develop push can never cancel a pending release.
     concurrency:
       group: update-feed-publish
       cancel-in-progress: false

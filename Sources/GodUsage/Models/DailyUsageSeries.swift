@@ -76,15 +76,20 @@ struct ProviderUsageHistory: Hashable, Sendable, Codable {
     var series: DailyUsageSeries
     var modelUsage: ModelUsageSeries?
     var unknownModelsByDay: [String: Set<String>]
+    /// For account-wide histories: an anonymous fingerprint of the account (`TeamAccountKey`), so
+    /// Teams can tell when several members log into one account. Nil for machine-local histories.
+    var accountKey: String?
 
     init(
         series: DailyUsageSeries,
         modelUsage: ModelUsageSeries? = nil,
-        unknownModelsByDay: [String: Set<String>] = [:]
+        unknownModelsByDay: [String: Set<String>] = [:],
+        accountKey: String? = nil
     ) {
         self.series = series
         self.modelUsage = modelUsage
         self.unknownModelsByDay = unknownModelsByDay
+        self.accountKey = accountKey
     }
 }
 

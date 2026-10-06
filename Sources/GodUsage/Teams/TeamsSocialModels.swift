@@ -61,7 +61,9 @@ struct TeamChampion: Codable, Hashable, Sendable, Identifiable {
     /// "September 2026".
     var monthLabel: String {
         guard let date = TeamsFormat.date("\(month)-01") else { return month }
-        return date.formatted(.dateTime.month(.wide).year())
+        // Some locales (Italian: "settembre 2026") lowercase month names; a row label starts capitalized.
+        let label = date.formatted(.dateTime.month(.wide).year())
+        return label.prefix(1).uppercased() + label.dropFirst()
     }
 }
 
