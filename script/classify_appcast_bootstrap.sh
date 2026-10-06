@@ -9,6 +9,9 @@ ONLY_RELEASE_TAG=""
 
 while IFS= read -r release_tag || [ -n "$release_tag" ]; do
   [ -n "$release_tag" ] || continue
+  # Only production tags (vMAJOR.MINOR.PATCH) count. DEV prereleases (dev-<build>) ship their own
+  # appcast-dev.xml and say nothing about appcast.xml's history.
+  case "$release_tag" in v[0-9]*) ;; *) continue ;; esac
   RELEASE_COUNT=$((RELEASE_COUNT + 1))
   if [ "$RELEASE_COUNT" -eq 1 ]; then
     ONLY_RELEASE_TAG="$release_tag"

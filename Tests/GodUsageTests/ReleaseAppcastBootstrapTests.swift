@@ -59,6 +59,12 @@ final class ReleaseAppcastBootstrapTests: XCTestCase {
         )
     }
 
+    func testDevPrereleasesAreNotProductionHistory() throws {
+        XCTAssertEqual(try classify(existingTags: ["dev-664", "dev-663"]), "fresh")
+        XCTAssertEqual(try classify(existingTags: ["dev-664", "v0.8.0"]), "retry")
+        XCTAssertEqual(try classify(existingTags: ["dev-664", "v0.7.9"]), "history")
+    }
+
     private func classify(
         existingTags: [String],
         currentTag: String = "v0.8.0"
