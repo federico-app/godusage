@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.0.5
+
+### Bug Fixes
+- Share changed team usage on every refresh and reload team views by @andreaAppload
+- Close the popover before opening Sparkle's update window by @andreaAppload
+
+### Chores
+- Skip iOS releases until the App Store Connect app record exists by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.0.4...v1.0.5](https://github.com/federico-app/godusage/compare/v1.0.4...v1.0.5)
+
+- [00bc5c4](https://github.com/federico-app/godusage/commit/00bc5c45eaff39c8577cb4ac5374370fb261cd1b) Share changed team usage on every refresh and reload team views by @andreaAppload
+- [2a0226d](https://github.com/federico-app/godusage/commit/2a0226d4cb19b7bb6c9d763ad045672b086e0b58) Skip iOS releases until the App Store Connect app record exists by @andreaAppload
+- [f030498](https://github.com/federico-app/godusage/commit/f030498f7b53cd7a1a027f2912403dbc7b8d9618) Close the popover before opening Sparkle's update window by @andreaAppload
+
 ## v1.0.4
 
 ### Bug Fixes
