@@ -304,7 +304,9 @@ struct TeamsCharts: View {
         AxisMarks(preset: .extended, position: .leading) { _ in
             AxisValueLabel(horizontalSpacing: 8)
                 .font(.caption)
-                .foregroundStyle(.primary)
+                // `Color.primary`, not `.primary`: inside a chart the hierarchical style resolves to the
+                // accent color, which tints the names blue.
+                .foregroundStyle(Color.primary)
         }
     }
 }
