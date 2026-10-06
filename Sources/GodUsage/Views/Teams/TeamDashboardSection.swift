@@ -6,7 +6,8 @@ import SwiftUI
 struct TeamDashboardSection: View {
     @Environment(AppContainer.self) private var container
 
-    @AppStorage("godusage.teams.popover.range") private var range: StatsRange = .today
+    /// The Total Spend card's period switcher drives this section too (Today, Yesterday, 30 Days).
+    @AppStorage("godusage.totalSpend.period") private var totalSpendPeriod = TotalSpendPeriod.today.rawValue
     /// The Total Spend card's metric menu drives this section too (Cost, Cost/MTok, Tokens).
     @AppStorage("godusage.totalSpend.metric") private var totalSpendMetric = TotalSpendMetric.cost.rawValue
     @State private var expandedMemberID: String?
@@ -16,6 +17,14 @@ struct TeamDashboardSection: View {
 
     private var metric: TeamMetric { TeamMetric(TotalSpendMetric(rawValue: totalSpendMetric) ?? .cost) }
     private var sort: StatsSort { metric.sort }
+
+    private var period: TotalSpendPeriod { TotalSpendPeriod(rawValue: totalSpendPeriod) ?? .today }
+    /// Yesterday is the server's one-day range ending yesterday.
+    private var range: StatsRange { period == .last30 ? .month : .today }
+    private var endingOn: String? {
+        guard period == .yesterday, let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) else { return nil }
+        return DailyUsageAccumulator.dayKey(from: yesterday, calendar: .current)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: density.sectionSpacing) {
@@ -29,15 +38,16 @@ struct TeamDashboardSection: View {
         var teamID: String?
         var range: StatsRange
         var sort: StatsSort
+        var endingOn: String?
     }
 
     private var loadKey: LoadKey {
-        LoadKey(teamID: container.teams.selectedTeamID, range: range, sort: sort)
+        LoadKey(teamID: container.teams.selectedTeamID, range: range, sort: sort, endingOn: endingOn)
     }
 
     private var stats: TeamStats? {
         guard let teamID = container.teams.selectedTeamID else { return nil }
-        return container.teams.cachedStats[TeamsStore.StatsKey(teamID: teamID, range: range, sort: sort)]
+        return container.teams.cachedStats[TeamsStore.StatsKey(teamID: teamID, range: range, sort: sort, endingOn: endingOn)]
     }
 
     private func load() async {
@@ -45,10 +55,10 @@ struct TeamDashboardSection: View {
         if teams.teams.isEmpty, teams.isSignedIn { await teams.refresh() }
         guard let teamID = teams.selectedTeamID else { return }
         isLoading = true
-        await teams.loadStats(teamID: teamID, range: range, sort: sort)
+        await teams.loadStats(teamID: teamID, range: range, sort: sort, endingOn: endingOn)
         isLoading = false
         // Today's leader (👑), the month-to-date projection, and challenges, alongside the board.
-        if range != .today || sort != .cost { await teams.loadStats(teamID: teamID, range: .today, sort: .cost) }
+        if period != .today || sort != .cost { await teams.loadStats(teamID: teamID, range: .today, sort: .cost) }
         await teams.loadStats(teamID: teamID, range: .monthToDate, sort: .cost)
         await container.teamsSocial.loadChallenges(teamID: teamID)
     }
@@ -75,18 +85,10 @@ struct TeamDashboardSection: View {
     // MARK: - Controls
 
     private var controls: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                teamPicker
-                Spacer(minLength: 4)
-                if isLoading { ProgressView().controlSize(.mini) }
-            }
-            Picker("Range", selection: $range) {
-                ForEach(StatsRange.pickerCases, id: \.self) { Text($0.label).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .controlSize(.small)
+        HStack(spacing: 8) {
+            teamPicker
+            Spacer(minLength: 4)
+            if isLoading { ProgressView().controlSize(.mini) }
         }
     }
 
