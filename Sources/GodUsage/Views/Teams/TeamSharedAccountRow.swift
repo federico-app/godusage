@@ -45,6 +45,40 @@ struct TeamSharedAccountRow: View {
     }
 }
 
+/// "Not synced for 3 days" under a member whose newest upload is more than 24 hours old, so stale
+/// numbers aren't read as no usage. Shows nothing otherwise.
+struct TeamSyncNote: View {
+    let member: TeamStats.Member
+    var now = Date()
+
+    var body: some View {
+        if let note = TeamsFormat.syncNote(member.lastSyncAt, now: now) {
+            Label(note, systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .labelStyle(.titleAndIcon)
+                .lineLimit(1)
+        }
+    }
+}
+
+extension TeamsFormat {
+    /// "Not synced for 2 days" once `lastSyncAt` is more than 24 hours old; nil when recent or unknown.
+    static func syncNote(_ lastSyncAt: String?, now: Date) -> String? {
+        guard let lastSyncAt, let date = syncDate(lastSyncAt) else { return nil }
+        let hours = now.timeIntervalSince(date) / 3600
+        guard hours > 24 else { return nil }
+        let days = Int(hours / 24)
+        return "Not synced for \(days) \(days == 1 ? "day" : "days")"
+    }
+
+    private static func syncDate(_ value: String) -> Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return fractional.date(from: value) ?? ISO8601DateFormatter().date(from: value)
+    }
+}
+
 extension TeamStats {
     /// Shared accounts with usage in this metric, largest first.
     func sharedAccounts(for metric: TeamMetric) -> [SharedAccount] {

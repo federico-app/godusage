@@ -16,6 +16,19 @@ When an Always Visible Weekly meter reaches its limit, the card temporarily hide
 
 A card can also show **quick-link buttons** at the bottom of its expanded section (Status, Console, Dashboard, and so on) that open the provider's own pages in your browser. They are part of the expander, so collapsing the caret hides them too. Buttons lay out up to three across and wrap to a second row.
 
+## Suggestions
+
+A banner at the top of the dashboard (under any update or first-run card) suggests which provider to use right now. It shows the most urgent suggestion; close it to see the next one. A closed suggestion stays away until its situation changes (a new window, credit, or billing cycle). The suggestions, most urgent first:
+
+- **Claim a reset**: a Codex or Grok card whose Session or Weekly is used up still has reset credits.
+- **A reset expires soon**: a reset credit expires within 48 hours. Use that provider freely and claim it if you hit the limit.
+- **Use it before it resets**: a Weekly (or Cursor's Total Usage) resets within the last 30% of its window, about 2 days of a week, with at least 30% projected to go unused at the current pace.
+- **Switch providers**: a Weekly is used up or projected to run out before it resets, and another provider has at least 30% of its own left. Without such a provider, nothing shows; the red bar already tells the story.
+- **Use the team's plan**: a plan of the selected team is flagged underused in the [Plans](teams.md#leaderboards) report and renews within 7 days. Only for providers enabled on this Mac. **Open Plans** opens the Teams window.
+- **Lean on a provider**: a card has 2 or more reset credits, so its limits stretch further.
+
+Ties go to the soonest deadline. Quotas and credits are this Mac's own; only the plans are team-wide. GodUsage reloads the selected team's plans at most every 30 minutes for this. Turn on **Usage Suggestions** in [Notifications settings](settings.md#notifications) to also get a notification once for each new suggestion that tops the banner.
+
 ## Total Spend
 
 When any enabled provider tracks daily spend (Claude, Codex, Cursor, Grok, Muse, OpenCode, or Sakana Fugu), a Total Spend card sits above the provider cards. The title is a pull-down menu for **Cost**, **Cost/MTok**, or **Tokens**. Cost is the default, and the choice persists across restarts. A capsule switcher flips the period between **Today**, **Yesterday**, and **30 Days**. The ring, center total, and ranked legend follow the selected metric:

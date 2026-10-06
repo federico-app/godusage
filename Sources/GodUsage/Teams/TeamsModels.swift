@@ -156,6 +156,8 @@ struct TeamStats: Codable, Hashable, Sendable {
         var providers: [ProviderTotals]
         /// The member in the period before (nil: no usage then, or an older backend).
         var previous: Previous?
+        /// When any of the member's Macs last uploaded (ISO 8601); nil if none has, or an older backend.
+        var lastSyncAt: String?
         var id: String { userID }
         var totals: UsageTotals { UsageTotals(tokens: tokens, costUSD: costUSD) }
 

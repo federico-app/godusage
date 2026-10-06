@@ -161,3 +161,13 @@ final class TeamPlansTests: XCTestCase {
         XCTAssertFalse(AppChannel.isDev(bundleIdentifier: "com.montinovo.godusage"))
     }
 }
+
+final class TeamSyncNoteTests: XCTestCase {
+    func testNotesOnlyAfterADayWithoutSync() {
+        let now = ISO8601DateFormatter().date(from: "2026-10-05T12:00:00Z")!
+        XCTAssertNil(TeamsFormat.syncNote("2026-10-04T13:00:00.000Z", now: now))
+        XCTAssertEqual(TeamsFormat.syncNote("2026-10-04T11:00:00.000Z", now: now), "Not synced for 1 day")
+        XCTAssertEqual(TeamsFormat.syncNote("2026-10-01T12:00:00Z", now: now), "Not synced for 4 days")
+        XCTAssertNil(TeamsFormat.syncNote(nil, now: now))
+    }
+}

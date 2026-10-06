@@ -239,6 +239,8 @@ struct TeamDashboardSection: View {
                     }
                     providerBar(member, top: top)
                         .padding(.leading, 26)
+                    TeamSyncNote(member: member)
+                        .padding(.leading, 26)
                 }
                 .contentShape(Rectangle())
             }

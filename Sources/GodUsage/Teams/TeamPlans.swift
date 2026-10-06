@@ -69,16 +69,30 @@ final class TeamPlansStore {
         self.api = api
     }
 
+    @ObservationIgnored private var loadedAt: [String: Date] = [:]
+    /// Background loads for the dashboard's suggestions; the Plans tab always loads on open.
+    static let backgroundMaxAge: TimeInterval = 30 * 60
+
     func report(teamID: String) -> TeamPlansReport? { reportsByTeam[teamID] }
 
     func load(teamID: String) async {
         guard let token = teams.sessionToken else { return }
         do {
             reportsByTeam[teamID] = try await api.plans(token: token, teamID: teamID, today: teams.localToday())
+            loadedAt[teamID] = Date()
             errorMessage = nil
         } catch {
+            AppLog.warn(.teams, "loading team plans failed: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Loads unless a report younger than `backgroundMaxAge` is already here. A failed load counts
+    /// as an attempt too, so a down backend is retried at the same pace rather than every pass.
+    func loadIfStale(teamID: String, now: Date = Date()) async {
+        if let last = loadedAt[teamID], now.timeIntervalSince(last) < Self.backgroundMaxAge { return }
+        loadedAt[teamID] = now
+        await load(teamID: teamID)
     }
 
     /// Replaces the team's plans. Returns whether the server accepted them.

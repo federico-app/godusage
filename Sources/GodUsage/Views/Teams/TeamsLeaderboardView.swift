@@ -304,6 +304,7 @@ private struct TeamsRankingList: View {
                             }
                             RankChangeBadge(member: member, range: stats.range.name, sort: sort)
                             if let teamID { MemberBadges(teamID: teamID, userID: member.userID) }
+                            TeamSyncNote(member: member)
                         }
                         ProviderSplitBar(providers: member.providers, top: top, sort: sort, height: 6)
                     }

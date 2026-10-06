@@ -4,12 +4,13 @@ import SwiftUI
 /// trailing dismiss (✕). A grouped content card (`cardSurface`) that scrolls with the sections. Shared
 /// scaffolding for the first-run `CustomizeHintCard` and the `UpdateBannerCard`, so the two read as one
 /// family and a spacing/appearance tweak lands in one place. Callers supply the copy and the two
-/// closures (each wraps its own animation as needed).
+/// closures (each wraps its own animation as needed). A card without `buttonTitle` has no action button.
 struct DismissableHintCard: View {
     let systemImage: String
     let title: String
     let message: String
-    let buttonTitle: String
+    var tint: Color = .secondary
+    let buttonTitle: String?
     let action: () -> Void
     let onDismiss: () -> Void
 
@@ -17,7 +18,7 @@ struct DismissableHintCard: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: systemImage)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(tint)
                 .frame(width: 20, height: 20)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -27,9 +28,11 @@ struct DismissableHintCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Button(buttonTitle, action: action)
-                    .controlSize(.small)
-                    .padding(.top, 2)
+                if let buttonTitle {
+                    Button(buttonTitle, action: action)
+                        .controlSize(.small)
+                        .padding(.top, 2)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 

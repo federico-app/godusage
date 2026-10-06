@@ -36,6 +36,15 @@ struct DashboardContentView: View {
                         .padding(.bottom, density.sectionSpacing)
                         .transition(.scaleOrInstant(scale: 0.95))
                 }
+                // Which provider to use right now; closing it surfaces the next suggestion.
+                if let suggestion = container.usageAdvice.suggestions(now: container.clock.halfMinute).first {
+                    UsageSuggestionBanner(suggestion: suggestion) {
+                        withAnimation(Motion.spring) { container.usageAdvice.dismiss(suggestion) }
+                    }
+                    .id(suggestion.id)
+                    .padding(.bottom, density.sectionSpacing)
+                    .transition(.scaleOrInstant(scale: 0.95))
+                }
                 widgetContent(displayGroups)
             }
             .animation(Motion.spring, value: container.onboarding.isCustomizeHintPending)

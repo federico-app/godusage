@@ -48,7 +48,7 @@ export const publicBoardPage: Handler = async ({ env, url, params, deps }) => {
 
   const query = parseStatsQuery(url, deps.now());
   const [stats, extras] = await Promise.all([teamStats(env.DB, team.id, query), boardExtras(env.DB, team.id, query, deps.now())]);
-  return page(`${team.name} Leaderboard`, renderBoard(team.name, stats, url, extras));
+  return page(`${team.name} Leaderboard`, renderBoard(team.name, stats, url, extras, deps.now()));
 };
 
 /** What the web boards show around the ranking: crowns, reactions, the projection, challenges, champions. */
@@ -145,7 +145,16 @@ function memberMarks(extras: BoardExtras | undefined, userID: string): string {
   return marks;
 }
 
-export function renderBoard(teamName: string, stats: TeamStats, url: URL, extras?: BoardExtras): string {
+/** "not synced for 3 days" once a member's newest upload is more than 24 hours old; otherwise nothing. */
+export function syncNote(lastSyncAt: string | null, now: Date): string | null {
+  if (!lastSyncAt) return null;
+  const hours = (now.getTime() - Date.parse(lastSyncAt)) / 3_600_000;
+  if (!(hours > 24)) return null;
+  const days = Math.floor(hours / 24);
+  return `not synced for ${days} ${days === 1 ? "day" : "days"}`;
+}
+
+export function renderBoard(teamName: string, stats: TeamStats, url: URL, extras?: BoardExtras, now: Date = new Date()): string {
   const value = (totals: { tokens: number; costUSD: number }) =>
     stats.sort === "cost" ? formatUSD(totals.costUSD) : formatTokens(totals.tokens);
   const metric = (totals: { tokens: number; costUSD: number }) => (stats.sort === "cost" ? totals.costUSD : totals.tokens);
@@ -175,7 +184,10 @@ export function renderBoard(teamName: string, stats: TeamStats, url: URL, extras
           return `<span style="width:${width.toFixed(2)}%;background:${color}" title="${escapeHTML(providerName(provider.provider))}: ${value(provider)}"></span>`;
         })
         .join("");
-      return `<li><span class="rank">${member.rank}</span><span class="name">${escapeHTML(member.displayName)}${memberMarks(extras, member.userID)}</span>
+      return `<li><span class="rank">${member.rank}</span><span class="name">${escapeHTML(member.displayName)}${memberMarks(extras, member.userID)}${(() => {
+        const note = syncNote(member.lastSyncAt, now);
+        return note ? ` <span class="muted">· ${note}</span>` : "";
+      })()}</span>
         <span class="bar">${segments}</span><span class="value">${value(member)}</span></li>`;
     })
     .join("");
