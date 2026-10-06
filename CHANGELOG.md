@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.0.1
+
+### New Features
+- Count shared Cursor accounts once and tidy the Teams charts by @andreaAppload
+- Drive the dashboard team ranking from the Total Spend metric by @andreaAppload
+- Build a drag-to-install DMG window by @andreaAppload
+- Explain the crown and trophy badges on hover by @andreaAppload
+- Add a Team Settings button to the Teams window by @andreaAppload
+
+### Bug Fixes
+- Keep bar chart names out of the plot and drop zero-spend models by @andreaAppload
+- Keep chart row names in the text color instead of the accent by @andreaAppload
+
+### Chores
+- Use the Zeus app icon on the landing page by @andreaAppload
+- Give DEV builds their own update-feed queue by @federico-app
+- Ignore DEV prereleases when bootstrapping the production appcast by @federico-app
+
+---
+
+### Changelog
+**Full Changelog**: [v1.0.0...v1.0.1](https://github.com/federico-app/godusage/compare/v1.0.0...v1.0.1)
+
+- [da8f205](https://github.com/federico-app/godusage/commit/da8f20555d0c8542c8c07fbaa73515224db489b1) Add a Team Settings button to the Teams window by @andreaAppload
+- [354d6c7](https://github.com/federico-app/godusage/commit/354d6c7a619e45291b9c4e0be1fc59914da5287d) Keep chart row names in the text color instead of the accent by @andreaAppload
+- [63e227b](https://github.com/federico-app/godusage/commit/63e227be82c9b8dc7103229bb3ff6779d0d3104a) Keep bar chart names out of the plot and drop zero-spend models by @andreaAppload
+- [7437797](https://github.com/federico-app/godusage/commit/74377975387393767aeac2fde4940a898a5d1b99) Build a drag-to-install DMG window by @andreaAppload
+- [61cb5ea](https://github.com/federico-app/godusage/commit/61cb5eabe41557dcd0c649e983e849500ac63ce2) Use the Zeus app icon on the landing page by @andreaAppload
+- [c6d3fee](https://github.com/federico-app/godusage/commit/c6d3feec7b005249401eabed200b13cf41a7f4fd) Drive the dashboard team ranking from the Total Spend metric by @andreaAppload
+- [f6f1b50](https://github.com/federico-app/godusage/commit/f6f1b50b53e480307a03c621ea7b4fbc96ee37c1) Explain the crown and trophy badges on hover by @andreaAppload
+- [e424f22](https://github.com/federico-app/godusage/commit/e424f22ee563544b14b86ed249a743b1c9f5149a) Give DEV builds their own update-feed queue by @federico-app
+- [b5d9f38](https://github.com/federico-app/godusage/commit/b5d9f3815adddf09641bc17e70cf9c84bb8edfc1) Count shared Cursor accounts once and tidy the Teams charts by @andreaAppload
+- [85fad4c](https://github.com/federico-app/godusage/commit/85fad4c90b083b77fb78cf29e271906c748cda09) Ignore DEV prereleases when bootstrapping the production appcast by @federico-app
+
 ## v1.0.0
 
 ### New Features
