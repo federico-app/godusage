@@ -36,6 +36,8 @@ struct DashboardContentView: View {
                         .padding(.bottom, density.sectionSpacing)
                         .transition(.scaleOrInstant(scale: 0.95))
                 }
+                // One recommended setup step at a time: notification permission, then Launch at Login.
+                SetupPromptCard(bottomSpacing: density.sectionSpacing)
                 // Which provider to use right now; closing it surfaces the next suggestion.
                 if let suggestion = container.usageAdvice.suggestions(now: container.clock.halfMinute).first {
                     UsageSuggestionBanner(suggestion: suggestion) {

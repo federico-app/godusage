@@ -86,7 +86,7 @@ An owner can also turn on **Public Leaderboard** for a team. That gives a read-o
 
 ## Notifications
 
-Three team alerts in **Settings → Notifications**, all off by default:
+Three team alerts in **Settings → Notifications**, all on by default:
 
 - **Team Overtakes**: when a teammate passes you by spend over the last 7 days. The first check after you turn it on only records where everyone stands, so it never alerts about old moves.
 - **Weekly Team Recap**: from Monday 9:00, one notification per team about the week that just ended: your rank (and how it moved), your spend, who led, and your top model.

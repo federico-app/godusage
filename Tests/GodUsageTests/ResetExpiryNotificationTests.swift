@@ -219,14 +219,13 @@ final class ResetExpiryNotificationTests: XCTestCase {
         XCTAssertEqual(sink.posts.count, 1)
     }
 
-    func testSettingsDefaultOffAndPersistOptIn() {
+    func testSettingsDefaultOnAndPersistOptOut() {
         let settings = NotificationSettingsStore(defaults: defaults)
-        XCTAssertFalse(settings.resetExpiryReminders)
-        XCTAssertFalse(settings.anyEnabled)
-        settings.resetExpiryReminders = true
+        XCTAssertTrue(settings.resetExpiryReminders)
+        XCTAssertTrue(settings.anyEnabled)
+        settings.resetExpiryReminders = false
         let reloaded = NotificationSettingsStore(defaults: defaults)
-        XCTAssertTrue(reloaded.resetExpiryReminders)
-        XCTAssertTrue(reloaded.anyEnabled)
+        XCTAssertFalse(reloaded.resetExpiryReminders)
     }
 
     func testDeliveryErrorClearsWhenFailedCreditDisappears() async {

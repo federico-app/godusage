@@ -3,8 +3,8 @@ import Foundation
 import UserNotifications
 
 /// The single entry point for posting macOS user notifications. Quota alerts go through `post`;
-/// authorization is requested when the user first enables a trigger (all default off), while `post`
-/// also checks authorization before delivery.
+/// authorization is requested from the dashboard's Enable Notifications card or when a trigger is
+/// turned on (all default on), while `post` also checks authorization before delivery.
 ///
 /// Concurrent authorization checks share one task. Later deliveries read live settings, so a
 /// permission change never consumes an undelivered milestone. The class is the delegate so
@@ -44,8 +44,9 @@ final class AppNotifications: NSObject, UNUserNotificationCenterDelegate {
         centerProvider().delegate = self
     }
 
-    /// Request notification authorization. Called when the first trigger is enabled and from the
-    /// Settings "Allow Notifications" button when permission is still not determined.
+    /// Request notification authorization. Called from the dashboard's Enable Notifications card,
+    /// when a trigger is enabled, and from the Settings "Allow Notifications" button when permission
+    /// is still not determined.
     @discardableResult
     func requestAuthorization() -> Task<Bool, Never> {
         guard !Self.isRunningUnderTests || hasInjectedClient else { return Task { false } }

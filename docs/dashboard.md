@@ -8,6 +8,15 @@ A fresh install starts with Claude, Codex, and Cursor. It then checks which prov
 
 This full detection only runs on a new install. Updates never change the providers you already have on or off. When an update ships a provider you have never seen, the same local check runs once for that provider and turns it on only if you have the tool. See [Which Providers Are On](provider-enablement.md).
 
+## Setup cards
+
+Below any update or first-run card, the dashboard recommends one setup step at a time:
+
+1. **Enable Notifications** shows while macOS has not yet asked about notifications and at least one alert is on. **Allow Notifications** opens the macOS permission prompt. If you decline, the card goes away; turn notifications on later in System Settings.
+2. **Launch at Login** shows once notifications are settled and GodUsage is not a login item. **Turn On** registers it, the same as the switch in [General settings](settings.md#general).
+
+Closing a card hides it for good. A card also hides while its step is done, for example after you turn on Launch at Login in Settings.
+
 ## Cards
 
 Each provider card leads with its **Always Visible** metrics. Metrics you have moved to **On Demand** sit behind the card's caret. Click the caret to reveal them in a single-column list below it, and click again to collapse. Closing the popover collapses every open card. A provider with no On Demand metrics and no quick links shows no caret.
@@ -18,7 +27,7 @@ A card can also show **quick-link buttons** at the bottom of its expanded sectio
 
 ## Suggestions
 
-A banner at the top of the dashboard (under any update or first-run card) suggests which provider to use right now. It shows the most urgent suggestion; close it to see the next one. A closed suggestion stays away until its situation changes (a new window, credit, or billing cycle). The suggestions, most urgent first:
+A banner at the top of the dashboard (under any update, first-run, or setup card) suggests which provider to use right now. It shows the most urgent suggestion; close it to see the next one. A closed suggestion stays away until its situation changes (a new window, credit, or billing cycle). The suggestions, most urgent first:
 
 - **Claim a reset**: a Codex or Grok card whose Session or Weekly is used up still has reset credits.
 - **A reset expires soon**: a reset credit expires within 48 hours. Use that provider freely and claim it if you hit the limit.
