@@ -46,7 +46,7 @@ export const memberBoardPage: Handler = async ({ request, env, url, params, deps
 
   const query = parseStatsQuery(url, deps.now());
   const [stats, extras] = await Promise.all([teamStats(env.DB, team.id, query), boardExtras(env.DB, team.id, query, deps.now())]);
-  return page(`${team.name} Leaderboard`, account + renderBoard(team.name, stats, url, extras));
+  return page(`${team.name} Leaderboard`, account + renderBoard(team.name, stats, url, extras, deps.now()));
 };
 
 /** GET /teams/:teamID/sign-in — starts Sign in with Apple and comes back to the board. */

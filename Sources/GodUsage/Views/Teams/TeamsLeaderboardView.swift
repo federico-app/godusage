@@ -13,8 +13,15 @@ struct TeamsLeaderboardView: View {
     enum Mode: String, CaseIterable {
         case leaderboard
         case compare
+        case plans
 
-        var label: String { self == .leaderboard ? "Leaderboard" : "Compare" }
+        var label: String {
+            switch self {
+            case .leaderboard: "Leaderboard"
+            case .compare: "Compare"
+            case .plans: "Plans"
+            }
+        }
     }
     @State private var stats: TeamStats?
     @State private var loadError: String?
@@ -142,7 +149,12 @@ struct TeamsLeaderboardView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let loadError, stats == nil {
+        if mode == .plans, let teamID = currentTeamID {
+            // Plans run on each plan's billing cycle, not the range picker.
+            ScrollView {
+                TeamPlansReportView(teamID: teamID, providerName: providerName).padding(16)
+            }
+        } else if let loadError, stats == nil {
             emptyState(title: "Couldn't Load the Leaderboard", message: loadError) {
                 Button("Try Again") { Task { await load() } }
             }
@@ -161,6 +173,8 @@ struct TeamsLeaderboardView: View {
                         if let teamID = currentTeamID { HallOfFameSection(teamID: teamID) }
                     case .compare:
                         TeamCompareView(stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName)
+                    case .plans:
+                        EmptyView()
                     }
                 }
                 .padding(16)
@@ -290,6 +304,7 @@ private struct TeamsRankingList: View {
                             }
                             RankChangeBadge(member: member, range: stats.range.name, sort: sort)
                             if let teamID { MemberBadges(teamID: teamID, userID: member.userID) }
+                            TeamSyncNote(member: member)
                         }
                         ProviderSplitBar(providers: member.providers, top: top, sort: sort, height: 6)
                     }

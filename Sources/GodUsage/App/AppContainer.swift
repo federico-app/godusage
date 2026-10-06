@@ -16,6 +16,9 @@ final class AppContainer {
     let teams: TeamsStore
     /// Reactions, challenges, champions, and the end-of-month projection.
     let teamsSocial: TeamsSocialStore
+    let teamPlans: TeamPlansStore
+    /// Which provider to use right now: the dashboard's suggestion banner and its notification.
+    let usageAdvice: UsageAdviceStore
     /// Single source of truth for which providers the user has turned off. Both stores consult it (via
     /// injected closures) and the Customize provider list drives it.
     let enablement: ProviderEnablementStore
@@ -168,6 +171,17 @@ final class AppContainer {
         self.iCloudSync = iCloudSync
         self.teams = teams
         self.teamsSocial = teamsSocial
+        let teamPlans = TeamPlansStore(teams: teams)
+        self.teamPlans = teamPlans
+        let usageAdvice = UsageAdviceStore(
+            registry: registry, dataStore: dataStore,
+            isEnabled: { [enablement] in enablement.isEnabled($0) },
+            displayName: { [accounts] id in
+                accounts.resolvedDisplayName(cardID: id) ?? registry.provider(id: id)?.displayName ?? id
+            },
+            teams: teams, plans: teamPlans, settings: notificationSettings
+        )
+        self.usageAdvice = usageAdvice
 
         // One claim service per Codex card. Each shares that card's credential loading and HTTP client,
         // and refreshes that exact card after a successful claim. The forced refresh returns `.skipped`
@@ -232,7 +246,7 @@ final class AppContainer {
             // exactly like every UI surface.
             .resolvingDisplayNames(accounts.resolvedDisplayNamesByCardID)
         })
-        self.refreshTask = Self.startPeriodicRefresh(dataStore: dataStore)
+        self.refreshTask = Self.startPeriodicRefresh(dataStore: dataStore, usageAdvice: usageAdvice)
         self.resetNotificationTask = ResetExpiryNotificationMonitor(
             settings: notificationSettings, dataStore: dataStore
         ).start()
@@ -293,7 +307,7 @@ final class AppContainer {
     /// Sparkle's update bookkeeping, and unrelated global-domain changes from other processes. Waking on
     /// that, with no minimum interval before re-refreshing, collapsed the fixed 5-minute cadence into a
     /// refresh storm.
-    private static func startPeriodicRefresh(dataStore: WidgetDataStore) -> Task<Void, Never> {
+    private static func startPeriodicRefresh(dataStore: WidgetDataStore, usageAdvice: UsageAdviceStore) -> Task<Void, Never> {
         Task {
             let wakeSignal = RefreshWakeSignal()
             while !Task.isCancelled {
@@ -302,6 +316,7 @@ final class AppContainer {
                 // and on every loop (not just on a fetch) so pace worsening from elapsed time alone still
                 // alerts even with the popover closed.
                 await dataStore.evaluateNotifications()
+                await usageAdvice.evaluate()
                 await wakeSignal.waitForWake(timeout: RefreshSetting.interval)
             }
         }

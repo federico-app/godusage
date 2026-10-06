@@ -48,6 +48,8 @@ export interface MemberStats extends Totals {
   providers: (Totals & { provider: string })[];
   /** The same member in the period just before this one, or null if they had no usage then. */
   previous: (Totals & { rank: number }) | null;
+  /** When any of the member's Macs last uploaded (ISO 8601), or null if none has. */
+  lastSyncAt: string | null;
 }
 
 export interface TeamStats {
@@ -173,7 +175,7 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
   const to = query.today;
   const { from, previousFrom, previousTo } = rangeBounds(query.range, to);
 
-  const [memberRows, dayRows, modelRows, previousRows, sharedDayRows, sharedModelRows, sharedMemberRows] = await db.batch([
+  const [memberRows, dayRows, modelRows, previousRows, sharedDayRows, sharedModelRows, sharedMemberRows, syncRows] = await db.batch([
     db.prepare(
       `SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id
        WHERE m.team_id = ? ORDER BY m.joined_at, u.id`,
@@ -184,7 +186,12 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
     db.prepare(SHARED_DAYS).bind(teamID, from, to),
     db.prepare(SHARED_MODELS).bind(teamID, from, to),
     db.prepare(SHARED_MEMBERS).bind(teamID),
+    db.prepare(
+      `SELECT user_id, MAX(updated_at) AS last_sync FROM devices
+       WHERE user_id IN (SELECT user_id FROM team_members WHERE team_id = ?) GROUP BY user_id`,
+    ).bind(teamID),
   ]);
+  const lastSync = new Map((syncRows!.results as { user_id: string; last_sync: string }[]).map((row) => [row.user_id, row.last_sync]));
   const sharedDays = sharedDayRows!.results as { account_key: string; provider: string; day: string; tokens: number; cost: number }[];
   const sharedModels = sharedModelRows!.results as { account_key: string; provider: string; model: string; tokens: number; cost: number }[];
   const sharedMembers = sharedMemberRows!.results as { account_key: string; provider: string; user_id: string }[];
@@ -240,6 +247,7 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
         ...round(totals),
         providers: sortedTotals(memberProviders.get(member.id), "provider", metric),
         previous: previousSnapshot(previousByUser.get(member.id)),
+        lastSyncAt: lastSync.get(member.id) ?? null,
       };
     })
     .sort((a, b) => metric(b) - metric(a) || a.displayName.localeCompare(b.displayName));

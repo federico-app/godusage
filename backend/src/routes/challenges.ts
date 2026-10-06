@@ -43,7 +43,7 @@ async function requireMembership(db: D1Database, teamID: string, user: SessionUs
 }
 
 /** The viewer's "today": their local day when within a day of UTC, else the UTC date. */
-function viewerToday(url: URL, now: Date): string {
+export function viewerToday(url: URL, now: Date): string {
   const utc = dayKey(now);
   const requested = url.searchParams.get("today");
   return requested && isValidDay(requested) && requested >= addDays(utc, -1) && requested <= addDays(utc, 1) ? requested : utc;

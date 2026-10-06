@@ -63,6 +63,9 @@ struct NotificationsSettingsPane: View {
                     }
                 }
                 Divider()
+                teamToggle("Usage Suggestions", isOn: $notifications.usageSuggestions)
+                SettingsCaption("Tells you once when a new suggestion tops the dashboard, like a Weekly about to reset unused or a reset about to expire.")
+                Divider()
                 teamToggle("Team Overtakes", isOn: $notifications.teamOvertakes)
                 SettingsCaption("Tells you when a teammate passes you by spend over the last 7 days.")
                 teamToggle("Weekly Team Recap", isOn: $notifications.teamWeeklyRecap)

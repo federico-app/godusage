@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Stamps the landing page's dashboard mock with a release version.
 #
-# The mock's footer shows "GodUsage X.Y.Z". The source file carries whatever version was current
+# The mock's footer and the Download buttons show "GodUsage X.Y.Z". The source file carries whatever version was current
 # when it was last edited; the site is only ever published by the update-feed workflows, so each
 # of them stamps the real version at assemble time and the page never drifts.
 #

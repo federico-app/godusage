@@ -52,6 +52,8 @@ final class TeamsStore {
         var teamID: String
         var range: StatsRange
         var sort: StatsSort
+        /// The period's last day; nil is today.
+        var endingOn: String? = nil
     }
 
     var user: TeamsUser? { session?.user }
@@ -261,9 +263,10 @@ final class TeamsStore {
     }
 
     /// Reloads one leaderboard into `cachedStats`. Errors land in `statsError`; the cached value stays.
-    func loadStats(teamID: String, range: StatsRange, sort: StatsSort) async {
+    func loadStats(teamID: String, range: StatsRange, sort: StatsSort, endingOn: String? = nil) async {
         do {
-            cachedStats[StatsKey(teamID: teamID, range: range, sort: sort)] = try await stats(for: teamID, range: range, sort: sort)
+            cachedStats[StatsKey(teamID: teamID, range: range, sort: sort, endingOn: endingOn)] =
+                try await stats(for: teamID, range: range, sort: sort, endingOn: endingOn)
             statsError = nil
         } catch {
             statsError = error.localizedDescription

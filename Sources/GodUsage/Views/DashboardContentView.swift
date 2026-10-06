@@ -36,6 +36,15 @@ struct DashboardContentView: View {
                         .padding(.bottom, density.sectionSpacing)
                         .transition(.scaleOrInstant(scale: 0.95))
                 }
+                // Which provider to use right now; closing it surfaces the next suggestion.
+                if let suggestion = container.usageAdvice.suggestions(now: container.clock.halfMinute).first {
+                    UsageSuggestionBanner(suggestion: suggestion) {
+                        withAnimation(Motion.spring) { container.usageAdvice.dismiss(suggestion) }
+                    }
+                    .id(suggestion.id)
+                    .padding(.bottom, density.sectionSpacing)
+                    .transition(.scaleOrInstant(scale: 0.95))
+                }
                 widgetContent(displayGroups)
             }
             .animation(Motion.spring, value: container.onboarding.isCustomizeHintPending)
@@ -54,6 +63,11 @@ struct DashboardContentView: View {
         // provider can track spend, even before fresh data arrives or when every metric row is hidden.
         if showTotalSpend, layout.hasSpendCapableProvider {
             TotalSpendCard()
+                .padding(.bottom, density.sectionSpacing)
+        } else if AppChannel.isDev() {
+            // The DEV badge normally sits in the Total Spend header; without that card it gets a row.
+            DevBuildBadge()
+                .frame(maxWidth: .infinity)
                 .padding(.bottom, density.sectionSpacing)
         }
         // The team ranking sits right under Total Spend (above the provider cards) once you're

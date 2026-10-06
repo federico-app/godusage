@@ -18,6 +18,12 @@ final class NotificationSettingsStore {
     private static let teamOvertakesKey = "godusage.notifications.teamOvertakes"
     private static let teamWeeklyRecapKey = "godusage.notifications.teamWeeklyRecap"
     private static let teamChallengesKey = "godusage.notifications.teamChallenges"
+    private static let usageSuggestionsKey = "godusage.notifications.usageSuggestions"
+
+    /// Notify once when a new usage suggestion tops the dashboard banner.
+    var usageSuggestions: Bool {
+        didSet { defaults.set(usageSuggestions, forKey: Self.usageSuggestionsKey) }
+    }
 
     /// Announce the winners when a team challenge ends.
     var teamChallenges: Bool {
@@ -65,6 +71,7 @@ final class NotificationSettingsStore {
         self.teamOvertakes = defaults.bool(forKey: Self.teamOvertakesKey, default: false)
         self.teamWeeklyRecap = defaults.bool(forKey: Self.teamWeeklyRecapKey, default: false)
         self.teamChallenges = defaults.bool(forKey: Self.teamChallengesKey, default: false)
+        self.usageSuggestions = defaults.bool(forKey: Self.usageSuggestionsKey, default: false)
     }
 
     /// The per-milestone toggles as the pure logic consumes them.
@@ -81,6 +88,6 @@ final class NotificationSettingsStore {
     /// triggers off silences everything.
     var anyEnabled: Bool {
         underTenPercent || healthyToClose || closeToRunningOut || resetExpiryReminders || teamOvertakes || teamWeeklyRecap
-            || teamChallenges
+            || teamChallenges || usageSuggestions
     }
 }

@@ -29,6 +29,7 @@ The release workflow needs these repository secrets (Settings → Secrets and va
 | `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD` | the password set when exporting that `.p12` |
 | `APPLE_IOS_APP_STORE_PROFILE` | base64 App Store provisioning profile for the iOS app |
 | `APPLE_IOS_WIDGET_APP_STORE_PROFILE` | base64 App Store provisioning profile for the iOS widget extension |
+| `HOMEBREW_TAP_DEPLOY_KEY` | private half of an SSH deploy key with write access to `federico-app/homebrew-tap` (see [Homebrew](#homebrew)) |
 
 ### macOS signing and notarization
 
@@ -38,7 +39,7 @@ Export the Developer ID Application cert (with its private key) from Keychain Ac
 
 [.github/workflows/release-dev.yml](../.github/workflows/release-dev.yml) runs on every push to `develop` that changes the app: pushes that only touch `docs/`, `backend/`, `website/`, or Markdown files are skipped (run it by hand from Actions if needed). It builds `script/release.sh` with `CHANNEL=dev`:
 
-- the app is **GodUsage DEV** (`com.montinovo.godusage.dev`, iCloud container `iCloud.com.montinovo.godusage.dev`), so it installs beside the release app and keeps its own settings, iCloud data, and teams backend;
+- the app is **GodUsage DEV** (`com.montinovo.godusage.dev`, iCloud container `iCloud.com.montinovo.godusage.dev`), so it installs beside the release app and keeps its own settings, iCloud data, and teams backend; its dashboard shows an orange **DEV** badge next to the Total Spend title (or in its own row when that card is hidden);
 - the version is the newest stable tag plus the build number, for example `0.8.16-dev.642`;
 - it is Developer ID-signed and notarized like production, published as the prerelease `dev-<build>` with `GodUsage-DEV-<version>.dmg`, and never becomes the GitHub "Latest" release;
 - it updates `appcast-dev.xml` on `update-feed` (last 10 builds) and deploys `update-feed` to GitHub Pages itself, so it does not depend on workflows on `main`. Installed DEV apps update from that feed and never see production releases, and production apps never see DEV builds. The production pipeline ignores `dev-*` prereleases when it checks the feed's release history.
@@ -47,6 +48,25 @@ Export the Developer ID Application cert (with its private key) from Keychain Ac
 Merge `develop` into `main` and tag it to ship production.
 
 The dev container needs its CloudKit schema deployed to **Production** too, because a Developer ID build uses the Production environment (see [iCloud Sync](icloud-sync.md#development-and-release-setup)).
+
+## Homebrew
+
+`brew install --cask federico-app/tap/godusage` installs the latest production DMG. The cask lives in the public tap repo [`federico-app/homebrew-tap`](https://github.com/federico-app/homebrew-tap) as `Casks/godusage.rb`.
+
+After each production release, the **Update Homebrew Cask** job in [.github/workflows/release.yml](../.github/workflows/release.yml) renders the cask from [script/homebrew/godusage.rb.template](../script/homebrew/godusage.rb.template) with the new version and the DMG's SHA-256 (`script/render_homebrew_cask.sh`) and pushes it to the tap. It skips the push when the tag is not the latest release, so rerunning an old tag never rolls the cask back. It fails loudly when `HOMEBREW_TAP_DEPLOY_KEY` is missing, without blocking the update feed or the iOS jobs. The DEV channel has no cask.
+
+The cask declares `auto_updates true`: Sparkle updates the installed app, and `brew upgrade` leaves it alone.
+
+One-time setup:
+
+1. Create the public repo `federico-app/homebrew-tap` with a first commit (an empty repo cannot be checked out).
+2. Generate a key pair: `ssh-keygen -t ed25519 -N "" -C "godusage release" -f homebrew_tap_key`.
+3. Add `homebrew_tap_key.pub` to the tap repo as a deploy key with **Allow write access**.
+4. Store `homebrew_tap_key` (the private half) as the `HOMEBREW_TAP_DEPLOY_KEY` secret on this repo, then delete both files.
+
+To check the cask locally: `brew style --cask federico-app/tap/godusage && brew audit --cask --online federico-app/tap/godusage`.
+
+The tap name means the command is not just `brew install godusage`. That needs the cask in the official `homebrew/cask` repo, which only accepts apps that are notable enough on GitHub.
 
 ## Teams backend
 
