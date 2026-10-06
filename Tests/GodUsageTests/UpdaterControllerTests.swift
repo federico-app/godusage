@@ -115,3 +115,19 @@ final class UpdateErrorDescriptionTests: XCTestCase {
         )
     }
 }
+
+/// Regression: the popover floats above normal windows, so an update check left it covering
+/// Sparkle's update window. Every update entry point must close it first.
+@MainActor
+final class UpdaterControllerTests: XCTestCase {
+    func testCheckForUpdatesClosesThePopover() {
+        var dismissals = 0
+        let updater = UpdaterController(dismissPopover: { dismissals += 1 })
+
+        updater.checkForUpdates()
+        XCTAssertEqual(dismissals, 1)
+
+        updater.installAvailableUpdate()
+        XCTAssertEqual(dismissals, 2)
+    }
+}

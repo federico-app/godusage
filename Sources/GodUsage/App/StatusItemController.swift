@@ -169,7 +169,8 @@ final class StatusItemController: NSObject {
 
         // Esc on the dashboard dismisses through the same code path as a status-item click.
         MenuBarPopover.dismissHandler = { [weak self] in
-            self?.hidePanel()
+            guard let self, self.panel.isVisible else { return }
+            self.hidePanel()
         }
         MenuBarPopover.showHandler = { [weak self] in
             self?.container.layout.screen = .dashboard

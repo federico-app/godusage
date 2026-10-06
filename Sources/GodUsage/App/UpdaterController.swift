@@ -19,6 +19,9 @@ final class UpdaterController {
     private let updaterDelegate = GodUsageUpdaterDelegate()
     private let userDriverDelegate = UpdaterUserDriverDelegate()
     private let activation: ActivationPolicyCoordinator
+    /// Closes the menu-bar popover. It floats at `.popUpMenu` level, so if it stayed open it would
+    /// cover Sparkle's window wherever the two overlap.
+    private let dismissPopover: @MainActor () -> Void
     private var controller: SPUStandardUpdaterController?
     private var canCheckObservation: AnyCancellable?
 
@@ -40,8 +43,12 @@ final class UpdaterController {
         set { controller?.updater.automaticallyChecksForUpdates = newValue }
     }
 
-    init(activation: ActivationPolicyCoordinator = .shared) {
+    init(
+        activation: ActivationPolicyCoordinator = .shared,
+        dismissPopover: @escaping @MainActor () -> Void = { MenuBarPopover.dismissHandler?() }
+    ) {
         self.activation = activation
+        self.dismissPopover = dismissPopover
     }
 
     /// Starts the updater if (and only if) this build ships an appcast feed. Safe to call once at launch.
@@ -86,6 +93,8 @@ final class UpdaterController {
 
     /// User-initiated check. Shows Sparkle's standard UI (progress, release notes, install prompt).
     func checkForUpdates() {
+        // The popover hands off to Sparkle the way it does to Settings: close first, then open.
+        dismissPopover()
         guard let controller else { return }
         // Sparkle 2.9.4 also activates dockless apps with `ignoringOtherApps`, but promote GodUsage
         // before handing control over so the activation-policy transition cannot leave Sparkle's
