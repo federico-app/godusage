@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.0.3
+
+### New Features
+- Turn on every notification by default and recommend setup steps by @federico-app
+- Allow several owners per team, and fit the plan editor in Settings by @andreaAppload
+- Show each team member's last update by @andreaAppload
+
+### Bug Fixes
+- Log the real cause of failed update checks by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.0.2...v1.0.3](https://github.com/federico-app/godusage/compare/v1.0.2...v1.0.3)
+
+- [780baf7](https://github.com/federico-app/godusage/commit/780baf789b8ee706f410fd3dfeb82fe79756971e) Turn on every notification by default and recommend setup steps by @federico-app
+- [e28b84d](https://github.com/federico-app/godusage/commit/e28b84d3f35727550996f6b908506106e611eae1) Allow several owners per team, and fit the plan editor in Settings by @andreaAppload
+- [678e931](https://github.com/federico-app/godusage/commit/678e931770093296adb802a4a04b7b9409edfbd3) Show each team member's last update by @andreaAppload
+- [e1775f5](https://github.com/federico-app/godusage/commit/e1775f56f21c4453d1e53e2db2978c9c3c8bdc46) Log the real cause of failed update checks by @andreaAppload
+
 ## v1.0.2
 
 ### New Features
