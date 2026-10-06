@@ -46,6 +46,8 @@ describe("usage upload", () => {
       upload([{ provider: "codex", days: [{ date: "2026-10-05", tokens: 2, models: [{ model: "GPT-5", tokens: 1 }, { model: "gpt-5", tokens: 1 }] }] }]),
     ],
     ["missing device name", { ...upload([]), deviceName: "" }],
+    ["account on device scope", upload([{ provider: "codex", account: "a".repeat(32), days: [] }])],
+    ["malformed account", upload([{ provider: "cursor", scope: "account", account: "not-a-hash", days: [] }])],
   ])("rejects %s", async (_label, body) => {
     const { token } = await signIn();
     const response = await put(token, DEVICE_A, body);
@@ -166,6 +168,42 @@ describe("team stats", () => {
       { model: "auto", provider: "cursor", tokens: 50, costUSD: 5, members: [{ userID: owner.userID, tokens: 50, costUSD: 5 }] },
       { model: "opus", provider: "claude", tokens: 130, costUSD: 1.3, members: [{ userID: owner.userID, tokens: 130, costUSD: 1.3 }] },
     ]);
+  });
+
+  it("counts a shared account once for the team and for no member", async () => {
+    const SHARED = "a".repeat(64);
+    const { owner, team, members } = await teamWith(["Bea"]);
+    const cursor = (cost: number) => ({
+      provider: "cursor",
+      scope: "account" as const,
+      account: SHARED,
+      days: [{ date: "2026-10-05", tokens: cost * 10, costUSD: cost, models: [{ model: "auto", tokens: cost * 10, costUSD: cost }] }],
+    });
+    await put(owner.token, DEVICE_A, upload([cursor(8), { provider: "claude", days: [{ date: "2026-10-05", tokens: 10, costUSD: 1 }] }]));
+    // Bea uploads the same Cursor account later, so her copy is the newest.
+    await api("PUT", `/v1/devices/${DEVICE_B}/usage`, { token: members[0]!.token, now: new Date("2026-10-05T13:00:00Z"), body: upload([cursor(9)]) });
+
+    const stats = (await api("GET", `/v1/teams/${team.id}/stats?range=today`, { token: owner.token })).body.stats;
+    expect(stats.totals).toEqual({ tokens: 100, costUSD: 10 });
+    expect(stats.members.map((m: { displayName: string; costUSD: number }) => [m.displayName, m.costUSD])).toEqual([
+      ["Owner", 1],
+      ["Bea", 0],
+    ]);
+    expect(stats.shared).toEqual([{ provider: "cursor", tokens: 90, costUSD: 9, members: [owner.userID, members[0]!.userID].sort() }]);
+    expect(stats.providers).toEqual([
+      { provider: "cursor", tokens: 90, costUSD: 9 },
+      { provider: "claude", tokens: 10, costUSD: 1 },
+    ]);
+    expect(stats.models[0]).toEqual({ model: "auto", provider: "cursor", tokens: 90, costUSD: 9, members: [] });
+    expect(stats.daily[0].providers[0]).toEqual({ provider: "cursor", tokens: 90, costUSD: 9 });
+  });
+
+  it("keeps an account fingerprint only one member uploaded as theirs", async () => {
+    const { owner, team } = await teamWith(["Bea"]);
+    await put(owner.token, DEVICE_A, upload([{ provider: "cursor", scope: "account", account: "b".repeat(32), days: [{ date: "2026-10-05", tokens: 5, costUSD: 3 }] }]));
+    const stats = (await api("GET", `/v1/teams/${team.id}/stats?range=today`, { token: owner.token })).body.stats;
+    expect(stats.members[0]).toMatchObject({ displayName: "Owner", costUSD: 3 });
+    expect(stats.shared).toEqual([]);
   });
 
   it("uses the viewer's local day when it is within a day of UTC", async () => {

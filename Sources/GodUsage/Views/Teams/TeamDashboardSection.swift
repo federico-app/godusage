@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The dashboard's Team section, under the provider cards once you're signed in and in a team: the
+/// The dashboard's Team section, under Total Spend once you're signed in and in a team: the
 /// selected team's ranking at a glance, with each member's split by provider. Click a member for their
 /// providers and top models. Advanced Stats opens the Teams window with the full charts.
 struct TeamDashboardSection: View {
@@ -160,11 +160,17 @@ struct TeamDashboardSection: View {
     }
 
     private func ranking(_ stats: TeamStats) -> some View {
-        let top = stats.members.map { $0.totals.value(for: sort) }.max() ?? 0
+        let top = stats.rankingTop(for: sort)
         return VStack(spacing: 0) {
             ForEach(Array(stats.members.enumerated()), id: \.element.id) { index, member in
                 if index > 0 { Divider().padding(.leading, 12) }
                 memberRow(member, top: top, stats: stats)
+            }
+            ForEach(stats.sharedAccounts(for: sort)) { account in
+                Divider().padding(.leading, 12)
+                TeamSharedAccountRow(account: account, stats: stats, sort: sort, top: top, providerName: providerName)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 9)
             }
             Divider()
             advancedStatsRow

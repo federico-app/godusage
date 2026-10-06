@@ -23,9 +23,9 @@ export const putDeviceUsage: Handler = async ({ request, env, params, deps }) =>
   // No days and no window: nothing to replace. "9999-12-31" matches no stored day.
   const replaceFrom = upload.replaceFrom ?? "9999-12-31";
 
-  const dayRows = JSON.stringify(upload.days.map((row) => [row.provider, row.day, row.scope, row.tokens, row.costUSD]));
+  const dayRows = JSON.stringify(upload.days.map((row) => [row.provider, row.day, row.scope, row.tokens, row.costUSD, row.accountKey]));
   const modelRows = JSON.stringify(
-    upload.models.map((row) => [row.provider, row.day, row.model, row.scope, row.tokens, row.costUSD]),
+    upload.models.map((row) => [row.provider, row.day, row.model, row.scope, row.tokens, row.costUSD, row.accountKey]),
   );
 
   await env.DB.batch([
@@ -36,12 +36,12 @@ export const putDeviceUsage: Handler = async ({ request, env, params, deps }) =>
     env.DB.prepare("DELETE FROM usage_days WHERE user_id = ? AND device_id = ? AND day >= ?").bind(user.id, deviceID, replaceFrom),
     env.DB.prepare("DELETE FROM usage_model_days WHERE user_id = ? AND device_id = ? AND day >= ?").bind(user.id, deviceID, replaceFrom),
     env.DB.prepare(
-      `INSERT INTO usage_days (user_id, device_id, provider, day, scope, tokens, cost_usd)
-       SELECT ?1, ?2, json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]'), json_extract(value, '$[3]'), json_extract(value, '$[4]') FROM json_each(?3)`,
+      `INSERT INTO usage_days (user_id, device_id, provider, day, scope, tokens, cost_usd, account_key)
+       SELECT ?1, ?2, json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]'), json_extract(value, '$[3]'), json_extract(value, '$[4]'), json_extract(value, '$[5]') FROM json_each(?3)`,
     ).bind(user.id, deviceID, dayRows),
     env.DB.prepare(
-      `INSERT INTO usage_model_days (user_id, device_id, provider, day, model, scope, tokens, cost_usd)
-       SELECT ?1, ?2, json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]'), json_extract(value, '$[3]'), json_extract(value, '$[4]'), json_extract(value, '$[5]') FROM json_each(?3)`,
+      `INSERT INTO usage_model_days (user_id, device_id, provider, day, model, scope, tokens, cost_usd, account_key)
+       SELECT ?1, ?2, json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]'), json_extract(value, '$[3]'), json_extract(value, '$[4]'), json_extract(value, '$[5]'), json_extract(value, '$[6]') FROM json_each(?3)`,
     ).bind(user.id, deviceID, modelRows),
   ]);
 

@@ -91,3 +91,12 @@ final class TeamsSocialStoreTests: XCTestCase {
         XCTAssertTrue(api.log.contains("deleteChallenge c-new"))
     }
 }
+
+final class TeamsFormatTests: XCTestCase {
+    /// Regression: sub-dollar axes (Efficiency at $0.25 steps) printed "$0 $0 $0 $1".
+    func testAxisCurrencyKeepsCentsOnSmallScales() {
+        let ticks = [0, 0.25, 0.5, 0.75].map(TeamsFormat.axisCurrency)
+        XCTAssertEqual(Set(ticks).count, ticks.count)
+        XCTAssertEqual(TeamsFormat.axisCurrency(500), Formatters.currency(500, fractionDigits: 0))
+    }
+}

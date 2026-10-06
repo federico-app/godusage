@@ -34,6 +34,8 @@ Uploads happen after a refresh, at most every 15 minutes, and right away when yo
 
 Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Codex, Grok, and others) adds up across Macs. Cursor's usage is already account-wide, so only your most recently updated Mac counts.
 
+**Shared accounts.** Cursor reports usage per account, not per person. When two or more members log into the same Cursor account, their usage is counted once: it is in the team total, the providers, By Day, and Top Models, but in no member's total. It shows as an unranked **Shared Cursor** row after the members, with who shares it, on the dashboard, in the Teams window, and on the web boards. To tell accounts apart, each Mac sends an anonymous fingerprint of its Cursor account (a one-way hash); the account id itself never leaves the Mac.
+
 **Export My Data** (Settings → Teams) saves everything the service keeps about you as a JSON file. The service's [Terms](https://godusage-api.federico-c80.workers.dev/terms) and [Privacy Policy](https://godusage-api.federico-c80.workers.dev/privacy) are linked at sign-in.
 
 **Sign Out** removes this Mac's usage from your teams first, then ends the session. If removing it fails, you stay signed in and see the error. **Delete Account** removes your account, the usage all your Macs shared, and the teams you own.
@@ -42,7 +44,7 @@ Your Macs are combined like iCloud Sync combines them. Local usage (Claude, Code
 
 Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac uploaded, so the Year range fills in from the day you start sharing.
 
-**On the dashboard.** Once you're signed in and in a team, a Team section sits under the provider cards. It shows the selected team's ranking for Today, 7 Days, 30 Days, or Year, by Spend or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. **Advanced Stats** at the bottom opens the Teams window. With more than one team, pick one from the team name. Press **⌘T**, or choose **Team** in the gear menu, to open the Teams window directly.
+**On the dashboard.** Once you're signed in and in a team, a Team section sits right under Total Spend, above the provider cards. It shows the selected team's ranking for Today, 7 Days, 30 Days, or Year, by Spend or Tokens. Each member's bar is split by provider. Click a member to see their providers and top models. **Advanced Stats** at the bottom opens the Teams window. With more than one team, pick one from the team name. Press **⌘T**, or choose **Team** in the gear menu, to open the Teams window directly.
 
 **In the Teams window** (the popover's chart button, or **Open Leaderboards** in Settings → Teams):
 

@@ -18,6 +18,8 @@ Each Mac uploads its own last 30 days. An upload replaces that Mac's days from i
 - **device:** usage read from this Mac's own logs (Claude, Codex, Grok, and so on). A user's Macs are summed.
 - **account:** usage that is already account-wide (Cursor). Only the Mac that uploaded most recently counts, so it is never double counted.
 
+An account entry may carry `account`, an anonymous fingerprint of the provider account (a SHA-256 hex hash made on the Mac). A fingerprint that two or more of a team's members uploaded is a **shared account**: one seat several people log into. Its usage counts once (the newest upload from any member wins) in the team's totals, providers, days, and models, and in no member's totals, ranks, challenges, or Hall of Fame. Stats list it in `shared`: `{ provider, tokens, costUSD, members: [userID] }`. A fingerprint only one member uploaded stays theirs.
+
 This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
 
 Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
@@ -105,6 +107,8 @@ Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
   ]
 }
 ```
+
+Account-scope entries may add `"account": "<64 hex characters>"`; it is rejected on device scope.
 
 `windowStart` is the first day of the app's window; the Mac's stored days from there on are replaced. It must be within the last 40 days. Without it, the earliest day sent is used.
 

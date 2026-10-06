@@ -149,7 +149,8 @@ export function renderBoard(teamName: string, stats: TeamStats, url: URL, extras
   const value = (totals: { tokens: number; costUSD: number }) =>
     stats.sort === "cost" ? formatUSD(totals.costUSD) : formatTokens(totals.tokens);
   const metric = (totals: { tokens: number; costUSD: number }) => (stats.sort === "cost" ? totals.costUSD : totals.tokens);
-  const top = Math.max(...stats.members.map(metric), 0);
+  const shared = stats.shared.filter((account) => metric(account) > 0);
+  const top = Math.max(...stats.members.map(metric), ...shared.map(metric), 0);
   const providers = stats.providers.map((p) => p.provider);
 
   const link = (range: string, sort: string, label: string, active: boolean) => {
@@ -178,6 +179,16 @@ export function renderBoard(teamName: string, stats: TeamStats, url: URL, extras
         <span class="bar">${segments}</span><span class="value">${value(member)}</span></li>`;
     })
     .join("");
+  // Shared accounts are in the total but in no member's row: unranked, after the members.
+  const names = new Map(stats.members.map((member) => [member.userID, member.displayName]));
+  const sharedRows = shared
+    .map((account) => {
+      const width = top > 0 ? (metric(account) / top) * 100 : 0;
+      const by = account.members.map((id) => names.get(id)).filter((name) => name !== undefined).join(", ");
+      return `<li class="shared"><span class="rank">·</span><span class="name">Shared ${escapeHTML(providerName(account.provider))} <span class="muted">${escapeHTML(by)}</span></span>
+        <span class="bar"><span style="width:${width.toFixed(2)}%;background:${providerColor(account.provider)};opacity:.6"></span></span><span class="value muted">${value(account)}</span></li>`;
+    })
+    .join("");
   const legend = providers
     .map((provider) => `<span><i style="background:${providerColor(provider)}"></i>${escapeHTML(providerName(provider))}</span>`)
     .join("");
@@ -191,7 +202,7 @@ export function renderBoard(teamName: string, stats: TeamStats, url: URL, extras
     <p class="muted">${stats.range.from === stats.range.to ? stats.range.to : `${stats.range.from} to ${stats.range.to}`} · Total ${value(stats.totals)}</p>
     ${extras?.projection ? `<p class="muted">Team on pace for ${formatUSD(extras.projection.projected)} in ${extras.projection.month}${extras.projection.daysLeft > 0 ? ` · ${extras.projection.daysLeft} days left` : ""}</p>` : ""}
     <nav>${rangeLinks}<span class="sep"></span>${sortLinks}</nav>
-    <ol class="board">${rows || `<li class="muted">No usage shared yet.</li>`}</ol>
+    <ol class="board">${rows + sharedRows || `<li class="muted">No usage shared yet.</li>`}</ol>
     <div class="legend">${legend}</div>
     ${models ? `<h2>Top Models</h2><ol class="models">${models}</ol>` : ""}
     ${extras ? renderExtras(extras) : ""}`;

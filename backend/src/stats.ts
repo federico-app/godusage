@@ -58,6 +58,11 @@ export interface TeamStats {
   providers: (Totals & { provider: string })[];
   models: (Totals & { model: string; provider: string; members: (Totals & { userID: string })[] })[];
   daily: { day: string; members: (Totals & { userID: string })[]; providers: (Totals & { provider: string })[] }[];
+  /**
+   * Accounts several members log into (one shared Cursor seat). Counted once in the team's totals,
+   * providers, days, and models, and in no member's: they are not split per person.
+   */
+  shared: (Totals & { provider: string; members: string[] })[];
 }
 
 /**
@@ -82,40 +87,93 @@ export function parseStatsQuery(url: URL, now: Date): StatsQuery {
 }
 
 /**
- * Account-scope rows (usage that is already account-wide, like Cursor) count once per user: the
- * newest device wins. Device-scope rows are summed across the user's Macs.
+ * Fingerprints (see `usage_days.account_key`) that two or more of the team's members uploaded: one
+ * provider account several people log into. Defined over everything stored, so an account stays
+ * shared in a period only one of them used it. Expects the team id as ?1.
+ */
+const SHARED_KEYS = `
+  team_users AS (SELECT user_id FROM team_members WHERE team_id = ?1),
+  shared_keys AS (
+    SELECT account_key FROM usage_days
+    WHERE account_key IS NOT NULL AND user_id IN (SELECT user_id FROM team_users)
+    GROUP BY account_key HAVING COUNT(DISTINCT user_id) > 1
+  )`;
+
+/**
+ * Each member's own usage. Account-scope rows (usage that is already account-wide, like Cursor)
+ * count once per user: the newest device wins. Device-scope rows are summed across the user's Macs.
+ * Shared accounts are left out: they belong to no one member (see `SHARED_DAYS`).
  */
 export const EFFECTIVE_DAYS = `
-  WITH ranked AS (
+  WITH ${SHARED_KEYS},
+  ranked AS (
     SELECT u.user_id, u.provider, u.day, u.scope, u.tokens, u.cost_usd,
       ROW_NUMBER() OVER (
         PARTITION BY u.user_id, u.provider, u.day, u.scope ORDER BY d.updated_at DESC, u.device_id
       ) AS rn
     FROM usage_days u JOIN devices d ON d.user_id = u.user_id AND d.id = u.device_id
-    WHERE u.user_id IN (SELECT user_id FROM team_members WHERE team_id = ?1) AND u.day BETWEEN ?2 AND ?3
+    WHERE u.user_id IN (SELECT user_id FROM team_users) AND u.day BETWEEN ?2 AND ?3
+      AND (u.account_key IS NULL OR u.account_key NOT IN (SELECT account_key FROM shared_keys))
   )
   SELECT user_id, provider, day, SUM(tokens) AS tokens, COALESCE(SUM(cost_usd), 0) AS cost
   FROM ranked WHERE scope = 'device' OR rn = 1
   GROUP BY user_id, provider, day`;
 
 export const EFFECTIVE_MODELS = `
-  WITH ranked AS (
+  WITH ${SHARED_KEYS},
+  ranked AS (
     SELECT u.user_id, u.provider, u.model, u.scope, u.tokens, u.cost_usd,
       ROW_NUMBER() OVER (
         PARTITION BY u.user_id, u.provider, u.day, u.model, u.scope ORDER BY d.updated_at DESC, u.device_id
       ) AS rn
     FROM usage_model_days u JOIN devices d ON d.user_id = u.user_id AND d.id = u.device_id
-    WHERE u.user_id IN (SELECT user_id FROM team_members WHERE team_id = ?1) AND u.day BETWEEN ?2 AND ?3
+    WHERE u.user_id IN (SELECT user_id FROM team_users) AND u.day BETWEEN ?2 AND ?3
+      AND (u.account_key IS NULL OR u.account_key NOT IN (SELECT account_key FROM shared_keys))
   )
   SELECT user_id, provider, model, SUM(tokens) AS tokens, COALESCE(SUM(cost_usd), 0) AS cost
   FROM ranked WHERE scope = 'device' OR rn = 1
   GROUP BY user_id, provider, model`;
 
+/** Shared accounts' usage, once per account and day: the newest upload from any member wins. */
+export const SHARED_DAYS = `
+  WITH ${SHARED_KEYS},
+  ranked AS (
+    SELECT u.account_key, u.provider, u.day, u.tokens, u.cost_usd,
+      ROW_NUMBER() OVER (
+        PARTITION BY u.account_key, u.provider, u.day ORDER BY d.updated_at DESC, u.user_id, u.device_id
+      ) AS rn
+    FROM usage_days u JOIN devices d ON d.user_id = u.user_id AND d.id = u.device_id
+    WHERE u.user_id IN (SELECT user_id FROM team_users) AND u.day BETWEEN ?2 AND ?3
+      AND u.account_key IN (SELECT account_key FROM shared_keys)
+  )
+  SELECT account_key, provider, day, tokens, COALESCE(cost_usd, 0) AS cost FROM ranked WHERE rn = 1`;
+
+export const SHARED_MODELS = `
+  WITH ${SHARED_KEYS},
+  ranked AS (
+    SELECT u.account_key, u.provider, u.model, u.tokens, u.cost_usd,
+      ROW_NUMBER() OVER (
+        PARTITION BY u.account_key, u.provider, u.day, u.model ORDER BY d.updated_at DESC, u.user_id, u.device_id
+      ) AS rn
+    FROM usage_model_days u JOIN devices d ON d.user_id = u.user_id AND d.id = u.device_id
+    WHERE u.user_id IN (SELECT user_id FROM team_users) AND u.day BETWEEN ?2 AND ?3
+      AND u.account_key IN (SELECT account_key FROM shared_keys)
+  )
+  SELECT account_key, provider, model, SUM(tokens) AS tokens, COALESCE(SUM(cost_usd), 0) AS cost
+  FROM ranked WHERE rn = 1 GROUP BY account_key, provider, model`;
+
+/** Who shares each shared account. */
+const SHARED_MEMBERS = `
+  WITH ${SHARED_KEYS}
+  SELECT DISTINCT account_key, provider, user_id FROM usage_days
+  WHERE user_id IN (SELECT user_id FROM team_users) AND account_key IN (SELECT account_key FROM shared_keys)
+  ORDER BY account_key, provider, user_id`;
+
 export async function teamStats(db: D1Database, teamID: string, query: StatsQuery): Promise<TeamStats> {
   const to = query.today;
   const { from, previousFrom, previousTo } = rangeBounds(query.range, to);
 
-  const [memberRows, dayRows, modelRows, previousRows] = await db.batch([
+  const [memberRows, dayRows, modelRows, previousRows, sharedDayRows, sharedModelRows, sharedMemberRows] = await db.batch([
     db.prepare(
       `SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id
        WHERE m.team_id = ? ORDER BY m.joined_at, u.id`,
@@ -123,7 +181,13 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
     db.prepare(EFFECTIVE_DAYS).bind(teamID, from, to),
     db.prepare(EFFECTIVE_MODELS).bind(teamID, from, to),
     db.prepare(EFFECTIVE_DAYS).bind(teamID, previousFrom, previousTo),
+    db.prepare(SHARED_DAYS).bind(teamID, from, to),
+    db.prepare(SHARED_MODELS).bind(teamID, from, to),
+    db.prepare(SHARED_MEMBERS).bind(teamID),
   ]);
+  const sharedDays = sharedDayRows!.results as { account_key: string; provider: string; day: string; tokens: number; cost: number }[];
+  const sharedModels = sharedModelRows!.results as { account_key: string; provider: string; model: string; tokens: number; cost: number }[];
+  const sharedMembers = sharedMemberRows!.results as { account_key: string; provider: string; user_id: string }[];
   const previousDays = previousRows!.results as { user_id: string; tokens: number; cost: number }[];
   const members = (memberRows!.results as { id: string; display_name: string }[]);
   const days = dayRows!.results as { user_id: string; provider: string; day: string; tokens: number; cost: number }[];
@@ -140,6 +204,19 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
     add(entry(nested(memberProviders, row.user_id), row.provider), row);
     add(entry(providerTotals, row.provider), row);
     add(entry(nested(dailyTotals, row.day), row.user_id), row);
+  }
+  const sharedTotals = new Map<string, Totals & { provider: string; members: string[] }>();
+  for (const row of sharedMembers) {
+    const key = `${row.account_key}\u0000${row.provider}`;
+    const account = sharedTotals.get(key) ?? { provider: row.provider, members: [], ...zero() };
+    account.members.push(row.user_id);
+    sharedTotals.set(key, account);
+  }
+  for (const row of sharedDays) {
+    add(entry(nested(dailyProviders, row.day), row.provider), row);
+    add(entry(providerTotals, row.provider), row);
+    const account = sharedTotals.get(`${row.account_key}\u0000${row.provider}`);
+    if (account) add(account, row);
   }
 
   const metric = (totals: Totals) => (query.sort === "cost" ? totals.costUSD : totals.tokens);
@@ -169,7 +246,7 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
   denseRank(ranked, metric);
 
   const modelGroups = new Map<string, { model: string; provider: string; totals: Totals; members: Map<string, Totals> }>();
-  for (const row of models) {
+  for (const row of [...models, ...sharedModels]) {
     const key = `${row.provider}\u0000${row.model}`;
     let group = modelGroups.get(key);
     if (!group) {
@@ -177,7 +254,7 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
       modelGroups.set(key, group);
     }
     add(group.totals, row);
-    add(entry(group.members, row.user_id), row);
+    if ("user_id" in row) add(entry(group.members, row.user_id), row);
   }
   const topModels = [...modelGroups.values()]
     .sort((a, b) => metric(b.totals) - metric(a.totals) || a.model.localeCompare(b.model))
@@ -199,7 +276,11 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
   }
 
   const totals = zero();
-  for (const value of memberTotals.values()) add(totals, { tokens: value.tokens, cost: value.costUSD });
+  for (const value of [...memberTotals.values(), ...sharedTotals.values()]) add(totals, { tokens: value.tokens, cost: value.costUSD });
+  const shared = [...sharedTotals.values()]
+    .filter((account) => account.tokens > 0 || account.costUSD > 0)
+    .map((account) => ({ provider: account.provider, ...round(account), members: account.members }))
+    .sort((a, b) => metric(b) - metric(a) || a.provider.localeCompare(b.provider));
 
   return {
     range: { name: query.range, from, to, previousFrom, previousTo },
@@ -209,6 +290,7 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
     providers: sortedTotals(providerTotals, "provider", metric),
     models: topModels,
     daily,
+    shared,
   };
 }
 

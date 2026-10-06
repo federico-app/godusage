@@ -55,6 +55,29 @@ final class TeamUsageUploadTests: XCTestCase {
         XCTAssertEqual(upload.providers.map(\.scope), ["account"])
     }
 
+    func testSendsTheAccountFingerprintOnlyForAccountScope() throws {
+        let key = TeamAccountKey.make(provider: "cursor", accountID: "user_01ABC")
+        XCTAssertEqual(key.count, 64)
+        XCTAssertEqual(key, TeamAccountKey.make(provider: "cursor", accountID: "user_01ABC"))
+        XCTAssertNotEqual(key, TeamAccountKey.make(provider: "cursor", accountID: "user_02XYZ"))
+
+        var cursor = history([("2026-10-05", 9, 2)])
+        cursor.accountKey = key
+        var local = history([("2026-10-05", 5, 1)])
+        local.accountKey = "ignored"
+        let upload = TeamUsageUpload.make(
+            sources: [
+                TeamHistorySource(cardID: "cursor", scope: .accountWide, history: cursor),
+                TeamHistorySource(cardID: "claude", scope: .machineLocal, history: local),
+            ],
+            deviceName: "MacBook",
+            dayKeys: window
+        )
+        XCTAssertEqual(upload.providers.map(\.account), [nil, key])
+        let json = String(decoding: try JSONEncoder().encode(upload), as: UTF8.self)
+        XCTAssertFalse(json.contains("user_01ABC"), "account ids must not leave the Mac")
+    }
+
     func testDropsDaysOutsideTheWindowAndEmptyProviders() {
         let upload = TeamUsageUpload.make(
             sources: [

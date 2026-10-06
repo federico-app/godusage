@@ -29,6 +29,9 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
         var provider: String
         /// `device` sums across a user's Macs; `account` (already account-wide, like Cursor) counts once.
         var scope: String
+        /// Account-scope only: the account's anonymous fingerprint, so the team counts an account
+        /// several members share once. Omitted when unknown.
+        var account: String?
         var days: [Day]
     }
 
@@ -48,13 +51,16 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
             var cost: Double?
             var models: [String: (name: String, tokens: Int, cost: Double?)] = [:]
         }
-        var families: [String: (scope: UsageHistoryDescriptor.Scope, days: [String: DayAccumulator])] = [:]
+        var families: [String: (scope: UsageHistoryDescriptor.Scope, account: String?, days: [String: DayAccumulator])] = [:]
 
         for source in sources {
             let family = String(source.cardID.split(separator: "@", maxSplits: 1).first ?? Substring(source.cardID))
-            var entry = families[family] ?? (source.scope, [:])
+            var entry = families[family] ?? (source.scope, nil, [:])
             // A family is account-wide if any of its cards is, so it is never summed across Macs.
-            if source.scope == .accountWide { entry.scope = .accountWide }
+            if source.scope == .accountWide {
+                entry.scope = .accountWide
+                entry.account = entry.account ?? source.history.accountKey
+            }
 
             for day in source.history.series.daily where dayKeys.contains(day.date) {
                 var accumulator = entry.days[day.date] ?? DayAccumulator()
@@ -88,7 +94,8 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
                 return Day(date: date, tokens: day.tokens, costUSD: day.cost, models: models)
             }
             guard !days.isEmpty else { return nil }
-            return Provider(provider: family, scope: entry.scope == .accountWide ? "account" : "device", days: days)
+            let isAccountWide = entry.scope == .accountWide
+            return Provider(provider: family, scope: isAccountWide ? "account" : "device", account: isAccountWide ? entry.account : nil, days: days)
         }
         return TeamUsageUpload(deviceName: deviceName, windowStart: dayKeys.min(), providers: providers)
     }
