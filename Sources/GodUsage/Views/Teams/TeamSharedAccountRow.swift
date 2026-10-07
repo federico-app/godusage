@@ -46,13 +46,14 @@ struct TeamSharedAccountRow: View {
 }
 
 /// When a member last synced: "Updated 5m ago" within a day, then "Not synced for 3 days" with a
-/// warning icon, so stale numbers aren't read as no usage. Shows nothing if they never synced.
+/// warning icon, so stale numbers aren't read as no usage. Followed by their GodUsage version
+/// ("· v1.0.8") when known. Shows nothing if they never synced.
 struct TeamSyncNote: View {
     let member: TeamStats.Member
     var now = Date()
 
     var body: some View {
-        if let note = TeamsFormat.syncNote(member.lastSyncAt, now: now) {
+        if let note = TeamsFormat.syncNote(member.lastSyncAt, now: now, appVersion: member.appVersion) {
             Group {
                 if note.stale {
                     Label(note.text, systemImage: "exclamationmark.arrow.triangle.2.circlepath")
@@ -76,15 +77,22 @@ extension TeamsFormat {
     }
 
     /// "Updated just now", "Updated 5m ago", "Updated 3h ago", then "Not synced for 2 days" once
-    /// `lastSyncAt` is more than 24 hours old; nil when unknown.
-    static func syncNote(_ lastSyncAt: String?, now: Date) -> SyncNote? {
+    /// `lastSyncAt` is more than 24 hours old, followed by " · v1.0.8" when `appVersion` is known;
+    /// nil when the sync time is unknown.
+    static func syncNote(_ lastSyncAt: String?, now: Date, appVersion: String? = nil) -> SyncNote? {
         guard let lastSyncAt, let date = syncDate(lastSyncAt) else { return nil }
+        let version = appVersion.map { " · \(versionLabel($0))" } ?? ""
         let minutes = Int(max(0, now.timeIntervalSince(date)) / 60)
-        if minutes < 1 { return SyncNote(text: "Updated just now", stale: false) }
-        if minutes < 60 { return SyncNote(text: "Updated \(minutes)m ago", stale: false) }
-        if minutes <= 24 * 60 { return SyncNote(text: "Updated \(minutes / 60)h ago", stale: false) }
+        if minutes < 1 { return SyncNote(text: "Updated just now\(version)", stale: false) }
+        if minutes < 60 { return SyncNote(text: "Updated \(minutes)m ago\(version)", stale: false) }
+        if minutes <= 24 * 60 { return SyncNote(text: "Updated \(minutes / 60)h ago\(version)", stale: false) }
         let days = minutes / (24 * 60)
-        return SyncNote(text: "Not synced for \(days) \(days == 1 ? "day" : "days")", stale: true)
+        return SyncNote(text: "Not synced for \(days) \(days == 1 ? "day" : "days")\(version)", stale: true)
+    }
+
+    /// "v1.0.8" for a release version; anything else (a "dev" build) as it is.
+    static func versionLabel(_ version: String) -> String {
+        version.first?.isNumber == true ? "v\(version)" : version
     }
 
     private static func syncDate(_ value: String) -> Date? {

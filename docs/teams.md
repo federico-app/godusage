@@ -59,7 +59,7 @@ The gear button in its toolbar opens Settings → Teams.
 
 **Plans.** Team owners list the subscriptions the team pays for in Settings → Teams → Plans: provider, name, monthly cost, and the day of the month it renews (29–31 fall on the last day of shorter months). Every member sees the **Plans** tab in the Teams window. For each plan it shows the current billing cycle (last renewal to the day before the next), the team's usage of that provider in the cycle at API prices, the projection to the end of the cycle at the current pace, and the value per dollar (projected value ÷ monthly cost). Plans projected under 1× are flagged as underused. Usage counts like the leaderboard, shared accounts once; several plans of one provider split its usage by cost. An underused plan that renews within 7 days also shows as a [suggestion](dashboard.md#suggestions) on the dashboard of members who use its provider.
 
-**Last update.** Each member shows when their Macs last uploaded, on the dashboard, in the Teams window, and on the web boards: **Updated 5m ago** (or **just now**, **3h ago**) within the last 24 hours, then **Not synced for N days** with a warning icon, so their numbers aren't read as no usage. Members who never synced show nothing.
+**Last update.** Each member shows when their Macs last uploaded, on the dashboard, in the Teams window, and on the web boards: **Updated 5m ago** (or **just now**, **3h ago**) within the last 24 hours, then **Not synced for N days** with a warning icon, so their numbers aren't read as no usage. After it comes the GodUsage version that Mac runs (**· v1.0.8**), so you can tell who is behind on updates; uploads from apps before 1.0.8 carry no version. Members who never synced show nothing.
 
 **Team life.** Around the ranking:
 

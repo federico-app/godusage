@@ -66,7 +66,7 @@ export async function boardExtras(db: D1Database, teamID: string, query: StatsQu
   const [todayStats, monthStats, champions, reactions, challenges] = await Promise.all([
     teamStats(db, teamID, { ...query, range: "today", sort: "cost" }),
     teamStats(db, teamID, { ...query, range: "mtd", sort: "cost" }),
-    teamChampions(db, teamID, today),
+    teamChampions(db, teamID, today, now),
     reactionSummary(db, teamID, dayKey(now), ""),
     teamChallengeList(db, teamID, today),
   ]);
@@ -145,6 +145,11 @@ function memberMarks(extras: BoardExtras | undefined, userID: string): string {
   return marks;
 }
 
+/** "v1.0.8" for a release version; anything else (a "dev" build) as it is. */
+export function versionLabel(version: string): string {
+  return /^\d/.test(version) ? `v${version}` : version;
+}
+
 /** "updated 5m ago" within a day, then "not synced for 3 days"; null if the member never synced. */
 export function syncNote(lastSyncAt: string | null, now: Date): string | null {
   if (!lastSyncAt) return null;
@@ -188,7 +193,8 @@ export function renderBoard(teamName: string, stats: TeamStats, url: URL, extras
         .join("");
       return `<li><span class="rank">${member.rank}</span><span class="name">${escapeHTML(member.displayName)}${memberMarks(extras, member.userID)}${(() => {
         const note = syncNote(member.lastSyncAt, now);
-        return note ? ` <span class="muted">· ${note}</span>` : "";
+        const version = member.appVersion ? ` · ${escapeHTML(versionLabel(member.appVersion))}` : "";
+        return note ? ` <span class="muted">· ${note}${version}</span>` : "";
       })()}</span>
         <span class="bar">${segments}</span><span class="value">${value(member)}</span></li>`;
     })

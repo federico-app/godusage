@@ -26,6 +26,8 @@ export interface ModelRow extends DayRow {
 
 export interface UsageUpload {
   deviceName: string;
+  /** The GodUsage version that sent the upload; null from apps before 1.0.8. */
+  appVersion: string | null;
   /**
    * The first day this upload speaks for. The device's stored days from here on are replaced; older
    * days are kept, so history outlives the app's 30-day window. Null when the upload covers no days.
@@ -53,13 +55,22 @@ export function isValidDay(value: unknown): value is string {
   return typeof value === "string" && DAY_PATTERN.test(value) && dayKey(new Date(`${value}T00:00:00Z`)) === value;
 }
 
+const APP_VERSION_PATTERN = /^[0-9A-Za-z.+-]{1,32}$/;
+
 /**
  * Validates one device's upload (the system boundary for usage data) and flattens it into rows.
- * Shape: { schema, deviceName, providers: [{ provider, scope, account?, days: [{ date, tokens, costUSD, models? }] }] }
+ * Shape: { schema, deviceName, appVersion?, providers: [{ provider, scope, account?, days: [{ date, tokens, costUSD, models? }] }] }
  */
 export function parseUsageUpload(body: Record<string, unknown>, now: Date): UsageUpload {
   if (body.schema !== USAGE_SCHEMA) throw badRequest(`schema must be "${USAGE_SCHEMA}". Update GodUsage.`);
   const deviceName = requireName(body.deviceName, "deviceName", 80);
+  let appVersion: string | null = null;
+  if (body.appVersion !== undefined) {
+    if (typeof body.appVersion !== "string" || !APP_VERSION_PATTERN.test(body.appVersion)) {
+      throw badRequest("appVersion must be a short version string like 1.0.8.");
+    }
+    appVersion = body.appVersion;
+  }
   if (!Array.isArray(body.providers)) throw badRequest("providers must be an array.");
   if (body.providers.length > MAX_PROVIDERS) throw badRequest(`At most ${MAX_PROVIDERS} providers per upload.`);
 
@@ -133,7 +144,7 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
   }
   // Without an explicit window (older apps), the earliest day sent marks it.
   const replaceFrom = windowStart ?? days.reduce<string | null>((min, row) => (min === null || row.day < min ? row.day : min), null);
-  return { deviceName, replaceFrom, days, models };
+  return { deviceName, appVersion, replaceFrom, days, models };
 }
 
 function parseTokens(value: unknown): number {

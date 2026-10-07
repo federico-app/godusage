@@ -158,6 +158,8 @@ struct TeamStats: Codable, Hashable, Sendable {
         var previous: Previous?
         /// When any of the member's Macs last uploaded (ISO 8601); nil if none has, or an older backend.
         var lastSyncAt: String?
+        /// The GodUsage version of that latest upload; nil from apps before 1.0.8, or an older backend.
+        var appVersion: String?
         var id: String { userID }
         var totals: UsageTotals { UsageTotals(tokens: tokens, costUSD: costUSD) }
 

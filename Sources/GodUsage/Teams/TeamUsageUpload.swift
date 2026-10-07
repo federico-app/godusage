@@ -37,6 +37,8 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
 
     var schema = Self.schema
     var deviceName: String
+    /// The GodUsage version, shown to teammates beside "Updated 5m ago".
+    var appVersion: String?
     /// The first day of this Mac's window. The server replaces this Mac's days from here on and
     /// keeps older ones, so history builds up beyond the 30-day window.
     var windowStart: String?
@@ -45,7 +47,12 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
     /// Builds the upload from this Mac's cards. Account cards (`claude@ab12cd34`) fold into their
     /// family (`claude`): a leaderboard compares people per provider, not per login, and the
     /// account id must not leave the Mac. Days outside `dayKeys` are dropped.
-    static func make(sources: [TeamHistorySource], deviceName: String, dayKeys: Set<String>) -> TeamUsageUpload {
+    static func make(
+        sources: [TeamHistorySource],
+        deviceName: String,
+        dayKeys: Set<String>,
+        appVersion: String = AppInfo.version
+    ) -> TeamUsageUpload {
         struct DayAccumulator {
             var tokens = 0
             var cost: Double?
@@ -97,7 +104,7 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
             let isAccountWide = entry.scope == .accountWide
             return Provider(provider: family, scope: isAccountWide ? "account" : "device", account: isAccountWide ? entry.account : nil, days: days)
         }
-        return TeamUsageUpload(deviceName: deviceName, windowStart: dayKeys.min(), providers: providers)
+        return TeamUsageUpload(deviceName: deviceName, appVersion: appVersion, windowStart: dayKeys.min(), providers: providers)
     }
 
     /// Unknown plus a known cost stays the known part: spend tiles also count only priced usage.

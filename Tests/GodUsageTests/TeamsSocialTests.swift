@@ -171,5 +171,7 @@ final class TeamSyncNoteTests: XCTestCase {
         XCTAssertEqual(TeamsFormat.syncNote("2026-10-04T11:00:00.000Z", now: now), .init(text: "Not synced for 1 day", stale: true))
         XCTAssertEqual(TeamsFormat.syncNote("2026-10-01T12:00:00Z", now: now), .init(text: "Not synced for 4 days", stale: true))
         XCTAssertNil(TeamsFormat.syncNote(nil, now: now))
+        XCTAssertEqual(TeamsFormat.syncNote("2026-10-05T11:55:00.000Z", now: now, appVersion: "1.0.8"), .init(text: "Updated 5m ago · v1.0.8", stale: false))
+        XCTAssertEqual(TeamsFormat.syncNote("2026-10-01T12:00:00Z", now: now, appVersion: "dev"), .init(text: "Not synced for 4 days · dev", stale: true))
     }
 }
