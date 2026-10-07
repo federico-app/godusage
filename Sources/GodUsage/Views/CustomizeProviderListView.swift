@@ -25,6 +25,9 @@ struct CustomizeProviderListView: View {
                 }
             }
             .cardSurface()
+            if container.teams.isSignedIn, !container.teams.teams.isEmpty {
+                CustomizeTeamCard()
+            }
             // App behavior/appearance options live in the standalone Settings window; catch users
             // who came here hunting for them once they've scanned past the provider list.
             ScreenCrossLinkRow(

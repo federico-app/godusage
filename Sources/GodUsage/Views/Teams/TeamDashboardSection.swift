@@ -12,7 +12,12 @@ struct TeamDashboardSection: View {
     @AppStorage("godusage.totalSpend.metric") private var totalSpendMetric = TotalSpendMetric.cost.rawValue
     /// The popover's tree survives closing, so reloads key off visibility, not appearance.
     @Environment(\.popoverIsVisible) private var popoverIsVisible
+    @AppStorage(TeamDashboardPreferences.membersShownKey) private var membersShown = TeamMembersShown.default.rawValue
+    @AppStorage(TeamDashboardPreferences.showProjectionKey) private var showProjection = true
+    @AppStorage(TeamDashboardPreferences.showChallengesKey) private var showChallenges = true
     @State private var expandedMemberID: String?
+    /// The caret under the first members unfolds the rest of the ranking.
+    @State private var showsAllMembers = false
     @State private var isLoading = false
 
     private let density = DensitySetting.compact
@@ -89,7 +94,7 @@ struct TeamDashboardSection: View {
         if let stats {
             summary(stats)
             ranking(stats)
-            challengesCard
+            if showChallenges { challengesCard }
         } else if let error = teams.statsError {
             errorCard(error)
         } else {
@@ -151,7 +156,7 @@ struct TeamDashboardSection: View {
                     .foregroundStyle(.secondary)
                 Spacer()
             }
-            if let teamID = container.teams.selectedTeamID, let projection = container.teamsSocial.projection(teamID: teamID) {
+            if showProjection, let teamID = container.teams.selectedTeamID, let projection = container.teamsSocial.projection(teamID: teamID) {
                 ProjectionText(projection: projection, prefix: "Team on pace for")
                     .font(.caption)
             }
@@ -179,10 +184,18 @@ struct TeamDashboardSection: View {
 
     private func ranking(_ stats: TeamStats) -> some View {
         let top = stats.rankingTop(for: metric)
+        let ranked = metric.ranked(stats.members)
+        let collapsedCount = (TeamMembersShown(rawValue: membersShown) ?? .default).visibleCount(of: ranked.count)
+        let isCollapsible = collapsedCount < ranked.count
+        let visible = isCollapsible && !showsAllMembers ? Array(ranked.prefix(collapsedCount)) : ranked
         return VStack(spacing: 0) {
-            ForEach(Array(metric.ranked(stats.members).enumerated()), id: \.element.id) { index, member in
+            ForEach(Array(visible.enumerated()), id: \.element.id) { index, member in
                 if index > 0 { Divider().padding(.leading, 12) }
                 memberRow(member, top: top, stats: stats)
+            }
+            if isCollapsible {
+                Divider().padding(.leading, 12)
+                membersToggle(hiddenCount: ranked.count - collapsedCount)
             }
             ForEach(stats.sharedAccounts(for: metric)) { account in
                 Divider().padding(.leading, 12)
@@ -194,6 +207,28 @@ struct TeamDashboardSection: View {
             advancedStatsRow
         }
         .cardSurface()
+    }
+
+    /// The centered caret under the ranking, like a provider card's: unfolds or folds the members past
+    /// the ones Customize → Team shows.
+    private func membersToggle(hiddenCount: Int) -> some View {
+        Button {
+            withAnimation(Motion.spring) { showsAllMembers.toggle() }
+        } label: {
+            HStack(spacing: 4) {
+                if !showsAllMembers {
+                    Text("\(hiddenCount) More").font(.caption)
+                }
+                Image(systemName: showsAllMembers ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(showsAllMembers ? "Show fewer members" : "Show \(hiddenCount) more members")
     }
 
     /// Opens the Teams window: every range, charts, models, and the two-member comparison.

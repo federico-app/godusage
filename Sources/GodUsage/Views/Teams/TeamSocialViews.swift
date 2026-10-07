@@ -40,7 +40,7 @@ struct ReactionButtons: View {
     }
 }
 
-/// Only the reactions someone got this week, e.g. "🔥2 👏1", for a ranking row.
+/// Only the reactions someone got today, e.g. "🔥2 👏1", for a ranking row.
 struct ReactionCounts: View {
     let reactions: MemberReactions
 

@@ -17,6 +17,7 @@ struct DashboardContentView: View {
 
     private let density = DensitySetting.compact
     @AppStorage(TotalSpendSetting.key) private var showTotalSpend = true
+    @AppStorage(TeamDashboardPreferences.showSectionKey) private var showTeamSection = true
 
     var body: some View {
         let displayGroups = layout.dashboardGroups(dataStore: container.dataStore)
@@ -74,7 +75,7 @@ struct DashboardContentView: View {
         }
         // The team ranking sits right under Total Spend (above the provider cards) once you're
         // signed in and in a team; Advanced Stats inside it opens the Teams window.
-        if container.teams.isSignedIn, !container.teams.teams.isEmpty {
+        if showTeamSection, container.teams.isSignedIn, !container.teams.teams.isEmpty {
             TeamDashboardSection()
                 .padding(.bottom, density.sectionSpacing)
         }

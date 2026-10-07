@@ -26,7 +26,7 @@ Day keys are each Mac's local calendar days. A stats request can pass the viewer
 
 ## Reactions, champions, and challenges
 
-- **Reactions:** a member can give each teammate 🔥 (`fire`), 👏 (`clap`), and 🤡 (`clown`), one of each per week. Reactions belong to the ISO week (UTC) they were given in, so every Monday starts clean. Nobody can react to themselves.
+- **Reactions:** a member can give each teammate 🔥 (`fire`), 👏 (`clap`), and 🤡 (`clown`), one of each per day. Reactions belong to the UTC day they were given in, so every day starts clean at midnight UTC. Nobody can react to themselves.
 - **Champions:** the stats response lists the top spender of each of the last 12 complete calendar months among current members (the current month never counts until it is over).
 - **Challenges:** any member starts one for 7, 14, or 30 days, from today. Kinds: `lowest_spend` (least spend among members who spent anything), `most_models` (most different models), `most_tokens`, and `best_efficiency` (lowest cost per million tokens, with at least 100K tokens). Standings update live from usage in the window; once it has ended, the leaders are the winners. A team runs at most five at once. The creator or an owner can cancel one.
 
@@ -50,7 +50,7 @@ The Worker serves `/privacy` and `/terms`, linked from every page and from the a
 
 Every member can open `https://<worker>/teams/<team id>` in a browser (the app's **Web Leaderboard** link). Visitors who are not signed in see **Sign In with Apple**, which runs the same web sign-in as the app (`/teams/<id>/sign-in`) and comes back to the board. The browser then keeps a 30-day session in a `HttpOnly`, `Secure`, `SameSite=Lax` cookie. Only members see the board; anyone else sees "Not a Member". **Sign Out** on the page ends that browser session. Sign-in only ever returns to a `/teams/<id>` path on the same site.
 
-Both boards show the same extras as the app: 👑 for today's top spender, 🏆 for last month's champion, this week's reactions, the team's month-end projection, challenges, and the Hall of Fame.
+Both boards show the same extras as the app: 👑 for today's top spender, 🏆 for last month's champion, today's reactions, the team's month-end projection, challenges, and the Hall of Fame.
 
 It sits beside the public board below: the public link needs no sign-in, the members-only one needs a member's Apple ID.
 
@@ -76,8 +76,8 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `POST /v1/teams/:id/invite` | Owner rotates the invite link. |
 | `PATCH /v1/teams/:id/members/:userID` | Owner sets `{ role: "owner" \| "member" }`. |
 | `DELETE /v1/teams/:id/members/:userID` | Leave (yourself) or remove a member (owner). |
-| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD`. Leaderboard (with each member's previous-period rank), provider totals, top 20 models, per-day totals by member and by provider, this week's `reactions`, and the last 12 months' `champions`. |
-| `PUT`, `DELETE /v1/teams/:id/members/:userID/reactions/:emoji` | Give or take back `fire`, `clap`, or `clown` for this week. |
+| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD`. Leaderboard (with each member's previous-period rank), provider totals, top 20 models, per-day totals by member and by provider, today's `reactions` (`day` is the UTC day; `week` repeats it for older apps), and the last 12 months' `champions`. |
+| `PUT`, `DELETE /v1/teams/:id/members/:userID/reactions/:emoji` | Give or take back `fire`, `clap`, or `clown` for today (UTC). |
 | `GET`, `POST /v1/teams/:id/challenges` | List active challenges and the last five finished (with standings and winners), or start one (`{ kind, days, today? }`). |
 | `DELETE /v1/teams/:id/challenges/:challengeID` | Cancel a challenge (creator or owner). |
 | `GET /v1/invites/:code` | Invite preview: team name, member count, `alreadyMember`. |

@@ -3,7 +3,7 @@ import { ApiError } from "../http";
 import { parseStatsQuery, rangeBounds, teamStats, type StatsQuery, type TeamStats } from "../stats";
 import { addDays, dayKey } from "../usagePayload";
 import { teamChallengeList } from "./challenges";
-import { isoWeek, reactionSummary, teamChampions, type Champion, type MemberReactions } from "./social";
+import { reactionSummary, teamChampions, type Champion, type MemberReactions } from "./social";
 import { invitePreview } from "./teams";
 
 /** GET / — where the browser lands after signing out. */
@@ -67,7 +67,7 @@ export async function boardExtras(db: D1Database, teamID: string, query: StatsQu
     teamStats(db, teamID, { ...query, range: "today", sort: "cost" }),
     teamStats(db, teamID, { ...query, range: "mtd", sort: "cost" }),
     teamChampions(db, teamID, today),
-    reactionSummary(db, teamID, isoWeek(dayKey(now)), ""),
+    reactionSummary(db, teamID, dayKey(now), ""),
     teamChallengeList(db, teamID, today),
   ]);
   const leaders = todayStats.members.filter((m) => m.rank === 1 && m.costUSD > 0);

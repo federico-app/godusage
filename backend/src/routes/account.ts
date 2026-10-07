@@ -106,8 +106,8 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
     env.DB.prepare("SELECT device_id, provider, day, scope, tokens, cost_usd FROM usage_days WHERE user_id = ? ORDER BY day, provider").bind(user.id),
     env.DB.prepare("SELECT device_id, provider, day, model, scope, tokens, cost_usd FROM usage_model_days WHERE user_id = ? ORDER BY day, provider, model").bind(user.id),
     env.DB.prepare("SELECT t.id, t.name, m.role, m.joined_at FROM team_members m JOIN teams t ON t.id = m.team_id WHERE m.user_id = ? ORDER BY t.name").bind(user.id),
-    env.DB.prepare("SELECT team_id, to_user, emoji, week, created_at FROM reactions WHERE from_user = ? ORDER BY created_at").bind(user.id),
-    env.DB.prepare("SELECT team_id, from_user, emoji, week, created_at FROM reactions WHERE to_user = ? ORDER BY created_at").bind(user.id),
+    env.DB.prepare("SELECT team_id, to_user, emoji, day, created_at FROM reactions WHERE from_user = ? ORDER BY created_at").bind(user.id),
+    env.DB.prepare("SELECT team_id, from_user, emoji, day, created_at FROM reactions WHERE to_user = ? ORDER BY created_at").bind(user.id),
     env.DB.prepare("SELECT id, team_id, kind, starts_on, ends_on, created_at FROM challenges WHERE created_by = ? ORDER BY created_at").bind(user.id),
   ]);
   const row = account!.results[0] as { id: string; apple_sub: string; display_name: string; created_at: string };
