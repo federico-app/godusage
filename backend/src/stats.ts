@@ -91,13 +91,14 @@ export function parseStatsQuery(url: URL, now: Date): StatsQuery {
 /**
  * Fingerprints (see `usage_days.account_key`) that two or more of the team's members uploaded: one
  * provider account several people log into. Defined over everything stored, so an account stays
- * shared in a period only one of them used it. Expects the team id as ?1.
+ * shared in a period only one of them used it. Read from `account_keys`, never from the usage
+ * history: this runs in every stats query. Expects the team id as ?1.
  */
 const SHARED_KEYS = `
   team_users AS (SELECT user_id FROM team_members WHERE team_id = ?1),
   shared_keys AS (
-    SELECT account_key FROM usage_days
-    WHERE account_key IS NOT NULL AND user_id IN (SELECT user_id FROM team_users)
+    SELECT account_key FROM account_keys
+    WHERE user_id IN (SELECT user_id FROM team_users)
     GROUP BY account_key HAVING COUNT(DISTINCT user_id) > 1
   )`;
 
@@ -167,7 +168,7 @@ export const SHARED_MODELS = `
 /** Who shares each shared account. */
 const SHARED_MEMBERS = `
   WITH ${SHARED_KEYS}
-  SELECT DISTINCT account_key, provider, user_id FROM usage_days
+  SELECT account_key, provider, user_id FROM account_keys
   WHERE user_id IN (SELECT user_id FROM team_users) AND account_key IN (SELECT account_key FROM shared_keys)
   ORDER BY account_key, provider, user_id`;
 

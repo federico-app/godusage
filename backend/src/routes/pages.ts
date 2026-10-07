@@ -66,7 +66,7 @@ export async function boardExtras(db: D1Database, teamID: string, query: StatsQu
   const [todayStats, monthStats, champions, reactions, challenges] = await Promise.all([
     teamStats(db, teamID, { ...query, range: "today", sort: "cost" }),
     teamStats(db, teamID, { ...query, range: "mtd", sort: "cost" }),
-    teamChampions(db, teamID, today),
+    teamChampions(db, teamID, today, now),
     reactionSummary(db, teamID, dayKey(now), ""),
     teamChallengeList(db, teamID, today),
   ]);

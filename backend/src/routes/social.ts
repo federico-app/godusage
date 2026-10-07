@@ -80,11 +80,37 @@ export interface Champion {
   costUSD: number;
 }
 
+/** How long computed champions are reused. They only move when a month ends or a late upload lands. */
+const CHAMPIONS_TTL_MS = 60 * 60 * 1000;
+
 /**
  * The top spender of each of the last 12 complete calendar months (newest first), among the team's
- * current members. A month nobody spent in has no champion.
+ * current members. A month nobody spent in has no champion. Reads a year of usage, and every stats
+ * request asks for it, so the result is kept in `team_champions` for an hour.
  */
-export async function teamChampions(db: D1Database, teamID: string, today: string): Promise<Champion[]> {
+export async function teamChampions(db: D1Database, teamID: string, today: string, now: Date): Promise<Champion[]> {
+  const month = today.slice(0, 7);
+  const cached = await db.prepare("SELECT champions, computed_at FROM team_champions WHERE team_id = ? AND month = ?")
+    .bind(teamID, month)
+    .first<{ champions: string; computed_at: string }>();
+  if (cached && now.getTime() - Date.parse(cached.computed_at) < CHAMPIONS_TTL_MS) return JSON.parse(cached.champions) as Champion[];
+
+  const champions = await computeChampions(db, teamID, today);
+  await db.prepare(
+    `INSERT INTO team_champions (team_id, month, champions, computed_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT (team_id, month) DO UPDATE SET champions = excluded.champions, computed_at = excluded.computed_at`,
+  )
+    .bind(teamID, month, JSON.stringify(champions), now.toISOString())
+    .run();
+  return champions;
+}
+
+/** Drops a team's cached champions, after its members change. */
+export async function forgetChampions(db: D1Database, teamID: string): Promise<void> {
+  await db.prepare("DELETE FROM team_champions WHERE team_id = ?").bind(teamID).run();
+}
+
+export async function computeChampions(db: D1Database, teamID: string, today: string): Promise<Champion[]> {
   const thisMonth = `${today.slice(0, 7)}-01`;
   const to = addDays(thisMonth, -1);
   let from = thisMonth;

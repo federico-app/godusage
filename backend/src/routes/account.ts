@@ -76,6 +76,8 @@ export const updateMe: Handler = async ({ request, env }) => {
 export const deleteMe: Handler = async ({ request, env }) => {
   const user = await requireUser(request, env.DB);
   await env.DB.batch([
+    // Champions are among current members: recompute them without this account.
+    env.DB.prepare("DELETE FROM team_champions WHERE team_id IN (SELECT team_id FROM team_members WHERE user_id = ?)").bind(user.id),
     env.DB.prepare(
       `DELETE FROM teams WHERE id IN (
          SELECT m.team_id FROM team_members m WHERE m.user_id = ?1 AND m.role = 'owner'

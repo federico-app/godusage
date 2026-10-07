@@ -23,7 +23,7 @@ export const getTeamStats: Handler = async ({ request, env, url, params, deps })
   const [stats, reactions, champions] = await Promise.all([
     teamStats(env.DB, team.id, query),
     reactionSummary(env.DB, team.id, day, user.id),
-    teamChampions(env.DB, team.id, query.today),
+    teamChampions(env.DB, team.id, query.today, deps.now()),
   ]);
   return json({ team, stats, reactions: { day, week: day, byMember: reactions }, champions });
 };

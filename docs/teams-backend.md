@@ -20,14 +20,20 @@ Each Mac uploads its own last 30 days. An upload replaces that Mac's days from i
 
 An account entry may carry `account`, an anonymous fingerprint of the provider account (a SHA-256 hex hash made on the Mac). A fingerprint that two or more of a team's members uploaded is a **shared account**: one seat several people log into. Its usage counts once (the newest upload from any member wins) in the team's totals, providers, days, and models, and in no member's totals, ranks, challenges, or Hall of Fame. Stats list it in `shared`: `{ provider, tokens, costUSD, members: [userID] }`. A fingerprint only one member uploaded stays theirs.
 
+The server keeps a small list of which fingerprints each user has uploaded, so finding shared accounts doesn't read anyone's usage history.
+
 This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
+
+## Read budget
+
+D1 bills every row a query reads, and the free plan allows 5M a day per account (production and dev share it). The app fetches stats on every popover open, every two minutes while it stays open, and after every upload, so each query reads only the days in its period, never a member's full history. `test/readBudget.test.ts` checks this against a year of seeded history.
 
 Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member carries `lastSyncAt`, the newest upload time across their Macs (ISO 8601, or null if none has uploaded); the apps and web boards show it as "updated 5m ago", then "not synced for N days" once it is more than 24 hours old. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
 
 ## Reactions, champions, and challenges
 
 - **Reactions:** a member can give each teammate 🔥 (`fire`), 👏 (`clap`), and 🤡 (`clown`), one of each per day. Reactions belong to the UTC day they were given in, so every day starts clean at midnight UTC. Nobody can react to themselves.
-- **Champions:** the stats response lists the top spender of each of the last 12 complete calendar months among current members (the current month never counts until it is over).
+- **Champions:** the stats response lists the top spender of each of the last 12 complete calendar months among current members (the current month never counts until it is over). The server reuses a team's champions for up to an hour, and recomputes them when its members change.
 - **Challenges:** any member starts one for 7, 14, or 30 days, from today. Kinds: `lowest_spend` (least spend among members who spent anything), `most_models` (most different models), `most_tokens`, and `best_efficiency` (lowest cost per million tokens, with at least 100K tokens). Standings update live from usage in the window; once it has ended, the leaders are the winners. A team runs at most five at once. The creator or an owner can cancel one.
 
 ## Invites and roles
