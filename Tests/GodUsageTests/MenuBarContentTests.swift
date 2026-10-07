@@ -245,6 +245,44 @@ final class MenuBarContentTests: XCTestCase {
         XCTAssertEqual(content.groups[0].metrics[1].value, "$130")
     }
 
+    func testOverPaceMetricCarriesFlameAndInvalidatesStripCache() {
+        // 60% used two days into a seven-day window projects past the limit before the reset.
+        let week: TimeInterval = 7 * 24 * 3600
+        func weekly(used: Double) -> WidgetDescriptor {
+            var sample = WidgetData(title: "Weekly", icon: .providerMark("cursor"), kind: .percent, used: used, limit: 100)
+            sample.resetsAt = Date().addingTimeInterval(5 * 24 * 3600)
+            sample.periodDurationMs = Int(week * 1000)
+            return descriptor("a.weekly", "Weekly", sample)
+        }
+        let session = percent("a.session", "Session", 20)
+        let hot = MenuBarContentBuilder.build(groups: [group("a", session, weekly(used: 60))], data: { $0.sample })
+        XCTAssertEqual(hot.groups[0].metrics.map(\.isOverPace), [false, true])
+        XCTAssertTrue(hot.accessibilityText.contains("Weekly 60% Over Pace"))
+
+        // Same rounded value, calmer pace: the cached image must not keep the flame.
+        let calm = MenuBarContent(
+            groups: [MenuBarContent.Group(
+                providerID: "a", displayName: "A", icon: .providerMark("cursor"),
+                metrics: hot.groups[0].metrics.map {
+                    .init(id: $0.id, label: $0.label, value: $0.value, fraction: $0.fraction,
+                          isBounded: $0.isBounded, hasData: $0.hasData)
+                }
+            )],
+            bars: hot.bars
+        )
+        let hotRenamed = MenuBarContent(
+            groups: [MenuBarContent.Group(providerID: "a", displayName: "A", icon: .providerMark("cursor"),
+                                          metrics: hot.groups[0].metrics)],
+            bars: hot.bars
+        )
+        XCTAssertFalse(calm.isRenderEquivalent(to: hotRenamed, style: .text))
+        XCTAssertNotNil(MenuBarStripRenderer.image(for: hot, style: .text))
+        XCTAssertNotNil(MenuBarStripRenderer.image(for: hot, style: .bars))
+
+        let early = MenuBarContentBuilder.build(groups: [group("a", weekly(used: 10))], data: { $0.sample })
+        XCTAssertEqual(early.groups[0].metrics.map(\.isOverPace), [false])
+    }
+
     // MARK: - Fixtures
 
     private func group(_ providerID: String, _ metrics: WidgetDescriptor...) -> ProviderMetrics {

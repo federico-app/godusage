@@ -174,6 +174,15 @@ struct WidgetData: Hashable {
             }
         }
 
+        /// Whether the row carries the flame (spent, or projected to run out before the reset). The
+        /// menu-bar strip reads the same verdict, so a flame there always matches one in the dashboard.
+        var showsFlame: Bool {
+            switch self {
+            case .spent, .runningOut: return true
+            case .noData, .closeToLimit, .healthy, .level: return false
+            }
+        }
+
         /// Hover-tooltip detail shared by the bar, the spare note, and the flame: a short numeric
         /// projection of where pace lands at reset, adding the one figure the row doesn't already
         /// show. Blue → the projected cushion ("~35% left at reset"); amber → projected usage

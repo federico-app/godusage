@@ -13,6 +13,9 @@ struct MenuBarContent: Equatable {
         let fraction: Double     // 0...1 fill, meaningful for bounded metrics (drives the bars)
         let isBounded: Bool      // has a limit → has a fill, so it can render as a bar
         let hasData: Bool
+        /// Spent or projected to run out before the reset (`MeterState.showsFlame`): the strip draws a
+        /// small flame beside the value.
+        var isOverPace: Bool = false
     }
 
     /// A provider and its pinned metrics, in order. One segment of the Text strip.
@@ -55,7 +58,7 @@ struct MenuBarContent: Equatable {
                 && mine.metrics.count == theirs.metrics.count
                 && zip(mine.metrics, theirs.metrics).allSatisfy { lhs, rhs in
                     lhs.id == rhs.id && lhs.label == rhs.label && lhs.value == rhs.value
-                        && lhs.hasData == rhs.hasData
+                        && lhs.hasData == rhs.hasData && lhs.isOverPace == rhs.isOverPace
                 }
         }
         guard groupTextMatches else { return false }
@@ -76,7 +79,9 @@ struct MenuBarContent: Equatable {
         groups.map { group in
             if group.loginRequired { return "\(group.displayName) Login Required" }
             if group.isExhausted { return "\(group.displayName) Usage Exhausted" }
-            let metrics = group.metrics.map { "\($0.label) \($0.value)" }.joined(separator: ", ")
+            let metrics = group.metrics
+                .map { "\($0.label) \($0.value)\($0.isOverPace ? " Over Pace" : "")" }
+                .joined(separator: ", ")
             return "\(group.displayName) \(metrics)"
         }
         .joined(separator: "; ")
@@ -150,7 +155,8 @@ enum MenuBarContentBuilder {
             value: data.menuBarValue,
             fraction: data.fraction,
             isBounded: data.isBounded,
-            hasData: data.hasData
+            hasData: data.hasData,
+            isOverPace: data.meterState().showsFlame
         )
     }
 
