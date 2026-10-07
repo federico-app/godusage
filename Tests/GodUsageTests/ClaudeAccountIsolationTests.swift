@@ -38,7 +38,7 @@ final class ClaudeAccountIsolationTests: XCTestCase {
         let fixture = makeFixture(
             credentials: credentials(access: "shared", refresh: "refresh-a", plan: "pro")
         ) { request in
-            guard request.url.absoluteString.hasSuffix("/api/oauth/usage") else {
+            guard request.url.path.hasSuffix("/api/oauth/usage") else {
                 return HTTPResponse(statusCode: 404, headers: [:], body: Data())
             }
             return calls.next() == 1
@@ -102,7 +102,7 @@ final class ClaudeAccountIsolationTests: XCTestCase {
         keychain.currentUserValues[service] = keychainAccount
         let fixture = makeFixture(files: files, keychain: keychain) { request in
             XCTAssertTrue(
-                request.url.absoluteString.hasSuffix("/api/oauth/usage"),
+                request.url.path.hasSuffix("/api/oauth/usage"),
                 "a rejected token must fall through to the next source, never to the token endpoint"
             )
             if request.headers["Authorization"] == "Bearer file-b" {
@@ -176,7 +176,7 @@ final class ClaudeAccountIsolationTests: XCTestCase {
     }
 
     private func usageRequests(_ http: RoutingHTTPClient) -> [HTTPRequest] {
-        http.requests.filter { $0.url.absoluteString.hasSuffix("/api/oauth/usage") }
+        http.requests.filter { $0.url.path.hasSuffix("/api/oauth/usage") }
     }
 
     private func sessionUsage(_ snapshot: ProviderSnapshot) -> Double? {

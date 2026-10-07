@@ -394,7 +394,7 @@ struct WidgetRowView: View {
                         count: data.resetCreditCount, expiries: data.expiriesAt,
                         onHoverChange: { inside in modelHover.detailHover(inside) },
                         onPinChange: { pinned in modelHover.setPinned(pinned) },
-                        // Codex cards bind a claim service; Grok and static renders receive nil, so
+                        // Codex cards bind a claim service; Claude, Grok, and static renders receive nil, so
                         // the timeline stays read-only (GodUsage never calls Grok's RedeemReset).
                         claim: codexResetClaim.map { service in
                             { expiry, redeemRequestID in

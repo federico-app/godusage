@@ -21,6 +21,10 @@ Settings → Appearance → Icon Style:
 - **Text**: provider icon plus values. Two starred metrics from the same provider stack as a labeled pair. Hover an account segment to see that card's current name.
 - **Bars**: a compact glyph with the first four starred metrics that have a limit. Metrics without limits only appear in Text style.
 
+## Over-pace flame
+
+When a starred metric shows the flame in the dashboard (used up, or on pace to run out before it resets), the strip shows a small flame before its value. In Bars style, one flame follows the glyph when any of its bars is over pace. The flame goes away once the pace recovers or the limit resets.
+
 ## Team rank
 
 With **Show Rank in Menu Bar** on (Settings → Teams), the strip ends with a team segment: your rank in the selected team and your share of the team's spend today, over your spend today, for example **#2 · 38%** over **$12.40**. The share is left out while the team has spent nothing today. It updates with each team upload, at most every 15 minutes, and whenever the dashboard's Team section loads Today. See [Teams](teams.md).

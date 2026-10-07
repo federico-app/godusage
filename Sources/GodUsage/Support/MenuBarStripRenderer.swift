@@ -170,7 +170,16 @@ enum MenuBarStripRenderer {
         let exhausted = content.groups.filter(\.isDimmed)
         guard !fractions.isEmpty || !exhausted.isEmpty else { return nil }
         let renderer = ImageRenderer(content: HStack(spacing: 8) {
-            if !fractions.isEmpty { MenuBarBars(fractions: fractions, side: 18) }
+            if !fractions.isEmpty {
+                HStack(spacing: 2) {
+                    MenuBarBars(fractions: fractions, side: 18)
+                    // The bars flatten providers, so one flame flags that any bar is over pace.
+                    if content.bars.contains(where: \.isOverPace) {
+                        Image(systemName: "flame.fill").font(.system(size: 10, weight: .bold))
+                    }
+                }
+                .foregroundStyle(.black)
+            }
             ForEach(exhausted, id: \.providerID) { group in
                 MenuBarTextSegment(group: group)
             }
@@ -269,18 +278,30 @@ private struct MenuBarTextSegment: View {
     /// tight lines (much narrower than side-by-side), read positionally.
     @ViewBuilder
     private func metricsView(_ metrics: [MenuBarContent.Metric]) -> some View {
-        if metrics.count <= 1 {
-            Text(metrics.first?.value ?? "")
-                .font(.system(size: 12, weight: .bold))
+        if metrics.count <= 1, let metric = metrics.first {
+            HStack(spacing: 2) {
+                if metric.isOverPace { flame(size: 10) }
+                Text(metric.value)
+            }
+            .font(.system(size: 12, weight: .bold))
         } else {
             VStack(alignment: .trailing, spacing: -2) {
                 ForEach(metrics, id: \.id) { metric in
-                    Text(metric.value)
+                    HStack(spacing: 1) {
+                        if metric.isOverPace { flame(size: 7) }
+                        Text(metric.value)
+                    }
                 }
             }
             .font(.system(size: 9, weight: .semibold))
             .fixedSize()
         }
+    }
+
+    /// The dashboard's over-pace flame, shrunk to the value's line height and placed before it.
+    private func flame(size: CGFloat) -> some View {
+        Image(systemName: "flame.fill")
+            .font(.system(size: size, weight: .bold))
     }
 
     /// Side length of the glyph box. Sized to fill the strip's height so the mark reads at the same
