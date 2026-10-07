@@ -122,10 +122,10 @@ A failed first-release run is safe to rerun. If the GitHub Release for the curre
 gh release view v{version} --json isDraft,isPrerelease,assets,body \
   --jq '{isDraft, isPrerelease, assets:[.assets[].name], bodyLen:(.body|length)}'
 git fetch origin update-feed && git show origin/update-feed:appcast.xml | grep -F "GodUsage-{version}.dmg"
-curl -s "https://federico-app.github.io/godusage/appcast.xml" | grep -F "GodUsage-{version}.dmg"
+curl -sL "https://godusage.com/appcast.xml" | grep -F "GodUsage-{version}.dmg"
 ```
 
-The last check matters. Publishing is two hops: Release (or pricing-supplement) pushes `appcast.xml` to the `update-feed` branch, then `.github/workflows/deploy-update-feed.yml` on `main` deploys that branch to the live site (Pages source is "GitHub Actions"). The Release macOS job dispatches the deploy right after publishing the branch, with `workflow_run` completion as a fallback trigger. GitHub sometimes returns "Deployment failed, try again later" even though `update-feed` is correct. If the branch has the version but the live URL does not after about 10 minutes, check `gh run list --workflow=deploy-update-feed.yml` and re-run `gh workflow run deploy-update-feed.yml --ref main` (it must be `main`; the workflow file is not on `update-feed`). Sparkle clients only see the live URL.
+The last check matters. Publishing is two hops: Release (or pricing-supplement) pushes `appcast.xml` to the `update-feed` branch, then `.github/workflows/deploy-update-feed.yml` on `main` deploys that branch to the live site (Pages source is "GitHub Actions"). The Release macOS job dispatches the deploy right after publishing the branch, with `workflow_run` completion as a fallback trigger. GitHub sometimes returns "Deployment failed, try again later" even though `update-feed` is correct. If the branch has the version but the live URL does not after about 10 minutes, check `gh run list --workflow=deploy-update-feed.yml` and re-run `gh workflow run deploy-update-feed.yml --ref main` (it must be `main`; the workflow file is not on `update-feed`). Sparkle clients only see the live URL. The live feed is `https://godusage.com/appcast.xml`: the address baked into shipped apps (`federico-app.github.io/godusage/appcast.xml`) answers with a 301 to it, so always pass `-L` to `curl` (without it the check sees an empty redirect body and reports a false negative).
 
 Require `isDraft=false`, `isPrerelease=false`, the `GodUsage-<version>.dmg` and `GodUsage-<version>.dmg.sha256` assets, `bodyLen>0`, and the version in the appcast.
 
