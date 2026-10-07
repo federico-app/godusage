@@ -42,9 +42,9 @@ export async function storeDeviceUsage(db: D1Database, userID: string, deviceID:
 
   const results = await db.batch([
     db.prepare(
-      `INSERT INTO devices (user_id, id, name, updated_at) VALUES (?1, ?2, ?3, ?4)
-       ON CONFLICT (user_id, id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at`,
-    ).bind(userID, deviceID, upload.deviceName, now.toISOString()),
+      `INSERT INTO devices (user_id, id, name, updated_at, app_version) VALUES (?1, ?2, ?3, ?4, ?5)
+       ON CONFLICT (user_id, id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at, app_version = excluded.app_version`,
+    ).bind(userID, deviceID, upload.deviceName, now.toISOString(), upload.appVersion),
     db.prepare(
       `DELETE FROM usage_days WHERE user_id = ?1 AND device_id = ?2 AND day >= ?3
        AND provider || char(0) || day NOT IN

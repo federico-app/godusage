@@ -28,7 +28,7 @@ This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
 
 D1 bills every row a query reads, and the free plan allows 5M a day per account (production and dev share it). The app fetches stats on every popover open, every two minutes while it stays open, and after every upload, so each query reads only the days in its period, never a member's full history. `test/readBudget.test.ts` checks this against a year of seeded history.
 
-Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member carries `lastSyncAt`, the newest upload time across their Macs (ISO 8601, or null if none has uploaded); the apps and web boards show it as "updated 5m ago", then "not synced for N days" once it is more than 24 hours old. Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
+Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member carries `lastSyncAt`, the newest upload time across their Macs (ISO 8601, or null if none has uploaded); the apps and web boards show it as "updated 5m ago", then "not synced for N days" once it is more than 24 hours old. Each member also carries `appVersion`, the GodUsage version of that newest upload (null from apps before 1.0.8), shown after it as "· v1.0.8". Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
 
 ## Reactions, champions, and challenges
 
@@ -98,6 +98,7 @@ Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
 {
   "schema": "godusage.team-usage.v1",
   "deviceName": "MacBook Pro",
+  "appVersion": "1.0.8",
   "windowStart": "2026-09-05",
   "providers": [
     {
@@ -119,6 +120,8 @@ Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
 Plans (`GET /v1/teams/:id/plans?today=` for members, `PUT` with `{ plans: [{ provider, name, monthlyCostUSD, renewalDay }] }` for the owner, replacing the list, at most 30): the response carries each plan with its `cycle` (`from`, `to`, `daysElapsed`, `daysTotal`, `daysLeft`), `valueUSD` (the team's effective spend on the provider from `cycle.from` to today, shared accounts once, split by cost across plans of one provider), `projectedValueUSD`, `projectedMultiple`, and `underused` (projected under 1×), plus `totals` and `canEdit`.
 
 Account-scope entries may add `"account": "<64 hex characters>"`; it is rejected on device scope.
+
+`appVersion` is optional (letters, digits, `.`, `+`, `-`, at most 32 characters); the Mac it came from keeps it until its next upload.
 
 `windowStart` is the first day of the app's window; the Mac's stored days from there on are replaced. It must be within the last 40 days. Without it, the earliest day sent is used.
 
