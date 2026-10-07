@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.0.7
+
+### New Features
+- Show a flame beside over-pace values in the menu bar by @andreaAppload
+- Show Claude rate limit resets (ported from OpenUsage #1290) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.0.6...v1.0.7](https://github.com/federico-app/godusage/compare/v1.0.6...v1.0.7)
+
+- [06204a3](https://github.com/federico-app/godusage/commit/06204a3c0a2d8e0b5843441a0eff979699923799) Show a flame beside over-pace values in the menu bar by @andreaAppload
+- [664b68d](https://github.com/federico-app/godusage/commit/664b68d849b92bb72ee972af3e65a49827b6b123) Show Claude rate limit resets (ported from OpenUsage #1290) by @andreaAppload
+
 ## v1.0.6
 
 ### New Features
