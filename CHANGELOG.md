@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.0.6
+
+### New Features
+- Keep team reactions for the current day only by @andreaAppload
+- Collapse the dashboard team ranking and add a Team card to Customize by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.0.5...v1.0.6](https://github.com/federico-app/godusage/compare/v1.0.5...v1.0.6)
+
+- [b23c829](https://github.com/federico-app/godusage/commit/b23c829270bc936159c14ab2df233fca7600a81c) Keep team reactions for the current day only by @andreaAppload
+- [07012c7](https://github.com/federico-app/godusage/commit/07012c7e234d943a86b5bc191bf6a0ed2bf711c5) Collapse the dashboard team ranking and add a Team card to Customize by @andreaAppload
+
 ## v1.0.5
 
 ### Bug Fixes
