@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.0.8
+
+### New Features
+- Show each teammate's GodUsage version beside their last update by @andreaAppload
+
+### Bug Fixes
+- Cut teams backend D1 reads so stats stop scanning full history by @andreaAppload
+
+### Chores
+- Point release checks at godusage.com and follow the appcast redirect by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.0.7...v1.0.8](https://github.com/federico-app/godusage/compare/v1.0.7...v1.0.8)
+
+- [4d83c0f](https://github.com/federico-app/godusage/commit/4d83c0feb1157cdc37a41ba5396ccaee13124821) Cut teams backend D1 reads so stats stop scanning full history by @andreaAppload
+- [fc3d54b](https://github.com/federico-app/godusage/commit/fc3d54b4c46f478fc02601ce0fd7bcd96d7cfba5) Show each teammate's GodUsage version beside their last update by @andreaAppload
+- [8b2ff2e](https://github.com/federico-app/godusage/commit/8b2ff2e9d29505c241b0fb192eca56a6b9d5f01c) Point release checks at godusage.com and follow the appcast redirect by @andreaAppload
+
 ## v1.0.7
 
 ### New Features
