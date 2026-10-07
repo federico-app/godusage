@@ -11,18 +11,8 @@ export interface MemberReactions {
   fire: number;
   clap: number;
   clown: number;
-  /** The viewer's own reactions to this member this week. */
+  /** The viewer's own reactions to this member today. */
   mine: Reaction[];
-}
-
-/** ISO week of a day ("2026-W41"): reactions belong to the week they were given in. */
-export function isoWeek(day: string): string {
-  const date = new Date(`${day}T00:00:00Z`);
-  const weekday = date.getUTCDay() || 7; // Monday = 1 … Sunday = 7
-  date.setUTCDate(date.getUTCDate() + 4 - weekday); // the week's Thursday decides its year
-  const yearStart = Date.UTC(date.getUTCFullYear(), 0, 1);
-  const week = Math.ceil(((date.getTime() - yearStart) / 86_400_000 + 1) / 7);
-  return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
 async function requireMember(db: D1Database, teamID: string, userID: string): Promise<void> {
@@ -30,10 +20,10 @@ async function requireMember(db: D1Database, teamID: string, userID: string): Pr
   if (found !== 1) throw notFound("Team not found.");
 }
 
-/** This week's reactions per member, with the viewer's own marked. */
-export async function reactionSummary(db: D1Database, teamID: string, week: string, viewerID: string): Promise<Record<string, MemberReactions>> {
-  const rows = await db.prepare("SELECT from_user, to_user, emoji FROM reactions WHERE team_id = ? AND week = ?")
-    .bind(teamID, week)
+/** Today's (UTC) reactions per member, with the viewer's own marked. */
+export async function reactionSummary(db: D1Database, teamID: string, day: string, viewerID: string): Promise<Record<string, MemberReactions>> {
+  const rows = await db.prepare("SELECT from_user, to_user, emoji FROM reactions WHERE team_id = ? AND day = ?")
+    .bind(teamID, day)
     .all<{ from_user: string; to_user: string; emoji: Reaction }>();
   const summary: Record<string, MemberReactions> = {};
   for (const row of rows.results) {
@@ -61,13 +51,13 @@ export const addReaction: Handler = async (context) => {
   await requireMember(env.DB, teamID, target).catch(() => {
     throw notFound("Member not found.");
   });
-  const week = isoWeek(dayKey(deps.now()));
+  const day = dayKey(deps.now());
   await env.DB.prepare(
-    "INSERT OR IGNORE INTO reactions (team_id, from_user, to_user, emoji, week, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT OR IGNORE INTO reactions (team_id, from_user, to_user, emoji, day, created_at) VALUES (?, ?, ?, ?, ?, ?)",
   )
-    .bind(teamID, user.id, target, emoji, week, nowISO())
+    .bind(teamID, user.id, target, emoji, day, nowISO())
     .run();
-  return json({ week, reactions: await reactionSummary(env.DB, teamID, week, user.id) });
+  return json({ day, week: day, reactions: await reactionSummary(env.DB, teamID, day, user.id) });
 };
 
 /** DELETE /v1/teams/:teamID/members/:userID/reactions/:emoji — takes it back. */
@@ -76,11 +66,11 @@ export const removeReaction: Handler = async (context) => {
   const user = await requireUser(request, env.DB);
   const { teamID, target, emoji } = parseReaction(context, user);
   await requireMember(env.DB, teamID, user.id);
-  const week = isoWeek(dayKey(deps.now()));
-  await env.DB.prepare("DELETE FROM reactions WHERE team_id = ? AND from_user = ? AND to_user = ? AND emoji = ? AND week = ?")
-    .bind(teamID, user.id, target, emoji, week)
+  const day = dayKey(deps.now());
+  await env.DB.prepare("DELETE FROM reactions WHERE team_id = ? AND from_user = ? AND to_user = ? AND emoji = ? AND day = ?")
+    .bind(teamID, user.id, target, emoji, day)
     .run();
-  return json({ week, reactions: await reactionSummary(env.DB, teamID, week, user.id) });
+  return json({ day, week: day, reactions: await reactionSummary(env.DB, teamID, day, user.id) });
 };
 
 export interface Champion {

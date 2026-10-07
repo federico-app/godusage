@@ -22,7 +22,7 @@ final class TeamsStore {
     private(set) var uploadError: String?
     /// The latest stats per team/range/sort, so a reopened leaderboard shows instantly while it reloads.
     private(set) var cachedStats: [StatsKey: TeamStats] = [:]
-    /// This week's reactions per team, from the latest stats (and reaction changes, see
+    /// Today's reactions per team, from the latest stats (and reaction changes, see
     /// `TeamsSocialStore`).
     var reactionsByTeam: [String: TeamReactions] = [:]
     /// Each team's monthly champions (newest first), from the latest stats.

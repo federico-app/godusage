@@ -1,19 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isoWeek } from "../src/routes/social";
 import { rangeBounds } from "../src/stats";
 import { api, signIn, teamWith, upload } from "./support";
 
 const DEVICE = "device-aaaa-0001";
 const put = (token: string, body: unknown, now?: Date) => api("PUT", `/v1/devices/${DEVICE}/usage`, { token, body, now });
 
-describe("ISO weeks and month-to-date", () => {
-  it("computes ISO weeks, including year edges", () => {
-    expect(isoWeek("2026-10-05")).toBe("2026-W41");
-    expect(isoWeek("2026-10-04")).toBe("2026-W40");
-    expect(isoWeek("2021-01-03")).toBe("2020-W53");
-    expect(isoWeek("2026-01-01")).toBe("2026-W01");
-  });
-
+describe("month-to-date", () => {
   it("bounds the month so far and the same days of the month before", () => {
     expect(rangeBounds("mtd", "2026-10-05")).toEqual({ from: "2026-10-01", to: "2026-10-05", previousFrom: "2026-09-01", previousTo: "2026-09-05" });
     // March 31st compares with all of February.
@@ -33,18 +25,23 @@ describe("reactions", () => {
     await api("PUT", path(bea.userID, "clown"), { token: cy.token });
 
     const stats = (await api("GET", `/v1/teams/${team.id}/stats?range=today`, { token: owner.token })).body;
-    expect(stats.reactions.week).toBe("2026-W41");
+    expect(stats.reactions.day).toBe("2026-10-05");
+    expect(stats.reactions.week).toBe("2026-10-05"); // legacy key for installed apps
     expect(stats.reactions.byMember[bea.userID]).toEqual({ fire: 2, clap: 0, clown: 1, mine: ["fire"] });
 
     const removed = await api("DELETE", path(bea.userID, "fire"), { token: owner.token });
     expect(removed.body.reactions[bea.userID]).toEqual({ fire: 1, clap: 0, clown: 1, mine: [] });
   });
 
-  it("starts each week clean", async () => {
+  it("starts each UTC day clean", async () => {
     const { owner, team, members } = await teamWith(["Bea"]);
-    await api("PUT", `/v1/teams/${team.id}/members/${members[0]!.userID}/reactions/clap`, { token: owner.token });
-    const nextWeek = await api("GET", `/v1/teams/${team.id}/stats?range=today`, { token: owner.token, now: new Date("2026-10-12T12:00:00Z") });
-    expect(nextWeek.body.reactions).toEqual({ week: "2026-W42", byMember: {} });
+    const path = `/v1/teams/${team.id}/members/${members[0]!.userID}/reactions/clap`;
+    await api("PUT", path, { token: owner.token, now: new Date("2026-10-05T23:59:00Z") });
+    const nextDay = await api("GET", `/v1/teams/${team.id}/stats?range=today`, { token: owner.token, now: new Date("2026-10-06T00:01:00Z") });
+    expect(nextDay.body.reactions).toEqual({ day: "2026-10-06", week: "2026-10-06", byMember: {} });
+    // Yesterday's reaction doesn't count today, so the same one can be given again.
+    const again = await api("PUT", path, { token: owner.token, now: new Date("2026-10-06T00:02:00Z") });
+    expect(again.body.reactions[members[0]!.userID]).toEqual({ fire: 0, clap: 1, clown: 0, mine: ["clap"] });
   });
 
   it("refuses self-reactions, unknown emoji, and outsiders", async () => {

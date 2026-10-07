@@ -28,7 +28,7 @@ struct MemberReactions: Codable, Hashable, Sendable {
     var fire: Int
     var clap: Int
     var clown: Int
-    /// The viewer's own reactions to this member this week.
+    /// The viewer's own reactions to this member today.
     var mine: [TeamReaction]
 
     static let none = MemberReactions(fire: 0, clap: 0, clown: 0, mine: [])
@@ -45,7 +45,8 @@ struct MemberReactions: Codable, Hashable, Sendable {
 }
 
 struct TeamReactions: Codable, Hashable, Sendable {
-    /// ISO week ("2026-W41"); reactions start clean every Monday.
+    /// The UTC day the reactions belong to ("2026-10-07"; the backend keeps the `week` key for
+    /// older apps). Reactions start clean every day at midnight UTC.
     var week: String
     var byMember: [String: MemberReactions]
 }

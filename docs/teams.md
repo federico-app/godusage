@@ -62,7 +62,7 @@ The gear button in its toolbar opens Settings → Teams.
 **Team life.** Around the ranking:
 
 - **👑** marks today's top spender and **🏆** last month's champion; hover either for its meaning (the **Hall of Fame** in the Teams window lists every month's champion; a month counts once it's over).
-- **Reactions:** give a teammate 🔥, 👏, or 🤡, one of each per week; click again to take it back. Counts start clean every Monday. On the dashboard's team section, click a member to react; the Teams window has the buttons on each row.
+- **Reactions:** give a teammate 🔥, 👏, or 🤡, one of each per day; click again to take it back. Counts start clean every day at midnight UTC. On the dashboard's team section, click a member to react; the Teams window has the buttons on each row.
 - **Projection:** "Team on pace for $X in October" stretches this month's spend so far over the whole month, for the team and for each member.
 - **Challenges** (Teams window, **New Challenge**): any member starts one for 7, 14, or 30 days: **Lowest Spend** (among members who spend something), **Most Models**, **Most Tokens**, or **Best Efficiency** (with at least 100K tokens). Standings update live; when it ends, the leader wins. The creator or an owner can cancel it. Active challenges also show under the dashboard's team ranking.
 
