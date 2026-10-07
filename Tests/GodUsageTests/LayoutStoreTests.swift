@@ -639,7 +639,7 @@ final class LayoutStoreTests: XCTestCase {
 
         XCTAssertEqual(store.orderedSupportedMetrics(for: "claude").map(\.id), [
             "claude.session", "claude.weekly", "claude.sonnet", "claude.fable", "claude.extra",
-            "claude.trend", "claude.today", "claude.yesterday", "claude.last30"
+            "claude.rateLimitResets", "claude.trend", "claude.today", "claude.yesterday", "claude.last30"
         ])
         XCTAssertEqual(store.orderedSupportedMetrics(for: "codex").map(\.id), [
             "codex.session", "codex.weekly", "codex.spark", "codex.sparkWeekly",
@@ -672,7 +672,7 @@ final class LayoutStoreTests: XCTestCase {
         let store = LayoutStore(registry: registry, defaults: makeDefaults("RecommendedDefaults"), storageKey: "layout")
 
         XCTAssertEqual(Set(store.placed.map(\.descriptorID)), Set([
-            "claude.session", "claude.weekly", "claude.fable", "claude.trend",
+            "claude.session", "claude.weekly", "claude.fable", "claude.rateLimitResets", "claude.trend",
             "claude.today", "claude.yesterday", "claude.last30",
             "codex.weekly", "codex.rateLimitResets", "codex.trend",
             "codex.today", "codex.yesterday", "codex.last30",
@@ -703,7 +703,7 @@ final class LayoutStoreTests: XCTestCase {
 
         XCTAssertEqual(primaryByProvider["claude"], ["claude.session", "claude.weekly", "claude.fable"])
         XCTAssertEqual(expandedByProvider["claude"], [
-            "claude.trend", "claude.today", "claude.yesterday", "claude.last30"
+            "claude.rateLimitResets", "claude.trend", "claude.today", "claude.yesterday", "claude.last30"
         ])
         XCTAssertEqual(primaryByProvider["codex"], ["codex.weekly"])
         XCTAssertEqual(expandedByProvider["codex"], [

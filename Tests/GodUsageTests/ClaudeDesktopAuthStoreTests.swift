@@ -351,7 +351,7 @@ final class ClaudeDesktopAuthStoreTests: XCTestCase {
             v2: [cacheKey(organization: organization): tokenEntry("desktop-token", expiresIn: 3_600)]
         )
         let httpClient = RoutingHTTPClient { request in
-            XCTAssertTrue(request.url.absoluteString.hasSuffix("/api/oauth/usage"))
+            XCTAssertTrue(request.url.path.hasSuffix("/api/oauth/usage"))
             return HTTPResponse(statusCode: 401, headers: [:], body: Data())
         }
         let now = now
