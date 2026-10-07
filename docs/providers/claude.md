@@ -11,9 +11,19 @@ Tracks your Claude subscription limits using the login you already have from Cla
 | Sonnet | Separate weekly Sonnet limit (plan-dependent) |
 | Fable | Separate weekly Fable limit (model-scoped window from the `limits` array) |
 | Extra Usage | Extra-usage credits spent against your monthly cap |
+| Rate Limit Resets | Free usage-limit resets Anthropic grants (for example, a model-launch reset for Pro and Max), shown as a count such as `1 available`. On by default, below the caret |
 | Today / Yesterday / Last 30 Days | Local spend, as cost, tokens, or both (see below) |
 
 When Claude reports your plan name, GodUsage shows it beside the provider name. GodUsage prefers the current plan and tier in Claude Code's state file over the copies stored at sign-in, so an upgrade or downgrade shows up without signing in again.
+
+## Rate limit resets
+
+Anthropic sometimes grants free usage-limit resets, for example one reset for Pro and Max when a new model launches. Using one refills your session and weekly limits right away.
+
+- The row counts the resets you have left. Hover the value for a timeline of when each one must be used, with a colored dot for the soonest deadline (blue beyond a week, yellow within a week, red within 48 hours).
+- A reset with no deadline still counts, but has no date to show. Used or lapsed grants are skipped.
+- Accounts outside the program read `0 available`. If Anthropic does not report the program for your plan, the row shows no data.
+- GodUsage only shows your resets. To use one, run `/rate-limit-options` in Claude Code, or accept it when Claude Code offers it at a usage limit.
 
 ## Where credentials come from
 
@@ -76,7 +86,7 @@ In the [CLI](../cli.md) and [local API](../local-http-api.md), extra cards appea
 
 ## Under the hood
 
-`GET https://api.anthropic.com/api/oauth/usage` with the selected OAuth token. An already-expired token gets one guarded renewal at the token endpoint (`POST https://platform.claude.com/v1/oauth/token`, Claude Code's own public client), with the rotated credential written back to its store. If a token is expired or revoked and renewal declines, GodUsage tries the next credential source, and when none is left it shows the renewal notice over the local spend tiles.
+`GET https://api.anthropic.com/api/oauth/usage?cedar_ember=1` with the selected OAuth token. The `cedar_ember=1` flag asks for the reset grants, the same way Claude Code does, and the request uses Claude Code's User-Agent format because Anthropic only reports grants to Claude Code clients. An already-expired token gets one guarded renewal at the token endpoint (`POST https://platform.claude.com/v1/oauth/token`, Claude Code's own public client), with the rotated credential written back to its store. If a token is expired or revoked and renewal declines, GodUsage tries the next credential source, and when none is left it shows the renewal notice over the local spend tiles.
 
 When the 5-hour session window has no usage yet, the Session row shows **Not started**. Hover it for an explanation.
 
