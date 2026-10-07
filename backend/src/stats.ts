@@ -50,6 +50,8 @@ export interface MemberStats extends Totals {
   previous: (Totals & { rank: number }) | null;
   /** When any of the member's Macs last uploaded (ISO 8601), or null if none has. */
   lastSyncAt: string | null;
+  /** The GodUsage version of that latest upload, or null if it came from an app before 1.0.8. */
+  appVersion: string | null;
 }
 
 export interface TeamStats {
@@ -91,13 +93,14 @@ export function parseStatsQuery(url: URL, now: Date): StatsQuery {
 /**
  * Fingerprints (see `usage_days.account_key`) that two or more of the team's members uploaded: one
  * provider account several people log into. Defined over everything stored, so an account stays
- * shared in a period only one of them used it. Expects the team id as ?1.
+ * shared in a period only one of them used it. Read from `account_keys`, never from the usage
+ * history: this runs in every stats query. Expects the team id as ?1.
  */
 const SHARED_KEYS = `
   team_users AS (SELECT user_id FROM team_members WHERE team_id = ?1),
   shared_keys AS (
-    SELECT account_key FROM usage_days
-    WHERE account_key IS NOT NULL AND user_id IN (SELECT user_id FROM team_users)
+    SELECT account_key FROM account_keys
+    WHERE user_id IN (SELECT user_id FROM team_users)
     GROUP BY account_key HAVING COUNT(DISTINCT user_id) > 1
   )`;
 
@@ -167,7 +170,7 @@ export const SHARED_MODELS = `
 /** Who shares each shared account. */
 const SHARED_MEMBERS = `
   WITH ${SHARED_KEYS}
-  SELECT DISTINCT account_key, provider, user_id FROM usage_days
+  SELECT account_key, provider, user_id FROM account_keys
   WHERE user_id IN (SELECT user_id FROM team_users) AND account_key IN (SELECT account_key FROM shared_keys)
   ORDER BY account_key, provider, user_id`;
 
@@ -187,11 +190,16 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
     db.prepare(SHARED_MODELS).bind(teamID, from, to),
     db.prepare(SHARED_MEMBERS).bind(teamID),
     db.prepare(
-      `SELECT user_id, MAX(updated_at) AS last_sync FROM devices
-       WHERE user_id IN (SELECT user_id FROM team_members WHERE team_id = ?) GROUP BY user_id`,
+      `SELECT user_id, updated_at AS last_sync, app_version FROM (
+         SELECT user_id, updated_at, app_version,
+           ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY updated_at DESC, id) AS rn
+         FROM devices WHERE user_id IN (SELECT user_id FROM team_members WHERE team_id = ?)
+       ) WHERE rn = 1`,
     ).bind(teamID),
   ]);
-  const lastSync = new Map((syncRows!.results as { user_id: string; last_sync: string }[]).map((row) => [row.user_id, row.last_sync]));
+  const lastSync = new Map(
+    (syncRows!.results as { user_id: string; last_sync: string; app_version: string | null }[]).map((row) => [row.user_id, row]),
+  );
   const sharedDays = sharedDayRows!.results as { account_key: string; provider: string; day: string; tokens: number; cost: number }[];
   const sharedModels = sharedModelRows!.results as { account_key: string; provider: string; model: string; tokens: number; cost: number }[];
   const sharedMembers = sharedMemberRows!.results as { account_key: string; provider: string; user_id: string }[];
@@ -247,7 +255,8 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
         ...round(totals),
         providers: sortedTotals(memberProviders.get(member.id), "provider", metric),
         previous: previousSnapshot(previousByUser.get(member.id)),
-        lastSyncAt: lastSync.get(member.id) ?? null,
+        lastSyncAt: lastSync.get(member.id)?.last_sync ?? null,
+        appVersion: lastSync.get(member.id)?.app_version ?? null,
       };
     })
     .sort((a, b) => metric(b) - metric(a) || a.displayName.localeCompare(b.displayName));

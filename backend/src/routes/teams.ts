@@ -1,6 +1,7 @@
 import type { Handler, RouteContext } from "../context";
 import { badRequest, conflict, forbidden, json, noContent, notFound, nowISO, randomToken, readJSONObject, requireName } from "../http";
 import { requireUser, type SessionUser } from "../session";
+import { forgetChampions } from "./social";
 
 export const TEAM_NAME_MAX = 60;
 export const MAX_MEMBERS_PER_TEAM = 50;
@@ -201,6 +202,7 @@ export const removeMember: Handler = async ({ request, env, params }) => {
     await explainNoChange(env.DB, team.id, targetID, "The last owner cannot leave. Make someone else an owner, or delete the team.");
   }
   await keepCreatorAnOwner(env.DB, team.id);
+  await forgetChampions(env.DB, team.id);
   return noContent();
 };
 
@@ -271,5 +273,6 @@ export const acceptInvite: Handler = async (context) => {
   await env.DB.prepare("INSERT INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)")
     .bind(team.id, user.id, nowISO())
     .run();
+  await forgetChampions(env.DB, team.id);
   return json({ team: await teamDetail(context, team, "member") }, 201);
 };
