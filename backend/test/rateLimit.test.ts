@@ -1,7 +1,7 @@
-import { env } from "cloudflare:test";
+import { env } from "./env";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/index";
-import { rateLimitKind } from "../src/rateLimit";
+import { CLIENT_IP_HEADER, rateLimitKind } from "../src/rateLimit";
 import { NOW, publicJWK, signIn } from "./support";
 
 describe("rate limits", () => {
@@ -39,16 +39,21 @@ describe("rate limits", () => {
     expect(seen).toEqual(["api session", "api session", "api session"]);
   });
 
-  it("uses the real binding by default", async () => {
-    const app = createApp({ fetchAppleKeys: async () => [publicJWK], now: () => NOW });
+  it("counts requests in Redis by default, shared by every replica", async () => {
+    // Two app instances stand in for two server replicas: they share the limit.
+    const replicas = [0, 1].map(() => createApp({ fetchAppleKeys: async () => [publicJWK], now: () => NOW }));
+    // Stay inside one fixed one-minute window.
+    const untilNextWindow = 60_000 - (Date.now() % 60_000);
+    if (untilNextWindow < 3_000) await new Promise((resolve) => setTimeout(resolve, untilNextWindow + 50));
     const statuses: number[] = [];
     for (let i = 0; i < 25; i++) {
-      const response = await app.fetch(
-        new Request("https://api.test/v1/auth/apple/start?state=x&code_challenge=y", { headers: { "cf-connecting-ip": "203.0.113.9" } }),
+      const response = await replicas[i % 2]!.fetch(
+        new Request("https://api.test/v1/auth/apple/start?state=x&code_challenge=y", { headers: { [CLIENT_IP_HEADER]: "203.0.113.9" } }),
         env,
       );
       statuses.push(response.status);
     }
-    expect(statuses.filter((status) => status === 429).length).toBeGreaterThan(0);
+    expect(statuses.filter((status) => status !== 429)).toHaveLength(20);
+    expect(statuses.slice(20)).toEqual([429, 429, 429, 429, 429]);
   });
 });

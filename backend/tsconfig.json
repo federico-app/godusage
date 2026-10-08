@@ -4,7 +4,7 @@
     "lib": ["es2024"],
     "module": "es2022",
     "moduleResolution": "bundler",
-    "types": ["./worker-configuration.d.ts", "@cloudflare/vitest-pool-workers/types"],
+    "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noEmit": true,
@@ -12,5 +12,5 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "test", "vitest.config.ts", "worker-configuration.d.ts"]
+  "include": ["src", "server", "test", "proxy/src", "vitest.config.ts"]
 }

@@ -1,5 +1,7 @@
 import { badRequest } from "./http";
-import { cachedTeamResult, type Cached, type ReadGuard } from "./readGuard";
+import type { Cache } from "./cache";
+import type { Queryable } from "./db";
+import { cachedTeamResult, type Cached } from "./teamCache";
 import { teamUsage } from "./teamUsage";
 import { addDays, dayKey, isValidDay } from "./usagePayload";
 
@@ -92,19 +94,16 @@ export function parseStatsQuery(url: URL, now: Date): StatsQuery {
   return { range: range as RangeName, sort, today };
 }
 
-/**
- * How often a board may be recomputed, in minutes. Longer ranges read more rows, and today (the part
- * that moves) is a smaller share of them.
- */
-const STATS_MIN_AGE_MINUTES: Record<RangeName, number> = { today: 5, "7d": 10, mtd: 10, "30d": 15, "365d": 60 };
+/** How often a board may be recomputed, in minutes. Today moves fastest; nothing waits over 10 minutes. */
+const STATS_MIN_AGE_MINUTES: Record<RangeName, number> = { today: 5, "7d": 10, mtd: 10, "30d": 10, "365d": 10 };
 
-/** The team's stats from the cache (see `readGuard.ts`). */
-export function cachedTeamStats(guard: ReadGuard, teamID: string, query: StatsQuery): Promise<Cached<TeamStats>> {
+/** The team's stats from the cache (see `teamCache.ts`). */
+export function cachedTeamStats(env: { db: Queryable; cache: Cache }, now: Date, teamID: string, query: StatsQuery): Promise<Cached<TeamStats>> {
   const minAge = STATS_MIN_AGE_MINUTES[query.range] * 60_000;
-  return cachedTeamResult(guard, teamID, `stats|${query.range}|${query.sort}|${query.today}`, minAge, (db) => teamStats(db, teamID, query));
+  return cachedTeamResult(env.cache, now, teamID, `stats|${query.range}|${query.sort}|${query.today}`, minAge, () => teamStats(env.db, teamID, query));
 }
 
-export async function teamStats(db: D1Database, teamID: string, query: StatsQuery): Promise<TeamStats> {
+export async function teamStats(db: Queryable, teamID: string, query: StatsQuery): Promise<TeamStats> {
   const to = query.today;
   const { from, previousFrom, previousTo } = rangeBounds(query.range, to);
   // A year's movement arrows would read a second year of history: the Year range has none. An empty
@@ -112,10 +111,11 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
   const previous = query.range === "365d" ? ["9999-12-31", "0000-01-01"] : [previousFrom, previousTo];
 
   const [memberRows, usage, previousUsage] = await Promise.all([
-    db.prepare(
+    db.query<{ id: string; display_name: string }>(
       `SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id
-       WHERE m.team_id = ? ORDER BY m.joined_at, u.id`,
-    ).bind(teamID).all<{ id: string; display_name: string }>(),
+       WHERE m.team_id = $1 ORDER BY m.joined_at, u.id`,
+      [teamID],
+    ),
     teamUsage(db, teamID, from, to, { models: true }),
     teamUsage(db, teamID, previous[0]!, previous[1]!, { models: false }),
   ]);
@@ -125,7 +125,7 @@ export async function teamStats(db: D1Database, teamID: string, query: StatsQuer
   }
   const { sharedDays, sharedModels, sharedMembers, days, models } = usage;
   const previousDays = previousUsage.days;
-  const members = memberRows.results;
+  const members = memberRows;
 
   const memberTotals = new Map<string, Totals>();
   const memberProviders = new Map<string, Map<string, Totals>>();

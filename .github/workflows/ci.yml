@@ -50,13 +50,35 @@ jobs:
             -configuration Release -destination "generic/platform=iOS Simulator" \
             CODE_SIGNING_ALLOWED=NO build
 
-  # The teams backend (Cloudflare Worker + D1). Tests run inside the Workers runtime with a local D1.
+  # The teams backend: the suite runs against real Postgres and Redis (service containers), then the
+  # Docker image and the proxy Worker are built (nothing is deployed).
   backend:
     name: Backend
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: godusage
+          POSTGRES_PASSWORD: godusage
+          POSTGRES_DB: godusage_test
+          POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U godusage -d godusage_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+      redis:
+        image: redis:7.4-alpine
+        ports: ["56379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgres://godusage:godusage@127.0.0.1:55432/godusage_test
+      TEST_REDIS_URL: redis://127.0.0.1:56379
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -64,9 +86,11 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: |
+            backend/package-lock.json
+            backend/proxy/package-lock.json
 
       - name: Install
         run: npm ci
@@ -76,3 +100,13 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Build the Docker image
+        run: docker build --tag godusage-api:ci .
+
+      - name: Build the proxy Worker
+        working-directory: backend/proxy
+        run: |
+          npm ci
+          npx wrangler deploy --dry-run --env="" --outdir dist
+          npx wrangler deploy --dry-run --env dev --outdir dist

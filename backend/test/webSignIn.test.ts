@@ -1,4 +1,4 @@
-import { env } from "cloudflare:test";
+import { env } from "./env";
 import { describe, expect, it } from "vitest";
 import { base64url } from "../src/http";
 import { appleToken, makeApp, NOW } from "./support";

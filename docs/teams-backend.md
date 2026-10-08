@@ -1,6 +1,23 @@
 # Teams Backend
 
-The teams backend lets people create a team, invite friends with a link, and compare their AI usage on a leaderboard. It is a Cloudflare Worker with a D1 database, in `backend/`. The Mac app is its only writer. A shared team can also be viewed as a read-only web page.
+The teams backend lets people create a team, invite friends with a link, and compare their AI usage on a leaderboard. It lives in `backend/`: a Node server on Postgres and Redis, run by Coolify on our own server from `backend/docker-compose.yml`. A small Cloudflare Worker in front of it keeps the hosts the apps already call. The Mac app is its only writer. A shared team can also be viewed as a read-only web page.
+
+## Architecture
+
+```
+app ──▶ godusage-api[-dev].federico-c80.workers.dev  (proxy Worker, backend/proxy/)
+                  │  forwards every request, with the public host and client IP
+                  ▼
+        Coolify domain ──▶ api (backend/server/, Node) ──▶ postgres (data)
+                                                     └──▶ redis (cache, rate limits)
+```
+
+- **api** (`backend/Dockerfile`): the routes in `backend/src/` behind a Node HTTP server (`server/main.ts`). It applies pending Postgres migrations at startup.
+- **postgres**: all data (accounts, sessions, teams, usage). The schema is in `backend/migrations/`.
+- **redis**: computed boards and rate-limit counters only. Losing it loses nothing: the next requests recompute.
+- **proxy Worker** (`backend/proxy/`): a `workers.dev` hostname cannot point at another server, so the Workers that used to run the backend now forward to Coolify. See [Proxy Worker](#proxy-worker).
+
+The backend used to run as a Cloudflare Worker on D1. D1's free plan (5M rows read a day) cut production off, so it moved; the D1 schema history stays in `backend/d1-migrations/` for reading D1 exports.
 
 ## What it stores
 
@@ -13,7 +30,7 @@ Deleting an account deletes its sessions, Macs, usage, memberships, and the team
 
 ## How usage is combined
 
-Each Mac uploads its own last 30 days. A full upload replaces that Mac's days from its `windowStart` on (all of them, so a provider turned off disappears from those days) and keeps older days, so history builds up beyond the app's window. The server writes only what changed: rows the upload no longer has are deleted, changed rows are updated, and identical rows are left alone. Most uploads repeat the last one except for today, and D1 bills every row written. After its first upload, the app sends **partial** uploads (see [API](#api)) with only the provider-days that changed, so the server reads and rewrites a day or two instead of the whole window. Signing out of a Mac removes all of that Mac's days. Every provider entry has a scope:
+Each Mac uploads its own last 30 days. A full upload replaces that Mac's days from its `windowStart` on (all of them, so a provider turned off disappears from those days) and keeps older days, so history builds up beyond the app's window. The server writes only what changed: rows the upload no longer has are deleted, changed rows are updated, and identical rows are left alone. Most uploads repeat the last one except for today. After its first upload, the app sends **partial** uploads (see [API](#api)) with only the provider-days that changed, so the server reads and rewrites a day or two instead of the whole window. Signing out of a Mac removes all of that Mac's days. Every provider entry has a scope:
 
 - **device:** usage read from this Mac's own logs (Claude, Codex, Grok, and so on). A user's Macs are summed.
 - **account:** usage that is already account-wide (Cursor). Only the Mac that uploaded most recently counts, so it is never double counted.
@@ -24,28 +41,30 @@ The server keeps a small list of which fingerprints each user has uploaded, so f
 
 This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
 
-## Read budget
+## Caching
 
-D1 bills every row a query reads, and the free plan allows 5M a day per account (production and dev share it). D1's count includes each step SQLite takes (temporary sorts, window functions, subqueries, table lookups), and the app fetches stats on every popover open, every two minutes while it stays open, and after uploads. Four things keep the Worker under the limit:
+The app fetches stats on every popover open, every two minutes while it stays open, and after uploads, so computed results are kept in Redis per team (`src/teamCache.ts`): stats, challenges, plan reports, and champions.
 
-- **Reads follow the period.** Leaderboard queries read only the days in their period, never a member's full history, straight from covering indexes: one billed row per stored row. Combining Macs, accounts, and shared accounts happens in the Worker (`src/teamUsage.ts`), not in SQL. The Year range has no movement arrows, so it never reads a second year.
-- **Results are cached.** Stats, challenges, and plan reports are kept per team in `stats_cache`. A cached result is reused while the team's usage has not changed (for up to 15 minutes), and in any case for a minimum time: 5 minutes for Today and challenges, 10 for 7 Days, Month to Date, and plans, 15 for 30 Days, and an hour for Year. Changes to members, names, plans, and challenges show at once. Champions are reused for six hours.
-- **Uploads are small.** Partial uploads touch only the provider-days that changed.
-- **A daily budget caps the rest.** Every recomputation and upload adds the rows it read to `read_budget` for the UTC day. Past `READ_BUDGET_PER_DAY` (3.5M for production, 500K for dev, in `wrangler.jsonc`), nothing expensive runs until midnight UTC. Boards keep their last result with `paused: true` (the apps and web boards say updates are paused), a board never computed that day answers 503 `read_budget`, and uploads answer 503 `read_budget`, so the app retries later. The headroom left under 5M covers the small reads every request makes (sessions, memberships), which are not counted.
+- A result is reused for a minimum time even when the team's usage changed meanwhile: 5 minutes for Today and challenges, 10 for everything else.
+- After that, it is reused while the team's usage has not changed. Every upload that changes stored usage bumps the uploader's teams' stats version.
+- No result is ever served once it is 10 minutes old.
+- Changes to members, names, plans, challenges, and removed Macs drop the team's cached results, so they show at once.
 
-`test/readBudget.test.ts` checks the reads of every board, challenge, plan report, and upload against a team of 10 with two Macs each and a year of history, and that the cache and the daily budget behave as described.
+`computedAt` in the stats response says when the stats were computed. Leaderboard queries read only the days in their period (from covering indexes), and the year board never reads a second year. Combining Macs, accounts, and shared accounts happens in `src/teamUsage.ts`.
+
+There is no daily read budget any more: it guarded D1's free-plan limit, and our own server has no per-row bill. Responses no longer carry `paused` (the apps treat a missing `paused` as false).
 
 Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member carries `lastSyncAt`, the newest upload time across their Macs (ISO 8601, or null if none has uploaded); the apps and web boards show it as "updated 5m ago", then "not synced for N days" once it is more than 24 hours old. Each member also carries `appVersion`, the GodUsage version of that newest upload (null from apps before 1.0.8), shown after it as "· v1.0.8". Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
 
 ## Reactions, champions, and challenges
 
 - **Reactions:** a member can give each teammate 🔥 (`fire`), 👏 (`clap`), and 🤡 (`clown`), one of each per day. Reactions belong to the UTC day they were given in, so every day starts clean at midnight UTC. Nobody can react to themselves.
-- **Champions:** the stats response lists the top spender of each of the last 12 complete calendar months among current members (the current month never counts until it is over). The server reuses a team's champions for up to six hours, and recomputes them when its members change.
+- **Champions:** the stats response lists the top spender of each of the last 12 complete calendar months among current members (the current month never counts until it is over). The server reuses a team's champions for up to 10 minutes, and recomputes them when its members change.
 - **Challenges:** any member starts one for 7, 14, or 30 days, from today. Kinds: `lowest_spend` (least spend among members who spent anything), `most_models` (most different models), `most_tokens`, and `best_efficiency` (lowest cost per million tokens, with at least 100K tokens). Standings update live from usage in the window; once it has ended, the leaders are the winners. A team runs at most five at once. The creator or an owner can cancel one.
 
 ## Invites and roles
 
-- Every member can see the invite link: `https://<worker>/join/<code>`. The page shows the team name and member count, an **Open in GodUsage** button (`godusage://join/<code>`), and a download link.
+- Every member can see the invite link: `https://<host>/join/<code>`, on the host the app called. The page shows the team name and member count, an **Open in GodUsage** button (`godusage://join/<code>`), and a download link.
 - Only owners can rotate the link (the old one stops working), rename the team, change roles, remove members, share or unshare the public board, edit plans, and delete the team.
 - Anyone can leave. A team always keeps at least one owner: the last owner can neither leave nor be made a member (409). When the account behind `owner_id` leaves or is made a member, `owner_id` moves to the earliest-joined remaining owner.
 - Deleting an account deletes the teams where it is the only owner. Teams with another owner stay.
@@ -53,15 +72,15 @@ Day keys are each Mac's local calendar days. A stats request can pass the viewer
 
 ## Rate limits
 
-Sign-in routes (`/v1/auth/*`, `/teams/<id>/sign-in`) allow 20 requests a minute per IP. Every other `/v1` route allows 120 a minute per session, or per IP without one. The board and invite pages (`/t/<token>`, `/teams/<id>`, `/join/<code>`) allow 30 a minute per IP, since each board view computes stats; other pages are not limited. Over the limit the Worker answers 429 with `Retry-After: 60` (pages as an HTML page). The limits use Cloudflare's rate limiting bindings (`ratelimits` in `wrangler.jsonc`, separate namespaces per environment).
+Sign-in routes (`/v1/auth/*`, `/teams/<id>/sign-in`) allow 20 requests a minute per IP. Every other `/v1` route allows 120 a minute per session, or per IP without one. The board and invite pages (`/t/<token>`, `/teams/<id>`, `/join/<code>`) allow 30 a minute per IP, since each board view computes stats; other pages are not limited. Over the limit the server answers 429 with `Retry-After: 60` (pages as an HTML page). The limits are fixed one-minute windows counted in Redis (`src/rateLimit.ts`), so every replica shares them. The client's IP is the one the proxy Worker sends, or for direct requests the last `X-Forwarded-For` entry (the one Coolify's reverse proxy added).
 
 ## Privacy policy and terms
 
-The Worker serves `/privacy` and `/terms`, linked from every page and from the app's sign-in. Keep them in step with what the service stores (this page) and with [Privacy](privacy.md).
+The server serves `/privacy` and `/terms`, linked from every page and from the app's sign-in. Keep them in step with what the service stores (this page) and with [Privacy](privacy.md).
 
 ## Members-only board
 
-Every member can open `https://<worker>/teams/<team id>` in a browser (the app's **Web Leaderboard** link). Visitors who are not signed in see **Sign In with Apple**, which runs the same web sign-in as the app (`/teams/<id>/sign-in`) and comes back to the board. The browser then keeps a 30-day session in a `HttpOnly`, `Secure`, `SameSite=Lax` cookie. Only members see the board; anyone else sees "Not a Member". **Sign Out** on the page ends that browser session. Sign-in only ever returns to a `/teams/<id>` path on the same site.
+Every member can open `https://<host>/teams/<team id>` in a browser (the app's **Web Leaderboard** link). Visitors who are not signed in see **Sign In with Apple**, which runs the same web sign-in as the app (`/teams/<id>/sign-in`) and comes back to the board. The browser then keeps a 30-day session in a `HttpOnly`, `Secure`, `SameSite=Lax` cookie. Only members see the board; anyone else sees "Not a Member". **Sign Out** on the page ends that browser session. Sign-in only ever returns to a `/teams/<id>` path on the same site.
 
 Both boards show the same extras as the app: 👑 for today's top spender, 🏆 for last month's champion, today's reactions, the team's month-end projection, challenges, and the Hall of Fame.
 
@@ -69,7 +88,7 @@ It sits beside the public board below: the public link needs no sign-in, the mem
 
 ## Public board
 
-While an owner shares it, `https://<worker>/t/<token>` shows the leaderboard without sign-in: ranks, display names, spend or tokens split by provider, and the top models. Turning sharing off makes the link return 404. Turning it on again keeps the same link until it is turned off.
+While an owner shares it, `https://<host>/t/<token>` shows the leaderboard without sign-in: ranks, display names, spend or tokens split by provider, and the top models. Turning sharing off makes the link return 404. Turning it on again keeps the same link until it is turned off.
 
 ## API
 
@@ -89,7 +108,7 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `POST /v1/teams/:id/invite` | Owner rotates the invite link. |
 | `PATCH /v1/teams/:id/members/:userID` | Owner sets `{ role: "owner" \| "member" }`. |
 | `DELETE /v1/teams/:id/members/:userID` | Leave (yourself) or remove a member (owner). |
-| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD&include=today,mtd`. Leaderboard (with each member's previous-period rank, except for Year), provider totals, top 20 models, per-day totals by member and by provider, today's `reactions` (`day` is the UTC day; `week` repeats it for older apps), and the last 12 months' `champions`. `include` adds the Today and Month to Date spend boards in `extra`, so the app needs one request instead of three. `computedAt` says when the stats were computed, and `paused` that the [read budget](#read-budget) is spent. |
+| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD&include=today,mtd`. Leaderboard (with each member's previous-period rank, except for Year), provider totals, top 20 models, per-day totals by member and by provider, today's `reactions` (`day` is the UTC day; `week` repeats it for older apps), and the last 12 months' `champions`. `include` adds the Today and Month to Date spend boards in `extra`, so the app needs one request instead of three. `computedAt` says when the stats were computed (see [Caching](#caching)). |
 | `PUT`, `DELETE /v1/teams/:id/members/:userID/reactions/:emoji` | Give or take back `fire`, `clap`, or `clown` for today (UTC). |
 | `GET`, `POST /v1/teams/:id/challenges` | List active challenges and the last five finished (with standings and winners), or start one (`{ kind, days, today? }`). |
 | `DELETE /v1/teams/:id/challenges/:challengeID` | Cancel a challenge (creator or owner). |
@@ -140,11 +159,11 @@ Account-scope entries may add `"account": "<64 hex characters>"`; it is rejected
 
 The Mac app signs in through the web, because Developer ID provisioning profiles never grant the native Sign in with Apple entitlement:
 
-1. The app opens `/v1/auth/apple/start` in a system sign-in sheet (`ASWebAuthenticationSession`) with its own random `state` and a PKCE `code_challenge`. The Worker stores a sign-in request (10 minutes) and redirects to Apple with its own state and a nonce.
-2. Apple posts the identity token to `/v1/auth/apple/callback`. The Worker checks that the request exists and has not expired (each is used once), and verifies the token: Apple's signature, issuer, expiry, audience = the Services ID (`APPLE_WEB_CLIENT_ID`), and the request's nonce. It finds or creates the account (with the name Apple shares on the first sign-in) and redirects to `godusage://auth` with a one-time code.
+1. The app opens `/v1/auth/apple/start` in a system sign-in sheet (`ASWebAuthenticationSession`) with its own random `state` and a PKCE `code_challenge`. The server stores a sign-in request (10 minutes) and redirects to Apple with its own state and a nonce.
+2. Apple posts the identity token to `/v1/auth/apple/callback`. The server checks that the request exists and has not expired (each is used once), and verifies the token: Apple's signature, issuer, expiry, audience = the Services ID (`APPLE_WEB_CLIENT_ID`), and the request's nonce. It finds or creates the account (with the name Apple shares on the first sign-in) and redirects to `godusage://auth` with a one-time code.
 3. The app checks the returned `state` and posts the code with its PKCE verifier to `/v1/auth/apple/exchange`. Only the app that started the sign-in can redeem the code.
 
-Apple setup, once: one **Services ID** per environment (Identifiers → Services IDs), each with Sign in with Apple enabled and its own Worker as domain and return URL:
+Apple setup, once: one **Services ID** per environment (Identifiers → Services IDs), each with Sign in with Apple enabled and its own `workers.dev` host as domain and return URL. Those hosts now belong to the proxy Worker, which tells the server the public host, so the server builds the `redirect_uri` on it and nothing in Apple's setup changes with the move to Coolify:
 
 | Environment | Services ID (`APPLE_WEB_CLIENT_ID`) | Primary App ID | Domain → return URL |
 | --- | --- | --- | --- |
@@ -158,27 +177,86 @@ Apple gives a person the same user id for every app and Services ID grouped unde
 ```bash
 cd backend
 npm ci
+npm run test:services   # Postgres and Redis in Docker (docker-compose.test.yml), on ports 55432 and 56379
 npm test
+npm run typecheck
 ```
 
-Tests run inside the Workers runtime with a local D1 and the migrations applied. Apple is never called: tests sign identity tokens with a generated key.
+The suite runs against real Postgres and Redis. Each test file gets its own Postgres schema with the migrations applied and its own Redis key prefix, so files run in parallel. `TEST_DATABASE_URL` and `TEST_REDIS_URL` point it elsewhere; CI uses service containers. Apple is never called: tests sign identity tokens with a generated key. `npm run test:services:down` removes the containers.
 
-`npm run dev` serves the Worker locally with a local D1. Apply the migrations to it first with `npx wrangler d1 migrations apply godusage-dev --env dev --local`.
+To run the whole stack as Coolify does, copy `.env.local.example` to `.env.local` and run `docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local.yml up --build`. The api answers on `http://127.0.0.1:8787`.
+
+Schema changes go in a new numbered file in `backend/migrations/` (Postgres SQL). The server applies pending files at startup, each in its own transaction, recorded in `schema_migrations`; an advisory lock keeps replicas from applying one twice. Never edit a file that has shipped. `backend/d1-migrations/` is frozen.
+
+The routes run SQL through a small interface (`src/db.ts`: `query`, `first`, `run`, and `transaction`), implemented on the `pg` driver in `server/postgres.ts`. Several writes that belong together run in one `transaction`. BIGINT and NUMERIC values come back as JS numbers. Timestamps and days are ISO 8601 text, as on D1.
 
 ## Environments
 
-There are two deployments, each with its own Worker and database, so test data never reaches real leaderboards:
+There are two deployments, each with its own Coolify resource, database, and Redis, so test data never reaches real leaderboards:
 
 | | Production | Development |
 | --- | --- | --- |
-| Worker | `godusage-api` | `godusage-api-dev` (`https://godusage-api-dev.federico-c80.workers.dev`) |
-| D1 database | `godusage` | `godusage-dev` |
+| App host (proxy Worker) | `godusage-api.federico-c80.workers.dev` | `godusage-api-dev.federico-c80.workers.dev` |
+| Coolify resource | follows `main` | follows `develop` |
 | Accepted app | `com.montinovo.godusage` | `com.montinovo.godusage.dev` |
-| Migrate | `npm run migrate` | `npm run migrate:dev` |
-| Deploy | `npm run deploy` | `npm run deploy:dev` |
 
-Each environment accepts Sign in with Apple tokens only from its own bundle id (`APPLE_AUDIENCES` in `wrangler.jsonc`), so a dev build cannot sign in to production.
+Each environment accepts Sign in with Apple tokens only from its own bundle id (`APPLE_AUDIENCES`), so a dev build cannot sign in to production. Sign in with Apple must be enabled on both App IDs.
 
-Schema changes go in a new file in `backend/migrations/`. Apply it with the migrate command of each environment before deploying that environment. Run `npx wrangler login` once before the first remote command.
+## Coolify setup
 
-Sign in with Apple must be enabled on both App IDs.
+Do this once per environment (production, then development the same way):
+
+1. **New resource:** Projects → your project → the environment → **+ New** → **Public Repository** (or a GitHub App source for the private repo) → this repository.
+2. **Build pack:** **Docker Compose**. Branch: `main` for production, `develop` for development. **Base Directory:** `/backend`. **Docker Compose Location:** `/docker-compose.yml`.
+3. **Domain:** under the `api` service, set the domain with the container port, e.g. `https://api.godusage.com:8787` (production) or `https://api-dev.godusage.com:8787` (development). Coolify routes it to port 8787 and gets the certificate. Point the DNS record at the server first. `postgres` and `redis` get no domain and publish no port.
+4. **Environment variables** (Configuration → Environment Variables):
+
+   | Variable | Production | Development | Notes |
+   | --- | --- | --- | --- |
+   | `APPLE_AUDIENCES` | `com.montinovo.godusage` | `com.montinovo.godusage.dev` | Required |
+   | `APPLE_WEB_CLIENT_ID` | `com.montinovo.godusage.web` | `com.montinovo.godusage.web.dev` | Required |
+   | `DOWNLOAD_URL` | optional | optional | Defaults to the latest GitHub release |
+   | `SERVICE_USER_POSTGRES`, `SERVICE_PASSWORD_POSTGRES`, `SERVICE_PASSWORD_REDIS` | generated | generated | Coolify creates them on the first deploy; leave them |
+   | `SERVICE_PASSWORD_64_PROXY` | generated | generated | The api's `PROXY_SECRET`. Copy it into the GitHub secret for the proxy (below) |
+   | `SERVICE_URL_API_8787` | set by the domain | set by the domain | |
+
+5. **Deploy.** Coolify builds the image, starts Postgres and Redis, waits for their health checks, then starts the api (its own health check is `GET /v1/health`, which answers only while Postgres and Redis do). The api logs `migration_applied` and `listening`.
+6. **Auto deploy:** keep **Auto Deploy** on (Coolify's GitHub webhook or app), so pushes to the branch redeploy the api. Migrations run at startup.
+7. **Backups:** turn on scheduled backups for the `postgres` service (Coolify → the service → Backups). Redis needs none.
+8. **Check:** `curl https://<domain>/v1/health` answers `{"ok":true}`.
+
+The api's environment, for reference: `DATABASE_URL` and `REDIS_URL` are built from the generated credentials in `docker-compose.yml`; `PROXY_SECRET` makes it trust the proxy Worker's headers; `PORT` is 8787.
+
+## Proxy Worker
+
+`backend/proxy/` is a Worker with the old Workers' names (`godusage-api`, and `godusage-api-dev` with `--env dev`), so deploying it replaces the D1 Worker on the same hosts and the apps keep working unchanged. It forwards every request (method, path, query, headers, body) to `ORIGIN_URL`, the environment's Coolify domain, and returns the response as it is (redirects and cookies too). It has no bindings.
+
+The server builds public links from the request host: Sign in with Apple's `redirect_uri` (which Apple only accepts on the registered `workers.dev` hosts), invite links, and board links. The Worker sends the host the client called and the client's IP in `x-godusage-public-host` and `x-godusage-client-ip`, with `x-godusage-proxy-secret` set to the api's `PROXY_SECRET`. Coolify's reverse proxy rewrites the standard `X-Forwarded-*` headers, so these have their own names. The server uses them only when the secret matches, and refuses a request whose secret doesn't (403, logged as `proxy_rejected`). Requests straight to the Coolify domain use its own host.
+
+**Deploy** with **Deploy Backend Proxy** (`.github/workflows/backend-deploy.yml`). It needs, in the repository settings, the variable `BACKEND_ORIGIN_URL` (production) or `BACKEND_DEV_ORIGIN_URL` (development) set to the Coolify domain (`https://api.godusage.com`, without the port), the secret `BACKEND_PROXY_SECRET` or `BACKEND_DEV_PROXY_SECRET` set to that environment's `SERVICE_PASSWORD_64_PROXY`, and `CLOUDFLARE_API_TOKEN`. It checks the Coolify server answers, sets the Worker's `PROXY_SECRET` secret, deploys with `ORIGIN_URL`, and checks the `workers.dev` host answers. A push to `develop` that changes `backend/proxy/` deploys the dev proxy; a stable release tag deploys production; either can be run by hand. Without the variable or secret it fails and deploys nothing.
+
+`npm run dev` in `backend/proxy/` runs the Worker locally in front of a server on `127.0.0.1:8787`.
+
+**Limits:** the Workers free plan allows 100,000 requests a day per account, shared by both proxies. The proxy is a bridge: the long-term path is a custom domain (e.g. `api.godusage.com`) pointed at Coolify, used by a future app release, plus that domain's `/v1/auth/apple/callback` added to each Services ID. Then the proxy can be retired.
+
+## Moving from D1 to Coolify
+
+Do one environment at a time, development first. Sessions, teams, and invite codes move with the data, so nobody signs in again.
+
+1. **Deploy the Coolify stack** for the environment ([Coolify setup](#coolify-setup)) and check `https://<domain>/v1/health`. Don't sign in to it yet: the import wants an empty database.
+2. **Export D1:** run **Export Backend Database** (`.github/workflows/backend-export.yml`) for the environment and download the SQL artifact. From here until step 5, uploads and new sign-ins still land on D1; do the next steps without a long pause (anything written to D1 after the export is not moved).
+3. **Import:** copy the file to the server and load it into the api container, which applies migrations and copies every table in one transaction:
+
+   ```bash
+   scp godusage-prod.sql root@<server>:/tmp/
+   ssh root@<server>
+   docker exec -i $(docker ps -qf name=api- | head -1) node server.mjs import-d1 - < /tmp/godusage-prod.sql
+   ```
+
+   With several Coolify resources on the server, pick the api container by its resource name (`docker ps --format '{{.Names}}' | grep api`). Coolify's terminal on the api container works too, with a path instead of `-`. It logs each table's row count and refuses a database that already has data (pending sign-ins excepted). The D1 caches (`stats_cache`, `team_champions`, `read_budget`) and `teams.stats_version` are left behind.
+4. **Verify against the Coolify domain:** `curl -H "Authorization: Bearer <a session token>" https://<domain>/v1/teams` (a token from the Mac app's session file, or a fresh sign-in on the dev build pointed at the domain), compare a board with what the app showed, and open `https://<domain>/join/<an invite code>`.
+5. **Deploy the proxy Worker:** set the repository variable and secret ([Proxy Worker](#proxy-worker)), then run **Deploy Backend Proxy** for the environment. From now on the `workers.dev` host serves Coolify.
+6. **Verify the app:** open the app (the dev build for development): the leaderboard loads, an upload succeeds (Settings → Teams shows the last upload), Sign in with Apple completes in the web sheet, and an invite link opens. `https://<workers.dev host>/v1/health` answers through the proxy.
+7. **Keep D1 as a backup** for a few weeks: the deploy removed the Worker's D1 binding, but the database and its Time Travel history stay. Delete it (`wrangler d1 delete`) only once the Coolify backups are proven.
+
+To roll back before step 5, nothing changed for the apps. After step 5, redeploy the old D1 Worker from the last commit before this change (`git checkout <commit> -- backend` and `wrangler deploy`): it still has its database, without the writes made on Coolify since.

@@ -1,7 +1,8 @@
 import { verifyAppleIdentityToken } from "../apple";
 import type { Handler } from "../context";
 import { badRequest, json, noContent, nowISO, readJSONObject, requireName } from "../http";
-import { forgetUserTeamsCache } from "../readGuard";
+import type { Queryable } from "../db";
+import { userTeamIDs } from "../teamCache";
 import { createSession, deleteSession, requireUser } from "../session";
 
 export const DISPLAY_NAME_MAX = 40;
@@ -20,8 +21,8 @@ export const signInWithApple: Handler = async ({ request, env, deps }) => {
   const identity = await verifyAppleIdentityToken(body.identityToken, audiences, deps.fetchAppleKeys, deps.now());
 
   const displayName = body.displayName === undefined ? undefined : requireName(body.displayName, "displayName", DISPLAY_NAME_MAX);
-  const { user, created } = await findOrCreateUser(env.DB, identity.sub, displayName);
-  const token = await createSession(env.DB, user.id);
+  const { user, created } = await findOrCreateUser(env.db, identity.sub, displayName);
+  const token = await createSession(env.db, user.id);
   console.log(JSON.stringify({ event: "sign_in", userID: user.id, created }));
   return json({ token, user, created }, created ? 201 : 200);
 };
@@ -31,45 +32,47 @@ export const signInWithApple: Handler = async ({ request, env, deps }) => {
  * account; later sign-ins keep the chosen name.
  */
 export async function findOrCreateUser(
-  db: D1Database,
+  db: Queryable,
   appleSub: string,
   displayName: string | undefined,
 ): Promise<{ user: { id: string; displayName: string }; created: boolean }> {
-  const existing = await db.prepare("SELECT id, display_name FROM users WHERE apple_sub = ?")
-    .bind(appleSub)
-    .first<{ id: string; display_name: string }>();
-  if (existing) return { user: { id: existing.id, displayName: existing.display_name }, created: false };
+  const existing = () => db.first<{ id: string; display_name: string }>("SELECT id, display_name FROM users WHERE apple_sub = $1", [appleSub]);
+  const found = await existing();
+  if (found) return { user: { id: found.id, displayName: found.display_name }, created: false };
 
   const id = crypto.randomUUID();
   const name = displayName ?? "GodUsage User";
-  await db.prepare("INSERT INTO users (id, apple_sub, display_name, created_at) VALUES (?, ?, ?, ?)")
-    .bind(id, appleSub, name, nowISO())
-    .run();
-  return { user: { id, displayName: name }, created: true };
+  const inserted = await db.run(
+    "INSERT INTO users (id, apple_sub, display_name, created_at) VALUES ($1, $2, $3, $4) ON CONFLICT (apple_sub) DO NOTHING",
+    [id, appleSub, name, nowISO()],
+  );
+  if (inserted === 1) return { user: { id, displayName: name }, created: true };
+  // Two sign-ins of a new account raced: the other one created it.
+  const winner = await existing();
+  if (!winner) throw new Error(`findOrCreateUser: no user for ${appleSub} after a conflicting insert`);
+  return { user: { id: winner.id, displayName: winner.display_name }, created: false };
 }
 
 /** POST /v1/auth/logout — ends this session only. */
 export const signOut: Handler = async ({ request, env }) => {
-  await deleteSession(request, env.DB);
+  await deleteSession(request, env.db);
   return noContent();
 };
 
 /** GET /v1/me */
 export const getMe: Handler = async ({ request, env }) => {
-  const user = await requireUser(request, env.DB);
+  const user = await requireUser(request, env.db);
   return json({ user });
 };
 
 /** PATCH /v1/me { displayName } */
 export const updateMe: Handler = async ({ request, env }) => {
-  const user = await requireUser(request, env.DB);
+  const user = await requireUser(request, env.db);
   const body = await readJSONObject(request);
   const displayName = requireName(body.displayName, "displayName", DISPLAY_NAME_MAX);
-  await env.DB.batch([
-    env.DB.prepare("UPDATE users SET display_name = ? WHERE id = ?").bind(displayName, user.id),
-    // Cached boards show the old name: drop them.
-    forgetUserTeamsCache(env.DB, user.id),
-  ]);
+  await env.db.run("UPDATE users SET display_name = $1 WHERE id = $2", [displayName, user.id]);
+  // Cached boards show the old name: drop them.
+  await env.cache.forgetTeams(await userTeamIDs(env.db, user.id));
   return json({ user: { id: user.id, displayName } });
 };
 
@@ -79,23 +82,25 @@ export const updateMe: Handler = async ({ request, env }) => {
  * Teams with another owner stay, and pass to it.
  */
 export const deleteMe: Handler = async ({ request, env }) => {
-  const user = await requireUser(request, env.DB);
-  await env.DB.batch([
-    // Champions and cached boards are among current members: recompute them without this account.
-    env.DB.prepare("DELETE FROM team_champions WHERE team_id IN (SELECT team_id FROM team_members WHERE user_id = ?)").bind(user.id),
-    forgetUserTeamsCache(env.DB, user.id),
-    env.DB.prepare(
+  const user = await requireUser(request, env.db);
+  // Champions and cached boards are among current members: they are recomputed without this account.
+  const teamIDs = await userTeamIDs(env.db, user.id);
+  await env.db.transaction(async (tx) => {
+    await tx.run(
       `DELETE FROM teams WHERE id IN (
-         SELECT m.team_id FROM team_members m WHERE m.user_id = ?1 AND m.role = 'owner'
-         AND NOT EXISTS (SELECT 1 FROM team_members o WHERE o.team_id = m.team_id AND o.role = 'owner' AND o.user_id != ?1))`,
-    ).bind(user.id),
+         SELECT m.team_id FROM team_members m WHERE m.user_id = $1 AND m.role = 'owner'
+         AND NOT EXISTS (SELECT 1 FROM team_members o WHERE o.team_id = m.team_id AND o.role = 'owner' AND o.user_id <> $1))`,
+      [user.id],
+    );
     // teams.owner_id cascades on delete, so it moves to another owner first.
-    env.DB.prepare(
-      `UPDATE teams SET owner_id = (SELECT user_id FROM team_members WHERE team_id = teams.id AND role = 'owner' AND user_id != ?1 ORDER BY joined_at, user_id LIMIT 1)
-       WHERE owner_id = ?1`,
-    ).bind(user.id),
-    env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
-  ]);
+    await tx.run(
+      `UPDATE teams SET owner_id = (SELECT user_id FROM team_members WHERE team_id = teams.id AND role = 'owner' AND user_id <> $1 ORDER BY joined_at, user_id LIMIT 1)
+       WHERE owner_id = $1`,
+      [user.id],
+    );
+    await tx.run("DELETE FROM users WHERE id = $1", [user.id]);
+  });
+  await env.cache.forgetTeams(teamIDs);
   console.log(JSON.stringify({ event: "account_deleted", userID: user.id }));
   return noContent();
 };
@@ -106,31 +111,35 @@ export const deleteMe: Handler = async ({ request, env }) => {
  * received, and challenges started. Session tokens are never included (only their count).
  */
 export const exportMe: Handler = async ({ request, env, deps }) => {
-  const user = await requireUser(request, env.DB);
-  const [account, sessions, devices, days, models, teams, given, received, challenges] = await env.DB.batch([
-    env.DB.prepare("SELECT id, apple_sub, display_name, created_at FROM users WHERE id = ?").bind(user.id),
-    env.DB.prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?").bind(user.id),
-    env.DB.prepare("SELECT id, name, updated_at FROM devices WHERE user_id = ? ORDER BY updated_at DESC").bind(user.id),
-    env.DB.prepare("SELECT device_id, provider, day, scope, tokens, cost_usd FROM usage_days WHERE user_id = ? ORDER BY day, provider").bind(user.id),
-    env.DB.prepare("SELECT device_id, provider, day, model, scope, tokens, cost_usd FROM usage_model_days WHERE user_id = ? ORDER BY day, provider, model").bind(user.id),
-    env.DB.prepare("SELECT t.id, t.name, m.role, m.joined_at FROM team_members m JOIN teams t ON t.id = m.team_id WHERE m.user_id = ? ORDER BY t.name").bind(user.id),
-    env.DB.prepare("SELECT team_id, to_user, emoji, day, created_at FROM reactions WHERE from_user = ? ORDER BY created_at").bind(user.id),
-    env.DB.prepare("SELECT team_id, from_user, emoji, day, created_at FROM reactions WHERE to_user = ? ORDER BY created_at").bind(user.id),
-    env.DB.prepare("SELECT id, team_id, kind, starts_on, ends_on, created_at FROM challenges WHERE created_by = ? ORDER BY created_at").bind(user.id),
-  ]);
-  const row = account!.results[0] as { id: string; apple_sub: string; display_name: string; created_at: string };
+  const user = await requireUser(request, env.db);
+  const id = [user.id];
+  // One transaction, so the document is one consistent snapshot.
+  const [account, sessions, devices, days, models, teams, given, received, challenges] = await env.db.transaction((tx) =>
+    Promise.all([
+      tx.query("SELECT id, apple_sub, display_name, created_at FROM users WHERE id = $1", id),
+      tx.query("SELECT COUNT(*) AS n FROM sessions WHERE user_id = $1", id),
+      tx.query("SELECT id, name, updated_at FROM devices WHERE user_id = $1 ORDER BY updated_at DESC", id),
+      tx.query("SELECT device_id, provider, day, scope, tokens, cost_usd FROM usage_days WHERE user_id = $1 ORDER BY day, provider", id),
+      tx.query("SELECT device_id, provider, day, model, scope, tokens, cost_usd FROM usage_model_days WHERE user_id = $1 ORDER BY day, provider, model", id),
+      tx.query("SELECT t.id, t.name, m.role, m.joined_at FROM team_members m JOIN teams t ON t.id = m.team_id WHERE m.user_id = $1 ORDER BY t.name", id),
+      tx.query("SELECT team_id, to_user, emoji, day, created_at FROM reactions WHERE from_user = $1 ORDER BY created_at", id),
+      tx.query("SELECT team_id, from_user, emoji, day, created_at FROM reactions WHERE to_user = $1 ORDER BY created_at", id),
+      tx.query("SELECT id, team_id, kind, starts_on, ends_on, created_at FROM challenges WHERE created_by = $1 ORDER BY created_at", id),
+    ]),
+  );
+  const row = account[0] as { id: string; apple_sub: string; display_name: string; created_at: string };
   const body = {
     schema: "godusage.export.v1",
     exportedAt: deps.now().toISOString(),
     account: { id: row.id, appleUserID: row.apple_sub, displayName: row.display_name, createdAt: row.created_at },
-    activeSessions: (sessions!.results[0] as { n: number }).n,
-    devices: devices!.results,
-    usageDays: days!.results,
-    usageModelDays: models!.results,
-    teams: teams!.results,
-    reactionsGiven: given!.results,
-    reactionsReceived: received!.results,
-    challengesStarted: challenges!.results,
+    activeSessions: (sessions[0] as { n: number }).n,
+    devices,
+    usageDays: days,
+    usageModelDays: models,
+    teams,
+    reactionsGiven: given,
+    reactionsReceived: received,
+    challengesStarted: challenges,
   };
   return new Response(JSON.stringify(body, null, 2), {
     headers: {

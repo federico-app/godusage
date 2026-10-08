@@ -22,7 +22,8 @@ The release workflow needs these repository secrets (Settings → Secrets and va
 | `APPLE_NOTARY_ISSUER_ID` | the App Store Connect API issuer ID |
 | `APPLE_DEVELOPER_ID_ICLOUD_PROFILE` | base64 Developer ID provisioning profile for `com.montinovo.godusage` (production iCloud container, Sign in with Apple) |
 | `APPLE_DEVELOPER_ID_DEV_PROFILE` | base64 Developer ID provisioning profile for `com.montinovo.godusage.dev` (dev iCloud container, Sign in with Apple) |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API token that can edit Workers and D1 in the account in `backend/wrangler.jsonc` |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token that can edit Workers (and read D1, for the export) in the account in `backend/proxy/wrangler.jsonc` |
+| `BACKEND_PROXY_SECRET`, `BACKEND_DEV_PROXY_SECRET` | Each environment's api `PROXY_SECRET` (Coolify's `SERVICE_PASSWORD_64_PROXY`), for the proxy Worker. With the repository variables `BACKEND_ORIGIN_URL` and `BACKEND_DEV_ORIGIN_URL` (the Coolify domains) |
 | `SPARKLE_PUBLIC_KEY` | base64 EdDSA public key, baked into the build as `SUPublicEDKey` |
 | `SPARKLE_PRIVATE_KEY` | base64 EdDSA private key used to sign the DMG |
 | `APPLE_DISTRIBUTION_CERTIFICATE_BASE64` | base64 of the Apple Distribution `.p12` that signs the iOS app |
@@ -70,7 +71,7 @@ The tap name means the command is not just `brew install godusage`. That needs t
 
 ## Teams backend
 
-[.github/workflows/backend-deploy.yml](../.github/workflows/backend-deploy.yml) deploys the [teams backend](teams-backend.md) on the same channels. A push to `develop` that changes `backend/` migrates and deploys the dev Worker. A stable tag migrates and deploys production. It can also be run by hand for either environment. It needs `CLOUDFLARE_API_TOKEN`.
+The [teams backend](teams-backend.md) runs on Coolify, which deploys it from git: the production resource follows `main`, the development one follows `develop`, and each applies its migrations at startup. [.github/workflows/backend-deploy.yml](../.github/workflows/backend-deploy.yml) deploys the proxy Worker in front of it on the app's channels: a push to `develop` that changes `backend/proxy/` deploys the dev proxy, a stable tag deploys production, and it can be run by hand. It needs `CLOUDFLARE_API_TOKEN`, the proxy secrets, and the origin variables above.
 
 ### iOS signing
 

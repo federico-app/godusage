@@ -2,21 +2,23 @@ import type { Handler } from "../context";
 import { badRequest, forbidden, json, notFound, nowISO, readJSONObject } from "../http";
 import { covers, parsePlans, planReports, type PlanReport, type PlanRow } from "../plans";
 import { requireUser } from "../session";
-import { cachedTeamResult, forgetTeamCache, guardedWork, readGuard, type ReadGuard } from "../readGuard";
+import type { Env } from "../context";
+import type { Queryable } from "../db";
+import { cachedTeamResult } from "../teamCache";
 import { viewerToday } from "./challenges";
 
-async function memberRole(db: D1Database, teamID: string, userID: string): Promise<"owner" | "member"> {
-  const role = await db.prepare("SELECT role FROM team_members WHERE team_id = ? AND user_id = ?").bind(teamID, userID).first<"owner" | "member">("role");
-  if (!role) throw notFound("Team not found.");
-  return role;
+async function memberRole(db: Queryable, teamID: string, userID: string): Promise<"owner" | "member"> {
+  const row = await db.first<{ role: "owner" | "member" }>("SELECT role FROM team_members WHERE team_id = $1 AND user_id = $2", [teamID, userID]);
+  if (!row) throw notFound("Team not found.");
+  return row.role;
 }
 
-async function loadPlans(db: D1Database, teamID: string): Promise<PlanRow[]> {
-  const rows = await db
-    .prepare("SELECT id, provider, name, monthly_cost_usd, renewal_day, member_ids FROM team_plans WHERE team_id = ? ORDER BY position")
-    .bind(teamID)
-    .all<{ id: string; provider: string; name: string; monthly_cost_usd: number; renewal_day: number; member_ids: string | null }>();
-  return rows.results.map((row) => ({
+async function loadPlans(db: Queryable, teamID: string): Promise<PlanRow[]> {
+  const rows = await db.query<{ id: string; provider: string; name: string; monthly_cost_usd: number; renewal_day: number; member_ids: string | null }>(
+    "SELECT id, provider, name, monthly_cost_usd, renewal_day, member_ids FROM team_plans WHERE team_id = $1 ORDER BY position",
+    [teamID],
+  );
+  return rows.map((row) => ({
     id: row.id,
     provider: row.provider,
     name: row.name,
@@ -26,7 +28,7 @@ async function loadPlans(db: D1Database, teamID: string): Promise<PlanRow[]> {
   }));
 }
 
-async function report(db: D1Database, teamID: string, today: string) {
+async function report(db: Queryable, teamID: string, today: string) {
   const plans = await planReports(db, teamID, await loadPlans(db, teamID), today);
   const totals = plans.reduce(
     (sum, plan) => ({
@@ -48,42 +50,43 @@ function forViewer(plans: PlanReport[], userID: string) {
   return plans.map((plan) => ({ ...plan, includesYou: covers(plan, userID) }));
 }
 
-/** The plan report from the cache (see `readGuard.ts`), recomputed at most every 10 minutes. */
-function cachedReport(guard: ReadGuard, teamID: string, today: string) {
-  return cachedTeamResult(guard, teamID, `plans|${today}`, 10 * 60_000, (db) => report(db, teamID, today));
+/** The plan report from the cache (see `teamCache.ts`), recomputed at most every 10 minutes. */
+function cachedReport(env: Pick<Env, "db" | "cache">, now: Date, teamID: string, today: string) {
+  return cachedTeamResult(env.cache, now, teamID, `plans|${today}`, 10 * 60_000, () => report(env.db, teamID, today));
 }
 
 /** GET /v1/teams/:teamID/plans?today= — the team's plans and their report, for any member. */
 export const getPlans: Handler = async ({ request, env, url, params, deps }) => {
-  const user = await requireUser(request, env.DB);
-  const role = await memberRole(env.DB, params.teamID!, user.id);
-  const result = await cachedReport(readGuard(env, deps.now()), params.teamID!, viewerToday(url, deps.now()));
-  return json({ ...result.value, plans: forViewer(result.value.plans, user.id), canEdit: role === "owner", paused: result.paused });
+  const user = await requireUser(request, env.db);
+  const role = await memberRole(env.db, params.teamID!, user.id);
+  const result = await cachedReport(env, deps.now(), params.teamID!, viewerToday(url, deps.now()));
+  return json({ ...result.value, plans: forViewer(result.value.plans, user.id), canEdit: role === "owner" });
 };
 
 /** PUT /v1/teams/:teamID/plans?today= { plans: [...] } — replaces the list. Owner only. */
 export const putPlans: Handler = async ({ request, env, url, params, deps }) => {
-  const user = await requireUser(request, env.DB);
+  const user = await requireUser(request, env.db);
   const teamID = params.teamID!;
-  const role = await memberRole(env.DB, teamID, user.id);
+  const role = await memberRole(env.db, teamID, user.id);
   if (role !== "owner") throw forbidden("Only team owners can change plans.");
   const plans = parsePlans(await readJSONObject(request));
-  const members = await env.DB.prepare("SELECT user_id FROM team_members WHERE team_id = ?").bind(teamID).all<{ user_id: string }>();
-  const memberIDs = new Set(members.results.map((row) => row.user_id));
+  const members = await env.db.query<{ user_id: string }>("SELECT user_id FROM team_members WHERE team_id = $1", [teamID]);
+  const memberIDs = new Set(members.map((row) => row.user_id));
   if (plans.some((plan) => plan.memberIDs?.some((id) => !memberIDs.has(id)))) throw badRequest("A plan covers someone who is not in the team.");
   const updatedAt = nowISO();
-  await env.DB.batch([
-    forgetTeamCache(env.DB, teamID, "plans|"),
-    env.DB.prepare("DELETE FROM team_plans WHERE team_id = ?").bind(teamID),
-    ...plans.map((plan, position) =>
-      env.DB.prepare(
-        "INSERT INTO team_plans (id, team_id, provider, name, monthly_cost_usd, renewal_day, member_ids, position, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-      ).bind(
-        crypto.randomUUID(), teamID, plan.provider, plan.name, plan.monthlyCostUSD, plan.renewalDay,
-        plan.memberIDs === null ? null : JSON.stringify(plan.memberIDs), position, updatedAt,
-      ),
-    ),
-  ]);
-  const fresh = await guardedWork(readGuard(env, deps.now()), (db) => report(db, teamID, viewerToday(url, deps.now())));
-  return json({ ...fresh, plans: forViewer(fresh.plans, user.id), canEdit: true, paused: false });
+  await env.db.transaction(async (tx) => {
+    await tx.run("DELETE FROM team_plans WHERE team_id = $1", [teamID]);
+    for (const [position, plan] of plans.entries()) {
+      await tx.run(
+        "INSERT INTO team_plans (id, team_id, provider, name, monthly_cost_usd, renewal_day, member_ids, position, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        [
+          crypto.randomUUID(), teamID, plan.provider, plan.name, plan.monthlyCostUSD, plan.renewalDay,
+          plan.memberIDs === null ? null : JSON.stringify(plan.memberIDs), position, updatedAt,
+        ],
+      );
+    }
+  });
+  await env.cache.forgetTeams([teamID], "plans|");
+  const fresh = await report(env.db, teamID, viewerToday(url, deps.now()));
+  return json({ ...fresh, plans: forViewer(fresh.plans, user.id), canEdit: true });
 };

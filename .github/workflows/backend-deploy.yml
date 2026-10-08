@@ -1,17 +1,26 @@
-name: Deploy Backend
+name: Deploy Backend Proxy
 
-# The teams backend follows the app channels: a push to `develop` that touches backend/ deploys the
-# dev Worker and database (godusage-api-dev), and a stable release tag deploys production
-# (godusage-api). Tests run first; migrations are applied before the Worker that needs them.
+# The teams backend runs on Coolify, which builds and deploys the api from git by itself (see
+# docs/teams-backend.md). This workflow deploys the proxy Worker (backend/proxy/) that keeps the hosts
+# the apps call (godusage-api[-dev].federico-c80.workers.dev) pointing at it. It follows the app
+# channels: a push to `develop` that touches the proxy deploys the dev proxy, a stable release tag
+# deploys production, and either can be run by hand.
+#
+# Each environment needs, in the repository settings:
+#   - variable  BACKEND_ORIGIN_URL / BACKEND_DEV_ORIGIN_URL  the Coolify domain of the api service
+#   - secret    BACKEND_PROXY_SECRET / BACKEND_DEV_PROXY_SECRET  the api's PROXY_SECRET
+#   - secret    CLOUDFLARE_API_TOKEN
+# Deploying replaces the old D1 Worker of the same name: run it only once that environment's data is
+# on Coolify (the cutover runbook in docs/teams-backend.md).
 on:
   push:
     branches: [develop]
-    paths: ["backend/**", ".github/workflows/backend-deploy.yml"]
+    paths: ["backend/proxy/**", ".github/workflows/backend-deploy.yml"]
     tags: ["v*"]
   workflow_dispatch:
     inputs:
       environment:
-        description: "Which backend to deploy"
+        description: "Which proxy to deploy"
         required: true
         type: choice
         options: [dev, prod]
@@ -22,16 +31,19 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # One deploy per environment at a time; a newer push waits instead of racing a migration.
     concurrency:
       group: backend-deploy-${{ (github.event_name == 'workflow_dispatch' && inputs.environment) || (startsWith(github.ref, 'refs/tags/') && 'prod') || 'dev' }}
       cancel-in-progress: false
     defaults:
       run:
-        working-directory: backend
+        working-directory: backend/proxy
     env:
       TARGET: ${{ (github.event_name == 'workflow_dispatch' && inputs.environment) || (startsWith(github.ref, 'refs/tags/') && 'prod') || 'dev' }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PROD_ORIGIN_URL: ${{ vars.BACKEND_ORIGIN_URL }}
+      DEV_ORIGIN_URL: ${{ vars.BACKEND_DEV_ORIGIN_URL }}
+      PROD_PROXY_SECRET: ${{ secrets.BACKEND_PROXY_SECRET }}
+      DEV_PROXY_SECRET: ${{ secrets.BACKEND_DEV_PROXY_SECRET }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -42,28 +54,41 @@ jobs:
         working-directory: .
         run: ./script/validate_release_tag.sh "${GITHUB_REF#refs/tags/}"
 
-      - name: Require the Cloudflare token
+      - name: Pick the environment
+        run: |
+          if [ "$TARGET" = prod ]; then
+            { echo "ORIGIN_URL=$PROD_ORIGIN_URL"; echo "WRANGLER_ENV="; echo "SECRET_NAME=BACKEND_PROXY_SECRET"; echo "ORIGIN_NAME=BACKEND_ORIGIN_URL"; } >> "$GITHUB_ENV"
+            echo "PROXY_SECRET=$PROD_PROXY_SECRET" >> "$GITHUB_ENV"
+          else
+            { echo "ORIGIN_URL=$DEV_ORIGIN_URL"; echo "WRANGLER_ENV=dev"; echo "SECRET_NAME=BACKEND_DEV_PROXY_SECRET"; echo "ORIGIN_NAME=BACKEND_DEV_ORIGIN_URL"; } >> "$GITHUB_ENV"
+            echo "PROXY_SECRET=$DEV_PROXY_SECRET" >> "$GITHUB_ENV"
+          fi
+
+      - name: Require the configuration
         run: |
           [ -n "$CLOUDFLARE_API_TOKEN" ] || { echo "::error::Missing required repository secret: CLOUDFLARE_API_TOKEN"; exit 1; }
+          [ -n "$ORIGIN_URL" ] || { echo "::error::Missing repository variable $ORIGIN_NAME (the Coolify domain of the $TARGET api). Nothing was deployed."; exit 1; }
+          [ -n "$PROXY_SECRET" ] || { echo "::error::Missing repository secret $SECRET_NAME (the $TARGET api's PROXY_SECRET). Nothing was deployed."; exit 1; }
+
+      - name: Check the Coolify server answers
+        run: curl --fail --silent --show-error --max-time 15 "$ORIGIN_URL/v1/health"
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: backend/proxy/package-lock.json
 
       - name: Install
         run: npm ci
 
-      - name: Typecheck and test
-        run: |
-          npm run typecheck
-          npm test
-
-      - name: Apply migrations
-        run: |
-          if [ "$TARGET" = prod ]; then npm run migrate; else npm run migrate:dev; fi
+      - name: Set the proxy secret
+        run: printf '%s' "$PROXY_SECRET" | npx wrangler secret put PROXY_SECRET --env="$WRANGLER_ENV"
 
       - name: Deploy
+        run: npx wrangler deploy --env="$WRANGLER_ENV" --var "ORIGIN_URL:$ORIGIN_URL"
+
+      - name: Check the proxy answers
         run: |
-          if [ "$TARGET" = prod ]; then npm run deploy; else npm run deploy:dev; fi
+          if [ "$TARGET" = prod ]; then host=godusage-api; else host=godusage-api-dev; fi
+          curl --fail --silent --show-error --max-time 15 --retry 5 --retry-delay 3 "https://$host.federico-c80.workers.dev/v1/health"

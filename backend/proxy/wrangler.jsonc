@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The proxy in front of the Coolify server (see src/index.ts and docs/teams-backend.md). It keeps the
+  // Worker names the apps call, so deploying it replaces the old D1 Worker on the same hosts.
+  // ORIGIN_URL comes from the deploy (`--var`), PROXY_SECRET is a Worker secret: neither lives here.
+  // Top level is production; `--env dev` is the dev build's backend.
+  "name": "godusage-api",
+  "account_id": "c8027ea307622cd1ac394bf73c18efc0",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "env": {
+    "dev": {
+      "name": "godusage-api-dev"
+    }
+  }
+}

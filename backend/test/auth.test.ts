@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { verifyAppleIdentityToken } from "../src/apple";
-import { env } from "cloudflare:test";
+import { env } from "./env";
 import { sha256Hex } from "../src/http";
 import { api, appleToken, makeApp, NOW, otherKey, publicJWK, RELEASE_AUDIENCE, signIn } from "./support";
 
@@ -73,13 +73,11 @@ describe("sign in and account", () => {
   it("rejects an expired session and deletes it", async () => {
     const { token } = await signIn();
     const tokenHash = await sha256Hex(token);
-    await env.DB.prepare("UPDATE sessions SET expires_at = ? WHERE token_hash = ?")
-      .bind(new Date(Date.now() - 1000).toISOString(), tokenHash)
-      .run();
+    await env.db.run("UPDATE sessions SET expires_at = $1 WHERE token_hash = $2", [new Date(Date.now() - 1000).toISOString(), tokenHash]);
     const response = await api("GET", "/v1/me", { token });
     expect(response.status).toBe(401);
     expect(response.body.error.message).toMatch(/expired/);
-    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM sessions WHERE token_hash = ?").bind(tokenHash).first("n")).toBe(0);
+    expect(await env.db.first("SELECT COUNT(*) AS n FROM sessions WHERE token_hash = $1", [tokenHash])).toEqual({ n: 0 });
   });
 });
 
