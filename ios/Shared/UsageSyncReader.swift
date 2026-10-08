@@ -45,7 +45,7 @@ struct UsageSyncReader: Sendable {
     static let historyKey = "history"
     static let snapshotKey = "snapshot"
 
-    #if DEBUG
+    #if DEV_CHANNEL
     static let containerID = "iCloud.com.montinovo.godusage.dev"
     #else
     static let containerID = "iCloud.com.montinovo.godusage"

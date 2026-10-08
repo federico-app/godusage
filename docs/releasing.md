@@ -30,6 +30,8 @@ The release workflow needs these repository secrets (Settings → Secrets and va
 | `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD` | the password set when exporting that `.p12` |
 | `APPLE_IOS_APP_STORE_PROFILE` | base64 App Store provisioning profile for the iOS app |
 | `APPLE_IOS_WIDGET_APP_STORE_PROFILE` | base64 App Store provisioning profile for the iOS widget extension |
+| `APPLE_IOS_DEV_APP_STORE_PROFILE` | base64 App Store provisioning profile for GodUsage DEV on iOS (`com.montinovo.godusage.mobile.dev`) |
+| `APPLE_IOS_DEV_WIDGET_APP_STORE_PROFILE` | base64 App Store provisioning profile for its widget extension (`com.montinovo.godusage.mobile.dev.widgets`) |
 | `HOMEBREW_TAP_DEPLOY_KEY` | private half of an SSH deploy key with write access to `federico-app/homebrew-tap` (see [Homebrew](#homebrew)) |
 
 ### macOS signing and notarization
@@ -49,6 +51,17 @@ Export the Developer ID Application cert (with its private key) from Keychain Ac
 - it runs in its own queue, so a push to `develop` never cancels a production release that is waiting to start. A newer push replaces a DEV run that is still waiting, so the feed only moves forward. If a DEV build and a production release publish `update-feed` at the same moment, one push fails; rerun it.
 
 Merge `develop` into `main` and tag it to ship production.
+
+### iOS DEV channel
+
+The same workflow uploads **GodUsage DEV** for iPhone (`com.montinovo.godusage.mobile.dev`) to TestFlight when a push changes `ios/`, `script/release_ios.sh`, or the workflow (a manual run always uploads). It runs `script/release_ios.sh` with `CHANNEL=dev`, which archives the **Dev** configuration: dev teams server, dev iCloud container in its Production environment (where the Mac DEV app writes). The version is the newest stable one (TestFlight takes plain numbers only) and the build is the commit count. Only internal testers get it, so there is no Beta App Review. It runs beside the Mac DEV build, and a failure of one does not stop the other.
+
+Until both `APPLE_IOS_DEV_*` secrets are set, the job is skipped with a warning. One-time setup:
+
+1. In Certificates, Identifiers & Profiles, register the App IDs `com.montinovo.godusage.mobile.dev` and `com.montinovo.godusage.mobile.dev.widgets`, each with iCloud (CloudKit) and the container `iCloud.com.montinovo.godusage.dev`.
+2. In App Store Connect, create the app **GodUsage DEV** with bundle id `com.montinovo.godusage.mobile.dev`.
+3. Under TestFlight → Internal Testing, create a group with **automatic distribution** on and add the testers.
+4. Create App Store provisioning profiles for both App IDs with the Apple Distribution certificate, and store them base64-encoded in `APPLE_IOS_DEV_APP_STORE_PROFILE` and `APPLE_IOS_DEV_WIDGET_APP_STORE_PROFILE`.
 
 The dev container needs its CloudKit schema deployed to **Production** too, because a Developer ID build uses the Production environment (see [iCloud Sync](icloud-sync.md#development-and-release-setup)).
 
