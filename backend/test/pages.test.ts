@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { api, inviteCode, signIn, teamWith, upload } from "./support";
+import { env } from "./env";
+import { api, inviteCode, makeApp, NOW, signIn, teamWith, upload } from "./support";
 
 describe("invite page", () => {
   it("shows the team and links into the app", async () => {
@@ -14,6 +15,14 @@ describe("invite page", () => {
     expect(page.body).toContain(`href="godusage://join/${code}"`);
     expect(page.body).toContain("1 member.");
     expect(page.body).toContain("https://github.com/federico-app/godusage/releases/latest");
+  });
+
+  it("links into the DEV app on the dev server", async () => {
+    const owner = await signIn();
+    const team = (await api("POST", "/v1/teams", { token: owner.token, body: { name: "Dev Crew" } })).body.team;
+    const code = inviteCode(team.inviteURL);
+    const response = await makeApp(NOW).fetch(new Request(`https://api.test/join/${code}`), { ...env, APP_SCHEME: "godusage-dev" });
+    expect(await response.text()).toContain(`href="godusage-dev://join/${code}"`);
   });
 
   it("explains an expired link", async () => {
