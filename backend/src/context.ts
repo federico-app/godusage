@@ -13,6 +13,8 @@ export interface Env {
   APPLE_WEB_CLIENT_ID: string;
   /** Where the invite page sends people who do not have the app yet. */
   DOWNLOAD_URL: string;
+  /** The URL scheme of the app this server serves (`godusage`, or `godusage-dev` for the dev server), for the invite page's link. */
+  APP_SCHEME: "godusage" | "godusage-dev";
 }
 
 /** Outside-world dependencies, injectable so tests never call Apple. */

@@ -1,5 +1,4 @@
 import AppKit
-import AuthenticationServices
 import CryptoKit
 
 /// What the web sign-in hands back: a one-time code and the PKCE verifier that redeems it.
@@ -29,42 +28,55 @@ protocol AppleSignInProviding {
 
 /// Sign in with Apple through the web, which works in every build. Developer ID builds cannot use
 /// the native flow: their provisioning profiles never grant the Sign in with Apple entitlement.
-/// The system sign-in sheet opens the teams backend's `/v1/auth/apple/start`, Apple posts back to the
-/// backend, and the backend returns to `godusage://auth` with a one-time code (see
-/// `docs/teams-backend.md`).
+/// Safari opens the teams backend's `/v1/auth/apple/start` (whatever the default browser is, so the
+/// Apple ID signed in to Safari and its passkeys are used), Apple posts back to the backend, and the
+/// backend returns to `<scheme>://auth` with a one-time code (see `docs/teams-backend.md`). The app's
+/// URL handler hands that link to `receive(_:)`. The release and DEV apps listen on their own
+/// schemes, so each gets back the sign-in it started.
 @MainActor
-final class AppleWebSignIn: NSObject, AppleSignInProviding {
-    private let baseURL: URL
-    private var session: ASWebAuthenticationSession?
+final class AppleWebSignIn: AppleSignInProviding {
+    /// The attempt waiting for its `<scheme>://auth` link.
+    private static var pending: (state: String, continuation: CheckedContinuation<URL, Error>)?
+    /// The backend keeps a sign-in request for 10 minutes.
+    static let timeout: Duration = .seconds(600)
 
-    init(baseURL: URL = TeamsAPIClient.defaultBaseURL()) {
+    private let baseURL: URL
+    private let scheme: String
+    private let open: @MainActor (URL) async throws -> Void
+
+    init(
+        baseURL: URL = TeamsAPIClient.defaultBaseURL(),
+        scheme: String = AppChannel.urlScheme(),
+        open: @escaping @MainActor (URL) async throws -> Void = AppleWebSignIn.openInSafari
+    ) {
         self.baseURL = baseURL
+        self.scheme = scheme
+        self.open = open
     }
 
     func signIn() async throws -> AppleSignInResult {
-        guard session == nil else { throw AppleSignInError.failed("A sign-in is already in progress.") }
+        // A new attempt replaces one whose Safari tab was closed without finishing.
+        Self.finish(state: nil, with: .failure(AppleSignInError.cancelled))
         let state = Self.randomToken()
         let verifier = Self.randomToken()
-        guard let url = Self.startURL(baseURL: baseURL, state: state, codeVerifier: verifier) else {
+        guard let url = Self.startURL(baseURL: baseURL, state: state, codeVerifier: verifier, scheme: scheme) else {
             throw AppleSignInError.failed("The sign-in address is invalid.")
         }
-        let callbackURL: URL = try await withCheckedThrowingContinuation { continuation in
-            let session = ASWebAuthenticationSession(
-                url: url,
-                callback: .customScheme(TeamInviteLink.scheme),
-                completionHandler: Self.completionHandler(resuming: continuation)
-            )
-            session.presentationContextProvider = self
-            // Reuse the browser's Apple ID session, so a signed-in Safari needs only a confirmation.
-            session.prefersEphemeralWebBrowserSession = false
-            self.session = session
-            if !session.start() {
-                continuation.resume(throwing: AppleSignInError.failed("The sign-in window couldn't open."))
-            }
-        }
-        session = nil
         do {
-            return try Self.result(from: callbackURL, expectedState: state, codeVerifier: verifier)
+            let callbackURL: URL = try await withCheckedThrowingContinuation { continuation in
+                Self.pending = (state, continuation)
+                Task { @MainActor in
+                    do {
+                        try await open(url)
+                    } catch {
+                        Self.finish(state: state, with: .failure(error))
+                        return
+                    }
+                    try? await Task.sleep(for: Self.timeout)
+                    Self.finish(state: state, with: .failure(AppleSignInError.failed("The sign-in took too long. Try again.")))
+                }
+            }
+            return try Self.result(from: callbackURL, expectedState: state, codeVerifier: verifier, scheme: scheme)
         } catch AppleSignInError.cancelled {
             AppLog.info(.teams, "Sign in with Apple cancelled")
             throw AppleSignInError.cancelled
@@ -74,38 +86,60 @@ final class AppleWebSignIn: NSObject, AppleSignInProviding {
         }
     }
 
-    /// The session calls this on an AuthenticationServices XPC queue, not the main thread. Built
-    /// outside the main-actor `signIn()` so it is not main-actor-isolated: a main-actor closure run
-    /// there trips Swift's isolation check and crashes the app.
-    nonisolated static func completionHandler(
-        resuming continuation: CheckedContinuation<URL, Error>
-    ) -> @Sendable (URL?, Error?) -> Void {
-        { callbackURL, error in
-            if let callbackURL {
-                continuation.resume(returning: callbackURL)
-            } else if let error = error as? ASWebAuthenticationSessionError, error.code == .canceledLogin {
-                continuation.resume(throwing: AppleSignInError.cancelled)
-            } else {
-                continuation.resume(throwing: AppleSignInError.failed(error?.localizedDescription ?? "No response."))
+    /// Takes `<scheme>://auth?…` from the app's URL handler. Returns false for any other link. A link
+    /// for an attempt that isn't the pending one (an old tab, or a forged link) is dropped.
+    @discardableResult
+    static func receive(_ url: URL) -> Bool {
+        guard TeamInviteLink.schemes.contains(url.scheme?.lowercased() ?? ""), url.host()?.lowercased() == "auth" else { return false }
+        let state = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "state" }?.value
+        guard let state, pending?.state == state else {
+            AppLog.warn(.teams, "ignored a sign-in link that isn't for the sign-in in progress")
+            return true
+        }
+        finish(state: state, with: .success(url))
+        return true
+    }
+
+    /// Resumes the pending attempt, if it is `state`'s (or any, for nil).
+    private static func finish(state: String?, with result: Result<URL, Error>) {
+        guard let current = pending, state == nil || current.state == state else { return }
+        pending = nil
+        current.continuation.resume(with: result)
+    }
+
+    static func openInSafari(_ url: URL) async throws {
+        guard let safari = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Safari") else {
+            throw AppleSignInError.failed("Safari isn't available on this Mac.")
+        }
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            NSWorkspace.shared.open([url], withApplicationAt: safari, configuration: configuration) { _, error in
+                if let error {
+                    continuation.resume(throwing: AppleSignInError.failed("Safari couldn't open the sign-in page: \(error.localizedDescription)"))
+                } else {
+                    continuation.resume()
+                }
             }
         }
     }
 
-    static func startURL(baseURL: URL, state: String, codeVerifier: String) -> URL? {
+    static func startURL(baseURL: URL, state: String, codeVerifier: String, scheme: String) -> URL? {
         var components = URLComponents(url: baseURL.appendingPathComponent("v1/auth/apple/start"), resolvingAgainstBaseURL: false)
         components?.queryItems = [
             URLQueryItem(name: "state", value: state),
             URLQueryItem(name: "code_challenge", value: codeChallenge(for: codeVerifier)),
+            URLQueryItem(name: "scheme", value: scheme),
         ]
         return components?.url
     }
 
-    /// Reads `godusage://auth?state=…&code=…` (or `&error=…`). A state that isn't this attempt's is
+    /// Reads `<scheme>://auth?state=…&code=…` (or `&error=…`). A state that isn't this attempt's is
     /// refused, so a stray or forged callback cannot sign the app in.
-    static func result(from url: URL, expectedState: String, codeVerifier: String) throws -> AppleSignInResult {
+    static func result(from url: URL, expectedState: String, codeVerifier: String, scheme: String) throws -> AppleSignInResult {
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let value = { (name: String) in items.first { $0.name == name }?.value }
-        guard url.scheme == TeamInviteLink.scheme, url.host() == "auth", value("state") == expectedState else {
+        guard url.scheme == scheme, url.host() == "auth", value("state") == expectedState else {
             throw AppleSignInError.failed("The sign-in response didn't match this sign-in. Try again.")
         }
         switch value("error") {
@@ -139,14 +173,6 @@ final class AppleWebSignIn: NSObject, AppleSignInProviding {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
-    }
-}
-
-extension AppleWebSignIn: ASWebAuthenticationPresentationContextProviding {
-    nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        MainActor.assumeIsolated {
-            NSApp.keyWindow ?? NSApp.windows.first { $0.isVisible } ?? NSWindow()
-        }
     }
 }
 

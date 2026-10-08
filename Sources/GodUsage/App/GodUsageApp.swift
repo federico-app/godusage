@@ -78,10 +78,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// `godusage://join/<code>` from an invite page. Launch can still be in flight, so the link
+    /// `godusage://auth?…` back from Sign in with Apple in Safari, or `godusage://join/<code>` from an
+    /// invite page (`godusage-dev://` for the DEV app). Launch can still be in flight, so an invite
     /// waits for the container, then lands on the Teams pane where the user confirms joining.
     public func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
+            if AppleWebSignIn.receive(url) { continue }
             guard let code = TeamInviteLink.code(from: url) else {
                 AppLog.warn(.teams, "ignored an unrecognized link: \(url.scheme ?? "?")://\(url.host() ?? "")")
                 continue

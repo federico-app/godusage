@@ -19,7 +19,8 @@ import { RedisCache } from "./redis";
  *                                       (`-` reads the dump from stdin)
  *
  * Environment: DATABASE_URL, REDIS_URL, APPLE_AUDIENCES, APPLE_WEB_CLIENT_ID, PROXY_SECRET (to accept
- * requests from the proxy Worker), DOWNLOAD_URL (optional), PORT (default 8787).
+ * requests from the proxy Worker), DOWNLOAD_URL (optional), APP_SCHEME (`godusage`, the default, or
+ * `godusage-dev`), PORT (default 8787).
  */
 
 function log(event: string, fields: Record<string, unknown> = {}): void {
@@ -28,6 +29,12 @@ function log(event: string, fields: Record<string, unknown> = {}): void {
 
 function logError(event: string, error: unknown): void {
   console.error(JSON.stringify({ event, message: error instanceof Error ? error.message : String(error) }));
+}
+
+function appScheme(value: string | undefined): Env["APP_SCHEME"] {
+  if (!value || value === "godusage") return "godusage";
+  if (value === "godusage-dev") return value;
+  throw new Error(`APP_SCHEME must be godusage or godusage-dev, got ${value}.`);
 }
 
 function required(name: string): string {
@@ -58,6 +65,7 @@ const env: Env = {
   APPLE_AUDIENCES: required("APPLE_AUDIENCES"),
   APPLE_WEB_CLIENT_ID: required("APPLE_WEB_CLIENT_ID"),
   DOWNLOAD_URL: process.env.DOWNLOAD_URL || "https://github.com/federico-app/godusage/releases/latest",
+  APP_SCHEME: appScheme(process.env.APP_SCHEME),
 };
 const app = createApp({ fetchAppleKeys, now: () => new Date() });
 

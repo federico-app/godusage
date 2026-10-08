@@ -52,6 +52,7 @@ export const env: Env = {
   APPLE_AUDIENCES: "com.montinovo.godusage",
   APPLE_WEB_CLIENT_ID: "com.montinovo.godusage.web",
   DOWNLOAD_URL: "https://github.com/federico-app/godusage/releases/latest",
+  APP_SCHEME: "godusage",
 };
 
 export async function closeEnv(): Promise<void> {

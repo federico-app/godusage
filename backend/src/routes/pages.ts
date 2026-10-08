@@ -27,7 +27,7 @@ export const invitePage: Handler = async ({ env, params }) => {
     }
     throw error;
   }
-  const appURL = `godusage://join/${encodeURIComponent(code)}`;
+  const appURL = `${env.APP_SCHEME}://join/${encodeURIComponent(code)}`;
   const members = team.memberCount === 1 ? "1 member" : `${team.memberCount} members`;
   return page(
     `Join ${team.name}`,

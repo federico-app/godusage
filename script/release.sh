@@ -46,6 +46,7 @@ case "$CHANNEL" in
     ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage"
     FEED_FILE="appcast.xml"
     DMG_PREFIX="GodUsage"
+    URL_SCHEME="godusage"   # AppChannel.urlScheme: invite links and the Sign in with Apple return
     ;;
   dev)
     APP_DISPLAY_NAME="GodUsage DEV"
@@ -53,6 +54,7 @@ case "$CHANNEL" in
     ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage.dev"
     FEED_FILE="appcast-dev.xml"
     DMG_PREFIX="GodUsage-DEV"
+    URL_SCHEME="godusage-dev"
     ;;
   *)
     echo "CHANNEL must be prod or dev, got: $CHANNEL" >&2
@@ -220,7 +222,7 @@ cat >"$APP_CONTENTS/Info.plist" <<PLIST
   <array>
     <dict>
       <key>CFBundleURLName</key><string>$BUNDLE_ID.invite</string>
-      <key>CFBundleURLSchemes</key><array><string>godusage</string></array>
+      <key>CFBundleURLSchemes</key><array><string>$URL_SCHEME</string></array>
     </dict>
   </array>
   <key>SUFeedURL</key><string>$FEED_URL</string>

@@ -24,6 +24,8 @@ services:
       # Shared with the proxy Worker (its PROXY_SECRET secret), so the server trusts the public host it sends.
       - PROXY_SECRET=${SERVICE_PASSWORD_64_PROXY}
       - DOWNLOAD_URL=${DOWNLOAD_URL:-https://github.com/federico-app/godusage/releases/latest}
+      # The app's URL scheme for the invite page's link: godusage-dev on the development resource.
+      - APP_SCHEME=${APP_SCHEME:-godusage}
     depends_on:
       postgres:
         condition: service_healthy
