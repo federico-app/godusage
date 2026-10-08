@@ -247,6 +247,12 @@ final class SettingsMigratorTests: XCTestCase {
         XCTAssertEqual(defaults.string(forKey: "godusage.layout.v1"), "custom")
     }
 
+    /// Whether a removed defaults domain holds nothing. macOS 26 reports a removed domain as nil;
+    /// macOS 27 reports it as an empty dictionary. Either way its data is gone.
+    private static func isGone(_ domain: String, in defaults: UserDefaults) -> Bool {
+        defaults.persistentDomain(forName: domain)?.isEmpty ?? true
+    }
+
     func testV4RemovesRetiredTelemetryDomainWithoutTouchingSettings() {
         let (defaults, domain) = makeDefaults("V4RetiredTelemetry")
         let telemetryDomain = "\(domain).telemetry"
@@ -264,13 +270,13 @@ final class SettingsMigratorTests: XCTestCase {
         let result = SettingsMigrator.migrate(defaults: defaults, domainName: domain)
 
         XCTAssertEqual(result, SettingsSchema.current)
-        XCTAssertNil(defaults.persistentDomain(forName: telemetryDomain))
+        XCTAssertTrue(Self.isGone(telemetryDomain, in: defaults))
         XCTAssertEqual(defaults.string(forKey: "openusage.layout.v1"), "custom")
 
         // The cleanup is safe to retry after an interrupted launch.
         defaults.set(3, forKey: SettingsMigrator.schemaVersionKey)
         XCTAssertEqual(SettingsMigrator.migrate(defaults: defaults, domainName: domain), SettingsSchema.current)
-        XCTAssertNil(defaults.persistentDomain(forName: telemetryDomain))
+        XCTAssertTrue(Self.isGone(telemetryDomain, in: defaults))
     }
 
     func testV5MovesGrokBotAboveExtraUsageAndGrokResetsAboveUsageStats() throws {
