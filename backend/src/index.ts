@@ -21,6 +21,7 @@ import { deleteDevice, listDevices, putDeviceUsage } from "./routes/usage";
 import { createChallenge, deleteChallenge, listChallenges } from "./routes/challenges";
 import { addReaction, removeReaction } from "./routes/social";
 import { getPlans, putPlans } from "./routes/plans";
+import { getMyUsage } from "./routes/myUsage";
 import { createPairingCode, exchangePairingCode, listLinkedDevices, unlinkDevice } from "./routes/pairing";
 import { browserSignOut, memberBoardPage, memberBoardSignIn } from "./routes/webBoard";
 import { exchangeWebSignIn, finishWebSignIn, startWebSignIn } from "./routes/webSignIn";
@@ -56,6 +57,7 @@ const ROUTES: Route[] = [
   route("PATCH", "/v1/me", updateMe),
   route("DELETE", "/v1/me", deleteMe),
   route("GET", "/v1/me/export", exportMe),
+  route("GET", "/v1/me/usage", getMyUsage),
   route("GET", "/v1/me/linked-devices", listLinkedDevices),
   route("DELETE", "/v1/me/linked-devices/:id", unlinkDevice),
   route("GET", "/v1/teams", listTeams),

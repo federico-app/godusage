@@ -130,6 +130,27 @@ export async function teamUsage(db: Queryable, teamID: string, from: string, to:
   return { days, models, sharedDays, sharedModels, sharedMembers, devices };
 }
 
+/**
+ * One user's own usage per provider and day from `from` to `to`, across all of their Macs: the same
+ * rules as a team board (Macs summed, account-scope rows from the newest Mac), with every account
+ * counted as theirs, shared or not.
+ */
+export async function userUsage(db: Queryable, userID: string, from: string, to: string): Promise<{ days: MemberDay[]; devices: TeamDevice[] }> {
+  const [deviceRows, dayRows] = await Promise.all([
+    db.query("SELECT user_id, id, updated_at, app_version FROM devices WHERE user_id = $1", [userID]),
+    db.query(
+      `SELECT user_id, device_id, provider, day, scope, account_key, tokens, cost_usd FROM usage_days
+       WHERE user_id = $1 AND day BETWEEN $2 AND $3`,
+      [userID, from, to],
+    ),
+  ]);
+  const devices = deviceRows as unknown as TeamDevice[];
+  const updatedAt = new Map(devices.map((device) => [`${device.user_id}\u0000${device.id}`, device.updated_at]));
+  const combined = combine(dayRows as unknown as UsageRow[], new Set(), updatedAt, false);
+  const days = [...combined.members.values()].map((value) => ({ user_id: value.user, provider: value.provider, day: value.day, tokens: value.tokens, cost: value.cost }));
+  return { days, devices };
+}
+
 interface Total {
   user: string;
   key: string;
