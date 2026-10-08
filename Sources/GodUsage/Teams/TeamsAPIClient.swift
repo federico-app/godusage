@@ -51,13 +51,14 @@ protocol TeamsAPI: Sendable {
     func savePlans(token: String, teamID: String, plans: [TeamPlan], today: String) async throws -> TeamPlansReport
 }
 
-/// The teams backend over HTTPS. Dev builds (`….dev` bundle id) talk to the dev Worker, which has
+/// The teams backend over HTTPS. Dev builds (`….dev` bundle id) talk to the dev server, which has
 /// its own database and accepts only dev-build sign-ins, so testing never touches real teams.
+/// Apps before 1.1.0 call the old `*.federico-c80.workers.dev` hosts, which proxy to the same servers.
 struct TeamsAPIClient: TeamsAPI {
-    static let productionBaseURL = URL(string: "https://godusage-api.federico-c80.workers.dev")!
-    static let developmentBaseURL = URL(string: "https://godusage-api-dev.federico-c80.workers.dev")!
+    static let productionBaseURL = URL(string: "https://api.godusage.com")!
+    static let developmentBaseURL = URL(string: "https://api-dev.godusage.com")!
     /// `defaults write <bundle id> godusage.teams.apiBaseURL http://127.0.0.1:8787` points a build at
-    /// `wrangler dev`.
+    /// a local server (`docker compose` in `backend/`).
     static let baseURLOverrideKey = "godusage.teams.apiBaseURL"
 
     static func defaultBaseURL(bundleIdentifier: String? = Bundle.main.bundleIdentifier, defaults: UserDefaults = .standard) -> URL {
