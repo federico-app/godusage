@@ -9,6 +9,19 @@ The dashboard shows:
 
 Data refreshes on launch, on returning to the foreground, and with pull-to-refresh. Liveness is bounded by the Macs' five-minute publish cadence.
 
+## Teams
+
+The Teams tab shows your own usage and your teams from the GodUsage server, with any iCloud account on the phone. Link the phone once by QR code: on a Mac signed in to Teams, open **Settings → Teams → iPhone and iPad → Link iPhone or iPad…**, then tap **Scan Code** in the app (or scan the code with the Camera app, which opens GodUsage). See [Teams](teams.md#iphone-and-ipad).
+
+Once linked, the tab shows:
+
+- **Your Usage**: Today and Last 30 Days spend and tokens, a 30-day chart, and the spend per provider, summed across your Macs. Macs share usage with the server only while you are in at least one team.
+- **Your Teams**: each team's spend leaderboard for Today, 7 Days, or 30 Days.
+
+The session is kept in the Keychain on this device. **Sign Out** (account menu) ends it; unlinking the phone from the Mac does too, and the tab then asks for a new code. The tab refreshes on opening, on returning to the foreground, and with pull-to-refresh.
+
+Debug builds talk to the dev server (`api-dev.godusage.com`) and Release builds to production (`api.godusage.com`), matching the Mac's DEV and production channels. A code from the other server is refused with a message naming the right build.
+
 ## Widgets
 
 The app ships lock screen and home screen widgets ("Across Your Macs") with the combined totals: Today on every family, plus Yesterday, Last 30 Days, and the usage trend where the size allows. Lock screen families are the inline line, the circular Today tile, and the rectangular Today/30 Days list. Home screen families are small and medium.

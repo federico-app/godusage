@@ -105,6 +105,7 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `POST /v1/auth/pairing/exchange` | `{ code, deviceName }` → `{ token, user }`: a session of the code's account. `deviceName` is at most 60 characters. |
 | `POST /v1/auth/logout` | Ends this session. |
 | `GET /v1/me/export` | Everything the server keeps about you, as one JSON document (the app's **Export My Data**). Session tokens are never included. |
+| `GET /v1/me/usage` | `?today=YYYY-MM-DD` → `{ from, to, days: [{ day, tokens, costUSD }], providers: [{ provider, tokens, costUSD }], lastSyncAt }`: your own last 30 days across your Macs (Macs summed, account-wide providers from the newest Mac), for the iPhone app. `days` lists every day of the window. |
 | `GET /v1/me/linked-devices` | `{ devices: [{ id, name, linkedAt }] }`: the sessions made by QR pairing, newest first. `id` is the session's token hash. |
 | `DELETE /v1/me/linked-devices/:id` | Signs that device out (404 if it isn't a linked device of this account). |
 | `GET`, `PATCH`, `DELETE /v1/me` | Read, rename (`{ displayName }`, at most 40 characters), or delete the account. |
