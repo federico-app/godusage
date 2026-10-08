@@ -53,7 +53,7 @@ There are two apps, like on the Mac, and they install side by side:
 | Dev | GodUsage DEV (TestFlight) | same as Debug | `api-dev.godusage.com` | `iCloud.com.montinovo.godusage.dev`, Production environment (the Mac DEV channel) |
 | Release | GodUsage | `com.montinovo.godusage.mobile`, `….mobile.widgets` | `api.godusage.com` | `iCloud.com.montinovo.godusage`, Production environment |
 
-The `DEV_CHANNEL` compilation condition (set for Debug and Dev) picks the dev server and container. Every App ID needs the CloudKit capability with its container. Signing is automatic with the development team. On device, the app must be signed into the same iCloud account as the Macs.
+Pick the app with the scheme: **GodUsage DEV** runs Debug and archives Dev, **GodUsage** runs and archives Release. Product → Archive then builds the app the scheme names. The `DEV_CHANNEL` compilation condition (set for Debug and Dev) picks the dev server and container. Every App ID needs the CloudKit capability with its container. Signing is automatic with the development team. On device, the app must be signed into the same iCloud account as the Macs.
 
 ## Releasing (TestFlight)
 

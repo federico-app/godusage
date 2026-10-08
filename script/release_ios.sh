@@ -45,10 +45,12 @@ if [ "${CHANNEL:-}" = "dev" ]; then
   BUNDLE_ID="com.montinovo.godusage.mobile.dev"
   WIDGET_BUNDLE_ID="com.montinovo.godusage.mobile.dev.widgets"
   CONFIGURATION="Dev"
+  SCHEME="GodUsage DEV"
 else
   BUNDLE_ID="com.montinovo.godusage.mobile"
   WIDGET_BUNDLE_ID="com.montinovo.godusage.mobile.widgets"
   CONFIGURATION="Release"
+  SCHEME="GodUsage"
 fi
 EXPECTED_TEAM_ID="${APPLE_TEAM_ID:-S6X72K86R8}"
 VERSION="$GODUSAGE_VERSION"
@@ -127,7 +129,7 @@ echo "==> Archiving GodUsageMobile ($CONFIGURATION) $VERSION ($BUILD) with profi
 # per-target profile specifiers were injected into the project file above.
 xcodebuild \
   -project ios/GodUsageMobile.xcodeproj \
-  -scheme GodUsageMobile \
+  -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
   -destination "generic/platform=iOS" \
   -archivePath "$ARCHIVE_PATH" \
