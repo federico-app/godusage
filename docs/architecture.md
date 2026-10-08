@@ -70,7 +70,7 @@ Settings is an ordinary preferences-style window (`App/SettingsWindowController.
 
 GodUsage runs on macOS 15 (Sequoia) and later. It is built against the latest SDK and back-deploys: on macOS 26 (Tahoe) it uses the system's Liquid Glass controls, and on macOS 15 it uses the standard controls with the same behavior. All of those version checks live in `Support/LiquidGlassFallbacks.swift`, so the views have no `#available` checks.
 
-The release build (`script/release.sh`) is a universal binary (arm64 and x86_64). The dev build (`script/build_and_run.sh`) is host-arch only to keep compile time down.
+The release build (`script/release.sh`) is a universal binary (arm64 and x86_64); the DEV channel's release build is arm64 only (`ARCHS`). The dev build (`script/build_and_run.sh`) is host-arch only to keep compile time down.
 
 ## Local HTTP API
 
