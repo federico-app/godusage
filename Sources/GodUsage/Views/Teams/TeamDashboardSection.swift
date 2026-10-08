@@ -19,6 +19,8 @@ struct TeamDashboardSection: View {
     /// The caret under the first members unfolds the rest of the ranking.
     @State private var showsAllMembers = false
     @State private var isLoading = false
+    /// The refresh button: this Mac's upload, then the board.
+    @State private var isRefreshing = false
 
     private let density = DensitySetting.compact
 
@@ -110,6 +112,10 @@ struct TeamDashboardSection: View {
         } else if stats != nil, teams.statsPaused {
             Text(TeamsStore.statsPausedMessage).font(.caption).foregroundStyle(.secondary)
         }
+        // Otherwise only Settings → Teams shows it, and the board just says "Not synced".
+        if let error = teams.uploadError {
+            Text("This Mac’s usage isn’t shared: \(error)").font(.caption).foregroundStyle(Theme.notice)
+        }
     }
 
     // MARK: - Controls
@@ -118,8 +124,27 @@ struct TeamDashboardSection: View {
         HStack(spacing: 8) {
             teamPicker
             Spacer(minLength: 4)
-            if isLoading { ProgressView().controlSize(.mini) }
+            if isLoading || isRefreshing {
+                ProgressView().controlSize(.mini)
+            } else {
+                Button {
+                    Task { await refresh() }
+                } label: {
+                    Image(systemName: "arrow.clockwise").font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Refresh Team")
+            }
         }
+    }
+
+    /// Sends this Mac's usage now, then reloads the board, like the Teams window's refresh.
+    private func refresh() async {
+        isRefreshing = true
+        await container.teams.uploadNow()
+        await load()
+        isRefreshing = false
     }
 
     @ViewBuilder
