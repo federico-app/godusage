@@ -40,7 +40,7 @@ async function d1Export(): Promise<string> {
     INSERT INTO login_codes VALUES ('code-hash', 'u-bob', 'cc', 1, '${at}');
     INSERT INTO reactions VALUES ('${TEAM}', 'u-bob', 'u-ada', 'fire', '2026-10-05', '${at}');
     INSERT INTO challenges VALUES ('ch-1', '${TEAM}', 'most_tokens', '2026-10-01', '2026-10-07', 'u-ada', '${at}');
-    INSERT INTO team_plans VALUES ('plan-1', '${TEAM}', 'claude', 'Max', 200.0, 1, 0, '${at}');
+    INSERT INTO team_plans VALUES ('plan-1', '${TEAM}', 'claude', 'Max', 200.0, 1, 0, '${at}', '["u-ada"]');
     INSERT INTO team_champions VALUES ('${TEAM}', '2026-10', '[]', '${at}');
     INSERT INTO stats_cache VALUES ('${TEAM}', 'stats|7d', 7, '{}', '${at}');
     INSERT INTO read_budget VALUES ('2026-10-05', 1234);
@@ -75,7 +75,7 @@ describe("import-d1", () => {
     expect(await env.db.query("SELECT state FROM auth_requests")).toEqual([{ state: "st" }]);
     expect(await env.db.first("SELECT display_name FROM users WHERE id = 'u-bob'")).toEqual({ display_name: "Bob O'Brien" });
     expect(await env.db.first("SELECT app_version FROM devices WHERE id = 'mac-1'")).toEqual({ app_version: "1.0.9" });
-    expect(await env.db.first("SELECT monthly_cost_usd, renewal_day FROM team_plans")).toEqual({ monthly_cost_usd: 200, renewal_day: 1 });
+    expect(await env.db.first("SELECT monthly_cost_usd, renewal_day, member_ids FROM team_plans")).toEqual({ monthly_cost_usd: 200, renewal_day: 1, member_ids: '["u-ada"]' });
 
     // The imported session works, and the board adds up.
     const stats = await api("GET", `/v1/teams/${TEAM}/stats?range=today`, { token: TOKEN });
