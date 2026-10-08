@@ -84,15 +84,14 @@ struct TeamsLeaderboardView: View {
         }
         isLoading = true
         defer { isLoading = false }
+        // Today's leader (👑) and the month-to-date projection come with the board in one request.
+        let extras = TeamsStore.extraBoards(range: range, sort: sort, endingOn: nil)
         do {
-            stats = try await container.teams.stats(for: teamID, range: range, sort: sort)
+            stats = try await container.teams.stats(for: teamID, range: range, sort: sort, include: extras)
             loadError = nil
         } catch {
             loadError = error.localizedDescription
         }
-        // Today's leader (👑) and the month-to-date projection.
-        await container.teams.loadStats(teamID: teamID, range: .today, sort: .cost)
-        await container.teams.loadStats(teamID: teamID, range: .monthToDate, sort: .cost)
     }
 
     // MARK: - Chrome
@@ -174,6 +173,8 @@ struct TeamsLeaderboardView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     if let loadError {
                         Text(loadError).font(.caption).foregroundStyle(Theme.notice)
+                    } else if container.teams.statsPaused {
+                        Text(TeamsStore.statsPausedMessage).font(.caption).foregroundStyle(.secondary)
                     }
                     summary(stats)
                     switch mode {

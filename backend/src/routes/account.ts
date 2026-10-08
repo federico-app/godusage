@@ -1,6 +1,7 @@
 import { verifyAppleIdentityToken } from "../apple";
 import type { Handler } from "../context";
 import { badRequest, json, noContent, nowISO, readJSONObject, requireName } from "../http";
+import { forgetUserTeamsCache } from "../readGuard";
 import { createSession, deleteSession, requireUser } from "../session";
 
 export const DISPLAY_NAME_MAX = 40;
@@ -64,7 +65,11 @@ export const updateMe: Handler = async ({ request, env }) => {
   const user = await requireUser(request, env.DB);
   const body = await readJSONObject(request);
   const displayName = requireName(body.displayName, "displayName", DISPLAY_NAME_MAX);
-  await env.DB.prepare("UPDATE users SET display_name = ? WHERE id = ?").bind(displayName, user.id).run();
+  await env.DB.batch([
+    env.DB.prepare("UPDATE users SET display_name = ? WHERE id = ?").bind(displayName, user.id),
+    // Cached boards show the old name: drop them.
+    forgetUserTeamsCache(env.DB, user.id),
+  ]);
   return json({ user: { id: user.id, displayName } });
 };
 
@@ -76,8 +81,9 @@ export const updateMe: Handler = async ({ request, env }) => {
 export const deleteMe: Handler = async ({ request, env }) => {
   const user = await requireUser(request, env.DB);
   await env.DB.batch([
-    // Champions are among current members: recompute them without this account.
+    // Champions and cached boards are among current members: recompute them without this account.
     env.DB.prepare("DELETE FROM team_champions WHERE team_id IN (SELECT team_id FROM team_members WHERE user_id = ?)").bind(user.id),
+    forgetUserTeamsCache(env.DB, user.id),
     env.DB.prepare(
       `DELETE FROM teams WHERE id IN (
          SELECT m.team_id FROM team_members m WHERE m.user_id = ?1 AND m.role = 'owner'

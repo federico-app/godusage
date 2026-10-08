@@ -37,8 +37,11 @@ protocol TeamsAPI: Sendable {
     func setMemberRole(token: String, teamID: String, userID: String, role: TeamRole) async throws -> TeamDetail
     func invite(token: String, code: String) async throws -> InvitePreview
     func acceptInvite(token: String, code: String) async throws -> TeamDetail
-    func stats(token: String, teamID: String, range: StatsRange, sort: StatsSort, today: String) async throws -> TeamStatsResponse
-    func uploadUsage(token: String, deviceID: String, upload: TeamUsageUpload) async throws
+    /// `include` (`today`, `monthToDate`) adds those spend boards to the response's `extra`.
+    func stats(token: String, teamID: String, range: StatsRange, sort: StatsSort, today: String, include: [StatsRange]) async throws -> TeamStatsResponse
+    /// Returns whether the server takes partial uploads (older servers would read one as a full
+    /// window and drop the days it leaves out).
+    func uploadUsage(token: String, deviceID: String, upload: TeamUsageUpload) async throws -> Bool
     func setReaction(token: String, teamID: String, userID: String, reaction: TeamReaction, on: Bool) async throws -> TeamReactions
     func challenges(token: String, teamID: String, today: String) async throws -> [TeamChallenge]
     func createChallenge(token: String, teamID: String, kind: ChallengeKind, days: Int, today: String) async throws -> TeamChallenge
@@ -159,13 +162,16 @@ struct TeamsAPIClient: TeamsAPI {
         return response.team
     }
 
-    func stats(token: String, teamID: String, range: StatsRange, sort: StatsSort, today: String) async throws -> TeamStatsResponse {
-        let query = "range=\(range.rawValue)&sort=\(sort.rawValue)&today=\(escaped(today))"
+    func stats(token: String, teamID: String, range: StatsRange, sort: StatsSort, today: String, include: [StatsRange]) async throws -> TeamStatsResponse {
+        var query = "range=\(range.rawValue)&sort=\(sort.rawValue)&today=\(escaped(today))"
+        if !include.isEmpty { query += "&include=\(include.map(\.rawValue).joined(separator: ","))" }
         return try await send("GET", "/v1/teams/\(escaped(teamID))/stats?\(query)", token: token)
     }
 
-    func uploadUsage(token: String, deviceID: String, upload: TeamUsageUpload) async throws {
-        try await sendEmpty("PUT", "/v1/devices/\(escaped(deviceID))/usage", token: token, body: upload)
+    func uploadUsage(token: String, deviceID: String, upload: TeamUsageUpload) async throws -> Bool {
+        struct Envelope: Decodable { var partialUploads: Bool? }
+        let response: Envelope = try await send("PUT", "/v1/devices/\(escaped(deviceID))/usage", token: token, body: upload)
+        return response.partialUploads ?? false
     }
 
     func setReaction(token: String, teamID: String, userID: String, reaction: TeamReaction, on: Bool) async throws -> TeamReactions {

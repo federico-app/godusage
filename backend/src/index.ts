@@ -4,7 +4,7 @@ import { ApiError, errorResponse, json } from "./http";
 import { bindingRateLimiter, RateLimitedError, rateLimitKey, rateLimitKind } from "./rateLimit";
 import { deleteMe, exportMe, getMe, signInWithApple, signOut, updateMe } from "./routes/account";
 import { privacyPage, termsPage } from "./routes/legal";
-import { homePage, invitePage, publicBoardPage } from "./routes/pages";
+import { escapeHTML, homePage, invitePage, page, publicBoardPage } from "./routes/pages";
 import { getTeamStats } from "./routes/stats";
 import {
   acceptInvite,
@@ -99,14 +99,14 @@ export function createApp(deps: AppDeps) {
           if (limitKind) {
             const limiter = deps.rateLimiter ?? bindingRateLimiter(env);
             if (!(await limiter(limitKind, await rateLimitKey(request, limitKind)))) {
-              const response = errorResponse(new RateLimitedError());
+              const response = limitKind === "page" ? errorPage(new RateLimitedError()) : errorResponse(new RateLimitedError());
               response.headers.set("retry-after", "60");
               return response;
             }
           }
           return await candidate.handler({ request, env, url, params, deps });
         } catch (error) {
-          if (error instanceof ApiError) return errorResponse(error);
+          if (error instanceof ApiError) return url.pathname.startsWith("/v1/") ? errorResponse(error) : errorPage(error);
           console.error(
             JSON.stringify({
               event: "unhandled_error",
@@ -124,6 +124,11 @@ export function createApp(deps: AppDeps) {
         : errorResponse(new ApiError(404, "not_found", "Not found."));
     },
   };
+}
+
+/** Pages answer errors with a page, not JSON. */
+function errorPage(error: ApiError): Response {
+  return page("Something Went Wrong", `<h1>Something Went Wrong</h1><p class="muted">${escapeHTML(error.message)}</p>`, error.status);
 }
 
 const app = createApp({ fetchAppleKeys, now: () => new Date() });

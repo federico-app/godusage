@@ -79,11 +79,15 @@ struct TeamDashboardSection: View {
         if teams.teams.isEmpty, teams.isSignedIn { await teams.refresh() }
         guard let teamID = teams.selectedTeamID else { return }
         isLoading = true
-        await teams.loadStats(teamID: teamID, range: range, sort: sort, endingOn: endingOn)
+        // Today's leader (👑) and the month-to-date projection come with the board in one request.
+        let extras = TeamsStore.extraBoards(range: range, sort: sort, endingOn: endingOn)
+        await teams.loadStats(teamID: teamID, range: range, sort: sort, endingOn: endingOn, include: extras)
         isLoading = false
-        // Today's leader (👑), the month-to-date projection, and challenges, alongside the board.
-        if period != .today || sort != .cost { await teams.loadStats(teamID: teamID, range: .today, sort: .cost) }
-        await teams.loadStats(teamID: teamID, range: .monthToDate, sort: .cost)
+        if endingOn != nil {
+            // A past period's board: today's extras need their own request.
+            await teams.loadStats(teamID: teamID, range: .today, sort: .cost)
+            await teams.loadStats(teamID: teamID, range: .monthToDate, sort: .cost)
+        }
         await container.teamsSocial.loadChallenges(teamID: teamID)
     }
 
@@ -103,6 +107,8 @@ struct TeamDashboardSection: View {
         }
         if stats != nil, let error = teams.statsError {
             Text(error).font(.caption).foregroundStyle(Theme.notice)
+        } else if stats != nil, teams.statsPaused {
+            Text(TeamsStore.statsPausedMessage).font(.caption).foregroundStyle(.secondary)
         }
     }
 

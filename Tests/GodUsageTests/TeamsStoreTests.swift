@@ -136,6 +136,43 @@ final class TeamsStoreTests: XCTestCase {
         store.scheduleUpload()
         try await waitUntil { self.api.uploads.count == 2 }
         XCTAssertEqual(api.uploads.last?.upload.providers.map(\.provider), ["claude"])
+        XCTAssertNil(api.uploads.first?.upload.partial, "the first upload after launch sends the whole window")
+        XCTAssertEqual(api.uploads.last?.upload.partial, true, "later ones send only what changed")
+        XCTAssertNil(api.uploads.last?.upload.windowStart)
+    }
+
+    func testOnlyAServerThatTakesPartialUploadsGetsThem() async throws {
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        api.teamsResult = [TeamSummary(id: "t1", name: "Crew", role: .member, memberCount: 2)]
+        api.takesPartialUploads = false
+        let store = makeStore()
+        await store.refresh()
+        try await waitUntil { self.api.uploads.count == 1 }
+
+        sources = [TeamHistorySource(cardID: "claude", scope: .machineLocal, history: ProviderUsageHistory(series: DailyUsageSeries(daily: [
+            DailyUsageEntry(date: "2026-10-04", totalTokens: 1_000, costUSD: 1.5),
+        ])))]
+        store.scheduleUpload()
+        try await waitUntil { self.api.uploads.count == 2 }
+        XCTAssertNil(api.uploads.last?.upload.partial)
+        XCTAssertNotNil(api.uploads.last?.upload.windowStart)
+    }
+
+    func testABoardLoadsTodayAndTheMonthInTheSameRequest() async {
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        api.statsResult = board([("u1", "Fede", 1, 5)])
+        api.statsPaused = true
+        let store = makeStore()
+        let extras = TeamsStore.extraBoards(range: .month, sort: .tokens, endingOn: nil)
+        await store.loadStats(teamID: "t1", range: .month, sort: .tokens, include: extras)
+
+        XCTAssertEqual(api.statsCalls.count, 1)
+        XCTAssertEqual(api.statsCalls.first?.include, [.today, .monthToDate])
+        XCTAssertNotNil(store.cachedStats[.init(teamID: "t1", range: .today, sort: .cost)])
+        XCTAssertNotNil(store.cachedStats[.init(teamID: "t1", range: .monthToDate, sort: .cost)])
+        XCTAssertTrue(store.statsPaused)
+        XCTAssertEqual(TeamsStore.extraBoards(range: .today, sort: .cost, endingOn: nil), [.monthToDate])
+        XCTAssertEqual(TeamsStore.extraBoards(range: .week, sort: .cost, endingOn: "2026-09-30"), [])
     }
 
     func testAForcedUploadSurvivesALaterPlainSchedule() async throws {
@@ -364,13 +401,19 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
     func acceptInvite(token: String, code: String) async throws -> TeamDetail { crew }
 
     var statsResult: TeamStats?
-    func stats(token: String, teamID: String, range: StatsRange, sort: StatsSort, today: String) async throws -> TeamStatsResponse {
+    var statsCalls: [(range: StatsRange, include: [StatsRange])] = []
+    var statsPaused: Bool?
+    func stats(token: String, teamID: String, range: StatsRange, sort: StatsSort, today: String, include: [StatsRange]) async throws -> TeamStatsResponse {
+        statsCalls.append((range, include))
         guard let statsResult else { throw TeamsAPIError(kind: .server, message: "unused") }
-        return TeamStatsResponse(team: .init(id: teamID, name: "Crew"), stats: statsResult)
+        let extra = Dictionary(uniqueKeysWithValues: include.map { ($0.rawValue, statsResult) })
+        return TeamStatsResponse(team: .init(id: teamID, name: "Crew"), stats: statsResult, extra: include.isEmpty ? nil : extra, paused: statsPaused)
     }
 
-    func uploadUsage(token: String, deviceID: String, upload: TeamUsageUpload) async throws {
+    var takesPartialUploads = true
+    func uploadUsage(token: String, deviceID: String, upload: TeamUsageUpload) async throws -> Bool {
         uploads.append((deviceID, upload))
+        return takesPartialUploads
     }
 
     func deleteDevice(token: String, deviceID: String) async throws {

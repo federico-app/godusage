@@ -372,14 +372,17 @@ enum TeamsFormat {
 }
 
 /// Movement since the previous period: ▲2 (gained two places), ▼1, or "New" for a member who had no
-/// usage then. Arrow and number carry the meaning; the color only reinforces it.
+/// usage then. Arrow and number carry the meaning; the color only reinforces it. The Year board has
+/// none: the server doesn't read a second year of history for it.
 struct RankChangeBadge: View {
     let member: TeamStats.Member
     let range: StatsRange
     let sort: StatsSort
 
     var body: some View {
-        if let change = member.rankChange {
+        if range == .year {
+            EmptyView()
+        } else if let change = member.rankChange {
             if change != 0 {
                 HStack(spacing: 1) {
                     Image(systemName: change > 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
