@@ -48,6 +48,8 @@ Export the Developer ID Application cert (with its private key) from Keychain Ac
 - it updates `appcast-dev.xml` on `update-feed` (last 10 builds) and deploys `update-feed` to GitHub Pages itself, so it does not depend on workflows on `main`. Installed DEV apps update from that feed and never see production releases, and production apps never see DEV builds. The production pipeline ignores `dev-*` prereleases when it checks the feed's release history.
 - it runs in its own queue, so a push to `develop` never cancels a production release that is waiting to start. A newer push replaces a DEV run that is still waiting, so the feed only moves forward. If a DEV build and a production release publish `update-feed` at the same moment, one push fails; rerun it.
 
+CI (`ci.yml`) runs on pull requests and on pushes to `main`, not on pushes to `develop`: the PR already ran it, and branch protection on `develop` requires the PR branch to be up to date before merging.
+
 Merge `develop` into `main` and tag it to ship production.
 
 The dev container needs its CloudKit schema deployed to **Production** too, because a Developer ID build uses the Production environment (see [iCloud Sync](icloud-sync.md#development-and-release-setup)).

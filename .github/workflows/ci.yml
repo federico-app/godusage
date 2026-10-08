@@ -2,8 +2,11 @@ name: CI
 
 on:
   # The Swift edition ships from `main`. The frozen Tauri edition is preserved on `tauri-legacy`.
+  # Not on pushes to `develop`: every change reaches it through a PR, which already ran these jobs,
+  # and release-dev.yml runs the Swift tests again before it publishes a DEV build. Branch
+  # protection on `develop` requires PR branches to be up to date, so the tested code is the merge.
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main, develop]
 
