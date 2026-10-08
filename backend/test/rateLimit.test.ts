@@ -5,12 +5,16 @@ import { rateLimitKind } from "../src/rateLimit";
 import { NOW, publicJWK, signIn } from "./support";
 
 describe("rate limits", () => {
-  it("limits sign-in routes per IP and API routes per session", () => {
+  it("limits sign-in routes and pages per IP and API routes per session", () => {
     expect(rateLimitKind("/v1/auth/apple/start")).toBe("auth");
     expect(rateLimitKind("/teams/abc/sign-in")).toBe("auth");
     expect(rateLimitKind("/v1/teams")).toBe("api");
     expect(rateLimitKind("/v1/health")).toBeNull();
-    expect(rateLimitKind("/join/abc")).toBeNull();
+    expect(rateLimitKind("/join/abc")).toBe("page");
+    expect(rateLimitKind("/t/abc")).toBe("page");
+    expect(rateLimitKind("/teams/abc")).toBe("page");
+    expect(rateLimitKind("/")).toBeNull();
+    expect(rateLimitKind("/privacy")).toBeNull();
   });
 
   it("answers 429 with Retry-After once a client is over its limit", async () => {

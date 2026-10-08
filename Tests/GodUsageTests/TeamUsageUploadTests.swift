@@ -46,6 +46,66 @@ final class TeamUsageUploadTests: XCTestCase {
         XCTAssertFalse(json.contains("ab12cd34"), "account ids must not leave the Mac")
     }
 
+    private func body(_ providers: [TeamUsageUpload.Provider]) -> TeamUsageUpload {
+        TeamUsageUpload(deviceName: "MacBook", appVersion: "1.0.9", windowStart: "2026-10-04", providers: providers)
+    }
+
+    private func day(_ date: String, _ tokens: Int) -> TeamUsageUpload.Day {
+        .init(date: date, tokens: tokens, costUSD: Double(tokens), models: [.init(model: "m", tokens: tokens, costUSD: Double(tokens))])
+    }
+
+    func testAPartialUploadCarriesOnlyTheChangedProviderDays() throws {
+        let previous = body([
+            .init(provider: "claude", scope: "device", days: [day("2026-10-04", 1), day("2026-10-05", 2)]),
+            .init(provider: "codex", scope: "device", days: [day("2026-10-05", 3)]),
+        ])
+        let current = body([
+            .init(provider: "claude", scope: "device", days: [day("2026-10-04", 1), day("2026-10-05", 5)]),
+            .init(provider: "codex", scope: "device", days: [day("2026-10-05", 3)]),
+            .init(provider: "grok", scope: "device", days: [day("2026-10-05", 1)]),
+        ])
+        let partial = try XCTUnwrap(TeamUsageUpload.partial(from: previous, to: current))
+        XCTAssertEqual(partial.partial, true)
+        XCTAssertNil(partial.windowStart)
+        XCTAssertEqual(partial.providers.map(\.provider), ["claude", "grok"])
+        XCTAssertEqual(partial.providers.first?.days.map(\.date), ["2026-10-05"])
+
+        let json = String(decoding: try JSONEncoder().encode(partial), as: UTF8.self)
+        XCTAssertTrue(json.contains(#""partial":true"#))
+        XCTAssertFalse(json.contains("windowStart"))
+        XCTAssertFalse(String(decoding: try JSONEncoder().encode(current), as: UTF8.self).contains("partial"))
+    }
+
+    func testAFullUploadIsNeededWhenUsageDisappears() {
+        let previous = body([
+            .init(provider: "claude", scope: "device", days: [day("2026-10-04", 1), day("2026-10-05", 2)]),
+            .init(provider: "codex", scope: "device", days: [day("2026-10-05", 3)]),
+        ])
+        // Codex was turned off.
+        XCTAssertNil(TeamUsageUpload.partial(from: previous, to: body([
+            .init(provider: "claude", scope: "device", days: [day("2026-10-04", 1), day("2026-10-05", 2)]),
+        ])))
+        // A day of Claude is gone.
+        XCTAssertNil(TeamUsageUpload.partial(from: previous, to: body([
+            .init(provider: "claude", scope: "device", days: [day("2026-10-05", 2)]),
+            .init(provider: "codex", scope: "device", days: [day("2026-10-05", 3)]),
+        ])))
+        // Codex moved to account scope.
+        XCTAssertNil(TeamUsageUpload.partial(from: previous, to: body([
+            .init(provider: "claude", scope: "device", days: [day("2026-10-04", 1), day("2026-10-05", 2)]),
+            .init(provider: "codex", scope: "account", days: [day("2026-10-05", 3)]),
+        ])))
+    }
+
+    func testADayLeavingTheWindowStillAllowsAPartialUpload() throws {
+        let previous = TeamUsageUpload(deviceName: "MacBook", windowStart: "2026-10-03", providers: [
+            .init(provider: "claude", scope: "device", days: [day("2026-10-03", 1), day("2026-10-04", 2)]),
+        ])
+        let current = body([.init(provider: "claude", scope: "device", days: [day("2026-10-04", 2), day("2026-10-05", 4)])])
+        let partial = try XCTUnwrap(TeamUsageUpload.partial(from: previous, to: current))
+        XCTAssertEqual(partial.providers.first?.days.map(\.date), ["2026-10-05"])
+    }
+
     func testAccountWideSourcesAreMarkedAccountScope() {
         let upload = TeamUsageUpload.make(
             sources: [TeamHistorySource(cardID: "cursor", scope: .accountWide, history: history([("2026-10-05", 9, 2)]))],

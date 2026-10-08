@@ -2,7 +2,8 @@ import type { Handler } from "../context";
 import { badRequest, forbidden, json, notFound, nowISO } from "../http";
 import { requireUser, type SessionUser } from "../session";
 import { addDays, dayKey } from "../usagePayload";
-import { EFFECTIVE_DAYS } from "../stats";
+import { forgetTeamCache, tryGuardedWork, type ReadGuard } from "../readGuard";
+import { teamUsage } from "../teamUsage";
 
 export const REACTIONS = ["fire", "clap", "clown"] as const;
 export type Reaction = (typeof REACTIONS)[number];
@@ -80,22 +81,29 @@ export interface Champion {
   costUSD: number;
 }
 
-/** How long computed champions are reused. They only move when a month ends or a late upload lands. */
-const CHAMPIONS_TTL_MS = 60 * 60 * 1000;
+/**
+ * How long computed champions are reused. They only move when a month ends or a late upload lands,
+ * and computing them reads a year of every member's daily totals.
+ */
+const CHAMPIONS_TTL_MS = 6 * 60 * 60 * 1000;
 
 /**
  * The top spender of each of the last 12 complete calendar months (newest first), among the team's
  * current members. A month nobody spent in has no champion. Reads a year of usage, and every stats
- * request asks for it, so the result is kept in `team_champions` for an hour.
+ * request asks for it, so the result is kept in `team_champions` for six hours. Once the day's read
+ * budget is spent, the last result is kept (or none, if there is none).
  */
-export async function teamChampions(db: D1Database, teamID: string, today: string, now: Date): Promise<Champion[]> {
+export async function teamChampions(guard: ReadGuard, teamID: string, today: string): Promise<Champion[]> {
+  const { db, now } = guard;
   const month = today.slice(0, 7);
   const cached = await db.prepare("SELECT champions, computed_at FROM team_champions WHERE team_id = ? AND month = ?")
     .bind(teamID, month)
     .first<{ champions: string; computed_at: string }>();
   if (cached && now.getTime() - Date.parse(cached.computed_at) < CHAMPIONS_TTL_MS) return JSON.parse(cached.champions) as Champion[];
 
-  const champions = await computeChampions(db, teamID, today);
+  const computed = await tryGuardedWork(guard, (metered) => computeChampions(metered, teamID, today));
+  if (!computed) return cached ? (JSON.parse(cached.champions) as Champion[]) : [];
+  const champions = computed.value;
   await db.prepare(
     `INSERT INTO team_champions (team_id, month, champions, computed_at) VALUES (?, ?, ?, ?)
      ON CONFLICT (team_id, month) DO UPDATE SET champions = excluded.champions, computed_at = excluded.computed_at`,
@@ -105,9 +113,9 @@ export async function teamChampions(db: D1Database, teamID: string, today: strin
   return champions;
 }
 
-/** Drops a team's cached champions, after its members change. */
+/** Drops a team's cached champions and stats, after its members change. */
 export async function forgetChampions(db: D1Database, teamID: string): Promise<void> {
-  await db.prepare("DELETE FROM team_champions WHERE team_id = ?").bind(teamID).run();
+  await db.batch([db.prepare("DELETE FROM team_champions WHERE team_id = ?").bind(teamID), forgetTeamCache(db, teamID)]);
 }
 
 export async function computeChampions(db: D1Database, teamID: string, today: string): Promise<Champion[]> {
@@ -116,13 +124,15 @@ export async function computeChampions(db: D1Database, teamID: string, today: st
   let from = thisMonth;
   for (let i = 0; i < 12; i++) from = `${addDays(from, -1).slice(0, 7)}-01`;
 
-  const [members, days] = await db.batch([
-    db.prepare("SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = ?").bind(teamID),
-    db.prepare(EFFECTIVE_DAYS).bind(teamID, from, to),
+  const [members, usage] = await Promise.all([
+    db.prepare("SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = ?")
+      .bind(teamID)
+      .all<{ id: string; display_name: string }>(),
+    teamUsage(db, teamID, from, to, { models: false }),
   ]);
-  const names = new Map((members!.results as { id: string; display_name: string }[]).map((m) => [m.id, m.display_name]));
+  const names = new Map(members.results.map((m) => [m.id, m.display_name]));
   const byMonth = new Map<string, Map<string, number>>();
-  for (const row of days!.results as { user_id: string; day: string; cost: number }[]) {
+  for (const row of usage.days) {
     const month = row.day.slice(0, 7);
     const totals = byMonth.get(month) ?? new Map<string, number>();
     totals.set(row.user_id, (totals.get(row.user_id) ?? 0) + row.cost);

@@ -18,12 +18,17 @@
     // this Worker's /v1/auth/apple/callback.
     "APPLE_WEB_CLIENT_ID": "com.montinovo.godusage.web",
     // Where the invite page sends people who do not have the app yet.
-    "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest"
+    "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest",
+    // Rows a day this environment may spend on expensive reads (see src/readGuard.ts). D1's free
+    // plan allows 5M a day for the whole account, shared with dev; the rest is headroom for the
+    // small per-request reads (sessions, memberships) that are not counted.
+    "READ_BUDGET_PER_DAY": "3500000"
   },
   // Request limits per client; see src/rateLimit.ts. Namespace ids are per account and environment.
   "ratelimits": [
     { "name": "AUTH_LIMITER", "namespace_id": "1001", "simple": { "limit": 20, "period": 60 } },
-    { "name": "API_LIMITER", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } }
+    { "name": "API_LIMITER", "namespace_id": "1002", "simple": { "limit": 120, "period": 60 } },
+    { "name": "PAGE_LIMITER", "namespace_id": "1003", "simple": { "limit": 30, "period": 60 } }
   ],
   "d1_databases": [
     {
@@ -40,11 +45,13 @@
       "vars": {
         "APPLE_AUDIENCES": "com.montinovo.godusage.dev",
         "APPLE_WEB_CLIENT_ID": "com.montinovo.godusage.web.dev",
-        "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest"
+        "DOWNLOAD_URL": "https://github.com/federico-app/godusage/releases/latest",
+        "READ_BUDGET_PER_DAY": "500000"
       },
       "ratelimits": [
         { "name": "AUTH_LIMITER", "namespace_id": "2001", "simple": { "limit": 20, "period": 60 } },
-        { "name": "API_LIMITER", "namespace_id": "2002", "simple": { "limit": 120, "period": 60 } }
+        { "name": "API_LIMITER", "namespace_id": "2002", "simple": { "limit": 120, "period": 60 } },
+        { "name": "PAGE_LIMITER", "namespace_id": "2003", "simple": { "limit": 30, "period": 60 } }
       ],
       "d1_databases": [
         {

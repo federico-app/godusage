@@ -42,6 +42,9 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
     /// The first day of this Mac's window. The server replaces this Mac's days from here on and
     /// keeps older ones, so history builds up beyond the 30-day window.
     var windowStart: String?
+    /// Set on a partial upload: it carries only the provider-days that changed since the last
+    /// accepted upload, and the server replaces just those (see `partial(from:to:)`).
+    var partial: Bool?
     var providers: [Provider]
 
     /// Builds the upload from this Mac's cards. Account cards (`claude@ab12cd34`) fold into their
@@ -105,6 +108,34 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
             return Provider(provider: family, scope: isAccountWide ? "account" : "device", account: isAccountWide ? entry.account : nil, days: days)
         }
         return TeamUsageUpload(deviceName: deviceName, appVersion: appVersion, windowStart: dayKeys.min(), providers: providers)
+    }
+
+    /// The provider-days of `current` that differ from `previous` (the last body the server accepted),
+    /// as a partial upload, so the server replaces a day or two instead of re-reading the whole
+    /// window (the teams database is billed per row read). Nil when only a full upload is right:
+    /// a provider-day in the window disappeared, or a provider changed scope or account.
+    static func partial(from previous: TeamUsageUpload, to current: TeamUsageUpload) -> TeamUsageUpload? {
+        let windowStart = current.windowStart ?? ""
+        let currentProviders = Dictionary(current.providers.map { ($0.provider, $0) }, uniquingKeysWith: { first, _ in first })
+        var previousDays: [String: [String: Day]] = [:]
+        for old in previous.providers {
+            let days = old.days.filter { $0.date >= windowStart }
+            previousDays[old.provider] = Dictionary(days.map { ($0.date, $0) }, uniquingKeysWith: { first, _ in first })
+            guard !days.isEmpty else { continue }
+            guard let new = currentProviders[old.provider], new.scope == old.scope, new.account == old.account else { return nil }
+            let dates = Set(new.days.map(\.date))
+            if days.contains(where: { !dates.contains($0.date) }) { return nil }
+        }
+        var upload = current
+        upload.windowStart = nil
+        upload.partial = true
+        upload.providers = current.providers.compactMap { provider in
+            let old = previousDays[provider.provider] ?? [:]
+            var changed = provider
+            changed.days = provider.days.filter { old[$0.date] != $0 }
+            return changed.days.isEmpty ? nil : changed
+        }
+        return upload
     }
 
     /// Unknown plus a known cost stays the known part: spend tiles also count only priced usage.
