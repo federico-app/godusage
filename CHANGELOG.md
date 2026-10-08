@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.9
+
+### Bug Fixes
+- Keep the teams backend under D1's daily read limit ([#25](https://github.com/federico-app/godusage/pull/25)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.0.8...v1.0.9](https://github.com/federico-app/godusage/compare/v1.0.8...v1.0.9)
+
+- [97ddeaf](https://github.com/federico-app/godusage/commit/97ddeaf9f73b16138ef49276a4b2f0f4bb796dca) Keep the teams backend under D1's daily read limit by @andreaAppload
+
 ## v1.0.8
 
 ### New Features
