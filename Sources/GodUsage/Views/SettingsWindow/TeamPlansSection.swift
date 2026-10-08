@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Settings → Teams: the subscriptions the selected team pays for. Only the owner edits them; the
-/// Plans tab of the Teams window compares each one with the team's usage at API prices.
+/// Settings → Teams: the subscriptions the selected team pays for and who each covers. Only the
+/// owner edits them; the Plans tab of the Teams window compares each one with the covered members'
+/// usage at API prices.
 struct TeamPlansSection: View {
     @Environment(AppContainer.self) private var container
     let teamID: String
@@ -11,11 +12,12 @@ struct TeamPlansSection: View {
 
     private var store: TeamPlansStore { container.teamPlans }
     private var saved: [TeamPlan] { store.report(teamID: teamID)?.plans.map(\.plan) ?? [] }
+    private var members: [TeamMember] { container.teams.details[teamID]?.members ?? [] }
 
     var body: some View {
         SettingsSection("Plans") {
             VStack(alignment: .leading, spacing: 10) {
-                Text("The subscriptions this team pays for. The Plans tab in the Teams window compares each with the team's usage at API prices.")
+                Text("The subscriptions this team pays for and who each one covers. The Plans tab in the Teams window compares each with its members' usage at API prices.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -44,6 +46,7 @@ struct TeamPlansSection: View {
             .padding(12)
         }
         .task(id: teamID) {
+            if container.teams.details[teamID] == nil { await container.teams.loadTeam(teamID) }
             await store.load(teamID: teamID)
             drafts = saved
             loaded = true
@@ -110,8 +113,45 @@ struct TeamPlansSection: View {
                 .labelsHidden()
                 .fixedSize()
             }
+            HStack(spacing: 8) {
+                Text("Covers").font(.caption).foregroundStyle(.secondary)
+                coverageMenu(plan.memberIDs)
+                Spacer()
+            }
         }
         .padding(.vertical, 4)
+    }
+
+    /// Everyone (members who join later too), or the members picked here. At least one stays picked.
+    private func coverageMenu(_ memberIDs: Binding<[String]?>) -> some View {
+        Menu {
+            Toggle("Everyone", isOn: Binding(
+                get: { memberIDs.wrappedValue == nil },
+                set: { if $0 { memberIDs.wrappedValue = nil } }
+            ))
+            Divider()
+            ForEach(members) { member in
+                let picked = memberIDs.wrappedValue?.contains(member.id) ?? true
+                Toggle(member.displayName, isOn: Binding(
+                    get: { memberIDs.wrappedValue?.contains(member.id) ?? false },
+                    set: { on in
+                        var ids = memberIDs.wrappedValue ?? []
+                        if on { ids.append(member.id) } else { ids.removeAll { $0 == member.id } }
+                        memberIDs.wrappedValue = ids
+                    }
+                ))
+                .disabled(picked && memberIDs.wrappedValue?.count == 1)
+            }
+        } label: {
+            Text(coverageLabel(memberIDs.wrappedValue))
+        }
+        .fixedSize()
+    }
+
+    private func coverageLabel(_ memberIDs: [String]?) -> String {
+        guard let memberIDs else { return "Everyone" }
+        let names = members.filter { memberIDs.contains($0.id) }.map(\.displayName)
+        return names.count == 1 ? names[0] : "\(names.count) Members"
     }
 
     private func providerName(_ id: String) -> String {

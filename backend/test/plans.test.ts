@@ -76,12 +76,85 @@ describe("team plans", () => {
     expect(report.plans.map((p: { valueUSD: number }) => p.valueUSD)).toEqual([20, 10]);
   });
 
+  it("counts only the members a plan covers and tells each member whether it covers them", async () => {
+    const { owner, team, members } = await teamWith(["Bea", "Cy"]);
+    const [bea, cy] = members as [{ token: string; userID: string }, { token: string; userID: string }];
+    const shared = "d".repeat(64);
+    // Owner and Bea are on the team's Cursor plan; Cy pays for their own Cursor and shares an
+    // account with Bea.
+    await api("PUT", `/v1/devices/device-aaaa-0001/usage`, {
+      token: owner.token,
+      body: upload([{ provider: "cursor", scope: "account", account: "a".repeat(64), days: [{ date: "2026-10-02", tokens: 10, costUSD: 20 }] }]),
+    });
+    await api("PUT", `/v1/devices/device-bbbb-0002/usage`, {
+      token: bea.token,
+      body: upload([{ provider: "cursor", scope: "account", account: shared, days: [{ date: "2026-10-03", tokens: 10, costUSD: 5 }] }]),
+    });
+    await api("PUT", `/v1/devices/device-cccc-0003/usage`, {
+      token: cy.token,
+      body: upload([
+        { provider: "cursor", scope: "account", account: shared, days: [{ date: "2026-10-03", tokens: 10, costUSD: 5 }] },
+        { provider: "claude", days: [{ date: "2026-10-03", tokens: 10, costUSD: 500 }] },
+      ]),
+    });
+    const body = { plans: [{ provider: "cursor", name: "Cursor Teams", monthlyCostUSD: 80, renewalDay: 1, memberIDs: [owner.userID, bea.userID] }] };
+    const saved = (await api("PUT", `/v1/teams/${team.id}/plans`, { token: owner.token, body })).body;
+    expect(saved.plans[0]).toMatchObject({ memberIDs: [owner.userID, bea.userID], valueUSD: 25, includesYou: true });
+
+    const forCy = (await api("GET", `/v1/teams/${team.id}/plans`, { token: cy.token })).body;
+    expect(forCy.plans[0]).toMatchObject({ valueUSD: 25, includesYou: false });
+    const forBea = (await api("GET", `/v1/teams/${team.id}/plans`, { token: bea.token })).body;
+    expect(forBea.plans[0].includesYou).toBe(true);
+  });
+
+  it("covers everyone when a plan lists no members", async () => {
+    const { owner, team, members } = await teamWith(["Bea"]);
+    await api("PUT", `/v1/devices/device-bbbb-0002/usage`, {
+      token: members[0]!.token,
+      body: upload([{ provider: "claude", days: [{ date: "2026-10-02", tokens: 10, costUSD: 30 }] }]),
+    });
+    const body = { plans: [{ provider: "claude", name: "Max", monthlyCostUSD: 100, renewalDay: 1 }] };
+    await api("PUT", `/v1/teams/${team.id}/plans`, { token: owner.token, body });
+    const read = (await api("GET", `/v1/teams/${team.id}/plans`, { token: members[0]!.token })).body;
+    expect(read.plans[0]).toMatchObject({ memberIDs: null, valueUSD: 30, includesYou: true });
+  });
+
+  it("splits usage only between the plans that cover it", async () => {
+    const { owner, team, members } = await teamWith(["Bea"]);
+    await api("PUT", `/v1/devices/device-aaaa-0001/usage`, {
+      token: owner.token,
+      body: upload([{ provider: "claude", days: [{ date: "2026-10-02", tokens: 10, costUSD: 30 }] }]),
+    });
+    await api("PUT", `/v1/devices/device-bbbb-0002/usage`, {
+      token: members[0]!.token,
+      body: upload([{ provider: "claude", days: [{ date: "2026-10-02", tokens: 10, costUSD: 12 }] }]),
+    });
+    const body = {
+      plans: [
+        { provider: "claude", name: "Max", monthlyCostUSD: 200, renewalDay: 1, memberIDs: [owner.userID] },
+        { provider: "claude", name: "Pro", monthlyCostUSD: 100, renewalDay: 1 },
+      ],
+    };
+    const report = (await api("PUT", `/v1/teams/${team.id}/plans`, { token: owner.token, body })).body;
+    // Owner's $30 splits 2:1 between Max and Pro; Bea's $12 is Pro's alone.
+    expect(report.plans.map((p: { valueUSD: number }) => p.valueUSD)).toEqual([20, 22]);
+  });
+
+  it("rejects plans that cover someone outside the team", async () => {
+    const { owner, team } = await teamWith([]);
+    const { owner: stranger } = await teamWith([], "Stranger");
+    const body = { plans: [{ provider: "claude", name: "x", monthlyCostUSD: 1, renewalDay: 1, memberIDs: [stranger.userID] }] };
+    expect((await api("PUT", `/v1/teams/${team.id}/plans`, { token: owner.token, body })).status).toBe(400);
+  });
+
   it.each([
     ["no plans array", {}],
     ["bad provider", { plans: [{ provider: "Claude!", name: "x", monthlyCostUSD: 1, renewalDay: 1 }] }],
     ["zero cost", { plans: [{ provider: "claude", name: "x", monthlyCostUSD: 0, renewalDay: 1 }] }],
     ["day 32", { plans: [{ provider: "claude", name: "x", monthlyCostUSD: 1, renewalDay: 32 }] }],
     ["empty name", { plans: [{ provider: "claude", name: "", monthlyCostUSD: 1, renewalDay: 1 }] }],
+    ["no members", { plans: [{ provider: "claude", name: "x", monthlyCostUSD: 1, renewalDay: 1, memberIDs: [] }] }],
+    ["bad member ids", { plans: [{ provider: "claude", name: "x", monthlyCostUSD: 1, renewalDay: 1, memberIDs: [7] }] }],
   ])("rejects %s", async (_label, body) => {
     const { owner, team } = await teamWith([]);
     expect((await api("PUT", `/v1/teams/${team.id}/plans`, { token: owner.token, body })).status).toBe(400);
