@@ -22,7 +22,8 @@ The backend used to run as a Cloudflare Worker on D1. D1's free plan (5M rows re
 ## What it stores
 
 - **Accounts:** the Sign in with Apple user id (`sub`) and a display name the user chooses. No email, no Apple name.
-- **Sessions:** only the SHA-256 hash of each session token. A session expires after 180 days without use.
+- **Sessions:** only the SHA-256 hash of each session token. A session expires after 180 days without use. A session made by [QR pairing](#qr-pairing) also keeps the name of the phone or iPad it belongs to.
+- **Pairing codes:** only the SHA-256 hash of each code, until it is used or replaced (three minutes at most).
 - **Teams:** name, the account whose deletion deletes the team (`owner_id`, always one of its owners), one invite code, and an optional public-board token. Roles (`owner` or `member`) live on each membership; a team can have several owners.
 - **Usage:** for each of the user's Macs, daily tokens and spend per provider and per model. The full history is kept: each upload replaces only the days in its window. No credentials, logs, prompts, project names, or account ids.
 
@@ -100,8 +101,12 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `POST /v1/auth/apple/callback` | Apple's form post. Redirects to `godusage://auth?state=…&code=…` (or `&error=cancelled\|invalid_token\|apple`). |
 | `POST /v1/auth/apple/exchange` | `{ code, codeVerifier }` → `{ token, user, created }`. The code works once, for five minutes. |
 | `POST /v1/auth/apple` | Native sign-in (for the iOS app): `{ identityToken, displayName? }` → `{ token, user, created }`. `displayName` is used only for a new account. |
+| `POST /v1/auth/pairing` | Signed-in Mac only (a paired session gets 403): `→ { code, expiresAt }`. The code works once, for three minutes, and replaces the account's previous code. See [QR pairing](#qr-pairing). |
+| `POST /v1/auth/pairing/exchange` | `{ code, deviceName }` → `{ token, user }`: a session of the code's account. `deviceName` is at most 60 characters. |
 | `POST /v1/auth/logout` | Ends this session. |
 | `GET /v1/me/export` | Everything the server keeps about you, as one JSON document (the app's **Export My Data**). Session tokens are never included. |
+| `GET /v1/me/linked-devices` | `{ devices: [{ id, name, linkedAt }] }`: the sessions made by QR pairing, newest first. `id` is the session's token hash. |
+| `DELETE /v1/me/linked-devices/:id` | Signs that device out (404 if it isn't a linked device of this account). |
 | `GET`, `PATCH`, `DELETE /v1/me` | Read, rename (`{ displayName }`, at most 40 characters), or delete the account. |
 | `GET`, `POST /v1/teams` | List my teams, or create one (`{ name }`, at most 60 characters). |
 | `GET`, `PATCH`, `DELETE /v1/teams/:id` | Team with members; owner can change `{ name?, publicBoard? }` or delete it. |
@@ -171,6 +176,16 @@ Apple setup, once: one **Services ID** per environment (Identifiers → Services
 | Development | `com.montinovo.godusage.web.dev` | `com.montinovo.godusage.dev` | `api-dev.godusage.com` → `https://api-dev.godusage.com/v1/auth/apple/callback`; `godusage-api-dev.federico-c80.workers.dev` → `https://godusage-api-dev.federico-c80.workers.dev/v1/auth/apple/callback` |
 
 Apple gives a person the same user id for every app and Services ID grouped under the same primary App ID, so web and native sign-ins reach the same account.
+
+## QR pairing
+
+The iPhone app signs in to an existing account without Sign in with Apple:
+
+1. A Mac signed in with Apple calls `POST /v1/auth/pairing` and shows the code as a QR code: `godusage://pair?code=…&server=<the API base URL>`. The phone refuses codes for another server than its own, so a DEV code never reaches the production app.
+2. The phone posts the code and its name to `/v1/auth/pairing/exchange`. The server spends the code (it works once) and creates an app session (180 days, sliding) tagged with the device's name.
+3. The Mac lists and unlinks devices through `/v1/me/linked-devices`. Signing out of the Mac ends only the Mac's session.
+
+Paired sessions cannot make codes, so every linked device traces back to a Mac signed in with Apple. The exchange counts against the sign-in rate limit (20 a minute per IP), and a code has 256 random bits.
 
 ## Development
 

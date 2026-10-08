@@ -49,6 +49,10 @@ protocol TeamsAPI: Sendable {
     func deleteDevice(token: String, deviceID: String) async throws
     func plans(token: String, teamID: String, today: String) async throws -> TeamPlansReport
     func savePlans(token: String, teamID: String, plans: [TeamPlan], today: String) async throws -> TeamPlansReport
+    /// A one-time code the iPhone app trades for a session of this account (shown as a QR code).
+    func createPairingCode(token: String) async throws -> PairingCode
+    func linkedDevices(token: String) async throws -> [LinkedDevice]
+    func unlinkDevice(token: String, id: String) async throws
 }
 
 /// The teams backend over HTTPS. Dev builds (`….dev` bundle id) talk to the dev server, which has
@@ -216,6 +220,20 @@ struct TeamsAPIClient: TeamsAPI {
     func savePlans(token: String, teamID: String, plans: [TeamPlan], today: String) async throws -> TeamPlansReport {
         struct Body: Encodable { var plans: [TeamPlan] }
         return try await send("PUT", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))", token: token, body: Body(plans: plans))
+    }
+
+    func createPairingCode(token: String) async throws -> PairingCode {
+        try await send("POST", "/v1/auth/pairing", token: token)
+    }
+
+    func linkedDevices(token: String) async throws -> [LinkedDevice] {
+        struct Envelope: Decodable { var devices: [LinkedDevice] }
+        let response: Envelope = try await send("GET", "/v1/me/linked-devices", token: token)
+        return response.devices
+    }
+
+    func unlinkDevice(token: String, id: String) async throws {
+        try await sendEmpty("DELETE", "/v1/me/linked-devices/\(escaped(id))", token: token)
     }
 
     // MARK: - Transport

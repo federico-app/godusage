@@ -8,6 +8,12 @@ Open **Settings → Teams** and choose **Sign In with Apple**. A system sign-in 
 
 The sign-in stays on this Mac until you sign out, delete the account, or it goes unused for 180 days. Each Mac signs in on its own. Signing in on another Mac with the same Apple ID uses the same account, so your Macs add up to one person on the leaderboard.
 
+## iPhone and iPad
+
+The GodUsage iPhone app signs in to the same account by scanning a QR code from a Mac that is already signed in. Open **Settings → Teams → iPhone and iPad**, choose **Link iPhone or iPad…**, and scan the code with the app. A code works once and expires after three minutes; asking for a new one cancels the old one. The sheet closes on its own once the device links.
+
+The section lists every linked device by name. **Unlink…** signs that device out. A linked device stays signed in when the Mac signs out, until it is unlinked, signs itself out, the account is deleted, or it goes unused for 180 days. A linked device cannot show codes for other devices. DEV builds link only to the DEV iPhone app, and production builds only to the production app.
+
 Development builds (`com.montinovo.godusage.dev`) use a separate backend with separate accounts and teams, so testing never touches real leaderboards. See [Teams backend](teams-backend.md#environments).
 
 ## Teams and invites

@@ -441,4 +441,22 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
         log.append("savePlans \(plans.map(\.name).joined(separator: ","))")
         return plansResult
     }
+
+    var pairingCodes: [PairingCode] = []
+    var linkedDevicesResults: [[LinkedDevice]] = []
+    var linkedDevicesError: Error?
+    var unlinkError: Error?
+    func createPairingCode(token: String) async throws -> PairingCode {
+        log.append("createPairingCode")
+        return pairingCodes.removeFirst()
+    }
+    /// Each call returns the next result; the last one repeats.
+    func linkedDevices(token: String) async throws -> [LinkedDevice] {
+        if let linkedDevicesError { throw linkedDevicesError }
+        return linkedDevicesResults.count > 1 ? linkedDevicesResults.removeFirst() : linkedDevicesResults.first ?? []
+    }
+    func unlinkDevice(token: String, id: String) async throws {
+        log.append("unlink \(id)")
+        if let unlinkError { throw unlinkError }
+    }
 }
