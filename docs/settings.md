@@ -2,7 +2,7 @@
 
 Settings opens in its own window, separate from the popover. Open it from the popover footer's **gear** menu, with ⌘, while the popover is showing, or by right-clicking the menu bar icon and choosing Settings. Opening Settings closes the popover. Close the window with the red close button, Esc, ⌘W, or ⌘Q. ⌘Q closes only the Settings window. GodUsage keeps running in the menu bar. Quit it from the popover's gear menu or the menu bar icon's right-click menu.
 
-The window has five tabs: **General**, **Appearance**, **Notifications**, **Teams**, and **Advanced**. It remembers the tab you were on, its size, and its position. It only exists while it is open, so a closed Settings window uses no memory or CPU.
+The window has five tabs: **General**, **Appearance**, **Notifications**, **Teams**, and **Advanced**. It remembers the tab you were on, its size, and its position. Drag its sides to make it wider or narrower; its height follows the tab's content. It only exists while it is open, so a closed Settings window uses no memory or CPU.
 
 While Settings is open, GodUsage briefly appears in the Dock, the same as during an [update session](updates.md). That is what brings the window to the front for a menu-bar-only app. It leaves the Dock when you close the window.
 
