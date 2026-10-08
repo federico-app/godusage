@@ -12,6 +12,8 @@ export interface PlanInput {
   name: string;
   monthlyCostUSD: number;
   renewalDay: number;
+  /** The members the plan covers. Null covers every member. */
+  memberIDs: string[] | null;
 }
 
 export interface PlanRow extends PlanInput {
@@ -30,7 +32,7 @@ export interface Cycle {
 
 export interface PlanReport extends PlanRow {
   cycle: Cycle;
-  /** The team's usage of this provider in the cycle so far, at API prices. */
+  /** The covered members' usage of this provider in the cycle so far, at API prices. */
   valueUSD: number;
   /** `valueUSD` stretched over the whole cycle at the current pace. */
   projectedValueUSD: number;
@@ -54,8 +56,23 @@ export function parsePlans(body: Record<string, unknown>): PlanInput[] {
     }
     const day = entry.renewalDay;
     if (typeof day !== "number" || !Number.isInteger(day) || day < 1 || day > 31) throw badRequest("renewalDay must be 1 to 31.");
-    return { provider: entry.provider, name, monthlyCostUSD: Math.round(cost * 100) / 100, renewalDay: day };
+    return { provider: entry.provider, name, monthlyCostUSD: Math.round(cost * 100) / 100, renewalDay: day, memberIDs: parseMemberIDs(entry.memberIDs) };
   });
+}
+
+/** Missing or null covers everyone; otherwise a non-empty list of distinct ids. */
+function parseMemberIDs(value: unknown): string[] | null {
+  if (value === undefined || value === null) return null;
+  if (!Array.isArray(value) || !value.every((id) => typeof id === "string" && id.length > 0 && id.length <= 64)) {
+    throw badRequest("memberIDs must be a list of member ids.");
+  }
+  if (value.length === 0) throw badRequest("A plan must cover at least one member.");
+  return [...new Set(value as string[])];
+}
+
+/** Whether `plan` covers `userID`. */
+export function covers(plan: PlanInput, userID: string): boolean {
+  return plan.memberIDs === null || plan.memberIDs.includes(userID);
 }
 
 /** A renewal on day 31 falls on the last day of shorter months. */
@@ -80,25 +97,32 @@ export function currentCycle(renewalDay: number, today: string): Cycle {
 }
 
 /**
- * Each plan against the team's usage of its provider in its current cycle, counted like the
- * leaderboard (shared accounts once). Several plans of one provider split its value by cost.
+ * Each plan against its covered members' usage of its provider in its current cycle, counted like
+ * the leaderboard (shared accounts once). A shared account counts when any member who shares it is
+ * covered. Several plans of one provider split their common usage by cost.
  */
 export async function planReports(db: D1Database, teamID: string, plans: PlanRow[], today: string): Promise<PlanReport[]> {
   if (plans.length === 0) return [];
   const cycles = plans.map((plan) => currentCycle(plan.renewalDay, today));
   const earliest = cycles.reduce((min, cycle) => (cycle.from < min ? cycle.from : min), today);
   const usage = await teamUsage(db, teamID, earliest, today, { models: false });
-  const days = [...usage.days, ...usage.sharedDays];
-  const providerCost = new Map<string, number>();
-  for (const plan of plans) providerCost.set(plan.provider, (providerCost.get(plan.provider) ?? 0) + plan.monthlyCostUSD);
+  const sharers = new Map<string, string[]>();
+  for (const row of usage.sharedMembers) sharers.set(row.account_key, [...(sharers.get(row.account_key) ?? []), row.user_id]);
+  const days = [
+    ...usage.days.map((row) => ({ ...row, users: [row.user_id] })),
+    ...usage.sharedDays.map((row) => ({ ...row, users: sharers.get(row.account_key) ?? [] })),
+  ];
+  const coveredDays = (plan: PlanRow, from: string) =>
+    days.filter((row) => row.provider === plan.provider && row.day >= from && row.day <= today && row.users.some((user) => covers(plan, user)));
 
   return plans.map((plan, index) => {
     const cycle = cycles[index]!;
-    const providerValue = days
-      .filter((row) => row.provider === plan.provider && row.day >= cycle.from && row.day <= today)
-      .reduce((sum, row) => sum + row.cost, 0);
-    const share = plan.monthlyCostUSD / providerCost.get(plan.provider)!;
-    const value = providerValue * share;
+    // Split each day's usage between the plans of the provider that cover it, by cost.
+    const value = coveredDays(plan, cycle.from).reduce((sum, row) => {
+      const sharing = plans.filter((other) => other.provider === plan.provider && row.users.some((user) => covers(other, user)));
+      const cost = sharing.reduce((total, other) => total + other.monthlyCostUSD, 0);
+      return sum + (row.cost * plan.monthlyCostUSD) / cost;
+    }, 0);
     const projected = (value / cycle.daysElapsed) * cycle.daysTotal;
     const multiple = projected / plan.monthlyCostUSD;
     return {

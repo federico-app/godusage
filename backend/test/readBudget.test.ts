@@ -106,7 +106,7 @@ describe("read budget", () => {
       .bind(team.id, addDays(TODAY, -6), TODAY)
       .run();
     expect(await rowsRead((db) => teamChallengeList(db, team.id, TODAY))).toBeLessThan(4_000);
-    const plans = [{ id: "p", provider: "claude", name: "Max", monthlyCostUSD: 200, renewalDay: 1 }];
+    const plans = [{ id: "p", provider: "claude", name: "Max", monthlyCostUSD: 200, renewalDay: 1, memberIDs: null }];
     expect(await rowsRead((db) => planReports(db, team.id, plans, TODAY))).toBeLessThan(800);
   });
 

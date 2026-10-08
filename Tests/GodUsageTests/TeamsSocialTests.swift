@@ -140,18 +140,42 @@ final class TeamPlansTests: XCTestCase {
         let json = try XCTUnwrap(String(data: JSONEncoder().encode(plan), encoding: .utf8))
         XCTAssertFalse(json.contains("local"))
         XCTAssertTrue(json.contains("\"renewalDay\":12"))
+        XCTAssertFalse(json.contains("memberIDs"), "a plan for everyone sends no member list")
+        var covered = plan
+        covered.memberIDs = ["u1"]
+        let coveredJSON = try XCTUnwrap(String(data: JSONEncoder().encode(covered), encoding: .utf8))
+        XCTAssertTrue(coveredJSON.contains("\"memberIDs\":[\"u1\"]"))
+    }
+
+    /// Regression: the "Use the Team's Plan" suggestion reached members who aren't on the plan.
+    func testSuggestsOnlyPlansThatCoverYouForProvidersYouUse() throws {
+        func plan(_ id: String, _ provider: String, includesYou: Bool) -> String {
+            """
+            {"id":"\(id)","provider":"\(provider)","name":"\(id)","monthlyCostUSD":40,"renewalDay":1,"memberIDs":null,"includesYou":\(includesYou),
+             "cycle":{"from":"2026-10-01","to":"2026-10-31","daysElapsed":5,"daysTotal":31,"daysLeft":26},
+             "valueUSD":1,"projectedValueUSD":6,"projectedMultiple":0.15,"underused":true}
+            """
+        }
+        let body = """
+        {"plans":[\(plan("mine", "cursor", includesYou: true)),\(plan("theirs", "cursor", includesYou: false)),\(plan("unused", "claude", includesYou: true))],
+         "totals":{"monthlyCostUSD":120,"valueUSD":3,"projectedValueUSD":18},"canEdit":false}
+        """
+        let report = try JSONDecoder().decode(TeamPlansReport.self, from: Data(body.utf8))
+        XCTAssertEqual(UsageAdviceStore.plansForYou(report, families: ["cursor"]).map(\.id), ["mine"])
     }
 
     func testDecodesTheServerReport() throws {
         let body = """
         {"plans":[{"id":"p1","provider":"cursor","name":"Cursor Ultra","monthlyCostUSD":200,"renewalDay":1,
           "cycle":{"from":"2026-10-01","to":"2026-10-31","daysElapsed":5,"daysTotal":31,"daysLeft":26},
+          "memberIDs":["u1"],"includesYou":false,
           "valueUSD":10,"projectedValueUSD":62,"projectedMultiple":0.31,"underused":true}],
          "totals":{"monthlyCostUSD":200,"valueUSD":10,"projectedValueUSD":62},"canEdit":false}
         """
         let report = try JSONDecoder().decode(TeamPlansReport.self, from: Data(body.utf8))
-        XCTAssertEqual(report.plans.first?.plan, TeamPlan(id: "p1", provider: "cursor", name: "Cursor Ultra", monthlyCostUSD: 200, renewalDay: 1))
+        XCTAssertEqual(report.plans.first?.plan, TeamPlan(id: "p1", provider: "cursor", name: "Cursor Ultra", monthlyCostUSD: 200, renewalDay: 1, memberIDs: ["u1"]))
         XCTAssertEqual(report.plans.first?.underused, true)
+        XCTAssertEqual(report.plans.first?.includesYou, false)
         XCTAssertEqual(TeamPlansReportView.multiple(0.31), "0.3×")
         XCTAssertEqual(TeamPlansReportView.multiple(12.4), "12×")
     }

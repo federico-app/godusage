@@ -124,7 +124,7 @@ Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
 }
 ```
 
-Plans (`GET /v1/teams/:id/plans?today=` for members, `PUT` with `{ plans: [{ provider, name, monthlyCostUSD, renewalDay }] }` for the owner, replacing the list, at most 30): the response carries each plan with its `cycle` (`from`, `to`, `daysElapsed`, `daysTotal`, `daysLeft`), `valueUSD` (the team's effective spend on the provider from `cycle.from` to today, shared accounts once, split by cost across plans of one provider), `projectedValueUSD`, `projectedMultiple`, and `underused` (projected under 1×), plus `totals` and `canEdit`.
+Plans (`GET /v1/teams/:id/plans?today=` for members, `PUT` with `{ plans: [{ provider, name, monthlyCostUSD, renewalDay, memberIDs }] }` for the owner, replacing the list, at most 30): `memberIDs` lists the team members the plan covers, and a missing or null value covers everyone. The response carries each plan with its `memberIDs`, `includesYou` (whether it covers the caller), its `cycle` (`from`, `to`, `daysElapsed`, `daysTotal`, `daysLeft`), `valueUSD` (the covered members' effective spend on the provider from `cycle.from` to today, shared accounts once and counted when any member who shares them is covered, split by cost across the plans of one provider that cover the same usage), `projectedValueUSD`, `projectedMultiple`, and `underused` (projected under 1×), plus `totals` and `canEdit`.
 
 Account-scope entries may add `"account": "<64 hex characters>"`; it is rejected on device scope.
 
