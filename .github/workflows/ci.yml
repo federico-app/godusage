@@ -49,9 +49,11 @@ jobs:
 
       - name: Build
         run: |
-          xcodebuild -project ios/GodUsageMobile.xcodeproj -scheme GodUsageMobile \
-            -configuration Release -destination "generic/platform=iOS Simulator" \
-            CODE_SIGNING_ALLOWED=NO build
+          for scheme in "GodUsage" "GodUsage DEV"; do
+            xcodebuild -project ios/GodUsageMobile.xcodeproj -scheme "$scheme" \
+              -destination "generic/platform=iOS Simulator" \
+              CODE_SIGNING_ALLOWED=NO build
+          done
 
   # The teams backend: the suite runs against real Postgres and Redis (service containers), then the
   # Docker image and the proxy Worker are built (nothing is deployed).
