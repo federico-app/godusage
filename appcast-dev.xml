@@ -3,6 +3,14 @@
     <channel>
         <title>GodUsage DEV</title>
         <item>
+            <title>0.8.16-dev.705</title>
+            <pubDate>Thu, 08 Oct 2026 13:32:17 +0000</pubDate>
+            <sparkle:version>705</sparkle:version>
+            <sparkle:shortVersionString>0.8.16-dev.705</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-705/GodUsage-DEV-0.8.16-dev.705.dmg" length="25304046" type="application/octet-stream" sparkle:edSignature="mDQcgFqStn3fFEA1l2AsPQXH/9pJYZyp0Keju2mobCMv/xRKDw2a8pldcpc+YDNUG9cvYtpmQSyq2t6W6vh/AQ=="/>
+        </item>
+        <item>
             <title>0.8.16-dev.703</title>
             <pubDate>Thu, 08 Oct 2026 13:04:18 +0000</pubDate>
             <sparkle:version>703</sparkle:version>
@@ -73,14 +81,6 @@
             <sparkle:shortVersionString>0.8.16-dev.689</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-689/GodUsage-DEV-0.8.16-dev.689.dmg" length="25035318" type="application/octet-stream" sparkle:edSignature="BPCRuyN/n86rPJg4AjaND7AIZAd09KUWTxwnYsNTGHoSc+odKWpRHTSZCgXev1pmwJ179WLYi52+T4774lxlDA=="/>
-        </item>
-        <item>
-            <title>0.8.16-dev.686</title>
-            <pubDate>Tue, 06 Oct 2026 10:47:51 +0000</pubDate>
-            <sparkle:version>686</sparkle:version>
-            <sparkle:shortVersionString>0.8.16-dev.686</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-686/GodUsage-DEV-0.8.16-dev.686.dmg" length="25035268" type="application/octet-stream" sparkle:edSignature="MtASfeP9f3z5CoOEYbVLaNs92D0d43uNGRUll/cnUkbZ/wE7EfVz/NL55omTcYx2FQTlghEJqJS5gQ14W/57Cw=="/>
         </item>
     </channel>
 </rss>
