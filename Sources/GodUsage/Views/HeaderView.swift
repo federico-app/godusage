@@ -86,7 +86,7 @@ struct HeaderView: View {
     /// which opens the standalone Settings window (closing the popover on the way, via the installed
     /// handler). `autoenablesItems` has no SwiftUI equivalent, so the Check for Updates item disables
     /// itself when Sparkle can't currently check — e.g. dev builds with no feed, or while a check is
-    /// already in flight. Customize, Settings, and Memory carry their key equivalents so the menu
+    /// already in flight. Customize, Settings, Memory, Team, and Check for Updates carry their key equivalents so the menu
     /// shows the shortcuts: when the menu is open the items handle them; when it's closed the
     /// `PopoverKeyReader` monitor handles (and consumes) them first, so the equivalents can't
     /// double-fire. Same split as the Quit ⌘Q item below.
@@ -119,6 +119,7 @@ struct HeaderView: View {
         Button { updater.checkForUpdates() } label: {
             Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath")
         }
+        .keyboardShortcut("u")
         .disabled(!updater.canCheckForUpdates)
 
         Divider()

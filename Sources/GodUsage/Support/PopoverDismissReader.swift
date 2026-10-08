@@ -32,6 +32,8 @@ struct PopoverKeyReader: NSViewRepresentable {
     var onMemory: @MainActor () -> Bool = { false }
     /// Called on ⌘T (opens the Teams window). Same arrangement as `onMemory`, matched by character.
     var onTeam: @MainActor () -> Bool = { false }
+    /// Called on ⌘U (Check for Updates). Same arrangement as `onTeam`, matched by character.
+    var onCheckForUpdates: @MainActor () -> Bool = { false }
     /// Called on plain ⌘Z (undo). Rides this monitor — same reasons as Esc/Return: a hidden SwiftUI
     /// shortcut only fires when the popover is the key window, which the panel isn't always for. By the
     /// time this runs the monitor has already confirmed the panel owns the keystroke and no text field is
@@ -46,6 +48,7 @@ struct PopoverKeyReader: NSViewRepresentable {
         view.onSettings = onSettings
         view.onMemory = onMemory
         view.onTeam = onTeam
+        view.onCheckForUpdates = onCheckForUpdates
         view.onUndo = onUndo
         return view
     }
@@ -57,6 +60,7 @@ struct PopoverKeyReader: NSViewRepresentable {
         view.onSettings = onSettings
         view.onMemory = onMemory
         view.onTeam = onTeam
+        view.onCheckForUpdates = onCheckForUpdates
         view.onUndo = onUndo
     }
 
@@ -79,6 +83,7 @@ struct PopoverKeyReader: NSViewRepresentable {
         var onSettings: (@MainActor () -> Bool)?
         var onMemory: (@MainActor () -> Bool)?
         var onTeam: (@MainActor () -> Bool)?
+        var onCheckForUpdates: (@MainActor () -> Bool)?
         var onUndo: (@MainActor () -> Bool)?
         private var monitor: Any?
         private static let escapeKeyCode: UInt16 = 53
@@ -101,12 +106,14 @@ struct PopoverKeyReader: NSViewRepresentable {
                 // it; Shift is already excluded by the modifier check below).
                 let isMemory = event.charactersIgnoringModifiers?.lowercased() == "m"
                 let isTeam = event.charactersIgnoringModifiers?.lowercased() == "t"
+                let isUpdates = event.charactersIgnoringModifiers?.lowercased() == "u"
                 guard keyCode == MonitorView.escapeKeyCode
                     || keyCode == MonitorView.returnKeyCode
                     || keyCode == MonitorView.commaKeyCode
                     || keyCode == MonitorView.zKeyCode
                     || isMemory
-                    || isTeam else {
+                    || isTeam
+                    || isUpdates else {
                     return event
                 }
                 let isReturn = keyCode == MonitorView.returnKeyCode
@@ -129,6 +136,11 @@ struct PopoverKeyReader: NSViewRepresentable {
                 }
                 // Only plain ⌘T opens Teams; a bare t (typing) or ⇧⌘T etc. belong elsewhere.
                 if isTeam,
+                   event.modifierFlags.intersection([.command, .option, .control, .shift]) != [.command] {
+                    return event
+                }
+                // Only plain ⌘U checks for updates; a bare u (typing) or ⇧⌘U etc. belong elsewhere.
+                if isUpdates,
                    event.modifierFlags.intersection([.command, .option, .control, .shift]) != [.command] {
                     return event
                 }
@@ -162,6 +174,9 @@ struct PopoverKeyReader: NSViewRepresentable {
                     }
                     if isTeam {
                         return self.onTeam?() ?? false
+                    }
+                    if isUpdates {
+                        return self.onCheckForUpdates?() ?? false
                     }
                     if isUndo {
                         return self.onUndo?() ?? false

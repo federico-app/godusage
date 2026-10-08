@@ -229,6 +229,13 @@ struct DashboardView: View {
                         TeamsWindowLink.open()
                         return true
                     },
+                    // ⌘U checks for updates from every screen; the gear menu's Check for Updates
+                    // item carries ⌘U only as a label. Consumed even while Sparkle can't check (a
+                    // check already running, a dev build without a feed), so AppKit doesn't beep.
+                    onCheckForUpdates: {
+                        if updater.canCheckForUpdates { updater.checkForUpdates() }
+                        return true
+                    },
                     // ⌘Z walks back the last customization step (remove/add, reorder, pin/unpin, caret
                     // move) — app-wide, since Hide and Pin happen via the dashboard's context menus too,
                     // not only in Customize. Always consumed here: by the time the monitor calls this it
