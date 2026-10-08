@@ -213,6 +213,114 @@ jobs:
             rm -f "$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           fi
 
+  # GodUsage DEV for iPhone (com.montinovo.godusage.mobile.dev) goes to TestFlight's internal
+  # testers when a push changes the iOS app, beside the Mac DEV build and independent of it.
+  # Internal testers need no Beta App Review; the group's automatic distribution hands them the build.
+  ios-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      ship: ${{ steps.gate.outputs.ship }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Decide whether to ship GodUsage DEV for iPhone
+        id: gate
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+          DEV_PROFILE: ${{ secrets.APPLE_IOS_DEV_APP_STORE_PROFILE }}
+          DEV_WIDGET_PROFILE: ${{ secrets.APPLE_IOS_DEV_WIDGET_APP_STORE_PROFILE }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$DEV_PROFILE" || -z "$DEV_WIDGET_PROFILE" ]]; then
+            # Until the DEV app is set up in App Store Connect (docs/releasing.md), every run skips it.
+            echo "::warning::GodUsage DEV for iPhone skipped: APPLE_IOS_DEV_APP_STORE_PROFILE and APPLE_IOS_DEV_WIDGET_APP_STORE_PROFILE are not set."
+            echo "ship=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$EVENT" == "workflow_dispatch" ]] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "ship=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --quiet "$BEFORE" "$GITHUB_SHA" -- ios script/release_ios.sh .github/workflows/release-dev.yml; then
+            echo "No iOS changes since $BEFORE."
+            echo "ship=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ship=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  ios-testflight:
+    needs: ios-gate
+    if: needs.ios-gate.outputs.ship == 'true'
+    runs-on: macos-26
+    env:
+      APPLE_TEAM_ID: S6X72K86R8
+      CHANNEL: dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0          # full history + tags: the build number and version come from them
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Resolve version
+        id: meta
+        run: |
+          set -euo pipefail
+          # TestFlight wants a plain version: the newest stable one, with the commit count as build.
+          {
+            echo "version=$(git describe --tags --match 'v*' --exclude '*-*' --abbrev=0 | sed 's/^v//')"
+            echo "build=$(git rev-list --count HEAD)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Import Apple Distribution certificate
+        uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
+        with:
+          p12-file-base64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+
+      - name: Write signing inputs
+        env:
+          IOS_PROFILE_BASE64: ${{ secrets.APPLE_IOS_DEV_APP_STORE_PROFILE }}
+          IOS_WIDGET_PROFILE_BASE64: ${{ secrets.APPLE_IOS_DEV_WIDGET_APP_STORE_PROFILE }}
+          APPLE_NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY_BASE64 }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$IOS_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/godusage-ios-dev.mobileprovision"
+          printf '%s' "$IOS_WIDGET_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/godusage-ios-dev-widgets.mobileprovision"
+          key_path="$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
+          printf '%s' "$APPLE_NOTARY_PRIVATE_KEY_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          {
+            echo "IOS_PROVISIONING_PROFILE=$RUNNER_TEMP/godusage-ios-dev.mobileprovision"
+            echo "IOS_WIDGET_PROVISIONING_PROFILE=$RUNNER_TEMP/godusage-ios-dev-widgets.mobileprovision"
+            echo "APPLE_NOTARY_KEY_PATH=$key_path"
+          } >> "$GITHUB_ENV"
+
+      - name: Build, sign, and upload to TestFlight
+        env:
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+          GODUSAGE_VERSION: ${{ steps.meta.outputs.version }}
+          GODUSAGE_BUILD: ${{ steps.meta.outputs.build }}
+        run: ./script/release_ios.sh
+
+      - name: Remove release credentials
+        if: always()
+        env:
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+        run: |
+          rm -f "$RUNNER_TEMP/godusage-ios-dev.mobileprovision" "$RUNNER_TEMP/godusage-ios-dev-widgets.mobileprovision"
+          if [[ -n "$APPLE_NOTARY_KEY_ID" ]]; then
+            rm -f "$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
+          fi
+
   publish:
     needs: [test, build]
     runs-on: ubuntu-latest

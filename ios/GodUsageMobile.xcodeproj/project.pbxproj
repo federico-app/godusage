@@ -238,7 +238,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG DEV_CHANNEL $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
 			};
@@ -260,6 +260,23 @@
 			};
 			name = Release;
 		};
+		A10000000000000000000105 /* Dev */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEV_CHANNEL $(inherited)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Dev;
+		};
 		A10000000000000000000103 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -272,7 +289,7 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/GodUsageMobile-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = GodUsage;
+				INFOPLIST_KEY_CFBundleDisplayName = "GodUsage DEV";
 				INFOPLIST_KEY_NSCameraUsageDescription = "GodUsage uses the camera to scan the code that links this device to your Mac.";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -285,7 +302,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.montinovo.godusage.mobile;
+				PRODUCT_BUNDLE_IDENTIFIER = com.montinovo.godusage.mobile.dev;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -326,6 +343,39 @@
 			};
 			name = Release;
 		};
+		A10000000000000000000106 /* Dev */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS = NO;
+				CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobile.Dev.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/GodUsageMobile-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "GodUsage DEV";
+				INFOPLIST_KEY_NSCameraUsageDescription = "GodUsage uses the camera to scan the code that links this device to your Mac.";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.montinovo.godusage.mobile.dev;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Dev;
+		};
 		A20000000000000000000103 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -335,14 +385,14 @@
 				DEVELOPMENT_TEAM = S6X72K86R8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/GodUsageMobileWidgets-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "GodUsage Widgets";
+				INFOPLIST_KEY_CFBundleDisplayName = "GodUsage DEV Widgets";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.montinovo.godusage.mobile.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = com.montinovo.godusage.mobile.dev.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -374,6 +424,30 @@
 			};
 			name = Release;
 		};
+		A20000000000000000000106 /* Dev */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobileWidgets.Dev.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S6X72K86R8;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/GodUsageMobileWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "GodUsage DEV Widgets";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.montinovo.godusage.mobile.dev.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Dev;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -382,6 +456,7 @@
 			buildConfigurations = (
 				A10000000000000000000101 /* Debug */,
 				A10000000000000000000102 /* Release */,
+				A10000000000000000000105 /* Dev */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -391,6 +466,7 @@
 			buildConfigurations = (
 				A10000000000000000000103 /* Debug */,
 				A10000000000000000000104 /* Release */,
+				A10000000000000000000106 /* Dev */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -400,6 +476,7 @@
 			buildConfigurations = (
 				A20000000000000000000103 /* Debug */,
 				A20000000000000000000104 /* Release */,
+				A20000000000000000000106 /* Dev */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

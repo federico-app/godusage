@@ -5,7 +5,7 @@ import os
 /// talk to the dev server, like the Mac's DEV channel and the dev CloudKit container; Release builds
 /// to production. A pairing code names its server, and the app accepts only its own.
 struct TeamsAPI: Sendable {
-    #if DEBUG
+    #if DEV_CHANNEL
     static let baseURL = URL(string: "https://api-dev.godusage.com")!
     #else
     static let baseURL = URL(string: "https://api.godusage.com")!

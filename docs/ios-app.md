@@ -20,7 +20,7 @@ Once linked, the tab shows:
 
 The session is kept in the Keychain on this device. **Sign Out** (account menu) ends it; unlinking the phone from the Mac does too, and the tab then asks for a new code. The tab refreshes on opening, on returning to the foreground, and with pull-to-refresh.
 
-Debug builds talk to the dev server (`api-dev.godusage.com`) and Release builds to production (`api.godusage.com`), matching the Mac's DEV and production channels. A code from the other server is refused with a message naming the right build.
+**GodUsage DEV** (Debug and Dev builds) talks to the dev server (`api-dev.godusage.com`) and **GodUsage** (Release builds) to production (`api.godusage.com`), matching the Mac's DEV and production channels. A code from the other server is refused with a message naming the right app.
 
 ## Widgets
 
@@ -45,9 +45,19 @@ xcodebuild -project ios/GodUsageMobile.xcodeproj -target GodUsageMobile \
 
 That unsigned simulator build is for compile verification only. A launch aborts at CloudKit setup because it carries no iCloud entitlements. Run the app from Xcode instead, which signs simulator and device builds.
 
-Debug builds read the development container (`iCloud.com.montinovo.godusage.dev`, Development environment, the same place dev Mac builds write). Release builds read the production container. The app and widget App IDs (`com.montinovo.godusage.mobile` and `com.montinovo.godusage.mobile.widgets`) both need the CloudKit capability with both containers. Signing is automatic with the development team. On device, the app must be signed into the same iCloud account as the Macs.
+There are two apps, like on the Mac, and they install side by side:
+
+| Configuration | App | Bundle ids (app, widgets) | Teams server | iCloud container |
+| --- | --- | --- | --- | --- |
+| Debug | GodUsage DEV | `com.montinovo.godusage.mobile.dev`, `….mobile.dev.widgets` | `api-dev.godusage.com` | `iCloud.com.montinovo.godusage.dev`, Development environment (local Mac debug builds) |
+| Dev | GodUsage DEV (TestFlight) | same as Debug | `api-dev.godusage.com` | `iCloud.com.montinovo.godusage.dev`, Production environment (the Mac DEV channel) |
+| Release | GodUsage | `com.montinovo.godusage.mobile`, `….mobile.widgets` | `api.godusage.com` | `iCloud.com.montinovo.godusage`, Production environment |
+
+The `DEV_CHANNEL` compilation condition (set for Debug and Dev) picks the dev server and container. Every App ID needs the CloudKit capability with its container. Signing is automatic with the development team. On device, the app must be signed into the same iCloud account as the Macs.
 
 ## Releasing (TestFlight)
+
+**GodUsage DEV** ships from `develop`: every push that changes `ios/` uploads a Dev build to TestFlight for internal testers (see [Releasing](releasing.md#ios-dev-channel)). Production ships as below.
 
 The iOS app ships from the same `v*` tag as the Mac app, when the release touches it. The release workflow calls `.github/workflows/release-ios.yml`. Its "iOS Gate" job (`script/testflight_gate.mjs`) checks what changed since the last build the external TestFlight testers received. Until the app has an App Store Connect record, every release skips the iOS jobs and the gate logs a warning. A Mac-only release skips the iOS jobs, because every upload is a new version that goes through a fresh Beta App Review and pushes an update at testers. When the gate says ship, the "iOS TestFlight" job archives the app, signs it, and uploads it to App Store Connect, which serves it to internal testers once Apple finishes processing. The "TestFlight External" job then waits for that processing, adds the build to the external tester group(s), and submits it for Beta App Review (`script/testflight_distribute.mjs`). External testers receive it when Apple approves. Testers install and update through the TestFlight app. There is no Sparkle feed on iOS and no notarization.
 

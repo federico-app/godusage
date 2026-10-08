@@ -21,6 +21,10 @@ set -euo pipefail
 #                         App Store Connect API private key path, key ID, and issuer ID — the same
 #                         key release.sh uses for notarization; used here only to upload.
 # Optional env:
+#   CHANNEL=dev           Ship "GodUsage DEV" (com.montinovo.godusage.mobile.dev) from the Dev
+#                         configuration: dev teams server and dev iCloud container. GODUSAGE_VERSION
+#                         is then the newest stable version (TestFlight wants plain numbers), and the
+#                         profiles must be for the .dev app ids. Default: production.
 #   GODUSAGE_BUILD          CFBundleVersion (monotonic; TestFlight rejects reused build numbers per
 #                         version). Default: git commit count, same scheme as the macOS app.
 #   APPLE_TEAM_ID         defaults to S6X72K86R8.
@@ -37,8 +41,15 @@ cd "$ROOT_DIR"
 : "${APPLE_NOTARY_KEY_ID:?set APPLE_NOTARY_KEY_ID}"
 : "${APPLE_NOTARY_ISSUER_ID:?set APPLE_NOTARY_ISSUER_ID}"
 
-BUNDLE_ID="com.montinovo.godusage.mobile"
-WIDGET_BUNDLE_ID="com.montinovo.godusage.mobile.widgets"
+if [ "${CHANNEL:-}" = "dev" ]; then
+  BUNDLE_ID="com.montinovo.godusage.mobile.dev"
+  WIDGET_BUNDLE_ID="com.montinovo.godusage.mobile.dev.widgets"
+  CONFIGURATION="Dev"
+else
+  BUNDLE_ID="com.montinovo.godusage.mobile"
+  WIDGET_BUNDLE_ID="com.montinovo.godusage.mobile.widgets"
+  CONFIGURATION="Release"
+fi
 EXPECTED_TEAM_ID="${APPLE_TEAM_ID:-S6X72K86R8}"
 VERSION="$GODUSAGE_VERSION"
 "$ROOT_DIR/script/validate_release_tag.sh" "v$VERSION" >/dev/null
@@ -73,22 +84,22 @@ WIDGET_PROFILE_NAME="$(install_profile "$IOS_WIDGET_PROVISIONING_PROFILE" "$EXPE
 
 # The app and the widget need DIFFERENT profiles, so a single command-line
 # PROVISIONING_PROFILE_SPECIFIER (which would override every target) can't work. Instead, inject
-# each target's specifier into its Release build settings in the project file for the duration of
+# each target's specifier into the configuration's build settings in the project file for the duration of
 # the archive, anchored on the unique entitlements lines. The original is restored on exit, so a
 # local SKIP_TESTFLIGHT_UPLOAD dry run leaves the working tree untouched.
 PBXPROJ="$ROOT_DIR/ios/GodUsageMobile.xcodeproj/project.pbxproj"
 PBXPROJ_BACKUP="$PBXPROJ.pre-release-signing"
 cp "$PBXPROJ" "$PBXPROJ_BACKUP"
 trap 'mv "$PBXPROJ_BACKUP" "$PBXPROJ"' EXIT
-python3 - "$PBXPROJ" "$PROFILE_NAME" "$WIDGET_PROFILE_NAME" <<'PY'
+python3 - "$PBXPROJ" "$PROFILE_NAME" "$WIDGET_PROFILE_NAME" "$CONFIGURATION" <<'PY'
 import sys
 
-path, app_profile, widget_profile = sys.argv[1:4]
+path, app_profile, widget_profile, configuration = sys.argv[1:5]
 with open(path) as f:
     source = f.read()
 anchors = [
-    ("CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobile.Release.entitlements;", app_profile),
-    ("CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobileWidgets.Release.entitlements;", widget_profile),
+    (f"CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobile.{configuration}.entitlements;", app_profile),
+    (f"CODE_SIGN_ENTITLEMENTS = Config/GodUsageMobileWidgets.{configuration}.entitlements;", widget_profile),
 ]
 for anchor, profile in anchors:
     if source.count(anchor) != 1:
@@ -111,13 +122,13 @@ AUTH_FLAGS=(
   -authenticationKeyIssuerID "$APPLE_NOTARY_ISSUER_ID"
 )
 
-echo "==> Archiving GodUsageMobile $VERSION ($BUILD) with profiles '$PROFILE_NAME' + '$WIDGET_PROFILE_NAME'"
+echo "==> Archiving GodUsageMobile ($CONFIGURATION) $VERSION ($BUILD) with profiles '$PROFILE_NAME' + '$WIDGET_PROFILE_NAME'"
 # Style/identity/team are the same for both targets, so they stay command-line settings; the
 # per-target profile specifiers were injected into the project file above.
 xcodebuild \
   -project ios/GodUsageMobile.xcodeproj \
   -scheme GodUsageMobile \
-  -configuration Release \
+  -configuration "$CONFIGURATION" \
   -destination "generic/platform=iOS" \
   -archivePath "$ARCHIVE_PATH" \
   CODE_SIGN_STYLE=Manual \
@@ -203,7 +214,7 @@ xcodebuild \
   "${AUTH_FLAGS[@]}"
 
 if [ "$DESTINATION" = "upload" ]; then
-  echo "==> Uploaded GodUsageMobile $VERSION ($BUILD) to App Store Connect."
+  echo "==> Uploaded $BUNDLE_ID $VERSION ($BUILD) to App Store Connect."
   echo "    TestFlight serves it to internal testers once Apple finishes processing (usually minutes)."
 else
   echo "==> Exported $(ls "$DIST_DIR"/*.ipa)"
