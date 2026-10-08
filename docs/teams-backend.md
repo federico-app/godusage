@@ -65,7 +65,7 @@ Day keys are each Mac's local calendar days. A stats request can pass the viewer
 
 ## Invites and roles
 
-- Every member can see the invite link: `https://<host>/join/<code>`, on the host the app called. The page shows the team name and member count, an **Open in GodUsage** button (`godusage://join/<code>`), and a download link.
+- Every member can see the invite link: `https://<host>/join/<code>`, on the host the app called. The page shows the team name and member count, an **Open in GodUsage** button (`godusage://join/<code>`, or `godusage-dev://` on the dev server: `APP_SCHEME`), and a download link.
 - Only owners can rotate the link (the old one stops working), rename the team, change roles, remove members, share or unshare the public board, edit plans, and delete the team.
 - Anyone can leave. A team always keeps at least one owner: the last owner can neither leave nor be made a member (409). When the account behind `owner_id` leaves or is made a member, `owner_id` moves to the earliest-joined remaining owner.
 - Deleting an account deletes the teams where it is the only owner. Teams with another owner stay.
@@ -97,8 +97,8 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 
 | Route | What it does |
 | --- | --- |
-| `GET /v1/auth/apple/start` | `?state=…&code_challenge=…` (PKCE S256). Redirects to Apple's web sign-in. See [Sign in with Apple](#sign-in-with-apple). |
-| `POST /v1/auth/apple/callback` | Apple's form post. Redirects to `godusage://auth?state=…&code=…` (or `&error=cancelled\|invalid_token\|apple`). |
+| `GET /v1/auth/apple/start` | `?state=…&code_challenge=…&scheme=godusage\|godusage-dev` (PKCE S256; `scheme` defaults to `godusage`). Redirects to Apple's web sign-in. See [Sign in with Apple](#sign-in-with-apple). |
+| `POST /v1/auth/apple/callback` | Apple's form post. Redirects to `<scheme>://auth?state=…&code=…` (or `&error=cancelled\|invalid_token\|apple`). |
 | `POST /v1/auth/apple/exchange` | `{ code, codeVerifier }` → `{ token, user, created }`. The code works once, for five minutes. |
 | `POST /v1/auth/apple` | Native sign-in (for the iOS app): `{ identityToken, displayName? }` → `{ token, user, created }`. `displayName` is used only for a new account. |
 | `POST /v1/auth/pairing` | Signed-in Mac only (a paired session gets 403): `→ { code, expiresAt }`. The code works once, for three minutes, and replaces the account's previous code. See [QR pairing](#qr-pairing). |
@@ -165,8 +165,8 @@ Account-scope entries may add `"account": "<64 hex characters>"`; it is rejected
 
 The Mac app signs in through the web, because Developer ID provisioning profiles never grant the native Sign in with Apple entitlement:
 
-1. The app opens `/v1/auth/apple/start` in a system sign-in sheet (`ASWebAuthenticationSession`) with its own random `state` and a PKCE `code_challenge`. The server stores a sign-in request (10 minutes) and redirects to Apple with its own state and a nonce.
-2. Apple posts the identity token to `/v1/auth/apple/callback`. The server checks that the request exists and has not expired (each is used once), and verifies the token: Apple's signature, issuer, expiry, audience = the Services ID (`APPLE_WEB_CLIENT_ID`), and the request's nonce. It finds or creates the account (with the name Apple shares on the first sign-in) and redirects to `godusage://auth` with a one-time code.
+1. The app opens `/v1/auth/apple/start` in Safari with its own random `state`, a PKCE `code_challenge`, and its URL `scheme` (`godusage` for the release app, `godusage-dev` for GodUsage DEV, so each gets back its own sign-in when both are installed). The server stores a sign-in request (10 minutes) and redirects to Apple with its own state and a nonce.
+2. Apple posts the identity token to `/v1/auth/apple/callback`. The server checks that the request exists and has not expired (each is used once), and verifies the token: Apple's signature, issuer, expiry, audience = the Services ID (`APPLE_WEB_CLIENT_ID`), and the request's nonce. It finds or creates the account (with the name Apple shares on the first sign-in) and redirects to `<scheme>://auth` with a one-time code, which Safari hands to the app.
 3. The app checks the returned `state` and posts the code with its PKCE verifier to `/v1/auth/apple/exchange`. Only the app that started the sign-in can redeem the code.
 
 Apple setup, once: one **Services ID** per environment (Identifiers → Services IDs), each with Sign in with Apple enabled and both of its hosts as domains and return URLs. The server builds the `redirect_uri` on the host the app called: the Coolify domain for apps from 1.1.0, the `workers.dev` host (through the proxy Worker, which tells the server the public host) for older apps:
@@ -233,6 +233,7 @@ Do this once per environment (production, then development the same way):
    | `APPLE_AUDIENCES` | `com.montinovo.godusage` | `com.montinovo.godusage.dev` | Required |
    | `APPLE_WEB_CLIENT_ID` | `com.montinovo.godusage.web` | `com.montinovo.godusage.web.dev` | Required |
    | `DOWNLOAD_URL` | optional | optional | Defaults to the latest GitHub release |
+   | `APP_SCHEME` | leave unset (`godusage`) | `godusage-dev` | The invite page's **Open in GodUsage** link |
    | `SERVICE_USER_POSTGRES`, `SERVICE_PASSWORD_POSTGRES`, `SERVICE_PASSWORD_REDIS` | generated | generated | Coolify creates them on the first deploy; leave them |
    | `SERVICE_PASSWORD_64_PROXY` | generated | generated | The api's `PROXY_SECRET`. Copy it into the GitHub secret for the proxy (below) |
    | `SERVICE_URL_API_8787` | set by the domain | set by the domain | |
@@ -273,7 +274,7 @@ Do one environment at a time, development first. Sessions, teams, and invite cod
    With several Coolify resources on the server, pick the api container by its resource name (`docker ps --format '{{.Names}}' | grep api`). Coolify's terminal on the api container works too, with a path instead of `-`. It logs each table's row count and refuses a database that already has data (pending sign-ins excepted). The D1 caches (`stats_cache`, `team_champions`, `read_budget`) and `teams.stats_version` are left behind.
 4. **Verify against the Coolify domain:** `curl -H "Authorization: Bearer <a session token>" https://<domain>/v1/teams` (a token from the Mac app's session file, or a fresh sign-in on the dev build pointed at the domain), compare a board with what the app showed, and open `https://<domain>/join/<an invite code>`.
 5. **Deploy the proxy Worker:** set the repository variable and secret ([Proxy Worker](#proxy-worker)), then run **Deploy Backend Proxy** for the environment. From now on the `workers.dev` host serves Coolify.
-6. **Verify the app:** open the app (the dev build for development): the leaderboard loads, an upload succeeds (Settings → Teams shows the last upload), Sign in with Apple completes in the web sheet, and an invite link opens. `https://<workers.dev host>/v1/health` answers through the proxy, for older apps.
+6. **Verify the app:** open the app (the dev build for development): the leaderboard loads, an upload succeeds (Settings → Teams shows the last upload), Sign in with Apple completes in Safari, and an invite link opens. `https://<workers.dev host>/v1/health` answers through the proxy, for older apps.
 7. **Keep D1 as a backup** for a few weeks: the deploy removed the Worker's D1 binding, but the database and its Time Travel history stay. Delete it (`wrangler d1 delete`) only once the Coolify backups are proven.
 
 To roll back before step 5, nothing changed for the apps. After step 5, redeploy the old D1 Worker from the last commit before this change (`git checkout <commit> -- backend` and `wrangler deploy`): it still has its database, without the writes made on Coolify since.

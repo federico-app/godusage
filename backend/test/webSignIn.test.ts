@@ -16,8 +16,9 @@ async function raw(request: Request, now: Date = NOW): Promise<Response> {
 }
 
 /** Runs /start and returns the server state and nonce Apple would receive. */
-async function start(appState: string, challenge: string) {
-  const response = await raw(new Request(`https://api.test/v1/auth/apple/start?state=${appState}&code_challenge=${challenge}`));
+async function start(appState: string, challenge: string, scheme?: string) {
+  const query = `state=${appState}&code_challenge=${challenge}${scheme ? `&scheme=${scheme}` : ""}`;
+  const response = await raw(new Request(`https://api.test/v1/auth/apple/start?${query}`));
   expect(response.status).toBe(302);
   const apple = new URL(response.headers.get("location")!);
   return { apple, state: apple.searchParams.get("state")!, nonce: apple.searchParams.get("nonce")! };
@@ -45,10 +46,10 @@ async function exchange(code: string, codeVerifier: string) {
   return { status: response.status, body: (await response.json()) as any };
 }
 
-function appCallback(response: Response): URL {
+function appCallback(response: Response, scheme = "godusage"): URL {
   expect(response.status).toBe(303);
   const location = new URL(response.headers.get("location")!);
-  expect(`${location.protocol}//${location.host}`).toBe("godusage://auth");
+  expect(`${location.protocol}//${location.host}`).toBe(`${scheme}://auth`);
   return location;
 }
 
@@ -115,6 +116,26 @@ describe("web sign in with Apple", () => {
       await callback({ state: second.state, id_token: await appleToken({ aud: "com.montinovo.godusage", nonce: second.nonce }) }),
     );
     expect(wrongAudience.searchParams.get("error")).toBe("invalid_token");
+  });
+
+  it("returns to the scheme the app asked for, so the DEV app gets its own sign-in", async () => {
+    const { verifier, challenge } = await pkce();
+    const { state, nonce } = await start("app-state-ffffffffff", challenge, "godusage-dev");
+    const back = appCallback(
+      await callback({ state, id_token: await appleToken({ aud: WEB_CLIENT, nonce, sub: "web-user-dev" }) }),
+      "godusage-dev",
+    );
+    expect(back.searchParams.get("state")).toBe("app-state-ffffffffff");
+    expect((await exchange(back.searchParams.get("code")!, verifier)).status).toBe(201);
+
+    const cancelled = await start("app-state-gggggggggg", challenge, "godusage-dev");
+    expect(appCallback(await callback({ state: cancelled.state, error: "user_cancelled_authorize" }), "godusage-dev").searchParams.get("error")).toBe("cancelled");
+  });
+
+  it("refuses a scheme that isn't one of GodUsage's", async () => {
+    const { challenge } = await pkce();
+    const response = await raw(new Request(`https://api.test/v1/auth/apple/start?state=app-state-hhhhhhhhhh&code_challenge=${challenge}&scheme=evil`));
+    expect(response.status).toBe(400);
   });
 
   it("passes a cancel back to the app", async () => {

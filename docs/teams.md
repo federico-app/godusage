@@ -4,7 +4,7 @@ Teams let you compare AI usage with friends. Create a team, share its invite lin
 
 ## Signing in
 
-Open **Settings → Teams** and choose **Sign In with Apple**. A system sign-in sheet opens Apple's sign-in page; if Safari is already signed in to your Apple ID, you only confirm. The first sign-in creates your account. Your display name starts as the name Apple shares (or "GodUsage User") and you can change it in the same pane. It is what teammates see. GodUsage never receives or stores your email.
+Open **Settings → Teams** and choose **Sign In with Apple**. Apple's sign-in page opens in Safari, whatever your default browser is; if Safari is already signed in to your Apple ID, you only confirm. Safari then asks to open GodUsage, which finishes the sign-in. A sign-in left unfinished for 10 minutes, or replaced by a new one, is dropped. The first sign-in creates your account. Your display name starts as the name Apple shares (or "GodUsage User") and you can change it in the same pane. It is what teammates see. GodUsage never receives or stores your email.
 
 The sign-in stays on this Mac until you sign out, delete the account, or it goes unused for 180 days. Each Mac signs in on its own. Signing in on another Mac with the same Apple ID uses the same account, so your Macs add up to one person on the leaderboard.
 
