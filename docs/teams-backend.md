@@ -1,21 +1,21 @@
 # Teams Backend
 
-The teams backend lets people create a team, invite friends with a link, and compare their AI usage on a leaderboard. It lives in `backend/`: a Node server on Postgres and Redis, run by Coolify on our own server from `backend/docker-compose.yml`. A small Cloudflare Worker in front of it keeps the hosts the apps already call. The Mac app is its only writer. A shared team can also be viewed as a read-only web page.
+The teams backend lets people create a team, invite friends with a link, and compare their AI usage on a leaderboard. It lives in `backend/`: a Node server on Postgres and Redis, run by Coolify on our own server from `backend/docker-compose.yml`. The apps call it on its own domain (`api.godusage.com`, `api-dev.godusage.com`); a small Cloudflare Worker keeps the `workers.dev` hosts that apps before 1.1.0 call. The Mac app is its only writer. A shared team can also be viewed as a read-only web page.
 
 ## Architecture
 
 ```
-app ──▶ godusage-api[-dev].federico-c80.workers.dev  (proxy Worker, backend/proxy/)
-                  │  forwards every request, with the public host and client IP
-                  ▼
-        Coolify domain ──▶ api (backend/server/, Node) ──▶ postgres (data)
-                                                     └──▶ redis (cache, rate limits)
+app 1.1.0+ ──────────────────────────────────────────────────▶ api[-dev].godusage.com (Coolify)
+app before 1.1.0 ──▶ godusage-api[-dev].…workers.dev ──────────▶        │
+                     (proxy Worker, backend/proxy/:                     ▼
+                      adds the public host and client IP)     api (backend/server/, Node) ──▶ postgres (data)
+                                                                                         └──▶ redis (cache, rate limits)
 ```
 
 - **api** (`backend/Dockerfile`): the routes in `backend/src/` behind a Node HTTP server (`server/main.ts`). It applies pending Postgres migrations at startup.
 - **postgres**: all data (accounts, sessions, teams, usage). The schema is in `backend/migrations/`.
 - **redis**: computed boards and rate-limit counters only. Losing it loses nothing: the next requests recompute.
-- **proxy Worker** (`backend/proxy/`): a `workers.dev` hostname cannot point at another server, so the Workers that used to run the backend now forward to Coolify. See [Proxy Worker](#proxy-worker).
+- **proxy Worker** (`backend/proxy/`): apps before 1.1.0 call the `workers.dev` hosts, which cannot point at another server, so the Workers that used to run the backend now forward to Coolify. See [Proxy Worker](#proxy-worker).
 
 The backend used to run as a Cloudflare Worker on D1. D1's free plan (5M rows read a day) cut production off, so it moved; the D1 schema history stays in `backend/d1-migrations/` for reading D1 exports.
 
@@ -163,12 +163,12 @@ The Mac app signs in through the web, because Developer ID provisioning profiles
 2. Apple posts the identity token to `/v1/auth/apple/callback`. The server checks that the request exists and has not expired (each is used once), and verifies the token: Apple's signature, issuer, expiry, audience = the Services ID (`APPLE_WEB_CLIENT_ID`), and the request's nonce. It finds or creates the account (with the name Apple shares on the first sign-in) and redirects to `godusage://auth` with a one-time code.
 3. The app checks the returned `state` and posts the code with its PKCE verifier to `/v1/auth/apple/exchange`. Only the app that started the sign-in can redeem the code.
 
-Apple setup, once: one **Services ID** per environment (Identifiers → Services IDs), each with Sign in with Apple enabled and its own `workers.dev` host as domain and return URL. Those hosts now belong to the proxy Worker, which tells the server the public host, so the server builds the `redirect_uri` on it and nothing in Apple's setup changes with the move to Coolify:
+Apple setup, once: one **Services ID** per environment (Identifiers → Services IDs), each with Sign in with Apple enabled and both of its hosts as domains and return URLs. The server builds the `redirect_uri` on the host the app called: the Coolify domain for apps from 1.1.0, the `workers.dev` host (through the proxy Worker, which tells the server the public host) for older apps:
 
 | Environment | Services ID (`APPLE_WEB_CLIENT_ID`) | Primary App ID | Domain → return URL |
 | --- | --- | --- | --- |
-| Production | `com.montinovo.godusage.web` | `com.montinovo.godusage` | `godusage-api.federico-c80.workers.dev` → `https://godusage-api.federico-c80.workers.dev/v1/auth/apple/callback` |
-| Development | `com.montinovo.godusage.web.dev` | `com.montinovo.godusage.dev` | `godusage-api-dev.federico-c80.workers.dev` → `https://godusage-api-dev.federico-c80.workers.dev/v1/auth/apple/callback` |
+| Production | `com.montinovo.godusage.web` | `com.montinovo.godusage` | `api.godusage.com` → `https://api.godusage.com/v1/auth/apple/callback`; `godusage-api.federico-c80.workers.dev` → `https://godusage-api.federico-c80.workers.dev/v1/auth/apple/callback` |
+| Development | `com.montinovo.godusage.web.dev` | `com.montinovo.godusage.dev` | `api-dev.godusage.com` → `https://api-dev.godusage.com/v1/auth/apple/callback`; `godusage-api-dev.federico-c80.workers.dev` → `https://godusage-api-dev.federico-c80.workers.dev/v1/auth/apple/callback` |
 
 Apple gives a person the same user id for every app and Services ID grouped under the same primary App ID, so web and native sign-ins reach the same account.
 
@@ -196,7 +196,8 @@ There are two deployments, each with its own Coolify resource, database, and Red
 
 | | Production | Development |
 | --- | --- | --- |
-| App host (proxy Worker) | `godusage-api.federico-c80.workers.dev` | `godusage-api-dev.federico-c80.workers.dev` |
+| App host (1.1.0+) | `api.godusage.com` | `api-dev.godusage.com` |
+| Older apps (proxy Worker) | `godusage-api.federico-c80.workers.dev` | `godusage-api-dev.federico-c80.workers.dev` |
 | Coolify resource | follows `main` | follows `develop` |
 | Accepted app | `com.montinovo.godusage` | `com.montinovo.godusage.dev` |
 
@@ -229,15 +230,15 @@ The api's environment, for reference: `DATABASE_URL` and `REDIS_URL` are built f
 
 ## Proxy Worker
 
-`backend/proxy/` is a Worker with the old Workers' names (`godusage-api`, and `godusage-api-dev` with `--env dev`), so deploying it replaces the D1 Worker on the same hosts and the apps keep working unchanged. It forwards every request (method, path, query, headers, body) to `ORIGIN_URL`, the environment's Coolify domain, and returns the response as it is (redirects and cookies too). It has no bindings.
+`backend/proxy/` is a Worker with the old Workers' names (`godusage-api`, and `godusage-api-dev` with `--env dev`), so deploying it replaces the D1 Worker on the same hosts and apps before 1.1.0 keep working unchanged. It forwards every request (method, path, query, headers, body) to `ORIGIN_URL`, the environment's Coolify domain, and returns the response as it is (redirects and cookies too). It has no bindings.
 
-The server builds public links from the request host: Sign in with Apple's `redirect_uri` (which Apple only accepts on the registered `workers.dev` hosts), invite links, and board links. The Worker sends the host the client called and the client's IP in `x-godusage-public-host` and `x-godusage-client-ip`, with `x-godusage-proxy-secret` set to the api's `PROXY_SECRET`. Coolify's reverse proxy rewrites the standard `X-Forwarded-*` headers, so these have their own names. The server uses them only when the secret matches, and refuses a request whose secret doesn't (403, logged as `proxy_rejected`). Requests straight to the Coolify domain use its own host.
+The server builds public links from the request host: Sign in with Apple's `redirect_uri` (which Apple only accepts on the hosts registered on the Services ID), invite links, and board links. The Worker sends the host the client called and the client's IP in `x-godusage-public-host` and `x-godusage-client-ip`, with `x-godusage-proxy-secret` set to the api's `PROXY_SECRET`. Coolify's reverse proxy rewrites the standard `X-Forwarded-*` headers, so these have their own names. The server uses them only when the secret matches, and refuses a request whose secret doesn't (403, logged as `proxy_rejected`). Requests straight to the Coolify domain use its own host.
 
 **Deploy** with **Deploy Backend Proxy** (`.github/workflows/backend-deploy.yml`). It needs, in the repository settings, the variable `BACKEND_ORIGIN_URL` (production) or `BACKEND_DEV_ORIGIN_URL` (development) set to the Coolify domain (`https://api.godusage.com`, without the port), the secret `BACKEND_PROXY_SECRET` or `BACKEND_DEV_PROXY_SECRET` set to that environment's `SERVICE_PASSWORD_64_PROXY`, and `CLOUDFLARE_API_TOKEN`. It checks the Coolify server answers, sets the Worker's `PROXY_SECRET` secret, deploys with `ORIGIN_URL`, and checks the `workers.dev` host answers. A push to `develop` that changes `backend/proxy/` deploys the dev proxy; a stable release tag deploys production; either can be run by hand. Without the variable or secret it fails and deploys nothing.
 
 `npm run dev` in `backend/proxy/` runs the Worker locally in front of a server on `127.0.0.1:8787`.
 
-**Limits:** the Workers free plan allows 100,000 requests a day per account, shared by both proxies. The proxy is a bridge: the long-term path is a custom domain (e.g. `api.godusage.com`) pointed at Coolify, used by a future app release, plus that domain's `/v1/auth/apple/callback` added to each Services ID. Then the proxy can be retired.
+**Limits:** the Workers free plan allows 100,000 requests a day per account, shared by both proxies. Only apps before 1.1.0 use them, so traffic falls as people update. Retire the proxies once those versions are gone; invite and board links shared from old apps point at the `workers.dev` hosts and stop working then.
 
 ## Moving from D1 to Coolify
 
@@ -256,7 +257,7 @@ Do one environment at a time, development first. Sessions, teams, and invite cod
    With several Coolify resources on the server, pick the api container by its resource name (`docker ps --format '{{.Names}}' | grep api`). Coolify's terminal on the api container works too, with a path instead of `-`. It logs each table's row count and refuses a database that already has data (pending sign-ins excepted). The D1 caches (`stats_cache`, `team_champions`, `read_budget`) and `teams.stats_version` are left behind.
 4. **Verify against the Coolify domain:** `curl -H "Authorization: Bearer <a session token>" https://<domain>/v1/teams` (a token from the Mac app's session file, or a fresh sign-in on the dev build pointed at the domain), compare a board with what the app showed, and open `https://<domain>/join/<an invite code>`.
 5. **Deploy the proxy Worker:** set the repository variable and secret ([Proxy Worker](#proxy-worker)), then run **Deploy Backend Proxy** for the environment. From now on the `workers.dev` host serves Coolify.
-6. **Verify the app:** open the app (the dev build for development): the leaderboard loads, an upload succeeds (Settings → Teams shows the last upload), Sign in with Apple completes in the web sheet, and an invite link opens. `https://<workers.dev host>/v1/health` answers through the proxy.
+6. **Verify the app:** open the app (the dev build for development): the leaderboard loads, an upload succeeds (Settings → Teams shows the last upload), Sign in with Apple completes in the web sheet, and an invite link opens. `https://<workers.dev host>/v1/health` answers through the proxy, for older apps.
 7. **Keep D1 as a backup** for a few weeks: the deploy removed the Worker's D1 binding, but the database and its Time Travel history stay. Delete it (`wrangler d1 delete`) only once the Coolify backups are proven.
 
 To roll back before step 5, nothing changed for the apps. After step 5, redeploy the old D1 Worker from the last commit before this change (`git checkout <commit> -- backend` and `wrangler deploy`): it still has its database, without the writes made on Coolify since.

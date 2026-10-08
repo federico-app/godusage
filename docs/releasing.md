@@ -71,7 +71,7 @@ The tap name means the command is not just `brew install godusage`. That needs t
 
 ## Teams backend
 
-The [teams backend](teams-backend.md) runs on Coolify, which deploys it from git: the production resource follows `main`, the development one follows `develop`, and each applies its migrations at startup. [.github/workflows/backend-deploy.yml](../.github/workflows/backend-deploy.yml) deploys the proxy Worker in front of it on the app's channels: a push to `develop` that changes `backend/proxy/` deploys the dev proxy, a stable tag deploys production, and it can be run by hand. It needs `CLOUDFLARE_API_TOKEN`, the proxy secrets, and the origin variables above.
+The [teams backend](teams-backend.md) runs on Coolify, which deploys it from git: the production resource follows `main`, the development one follows `develop`, and each applies its migrations at startup. [.github/workflows/backend-deploy.yml](../.github/workflows/backend-deploy.yml) deploys the proxy Worker that serves apps before 1.1.0, on the app's channels: a push to `develop` that changes `backend/proxy/` deploys the dev proxy, a stable tag deploys production, and it can be run by hand. It needs `CLOUDFLARE_API_TOKEN`, the proxy secrets, and the origin variables above.
 
 ### iOS signing
 
