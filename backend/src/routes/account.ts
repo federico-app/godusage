@@ -107,17 +107,18 @@ export const deleteMe: Handler = async ({ request, env }) => {
 
 /**
  * GET /v1/me/export — everything the server keeps about the signed-in user, as one JSON document:
- * the account, Macs, daily usage per provider and per model, team memberships, reactions given and
+ * the account, Macs, phones linked by QR pairing, daily usage per provider and per model, team memberships, reactions given and
  * received, and challenges started. Session tokens are never included (only their count).
  */
 export const exportMe: Handler = async ({ request, env, deps }) => {
   const user = await requireUser(request, env.db);
   const id = [user.id];
   // One transaction, so the document is one consistent snapshot.
-  const [account, sessions, devices, days, models, teams, given, received, challenges] = await env.db.transaction((tx) =>
+  const [account, sessions, linkedDevices, devices, days, models, teams, given, received, challenges] = await env.db.transaction((tx) =>
     Promise.all([
       tx.query("SELECT id, apple_sub, display_name, created_at FROM users WHERE id = $1", id),
       tx.query("SELECT COUNT(*) AS n FROM sessions WHERE user_id = $1", id),
+      tx.query("SELECT paired_device AS name, created_at FROM sessions WHERE user_id = $1 AND paired_device IS NOT NULL ORDER BY created_at", id),
       tx.query("SELECT id, name, updated_at FROM devices WHERE user_id = $1 ORDER BY updated_at DESC", id),
       tx.query("SELECT device_id, provider, day, scope, tokens, cost_usd FROM usage_days WHERE user_id = $1 ORDER BY day, provider", id),
       tx.query("SELECT device_id, provider, day, model, scope, tokens, cost_usd FROM usage_model_days WHERE user_id = $1 ORDER BY day, provider, model", id),
@@ -133,6 +134,7 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
     exportedAt: deps.now().toISOString(),
     account: { id: row.id, appleUserID: row.apple_sub, displayName: row.display_name, createdAt: row.created_at },
     activeSessions: (sessions[0] as { n: number }).n,
+    linkedDevices,
     devices,
     usageDays: days,
     usageModelDays: models,

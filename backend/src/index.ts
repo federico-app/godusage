@@ -21,6 +21,7 @@ import { deleteDevice, listDevices, putDeviceUsage } from "./routes/usage";
 import { createChallenge, deleteChallenge, listChallenges } from "./routes/challenges";
 import { addReaction, removeReaction } from "./routes/social";
 import { getPlans, putPlans } from "./routes/plans";
+import { createPairingCode, exchangePairingCode, listLinkedDevices, unlinkDevice } from "./routes/pairing";
 import { browserSignOut, memberBoardPage, memberBoardSignIn } from "./routes/webBoard";
 import { exchangeWebSignIn, finishWebSignIn, startWebSignIn } from "./routes/webSignIn";
 
@@ -48,11 +49,15 @@ const ROUTES: Route[] = [
   route("GET", "/v1/auth/apple/start", startWebSignIn),
   route("POST", "/v1/auth/apple/callback", finishWebSignIn),
   route("POST", "/v1/auth/apple/exchange", exchangeWebSignIn),
+  route("POST", "/v1/auth/pairing", createPairingCode),
+  route("POST", "/v1/auth/pairing/exchange", exchangePairingCode),
   route("POST", "/v1/auth/logout", signOut),
   route("GET", "/v1/me", getMe),
   route("PATCH", "/v1/me", updateMe),
   route("DELETE", "/v1/me", deleteMe),
   route("GET", "/v1/me/export", exportMe),
+  route("GET", "/v1/me/linked-devices", listLinkedDevices),
+  route("DELETE", "/v1/me/linked-devices/:id", unlinkDevice),
   route("GET", "/v1/teams", listTeams),
   route("POST", "/v1/teams", createTeam),
   route("GET", "/v1/teams/:teamID", getTeam),

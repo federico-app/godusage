@@ -17,6 +17,7 @@ struct TeamsSettingsPane: View {
             if teams.isSignedIn {
                 TeamsInviteCard(teams: teams)
                 TeamsAccountSection(teams: teams)
+                TeamsLinkedDevicesSection()
                 TeamsListSection(teams: teams)
                 if let teamID = teams.selectedTeamID, let summary = teams.teams.first(where: { $0.id == teamID }) {
                     TeamDetailSection(teams: teams, summary: summary)
