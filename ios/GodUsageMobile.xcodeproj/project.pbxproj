@@ -260,23 +260,6 @@
 			};
 			name = Release;
 		};
-		A10000000000000000000105 /* Dev */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ENABLE_MODULES = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEV_CHANNEL $(inherited)";
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_VERSION = 6.0;
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Dev;
-		};
 		A10000000000000000000103 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -290,8 +273,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/GodUsageMobile-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "GodUsage DEV";
-				INFOPLIST_KEY_NSCameraUsageDescription = "GodUsage uses the camera to scan the code that links this device to your Mac.";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "GodUsage uses the camera to scan the code that links this device to your Mac.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -323,8 +306,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/GodUsageMobile-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = GodUsage;
-				INFOPLIST_KEY_NSCameraUsageDescription = "GodUsage uses the camera to scan the code that links this device to your Mac.";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "GodUsage uses the camera to scan the code that links this device to your Mac.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -343,6 +326,23 @@
 			};
 			name = Release;
 		};
+		A10000000000000000000105 /* Dev */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEV_CHANNEL $(inherited)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Dev;
+		};
 		A10000000000000000000106 /* Dev */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -356,8 +356,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/GodUsageMobile-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "GodUsage DEV";
-				INFOPLIST_KEY_NSCameraUsageDescription = "GodUsage uses the camera to scan the code that links this device to your Mac.";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "GodUsage uses the camera to scan the code that links this device to your Mac.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
