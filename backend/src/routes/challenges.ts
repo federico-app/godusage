@@ -1,7 +1,8 @@
 import type { Handler } from "../context";
 import { badRequest, conflict, forbidden, json, noContent, notFound, nowISO, readJSONObject } from "../http";
 import { requireUser, type SessionUser } from "../session";
-import { EFFECTIVE_DAYS, EFFECTIVE_MODELS } from "../stats";
+import { cachedTeamResult, forgetTeamCache, guardedWork, readGuard, type ReadGuard } from "../readGuard";
+import { teamUsage } from "../teamUsage";
 import { addDays, dayKey, isValidDay } from "../usagePayload";
 
 /**
@@ -50,10 +51,11 @@ export function viewerToday(url: URL, now: Date): string {
 }
 
 export async function challengeStandings(db: D1Database, teamID: string, challenge: ChallengeRow): Promise<Standing[]> {
-  const [members, days, models] = await db.batch([
-    db.prepare("SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = ?").bind(teamID),
-    db.prepare(EFFECTIVE_DAYS).bind(teamID, challenge.starts_on, challenge.ends_on),
-    db.prepare(EFFECTIVE_MODELS).bind(teamID, challenge.starts_on, challenge.ends_on),
+  const [members, usage] = await Promise.all([
+    db.prepare("SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = ?")
+      .bind(teamID)
+      .all<{ id: string; display_name: string }>(),
+    teamUsage(db, teamID, challenge.starts_on, challenge.ends_on, { models: true }),
   ]);
   const totals = new Map<string, { tokens: number; cost: number; models: Set<string> }>();
   const entry = (id: string) => {
@@ -61,16 +63,16 @@ export async function challengeStandings(db: D1Database, teamID: string, challen
     if (!value) totals.set(id, (value = { tokens: 0, cost: 0, models: new Set() }));
     return value;
   };
-  for (const row of days!.results as { user_id: string; tokens: number; cost: number }[]) {
+  for (const row of usage.days) {
     const value = entry(row.user_id);
     value.tokens += row.tokens;
     value.cost += row.cost;
   }
-  for (const row of models!.results as { user_id: string; provider: string; model: string; tokens: number }[]) {
+  for (const row of usage.models) {
     if (row.tokens > 0) entry(row.user_id).models.add(`${row.provider}/${row.model.toLowerCase()}`);
   }
 
-  const candidates = (members!.results as { id: string; display_name: string }[]).flatMap((member) => {
+  const candidates = members.results.flatMap((member) => {
     const value = totals.get(member.id);
     switch (challenge.kind) {
       case "lowest_spend":
@@ -130,11 +132,17 @@ export async function teamChallengeList(db: D1Database, teamID: string, today: s
   return challenges;
 }
 
+/** The team's challenges from the cache (see `readGuard.ts`), recomputed at most every 5 minutes. */
+export function cachedChallengeList(guard: ReadGuard, teamID: string, today: string) {
+  return cachedTeamResult(guard, teamID, `challenges|${today}`, 5 * 60_000, (db) => teamChallengeList(db, teamID, today));
+}
+
 /** GET /v1/teams/:teamID/challenges?today=… — active challenges and the last five finished. */
 export const listChallenges: Handler = async ({ request, env, url, params, deps }) => {
   const user = await requireUser(request, env.DB);
   await requireMembership(env.DB, params.teamID!, user);
-  return json({ challenges: await teamChallengeList(env.DB, params.teamID!, viewerToday(url, deps.now())) });
+  const result = await cachedChallengeList(readGuard(env, deps.now()), params.teamID!, viewerToday(url, deps.now()));
+  return json({ challenges: result.value, paused: result.paused });
 };
 
 /** POST /v1/teams/:teamID/challenges { kind, days, today? } — starts today, any member. */
@@ -159,10 +167,12 @@ export const createChallenge: Handler = async ({ request, env, url, params, deps
     ends_on: addDays(today, body.days - 1),
     created_by: user.id,
   };
-  await env.DB.prepare("INSERT INTO challenges (id, team_id, kind, starts_on, ends_on, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .bind(row.id, teamID, row.kind, row.starts_on, row.ends_on, row.created_by, nowISO())
-    .run();
-  return json({ challenge: await describe(env.DB, teamID, row, today) }, 201);
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO challenges (id, team_id, kind, starts_on, ends_on, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(row.id, teamID, row.kind, row.starts_on, row.ends_on, row.created_by, nowISO()),
+    forgetTeamCache(env.DB, teamID, "challenges|"),
+  ]);
+  return json({ challenge: await guardedWork(readGuard(env, deps.now()), (db) => describe(db, teamID, row, today)) }, 201);
 };
 
 /** DELETE /v1/teams/:teamID/challenges/:challengeID — the creator or the owner. */
@@ -174,6 +184,9 @@ export const deleteChallenge: Handler = async ({ request, env, params }) => {
     .first<{ created_by: string | null }>();
   if (!row) throw notFound("Challenge not found.");
   if (row.created_by !== user.id && role !== "owner") throw forbidden("Only the creator or a team owner can cancel a challenge.");
-  await env.DB.prepare("DELETE FROM challenges WHERE id = ?").bind(params.challengeID!).run();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM challenges WHERE id = ?").bind(params.challengeID!),
+    forgetTeamCache(env.DB, params.teamID!, "challenges|"),
+  ]);
   return noContent();
 };

@@ -2,6 +2,7 @@ import type { Handler } from "../context";
 import { forbidden, json, notFound, nowISO, readJSONObject } from "../http";
 import { parsePlans, planReports, type PlanRow } from "../plans";
 import { requireUser } from "../session";
+import { cachedTeamResult, forgetTeamCache, guardedWork, readGuard, type ReadGuard } from "../readGuard";
 import { viewerToday } from "./challenges";
 
 async function memberRole(db: D1Database, teamID: string, userID: string): Promise<"owner" | "member"> {
@@ -24,7 +25,7 @@ async function loadPlans(db: D1Database, teamID: string): Promise<PlanRow[]> {
   }));
 }
 
-async function report(db: D1Database, teamID: string, today: string, role: "owner" | "member") {
+async function report(db: D1Database, teamID: string, today: string) {
   const plans = await planReports(db, teamID, await loadPlans(db, teamID), today);
   const totals = plans.reduce(
     (sum, plan) => ({
@@ -38,15 +39,20 @@ async function report(db: D1Database, teamID: string, today: string, role: "owne
   return {
     plans,
     totals: { monthlyCostUSD: round(totals.monthlyCostUSD), valueUSD: round(totals.valueUSD), projectedValueUSD: round(totals.projectedValueUSD) },
-    canEdit: role === "owner",
   };
+}
+
+/** The plan report from the cache (see `readGuard.ts`), recomputed at most every 10 minutes. */
+function cachedReport(guard: ReadGuard, teamID: string, today: string) {
+  return cachedTeamResult(guard, teamID, `plans|${today}`, 10 * 60_000, (db) => report(db, teamID, today));
 }
 
 /** GET /v1/teams/:teamID/plans?today= — the team's plans and their report, for any member. */
 export const getPlans: Handler = async ({ request, env, url, params, deps }) => {
   const user = await requireUser(request, env.DB);
   const role = await memberRole(env.DB, params.teamID!, user.id);
-  return json(await report(env.DB, params.teamID!, viewerToday(url, deps.now()), role));
+  const result = await cachedReport(readGuard(env, deps.now()), params.teamID!, viewerToday(url, deps.now()));
+  return json({ ...result.value, canEdit: role === "owner", paused: result.paused });
 };
 
 /** PUT /v1/teams/:teamID/plans?today= { plans: [...] } — replaces the list. Owner only. */
@@ -58,6 +64,7 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
   const plans = parsePlans(await readJSONObject(request));
   const updatedAt = nowISO();
   await env.DB.batch([
+    forgetTeamCache(env.DB, teamID, "plans|"),
     env.DB.prepare("DELETE FROM team_plans WHERE team_id = ?").bind(teamID),
     ...plans.map((plan, position) =>
       env.DB.prepare(
@@ -65,5 +72,6 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
       ).bind(crypto.randomUUID(), teamID, plan.provider, plan.name, plan.monthlyCostUSD, plan.renewalDay, position, updatedAt),
     ),
   ]);
-  return json(await report(env.DB, teamID, viewerToday(url, deps.now()), role));
+  const fresh = await guardedWork(readGuard(env, deps.now()), (db) => report(db, teamID, viewerToday(url, deps.now())));
+  return json({ ...fresh, canEdit: true, paused: false });
 };

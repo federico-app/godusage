@@ -3,14 +3,15 @@ import { ApiError, sha256Hex } from "./http";
 /**
  * Per-client request limits, on Cloudflare's rate limiting bindings (wrangler.jsonc `ratelimits`):
  * sign-in routes allow 20 requests a minute per IP; everything else under /v1 allows 120 a minute
- * per session (or per IP without one). Pages are not limited. Over the limit: 429 with Retry-After.
+ * per session (or per IP without one); the leaderboard and invite pages allow 30 a minute per IP,
+ * since each board view computes stats. Over the limit: 429 with Retry-After.
  */
-export type RateLimitKind = "auth" | "api";
+export type RateLimitKind = "auth" | "api" | "page";
 export type RateLimiter = (kind: RateLimitKind, key: string) => Promise<boolean>;
 
 export function bindingRateLimiter(env: Env): RateLimiter {
   return async (kind, key) => {
-    const binding = kind === "auth" ? env.AUTH_LIMITER : env.API_LIMITER;
+    const binding = { auth: env.AUTH_LIMITER, api: env.API_LIMITER, page: env.PAGE_LIMITER }[kind];
     const { success } = await binding.limit({ key });
     return success;
   };
@@ -19,6 +20,7 @@ export function bindingRateLimiter(env: Env): RateLimiter {
 export function rateLimitKind(pathname: string): RateLimitKind | null {
   if (pathname.startsWith("/v1/auth/") || /^\/teams\/[^/]+\/sign-in$/.test(pathname)) return "auth";
   if (pathname.startsWith("/v1/") && pathname !== "/v1/health") return "api";
+  if (/^\/(t|teams|join)\/[^/]+$/.test(pathname)) return "page";
   return null;
 }
 

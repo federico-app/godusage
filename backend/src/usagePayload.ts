@@ -30,9 +30,16 @@ export interface UsageUpload {
   appVersion: string | null;
   /**
    * The first day this upload speaks for. The device's stored days from here on are replaced; older
-   * days are kept, so history outlives the app's 30-day window. Null when the upload covers no days.
+   * days are kept, so history outlives the app's 30-day window. Null when the upload covers no days,
+   * and for a partial upload.
    */
   replaceFrom: string | null;
+  /**
+   * A partial upload carries only the provider-days that changed since the Mac's last upload; each one
+   * it carries is replaced whole (models included), and every other stored day is kept. It saves the
+   * reads of replacing the whole window when only today moved.
+   */
+  partial: boolean;
   days: DayRow[];
   models: ModelRow[];
 }
@@ -59,7 +66,7 @@ const APP_VERSION_PATTERN = /^[0-9A-Za-z.+-]{1,32}$/;
 
 /**
  * Validates one device's upload (the system boundary for usage data) and flattens it into rows.
- * Shape: { schema, deviceName, appVersion?, providers: [{ provider, scope, account?, days: [{ date, tokens, costUSD, models? }] }] }
+ * Shape: { schema, deviceName, appVersion?, windowStart?, partial?, providers: [{ provider, scope, account?, days: [{ date, tokens, costUSD, models? }] }] }
  */
 export function parseUsageUpload(body: Record<string, unknown>, now: Date): UsageUpload {
   if (body.schema !== USAGE_SCHEMA) throw badRequest(`schema must be "${USAGE_SCHEMA}". Update GodUsage.`);
@@ -84,6 +91,10 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
     }
     windowStart = body.windowStart;
   }
+
+  if (body.partial !== undefined && typeof body.partial !== "boolean") throw badRequest("partial must be true or false.");
+  const partial = body.partial === true;
+  if (partial && windowStart !== null) throw badRequest("A partial upload has no windowStart.");
 
   const seenProviders = new Set<string>();
   const days: DayRow[] = [];
@@ -143,8 +154,9 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
     }
   }
   // Without an explicit window (older apps), the earliest day sent marks it.
-  const replaceFrom = windowStart ?? days.reduce<string | null>((min, row) => (min === null || row.day < min ? row.day : min), null);
-  return { deviceName, appVersion, replaceFrom, days, models };
+  const earliestSent = days.reduce<string | null>((min, row) => (min === null || row.day < min ? row.day : min), null);
+  const replaceFrom = partial ? null : (windowStart ?? earliestSent);
+  return { deviceName, appVersion, replaceFrom, partial, days, models };
 }
 
 function parseTokens(value: unknown): number {

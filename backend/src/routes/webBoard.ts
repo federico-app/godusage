@@ -1,6 +1,7 @@
 import type { Handler } from "../context";
 import { clearedWebSessionCookie, cookieUser, deleteSession } from "../session";
-import { parseStatsQuery, teamStats } from "../stats";
+import { readGuard } from "../readGuard";
+import { cachedTeamStats, parseStatsQuery } from "../stats";
 import { boardExtras, escapeHTML, page, renderBoard } from "./pages";
 import { startBrowserSignIn } from "./webSignIn";
 
@@ -45,8 +46,9 @@ export const memberBoardPage: Handler = async ({ request, env, url, params, deps
   }
 
   const query = parseStatsQuery(url, deps.now());
-  const [stats, extras] = await Promise.all([teamStats(env.DB, team.id, query), boardExtras(env.DB, team.id, query, deps.now())]);
-  return page(`${team.name} Leaderboard`, account + renderBoard(team.name, stats, url, extras, deps.now()));
+  const guard = readGuard(env, deps.now());
+  const [stats, extras] = await Promise.all([cachedTeamStats(guard, team.id, query), boardExtras(guard, team.id, query)]);
+  return page(`${team.name} Leaderboard`, account + renderBoard(team.name, stats.value, url, { ...extras, paused: extras.paused || stats.paused }, deps.now()));
 };
 
 /** GET /teams/:teamID/sign-in — starts Sign in with Apple and comes back to the board. */

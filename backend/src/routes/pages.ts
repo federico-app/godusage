@@ -1,8 +1,9 @@
 import type { Handler } from "../context";
 import { ApiError } from "../http";
-import { parseStatsQuery, rangeBounds, teamStats, type StatsQuery, type TeamStats } from "../stats";
+import { readGuard, type ReadGuard } from "../readGuard";
+import { cachedTeamStats, parseStatsQuery, rangeBounds, type StatsQuery, type TeamStats } from "../stats";
 import { addDays, dayKey } from "../usagePayload";
-import { teamChallengeList } from "./challenges";
+import { cachedChallengeList, type teamChallengeList } from "./challenges";
 import { reactionSummary, teamChampions, type Champion, type MemberReactions } from "./social";
 import { invitePreview } from "./teams";
 
@@ -47,8 +48,9 @@ export const publicBoardPage: Handler = async ({ env, url, params, deps }) => {
   if (!team) return page("Not Found", `<h1>Not Found</h1><p>This leaderboard is not shared anymore.</p>`, 404);
 
   const query = parseStatsQuery(url, deps.now());
-  const [stats, extras] = await Promise.all([teamStats(env.DB, team.id, query), boardExtras(env.DB, team.id, query, deps.now())]);
-  return page(`${team.name} Leaderboard`, renderBoard(team.name, stats, url, extras, deps.now()));
+  const guard = readGuard(env, deps.now());
+  const [stats, extras] = await Promise.all([cachedTeamStats(guard, team.id, query), boardExtras(guard, team.id, query)]);
+  return page(`${team.name} Leaderboard`, renderBoard(team.name, stats.value, url, { ...extras, paused: extras.paused || stats.paused }, deps.now()));
 };
 
 /** What the web boards show around the ranking: crowns, reactions, the projection, challenges, champions. */
@@ -59,17 +61,22 @@ export interface BoardExtras {
   reactions: Record<string, MemberReactions>;
   projection: { projected: number; month: string; daysLeft: number } | null;
   challenges: Awaited<ReturnType<typeof teamChallengeList>>;
+  /** The day's read budget is spent: the board shows the last stats computed until midnight UTC. */
+  paused: boolean;
 }
 
-export async function boardExtras(db: D1Database, teamID: string, query: StatsQuery, now: Date): Promise<BoardExtras> {
+export async function boardExtras(guard: ReadGuard, teamID: string, query: StatsQuery): Promise<BoardExtras> {
   const today = query.today;
-  const [todayStats, monthStats, champions, reactions, challenges] = await Promise.all([
-    teamStats(db, teamID, { ...query, range: "today", sort: "cost" }),
-    teamStats(db, teamID, { ...query, range: "mtd", sort: "cost" }),
-    teamChampions(db, teamID, today, now),
-    reactionSummary(db, teamID, dayKey(now), ""),
-    teamChallengeList(db, teamID, today),
+  const [todayResult, monthResult, champions, reactions, challengeResult] = await Promise.all([
+    cachedTeamStats(guard, teamID, { ...query, range: "today", sort: "cost" }),
+    cachedTeamStats(guard, teamID, { ...query, range: "mtd", sort: "cost" }),
+    teamChampions(guard, teamID, today),
+    reactionSummary(guard.db, teamID, dayKey(guard.now), ""),
+    cachedChallengeList(guard, teamID, today),
   ]);
+  const todayStats = todayResult.value;
+  const monthStats = monthResult.value;
+  const challenges = challengeResult.value;
   const leaders = todayStats.members.filter((m) => m.rank === 1 && m.costUSD > 0);
   const previousMonth = addDays(`${today.slice(0, 7)}-01`, -1).slice(0, 7);
   const { from } = rangeBounds("mtd", today);
@@ -88,6 +95,7 @@ export async function boardExtras(db: D1Database, teamID: string, query: StatsQu
         }
       : null,
     challenges,
+    paused: todayResult.paused || monthResult.paused || challengeResult.paused,
   };
 }
 
@@ -225,7 +233,8 @@ export function renderBoard(teamName: string, stats: TeamStats, url: URL, extras
     <ol class="board">${rows + sharedRows || `<li class="muted">No usage shared yet.</li>`}</ol>
     <div class="legend">${legend}</div>
     ${models ? `<h2>Top Models</h2><ol class="models">${models}</ol>` : ""}
-    ${extras ? renderExtras(extras) : ""}`;
+    ${extras ? renderExtras(extras) : ""}
+    ${extras?.paused ? `<p class="muted">Updates are paused until midnight UTC to stay within the database's daily limit.</p>` : ""}`;
 }
 
 /**

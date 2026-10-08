@@ -1,4 +1,6 @@
 import { badRequest } from "./http";
+import { cachedTeamResult, type Cached, type ReadGuard } from "./readGuard";
+import { teamUsage } from "./teamUsage";
 import { addDays, dayKey, isValidDay } from "./usagePayload";
 
 export type RangeName = "today" | "7d" | "30d" | "365d" | "mtd";
@@ -91,122 +93,39 @@ export function parseStatsQuery(url: URL, now: Date): StatsQuery {
 }
 
 /**
- * Fingerprints (see `usage_days.account_key`) that two or more of the team's members uploaded: one
- * provider account several people log into. Defined over everything stored, so an account stays
- * shared in a period only one of them used it. Read from `account_keys`, never from the usage
- * history: this runs in every stats query. Expects the team id as ?1.
+ * How often a board may be recomputed, in minutes. Longer ranges read more rows, and today (the part
+ * that moves) is a smaller share of them.
  */
-const SHARED_KEYS = `
-  team_users AS (SELECT user_id FROM team_members WHERE team_id = ?1),
-  shared_keys AS (
-    SELECT account_key FROM account_keys
-    WHERE user_id IN (SELECT user_id FROM team_users)
-    GROUP BY account_key HAVING COUNT(DISTINCT user_id) > 1
-  )`;
+const STATS_MIN_AGE_MINUTES: Record<RangeName, number> = { today: 5, "7d": 10, mtd: 10, "30d": 15, "365d": 60 };
 
-/**
- * Each member's own usage. Account-scope rows (usage that is already account-wide, like Cursor)
- * count once per user: the newest device wins. Device-scope rows are summed across the user's Macs.
- * Shared accounts are left out: they belong to no one member (see `SHARED_DAYS`).
- */
-export const EFFECTIVE_DAYS = `
-  WITH ${SHARED_KEYS},
-  ranked AS (
-    SELECT u.user_id, u.provider, u.day, u.scope, u.tokens, u.cost_usd,
-      ROW_NUMBER() OVER (
-        PARTITION BY u.user_id, u.provider, u.day, u.scope ORDER BY d.updated_at DESC, u.device_id
-      ) AS rn
-    FROM usage_days u JOIN devices d ON d.user_id = u.user_id AND d.id = u.device_id
-    WHERE u.user_id IN (SELECT user_id FROM team_users) AND u.day BETWEEN ?2 AND ?3
-      AND (u.account_key IS NULL OR u.account_key NOT IN (SELECT account_key FROM shared_keys))
-  )
-  SELECT user_id, provider, day, SUM(tokens) AS tokens, COALESCE(SUM(cost_usd), 0) AS cost
-  FROM ranked WHERE scope = 'device' OR rn = 1
-  GROUP BY user_id, provider, day`;
-
-export const EFFECTIVE_MODELS = `
-  WITH ${SHARED_KEYS},
-  ranked AS (
-    SELECT u.user_id, u.provider, u.model, u.scope, u.tokens, u.cost_usd,
-      ROW_NUMBER() OVER (
-        PARTITION BY u.user_id, u.provider, u.day, u.model, u.scope ORDER BY d.updated_at DESC, u.device_id
-      ) AS rn
-    FROM usage_model_days u JOIN devices d ON d.user_id = u.user_id AND d.id = u.device_id
-    WHERE u.user_id IN (SELECT user_id FROM team_users) AND u.day BETWEEN ?2 AND ?3
-      AND (u.account_key IS NULL OR u.account_key NOT IN (SELECT account_key FROM shared_keys))
-  )
-  SELECT user_id, provider, model, SUM(tokens) AS tokens, COALESCE(SUM(cost_usd), 0) AS cost
-  FROM ranked WHERE scope = 'device' OR rn = 1
-  GROUP BY user_id, provider, model`;
-
-/** Shared accounts' usage, once per account and day: the newest upload from any member wins. */
-export const SHARED_DAYS = `
-  WITH ${SHARED_KEYS},
-  ranked AS (
-    SELECT u.account_key, u.provider, u.day, u.tokens, u.cost_usd,
-      ROW_NUMBER() OVER (
-        PARTITION BY u.account_key, u.provider, u.day ORDER BY d.updated_at DESC, u.user_id, u.device_id
-      ) AS rn
-    FROM usage_days u JOIN devices d ON d.user_id = u.user_id AND d.id = u.device_id
-    WHERE u.user_id IN (SELECT user_id FROM team_users) AND u.day BETWEEN ?2 AND ?3
-      AND u.account_key IN (SELECT account_key FROM shared_keys)
-  )
-  SELECT account_key, provider, day, tokens, COALESCE(cost_usd, 0) AS cost FROM ranked WHERE rn = 1`;
-
-export const SHARED_MODELS = `
-  WITH ${SHARED_KEYS},
-  ranked AS (
-    SELECT u.account_key, u.provider, u.model, u.tokens, u.cost_usd,
-      ROW_NUMBER() OVER (
-        PARTITION BY u.account_key, u.provider, u.day, u.model ORDER BY d.updated_at DESC, u.user_id, u.device_id
-      ) AS rn
-    FROM usage_model_days u JOIN devices d ON d.user_id = u.user_id AND d.id = u.device_id
-    WHERE u.user_id IN (SELECT user_id FROM team_users) AND u.day BETWEEN ?2 AND ?3
-      AND u.account_key IN (SELECT account_key FROM shared_keys)
-  )
-  SELECT account_key, provider, model, SUM(tokens) AS tokens, COALESCE(SUM(cost_usd), 0) AS cost
-  FROM ranked WHERE rn = 1 GROUP BY account_key, provider, model`;
-
-/** Who shares each shared account. */
-const SHARED_MEMBERS = `
-  WITH ${SHARED_KEYS}
-  SELECT account_key, provider, user_id FROM account_keys
-  WHERE user_id IN (SELECT user_id FROM team_users) AND account_key IN (SELECT account_key FROM shared_keys)
-  ORDER BY account_key, provider, user_id`;
+/** The team's stats from the cache (see `readGuard.ts`). */
+export function cachedTeamStats(guard: ReadGuard, teamID: string, query: StatsQuery): Promise<Cached<TeamStats>> {
+  const minAge = STATS_MIN_AGE_MINUTES[query.range] * 60_000;
+  return cachedTeamResult(guard, teamID, `stats|${query.range}|${query.sort}|${query.today}`, minAge, (db) => teamStats(db, teamID, query));
+}
 
 export async function teamStats(db: D1Database, teamID: string, query: StatsQuery): Promise<TeamStats> {
   const to = query.today;
   const { from, previousFrom, previousTo } = rangeBounds(query.range, to);
+  // A year's movement arrows would read a second year of history: the Year range has none. An empty
+  // range (from after to) reads no rows.
+  const previous = query.range === "365d" ? ["9999-12-31", "0000-01-01"] : [previousFrom, previousTo];
 
-  const [memberRows, dayRows, modelRows, previousRows, sharedDayRows, sharedModelRows, sharedMemberRows, syncRows] = await db.batch([
+  const [memberRows, usage, previousUsage] = await Promise.all([
     db.prepare(
       `SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id
        WHERE m.team_id = ? ORDER BY m.joined_at, u.id`,
-    ).bind(teamID),
-    db.prepare(EFFECTIVE_DAYS).bind(teamID, from, to),
-    db.prepare(EFFECTIVE_MODELS).bind(teamID, from, to),
-    db.prepare(EFFECTIVE_DAYS).bind(teamID, previousFrom, previousTo),
-    db.prepare(SHARED_DAYS).bind(teamID, from, to),
-    db.prepare(SHARED_MODELS).bind(teamID, from, to),
-    db.prepare(SHARED_MEMBERS).bind(teamID),
-    db.prepare(
-      `SELECT user_id, updated_at AS last_sync, app_version FROM (
-         SELECT user_id, updated_at, app_version,
-           ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY updated_at DESC, id) AS rn
-         FROM devices WHERE user_id IN (SELECT user_id FROM team_members WHERE team_id = ?)
-       ) WHERE rn = 1`,
-    ).bind(teamID),
+    ).bind(teamID).all<{ id: string; display_name: string }>(),
+    teamUsage(db, teamID, from, to, { models: true }),
+    teamUsage(db, teamID, previous[0]!, previous[1]!, { models: false }),
   ]);
-  const lastSync = new Map(
-    (syncRows!.results as { user_id: string; last_sync: string; app_version: string | null }[]).map((row) => [row.user_id, row]),
-  );
-  const sharedDays = sharedDayRows!.results as { account_key: string; provider: string; day: string; tokens: number; cost: number }[];
-  const sharedModels = sharedModelRows!.results as { account_key: string; provider: string; model: string; tokens: number; cost: number }[];
-  const sharedMembers = sharedMemberRows!.results as { account_key: string; provider: string; user_id: string }[];
-  const previousDays = previousRows!.results as { user_id: string; tokens: number; cost: number }[];
-  const members = (memberRows!.results as { id: string; display_name: string }[]);
-  const days = dayRows!.results as { user_id: string; provider: string; day: string; tokens: number; cost: number }[];
-  const models = modelRows!.results as { user_id: string; provider: string; model: string; tokens: number; cost: number }[];
+  const lastSync = new Map<string, { last_sync: string; app_version: string | null }>();
+  for (const device of [...usage.devices].sort((a, b) => (a.updated_at === b.updated_at ? (a.id < b.id ? -1 : 1) : a.updated_at > b.updated_at ? -1 : 1))) {
+    if (!lastSync.has(device.user_id)) lastSync.set(device.user_id, { last_sync: device.updated_at, app_version: device.app_version });
+  }
+  const { sharedDays, sharedModels, sharedMembers, days, models } = usage;
+  const previousDays = previousUsage.days;
+  const members = memberRows.results;
 
   const memberTotals = new Map<string, Totals>();
   const memberProviders = new Map<string, Map<string, Totals>>();

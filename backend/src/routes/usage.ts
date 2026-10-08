@@ -1,6 +1,7 @@
 import type { Handler } from "../context";
 import { badRequest, json, noContent, notFound, readJSONObject } from "../http";
 import { requireUser } from "../session";
+import { bumpUserTeams, forgetUserTeamsCache, guardedWork, readGuard } from "../readGuard";
 import { parseUsageUpload, type UsageUpload } from "../usagePayload";
 
 const DEVICE_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
@@ -19,8 +20,10 @@ export const putDeviceUsage: Handler = async ({ request, env, params, deps }) =>
   const deviceID = requireDeviceID(params.deviceID);
   const now = deps.now();
   const upload = parseUsageUpload(await readJSONObject(request), now);
-  await storeDeviceUsage(env.DB, user.id, deviceID, upload, now);
-  return json({ deviceID, days: upload.days.length, models: upload.models.length, updatedAt: now.toISOString() });
+  await guardedWork(readGuard(env, now), (db) => storeDeviceUsage(db, user.id, deviceID, upload, now));
+  // `partialUploads` tells the app it may send partial uploads (older servers would drop the days a
+  // partial upload leaves out).
+  return json({ deviceID, days: upload.days.length, models: upload.models.length, updatedAt: now.toISOString(), partialUploads: true });
 };
 
 /**
@@ -28,13 +31,22 @@ export const putDeviceUsage: Handler = async ({ request, env, params, deps }) =>
  * upload no longer has are deleted, and the rest are upserted, skipping any that are identical.
  * Most of an upload repeats the last one (only today moves), and D1 bills every row written, plus
  * one per index it touches. All rows go in through `json_each`, so the upload is a fixed handful of
- * statements no matter how many days and models it carries. D1 also bills every row read: a
- * single-column `NOT IN` reads the upload's rows once (a correlated `NOT EXISTS` or a row-value
- * `NOT IN` reads them again for every stored row).
+ * statements no matter how many days and models it carries.
+ *
+ * D1 also bills every row read. The deletes seek the (user, scope, day) covering index to the
+ * replaced days (the primary key would scan the device's whole history), and a single-column
+ * `NOT IN` reads the upload's rows once (a correlated `NOT EXISTS` or a row-value `NOT IN` reads them
+ * again for every stored row). A full upload replaces its window; a partial one only the
+ * provider-days it carries. When stored usage changed, the user's teams' cached stats are refreshed.
  */
 export async function storeDeviceUsage(db: D1Database, userID: string, deviceID: string, upload: UsageUpload, now: Date): Promise<number> {
-  // No days and no window: nothing to replace. "9999-12-31" matches no stored day.
-  const replaceFrom = upload.replaceFrom ?? "9999-12-31";
+  const NONE = "9999-12-31";
+  const sentDays = upload.days.map((row) => row.day).sort();
+  // Full: days from the window start on. Partial: only the provider-days sent (none for day rows,
+  // since every provider-day sent is upserted). "9999-12-31" matches no stored day.
+  const dayFrom = upload.replaceFrom ?? NONE;
+  const modelFrom = upload.partial ? (sentDays[0] ?? NONE) : dayFrom;
+  const modelTo = upload.partial ? (sentDays[sentDays.length - 1] ?? NONE) : NONE;
   const dayRows = JSON.stringify(upload.days.map((row) => [row.provider, row.day, row.scope, row.tokens, row.costUSD, row.accountKey]));
   const modelRows = JSON.stringify(
     upload.models.map((row) => [row.provider, row.day, row.model, row.scope, row.tokens, row.costUSD, row.accountKey]),
@@ -46,15 +58,19 @@ export async function storeDeviceUsage(db: D1Database, userID: string, deviceID:
        ON CONFLICT (user_id, id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at, app_version = excluded.app_version`,
     ).bind(userID, deviceID, upload.deviceName, now.toISOString(), upload.appVersion),
     db.prepare(
-      `DELETE FROM usage_days WHERE user_id = ?1 AND device_id = ?2 AND day >= ?3
+      `DELETE FROM usage_days INDEXED BY usage_days_user_day_cover
+       WHERE user_id = ?1 AND scope IN ('device', 'account') AND day >= ?3 AND device_id = ?2
        AND provider || char(0) || day NOT IN
          (SELECT json_extract(value, '$[0]') || char(0) || json_extract(value, '$[1]') FROM json_each(?4))`,
-    ).bind(userID, deviceID, replaceFrom, dayRows),
+    ).bind(userID, deviceID, dayFrom, dayRows),
     db.prepare(
-      `DELETE FROM usage_model_days WHERE user_id = ?1 AND device_id = ?2 AND day >= ?3
+      `DELETE FROM usage_model_days INDEXED BY usage_model_days_user_day_cover
+       WHERE user_id = ?1 AND scope IN ('device', 'account') AND day BETWEEN ?3 AND ?4 AND device_id = ?2
+       AND (?5 = 0 OR provider || char(0) || day IN
+         (SELECT json_extract(value, '$[0]') || char(0) || json_extract(value, '$[1]') FROM json_each(?6)))
        AND provider || char(0) || day || char(0) || model NOT IN
-         (SELECT json_extract(value, '$[0]') || char(0) || json_extract(value, '$[1]') || char(0) || json_extract(value, '$[2]') FROM json_each(?4))`,
-    ).bind(userID, deviceID, replaceFrom, modelRows),
+         (SELECT json_extract(value, '$[0]') || char(0) || json_extract(value, '$[1]') || char(0) || json_extract(value, '$[2]') FROM json_each(?7))`,
+    ).bind(userID, deviceID, modelFrom, modelTo, upload.partial ? 1 : 0, dayRows, modelRows),
     // "WHERE true" lets SQLite parse the upsert after a SELECT.
     db.prepare(
       `INSERT INTO usage_days (user_id, device_id, provider, day, scope, tokens, cost_usd, account_key)
@@ -74,7 +90,12 @@ export async function storeDeviceUsage(db: D1Database, userID: string, deviceID:
     ).bind(userID, deviceID, modelRows),
     ...syncAccountKeys(db, userID, dayRows),
   ]);
-  return results.reduce((total, result) => total + (result.meta.rows_written ?? 0), 0);
+  let written = results.reduce((total, result) => total + (result.meta.rows_written ?? 0), 0);
+  // The device row always changes (its upload time); the usage statements only when usage did.
+  if (results.slice(1, 5).some((result) => result.meta.changes > 0)) {
+    written += (await bumpUserTeams(db, userID).run()).meta.rows_written ?? 0;
+  }
+  return written;
 }
 
 /**
@@ -103,6 +124,8 @@ export const deleteDevice: Handler = async ({ request, env, params }) => {
   const [result] = await env.DB.batch([
     env.DB.prepare("DELETE FROM devices WHERE user_id = ? AND id = ?").bind(user.id, deviceID),
     ...syncAccountKeys(env.DB, user.id, "[]"),
+    // The Mac's usage leaves the boards at once (signing out of it is rare).
+    forgetUserTeamsCache(env.DB, user.id),
   ]);
   if (result!.meta.changes === 0) throw notFound("Device not found.");
   return noContent();

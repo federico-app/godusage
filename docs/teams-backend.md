@@ -13,7 +13,7 @@ Deleting an account deletes its sessions, Macs, usage, memberships, and the team
 
 ## How usage is combined
 
-Each Mac uploads its own last 30 days. An upload replaces that Mac's days from its `windowStart` on (all of them, so a provider turned off disappears from those days) and keeps older days, so history builds up beyond the app's window. The server writes only what changed: rows the upload no longer has are deleted, changed rows are updated, and identical rows are left alone. Most uploads repeat the last one except for today, and D1 bills every row written. Signing out of a Mac removes all of that Mac's days. Every provider entry has a scope:
+Each Mac uploads its own last 30 days. A full upload replaces that Mac's days from its `windowStart` on (all of them, so a provider turned off disappears from those days) and keeps older days, so history builds up beyond the app's window. The server writes only what changed: rows the upload no longer has are deleted, changed rows are updated, and identical rows are left alone. Most uploads repeat the last one except for today, and D1 bills every row written. After its first upload, the app sends **partial** uploads (see [API](#api)) with only the provider-days that changed, so the server reads and rewrites a day or two instead of the whole window. Signing out of a Mac removes all of that Mac's days. Every provider entry has a scope:
 
 - **device:** usage read from this Mac's own logs (Claude, Codex, Grok, and so on). A user's Macs are summed.
 - **account:** usage that is already account-wide (Cursor). Only the Mac that uploaded most recently counts, so it is never double counted.
@@ -26,14 +26,21 @@ This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
 
 ## Read budget
 
-D1 bills every row a query reads, and the free plan allows 5M a day per account (production and dev share it). The app fetches stats on every popover open, every two minutes while it stays open, and after every upload, so each query reads only the days in its period, never a member's full history. `test/readBudget.test.ts` checks this against a year of seeded history.
+D1 bills every row a query reads, and the free plan allows 5M a day per account (production and dev share it). D1's count includes each step SQLite takes (temporary sorts, window functions, subqueries, table lookups), and the app fetches stats on every popover open, every two minutes while it stays open, and after uploads. Four things keep the Worker under the limit:
+
+- **Reads follow the period.** Leaderboard queries read only the days in their period, never a member's full history, straight from covering indexes: one billed row per stored row. Combining Macs, accounts, and shared accounts happens in the Worker (`src/teamUsage.ts`), not in SQL. The Year range has no movement arrows, so it never reads a second year.
+- **Results are cached.** Stats, challenges, and plan reports are kept per team in `stats_cache`. A cached result is reused while the team's usage has not changed (for up to 15 minutes), and in any case for a minimum time: 5 minutes for Today and challenges, 10 for 7 Days, Month to Date, and plans, 15 for 30 Days, and an hour for Year. Changes to members, names, plans, and challenges show at once. Champions are reused for six hours.
+- **Uploads are small.** Partial uploads touch only the provider-days that changed.
+- **A daily budget caps the rest.** Every recomputation and upload adds the rows it read to `read_budget` for the UTC day. Past `READ_BUDGET_PER_DAY` (3.5M for production, 500K for dev, in `wrangler.jsonc`), nothing expensive runs until midnight UTC. Boards keep their last result with `paused: true` (the apps and web boards say updates are paused), a board never computed that day answers 503 `read_budget`, and uploads answer 503 `read_budget`, so the app retries later. The headroom left under 5M covers the small reads every request makes (sessions, memberships), which are not counted.
+
+`test/readBudget.test.ts` checks the reads of every board, challenge, plan report, and upload against a team of 10 with two Macs each and a year of history, and that the cache and the daily budget behave as described.
 
 Day keys are each Mac's local calendar days. A stats request can pass the viewer's local `today` as the period's last day; the server accepts up to one day ahead of the UTC date and up to 400 days back (for last week's recap or a past month or year), and uses the UTC date otherwise. Ranges are Today, 7 Days, 30 Days, Year (365 days), and Month to Date (`mtd`: from the 1st to today, compared with the same days of the month before). Members are ranked by spend or by tokens; tied members share a rank. Each member carries `lastSyncAt`, the newest upload time across their Macs (ISO 8601, or null if none has uploaded); the apps and web boards show it as "updated 5m ago", then "not synced for N days" once it is more than 24 hours old. Each member also carries `appVersion`, the GodUsage version of that newest upload (null from apps before 1.0.8), shown after it as "· v1.0.8". Each member also carries `previous`, their rank and totals in the period just before (or null if they had no usage then), for the movement arrows.
 
 ## Reactions, champions, and challenges
 
 - **Reactions:** a member can give each teammate 🔥 (`fire`), 👏 (`clap`), and 🤡 (`clown`), one of each per day. Reactions belong to the UTC day they were given in, so every day starts clean at midnight UTC. Nobody can react to themselves.
-- **Champions:** the stats response lists the top spender of each of the last 12 complete calendar months among current members (the current month never counts until it is over). The server reuses a team's champions for up to an hour, and recomputes them when its members change.
+- **Champions:** the stats response lists the top spender of each of the last 12 complete calendar months among current members (the current month never counts until it is over). The server reuses a team's champions for up to six hours, and recomputes them when its members change.
 - **Challenges:** any member starts one for 7, 14, or 30 days, from today. Kinds: `lowest_spend` (least spend among members who spent anything), `most_models` (most different models), `most_tokens`, and `best_efficiency` (lowest cost per million tokens, with at least 100K tokens). Standings update live from usage in the window; once it has ended, the leaders are the winners. A team runs at most five at once. The creator or an owner can cancel one.
 
 ## Invites and roles
@@ -46,7 +53,7 @@ Day keys are each Mac's local calendar days. A stats request can pass the viewer
 
 ## Rate limits
 
-Sign-in routes (`/v1/auth/*`, `/teams/<id>/sign-in`) allow 20 requests a minute per IP. Every other `/v1` route allows 120 a minute per session, or per IP without one. Pages are not limited. Over the limit the Worker answers 429 with `Retry-After: 60`. The limits use Cloudflare's rate limiting bindings (`ratelimits` in `wrangler.jsonc`, separate namespaces per environment).
+Sign-in routes (`/v1/auth/*`, `/teams/<id>/sign-in`) allow 20 requests a minute per IP. Every other `/v1` route allows 120 a minute per session, or per IP without one. The board and invite pages (`/t/<token>`, `/teams/<id>`, `/join/<code>`) allow 30 a minute per IP, since each board view computes stats; other pages are not limited. Over the limit the Worker answers 429 with `Retry-After: 60` (pages as an HTML page). The limits use Cloudflare's rate limiting bindings (`ratelimits` in `wrangler.jsonc`, separate namespaces per environment).
 
 ## Privacy policy and terms
 
@@ -82,14 +89,14 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `POST /v1/teams/:id/invite` | Owner rotates the invite link. |
 | `PATCH /v1/teams/:id/members/:userID` | Owner sets `{ role: "owner" \| "member" }`. |
 | `DELETE /v1/teams/:id/members/:userID` | Leave (yourself) or remove a member (owner). |
-| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD`. Leaderboard (with each member's previous-period rank), provider totals, top 20 models, per-day totals by member and by provider, today's `reactions` (`day` is the UTC day; `week` repeats it for older apps), and the last 12 months' `champions`. |
+| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD&include=today,mtd`. Leaderboard (with each member's previous-period rank, except for Year), provider totals, top 20 models, per-day totals by member and by provider, today's `reactions` (`day` is the UTC day; `week` repeats it for older apps), and the last 12 months' `champions`. `include` adds the Today and Month to Date spend boards in `extra`, so the app needs one request instead of three. `computedAt` says when the stats were computed, and `paused` that the [read budget](#read-budget) is spent. |
 | `PUT`, `DELETE /v1/teams/:id/members/:userID/reactions/:emoji` | Give or take back `fire`, `clap`, or `clown` for today (UTC). |
 | `GET`, `POST /v1/teams/:id/challenges` | List active challenges and the last five finished (with standings and winners), or start one (`{ kind, days, today? }`). |
 | `DELETE /v1/teams/:id/challenges/:challengeID` | Cancel a challenge (creator or owner). |
 | `GET /v1/invites/:code` | Invite preview: team name, member count, `alreadyMember`. |
 | `POST /v1/invites/:code/accept` | Join the team. Joining again is a no-op. |
 | `GET /v1/devices` | My Macs that have uploaded usage. |
-| `PUT /v1/devices/:id/usage` | Replace this Mac's usage (see below). |
+| `PUT /v1/devices/:id/usage` | Replace this Mac's usage (see below). The response carries `partialUploads: true`; the app sends partial uploads only to a server that says so. |
 | `DELETE /v1/devices/:id` | Remove a Mac and its usage. |
 
 Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
@@ -124,6 +131,8 @@ Account-scope entries may add `"account": "<64 hex characters>"`; it is rejected
 `appVersion` is optional (letters, digits, `.`, `+`, `-`, at most 32 characters); the Mac it came from keeps it until its next upload.
 
 `windowStart` is the first day of the app's window; the Mac's stored days from there on are replaced. It must be within the last 40 days. Without it, the earliest day sent is used.
+
+`"partial": true` (without `windowStart`) marks a partial upload: it carries only the provider-days that changed since the Mac's last upload. Each provider-day it carries is replaced whole, models included, and every other stored day is kept. The app sends a full upload instead after launch, when you sign in or join a team, and whenever a provider-day in the window disappeared (a provider turned off) or a provider changed scope or account.
 
 `costUSD` may be `null` when a model has no price. Days more than 40 days old or more than one day in the future are dropped. Anything else malformed is rejected with 400.
 

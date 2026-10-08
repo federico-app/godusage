@@ -37,6 +37,9 @@ final class TeamsStore {
         DailyUsageAccumulator.dayKey(from: now(), calendar: .current)
     }
     private(set) var statsError: String?
+    /// The server spent its daily database budget: boards stay as they are until midnight UTC.
+    private(set) var statsPaused = false
+    static let statsPausedMessage = "Team stats are paused until midnight UTC to stay within the server’s daily limit."
     /// The team the popover and the Teams window show. Falls back to the first team.
     var selectedTeamID: String? {
         get { teams.contains { $0.id == storedSelectedTeamID } ? storedSelectedTeamID : teams.first?.id }
@@ -73,6 +76,8 @@ final class TeamsStore {
     @ObservationIgnored private var uploadForcePending = false
     /// The last body the server accepted, so an unchanged one waits for `minimumUploadInterval`.
     @ObservationIgnored private var lastUploaded: TeamUsageUpload?
+    /// Learned from the last upload's response; until then every upload is a full one.
+    @ObservationIgnored private var serverTakesPartialUploads = false
     @ObservationIgnored private let notificationSettings: @MainActor () -> (overtakes: Bool, weeklyRecap: Bool)
     @ObservationIgnored private let postNotification: @MainActor (_ id: String, _ title: String, _ subtitle: String, _ body: String) async -> Bool
     @ObservationIgnored private let defaults: UserDefaults
@@ -272,24 +277,39 @@ final class TeamsStore {
     }
 
     /// Reloads one leaderboard into `cachedStats`. Errors land in `statsError`; the cached value stays.
-    func loadStats(teamID: String, range: StatsRange, sort: StatsSort, endingOn: String? = nil) async {
+    /// `include` asks for Today's and Month to Date's spend boards in the same request.
+    func loadStats(teamID: String, range: StatsRange, sort: StatsSort, endingOn: String? = nil, include: [StatsRange] = []) async {
         do {
             cachedStats[StatsKey(teamID: teamID, range: range, sort: sort, endingOn: endingOn)] =
-                try await stats(for: teamID, range: range, sort: sort, endingOn: endingOn)
+                try await stats(for: teamID, range: range, sort: sort, endingOn: endingOn, include: include)
             statsError = nil
         } catch {
             statsError = error.localizedDescription
         }
     }
 
+    /// The boards to ask for beside `range`/`sort` so the crown (👑) and the month-end projection
+    /// load with it. Only for today's boards: a past period's extras would end on its own last day.
+    static func extraBoards(range: StatsRange, sort: StatsSort, endingOn: String?) -> [StatsRange] {
+        guard endingOn == nil else { return [] }
+        return [StatsRange.today, .monthToDate].filter { $0 != range || sort != .cost }
+    }
+
     /// `endingOn` picks the period's last day (a past week, month, or year); nil means today.
-    func stats(for teamID: String, range: StatsRange, sort: StatsSort, endingOn: String? = nil) async throws -> TeamStats {
+    /// `include` (`today`, `monthToDate`) also loads those spend boards into `cachedStats`.
+    func stats(for teamID: String, range: StatsRange, sort: StatsSort, endingOn: String? = nil, include: [StatsRange] = []) async throws -> TeamStats {
         guard let token = session?.token else { throw TeamsAPIError(kind: .unauthorized, message: "Sign in to see team stats.") }
         let today = endingOn ?? DailyUsageAccumulator.dayKey(from: now(), calendar: .current)
         do {
-            let response = try await api.stats(token: token, teamID: teamID, range: range, sort: sort, today: today)
+            let response = try await api.stats(token: token, teamID: teamID, range: range, sort: sort, today: today, include: include)
             if let reactions = response.reactions { reactionsByTeam[teamID] = reactions }
             if let champions = response.champions { championsByTeam[teamID] = champions }
+            for (name, stats) in response.extra ?? [:] {
+                guard let extraRange = StatsRange(rawValue: name) else { continue }
+                cachedStats[StatsKey(teamID: teamID, range: extraRange, sort: .cost, endingOn: endingOn)] = stats
+            }
+            cachedStats[StatsKey(teamID: teamID, range: range, sort: sort, endingOn: endingOn)] = response.stats
+            statsPaused = response.paused ?? false
             return response.stats
         } catch let error as TeamsAPIError where error.kind == .unauthorized {
             sessionExpired()
@@ -369,8 +389,12 @@ final class TeamsStore {
            now().timeIntervalSince(lastUploadAt) < minimumUploadInterval {
             return
         }
+        // After the first upload, only what changed goes up: the server then rewrites a day or two
+        // instead of re-reading the whole window. A forced upload resends everything.
+        let canSendPartial = !force && serverTakesPartialUploads
+        let body = canSendPartial ? (lastUploaded.flatMap { TeamUsageUpload.partial(from: $0, to: upload) } ?? upload) : upload
         do {
-            try await api.uploadUsage(token: token, deviceID: deviceID, upload: upload)
+            serverTakesPartialUploads = try await api.uploadUsage(token: token, deviceID: deviceID, upload: body)
             lastUploadAt = now()
             lastUploaded = upload
             uploadError = nil

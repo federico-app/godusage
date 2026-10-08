@@ -225,4 +225,8 @@ struct TeamStatsResponse: Codable, Hashable, Sendable {
     /// Optional so an older backend's responses still decode.
     var reactions: TeamReactions?
     var champions: [TeamChampion]?
+    /// The boards asked for with `include`, by range (`today`, `mtd`).
+    var extra: [String: TeamStats]?
+    /// The server's daily database budget is spent: these stats stay as they are until midnight UTC.
+    var paused: Bool?
 }

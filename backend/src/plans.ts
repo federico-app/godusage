@@ -1,5 +1,6 @@
 import { badRequest, isRecord, requireName } from "./http";
-import { EFFECTIVE_DAYS, SHARED_DAYS, daysBetween } from "./stats";
+import { daysBetween } from "./stats";
+import { teamUsage } from "./teamUsage";
 import { addDays } from "./usagePayload";
 
 export const MAX_PLANS = 30;
@@ -86,14 +87,8 @@ export async function planReports(db: D1Database, teamID: string, plans: PlanRow
   if (plans.length === 0) return [];
   const cycles = plans.map((plan) => currentCycle(plan.renewalDay, today));
   const earliest = cycles.reduce((min, cycle) => (cycle.from < min ? cycle.from : min), today);
-  const [memberRows, sharedRows] = await db.batch([
-    db.prepare(EFFECTIVE_DAYS).bind(teamID, earliest, today),
-    db.prepare(SHARED_DAYS).bind(teamID, earliest, today),
-  ]);
-  const days = [
-    ...(memberRows!.results as { provider: string; day: string; cost: number }[]),
-    ...(sharedRows!.results as { provider: string; day: string; cost: number }[]),
-  ];
+  const usage = await teamUsage(db, teamID, earliest, today, { models: false });
+  const days = [...usage.days, ...usage.sharedDays];
   const providerCost = new Map<string, number>();
   for (const plan of plans) providerCost.set(plan.provider, (providerCost.get(plan.provider) ?? 0) + plan.monthlyCostUSD);
 
