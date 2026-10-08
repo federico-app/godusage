@@ -12,5 +12,7 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "test", "vitest.config.ts", "worker-configuration.d.ts"]
+  "include": ["src", "test", "vitest.config.ts", "worker-configuration.d.ts"],
+  // Node-only files are checked by tsconfig.server.json.
+  "exclude": ["test/node"]
 }

@@ -1,6 +1,6 @@
 # Teams Backend
 
-The teams backend lets people create a team, invite friends with a link, and compare their AI usage on a leaderboard. It is a Cloudflare Worker with a D1 database, in `backend/`. The Mac app is its only writer. A shared team can also be viewed as a read-only web page.
+The teams backend lets people create a team, invite friends with a link, and compare their AI usage on a leaderboard. It lives in `backend/` and runs two ways from the same routes: as a Cloudflare Worker with a D1 database, or as a Docker container (Node and a SQLite file) on our own server with Coolify (see [Docker server](#docker-server-coolify)). The Mac app is its only writer. A shared team can also be viewed as a read-only web page.
 
 ## What it stores
 
@@ -161,7 +161,7 @@ npm ci
 npm test
 ```
 
-Tests run inside the Workers runtime with a local D1 and the migrations applied. Apple is never called: tests sign identity tokens with a generated key.
+`npm test` runs the suite twice: inside the Workers runtime with a local D1, then on the Docker server's runtime (`vitest.node.config.ts`: SQLite in memory, in-memory rate limits). Both apply the migrations first. Apple is never called: tests sign identity tokens with a generated key.
 
 `npm run dev` serves the Worker locally with a local D1. Apply the migrations to it first with `npx wrangler d1 migrations apply godusage-dev --env dev --local`.
 
@@ -182,3 +182,33 @@ Each environment accepts Sign in with Apple tokens only from its own bundle id (
 Schema changes go in a new file in `backend/migrations/`. Apply it with the migrate command of each environment before deploying that environment. Run `npx wrangler login` once before the first remote command.
 
 Sign in with Apple must be enabled on both App IDs.
+
+## Docker server (Coolify)
+
+`backend/Dockerfile` builds the same routes into one Node server (`server/main.ts`, bundled to `server.mjs`):
+
+- **Database:** a SQLite file at `DATABASE_PATH` (default `/data/godusage.db`). Mount a persistent volume at `/data`. `server/d1Sqlite.ts` provides the part of D1's API the routes use; `batch` runs as one transaction, like D1's.
+- **Migrations:** applied at startup, tracked in `d1_migrations` like wrangler does, so a database exported from D1 continues where it left off.
+- **Rate limits:** the same limits as `wrangler.jsonc`, counted in memory. Behind Coolify's proxy the client address comes from `X-Forwarded-For`.
+- **Read budget:** there is no database bill, so `READ_BUDGET_PER_DAY` defaults to 1 billion. SQLite does not report rows scanned, so the server counts rows returned.
+- **Health check:** `GET /v1/health`.
+
+Environment variables:
+
+| Variable | Production | Development |
+| --- | --- | --- |
+| `APPLE_AUDIENCES` | `com.montinovo.godusage` | `com.montinovo.godusage.dev` |
+| `APPLE_WEB_CLIENT_ID` | `com.montinovo.godusage.web` | `com.montinovo.godusage.web.dev` |
+| `DOWNLOAD_URL` | optional, defaults to the latest GitHub release | same |
+| `PORT` | optional, default `8787` | same |
+
+Set up each environment in Coolify as an application from this repository, with base directory `/backend`, the Dockerfile build pack, port 8787, a persistent volume at `/data`, its own domain, and the variables above. Production follows `main`, development follows `develop`.
+
+Moving an environment off Cloudflare:
+
+1. Run **Export Backend Database** (`.github/workflows/backend-export.yml`) for it and download the SQL artifact.
+2. Copy it into the volume and load it into the empty database, before the first start: `node server.mjs import /data/godusage-prod.sql`. It refuses a database that already has tables.
+3. Start the container: it applies any newer migrations.
+4. Add `https://<new domain>/v1/auth/apple/callback` to the environment's Services ID return URLs (and the domain to its domains), then point the app's base URL at the new domain (`TeamsAPIClient.productionBaseURL` / `developmentBaseURL`).
+
+Sessions, teams, and invite codes move with the data, so nobody signs in again. Invite and board links carry the old host until the Worker is retired.
