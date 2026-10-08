@@ -1,6 +1,5 @@
-import type { Handler } from "../context";
+import type { Env, Handler } from "../context";
 import { ApiError } from "../http";
-import { readGuard, type ReadGuard } from "../readGuard";
 import { cachedTeamStats, parseStatsQuery, rangeBounds, type StatsQuery, type TeamStats } from "../stats";
 import { addDays, dayKey } from "../usagePayload";
 import { cachedChallengeList, type teamChallengeList } from "./challenges";
@@ -21,7 +20,7 @@ export const invitePage: Handler = async ({ env, params }) => {
   const code = params.code!;
   let team: { name: string; memberCount: number };
   try {
-    team = await invitePreview(env.DB, code);
+    team = await invitePreview(env.db, code);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       return page("Invite Expired", `<h1>Invite Expired</h1><p>This invite link is no longer valid. Ask for a new one.</p>`, 404);
@@ -42,15 +41,13 @@ export const invitePage: Handler = async ({ env, params }) => {
 
 /** GET /t/:token — read-only leaderboard, available only while the owner shares it. */
 export const publicBoardPage: Handler = async ({ env, url, params, deps }) => {
-  const team = await env.DB.prepare("SELECT id, name FROM teams WHERE public_token = ?")
-    .bind(params.token!)
-    .first<{ id: string; name: string }>();
+  const team = await env.db.first<{ id: string; name: string }>("SELECT id, name FROM teams WHERE public_token = $1", [params.token!]);
   if (!team) return page("Not Found", `<h1>Not Found</h1><p>This leaderboard is not shared anymore.</p>`, 404);
 
   const query = parseStatsQuery(url, deps.now());
-  const guard = readGuard(env, deps.now());
-  const [stats, extras] = await Promise.all([cachedTeamStats(guard, team.id, query), boardExtras(guard, team.id, query)]);
-  return page(`${team.name} Leaderboard`, renderBoard(team.name, stats.value, url, { ...extras, paused: extras.paused || stats.paused }, deps.now()));
+  const now = deps.now();
+  const [stats, extras] = await Promise.all([cachedTeamStats(env, now, team.id, query), boardExtras(env, now, team.id, query)]);
+  return page(`${team.name} Leaderboard`, renderBoard(team.name, stats.value, url, extras, now));
 };
 
 /** What the web boards show around the ranking: crowns, reactions, the projection, challenges, champions. */
@@ -61,18 +58,16 @@ export interface BoardExtras {
   reactions: Record<string, MemberReactions>;
   projection: { projected: number; month: string; daysLeft: number } | null;
   challenges: Awaited<ReturnType<typeof teamChallengeList>>;
-  /** The day's read budget is spent: the board shows the last stats computed until midnight UTC. */
-  paused: boolean;
 }
 
-export async function boardExtras(guard: ReadGuard, teamID: string, query: StatsQuery): Promise<BoardExtras> {
+export async function boardExtras(env: Pick<Env, "db" | "cache">, now: Date, teamID: string, query: StatsQuery): Promise<BoardExtras> {
   const today = query.today;
   const [todayResult, monthResult, champions, reactions, challengeResult] = await Promise.all([
-    cachedTeamStats(guard, teamID, { ...query, range: "today", sort: "cost" }),
-    cachedTeamStats(guard, teamID, { ...query, range: "mtd", sort: "cost" }),
-    teamChampions(guard, teamID, today),
-    reactionSummary(guard.db, teamID, dayKey(guard.now), ""),
-    cachedChallengeList(guard, teamID, today),
+    cachedTeamStats(env, now, teamID, { ...query, range: "today", sort: "cost" }),
+    cachedTeamStats(env, now, teamID, { ...query, range: "mtd", sort: "cost" }),
+    teamChampions(env, now, teamID, today),
+    reactionSummary(env.db, teamID, dayKey(now), ""),
+    cachedChallengeList(env, now, teamID, today),
   ]);
   const todayStats = todayResult.value;
   const monthStats = monthResult.value;
@@ -95,7 +90,6 @@ export async function boardExtras(guard: ReadGuard, teamID: string, query: Stats
         }
       : null,
     challenges,
-    paused: todayResult.paused || monthResult.paused || challengeResult.paused,
   };
 }
 
@@ -234,7 +228,7 @@ export function renderBoard(teamName: string, stats: TeamStats, url: URL, extras
     <div class="legend">${legend}</div>
     ${models ? `<h2>Top Models</h2><ol class="models">${models}</ol>` : ""}
     ${extras ? renderExtras(extras) : ""}
-    ${extras?.paused ? `<p class="muted">Updates are paused until midnight UTC to stay within the database's daily limit.</p>` : ""}`;
+`;
 }
 
 /**

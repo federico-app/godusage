@@ -1,4 +1,4 @@
-import { env } from "cloudflare:test";
+import { env } from "./env";
 import { describe, expect, it } from "vitest";
 import { storeDeviceUsage } from "../src/routes/usage";
 import { addDays, parseUsageUpload } from "../src/usagePayload";
@@ -307,16 +307,16 @@ describe("upload writes", () => {
 
   it("writes only the device row when the upload repeats the last one", async () => {
     const { userID } = await signIn();
-    const first = await storeDeviceUsage(env.DB, userID, DEVICE_A, month(200), NOW);
+    const first = await storeDeviceUsage(env, userID, DEVICE_A, month(200), NOW);
     expect(first).toBeGreaterThan(90);
-    expect(await storeDeviceUsage(env.DB, userID, DEVICE_A, month(200), NOW)).toBe(1);
+    expect(await storeDeviceUsage(env, userID, DEVICE_A, month(200), NOW)).toBe(1);
   });
 
   it("rewrites only the rows that changed and deletes the ones that are gone", async () => {
     const { owner, team } = await teamWith([]);
-    await storeDeviceUsage(env.DB, owner.userID, DEVICE_A, month(200), NOW);
+    await storeDeviceUsage(env, owner.userID, DEVICE_A, month(200), NOW);
     // Today grew and dropped Sonnet: one day row and one model row change, one model row goes.
-    const written = await storeDeviceUsage(env.DB, owner.userID, DEVICE_A, month(400, ["claude-opus-4-1"]), NOW);
+    const written = await storeDeviceUsage(env, owner.userID, DEVICE_A, month(400, ["claude-opus-4-1"]), NOW);
     expect(written).toBeLessThan(15);
 
     const today = (await api("GET", `/v1/teams/${team.id}/stats?range=today`, { token: owner.token })).body.stats;

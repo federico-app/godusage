@@ -1,3 +1,4 @@
+import type { Queryable } from "./db";
 import { badRequest, isRecord, requireName } from "./http";
 import { daysBetween } from "./stats";
 import { teamUsage } from "./teamUsage";
@@ -83,7 +84,7 @@ export function currentCycle(renewalDay: number, today: string): Cycle {
  * Each plan against the team's usage of its provider in its current cycle, counted like the
  * leaderboard (shared accounts once). Several plans of one provider split its value by cost.
  */
-export async function planReports(db: D1Database, teamID: string, plans: PlanRow[], today: string): Promise<PlanReport[]> {
+export async function planReports(db: Queryable, teamID: string, plans: PlanRow[], today: string): Promise<PlanReport[]> {
   if (plans.length === 0) return [];
   const cycles = plans.map((plan) => currentCycle(plan.renewalDay, today));
   const earliest = cycles.reduce((min, cycle) => (cycle.from < min ? cycle.from : min), today);

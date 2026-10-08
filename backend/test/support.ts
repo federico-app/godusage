@@ -1,7 +1,12 @@
-import { env } from "cloudflare:test";
+import type { webcrypto } from "node:crypto";
 import { expect } from "vitest";
 import { base64url } from "../src/http";
 import { createApp } from "../src/index";
+import { env } from "./env";
+
+type CryptoKeyPair = webcrypto.CryptoKeyPair;
+type CryptoKey = webcrypto.CryptoKey;
+type JsonWebKey = webcrypto.JsonWebKey;
 
 export const RELEASE_AUDIENCE = "com.montinovo.godusage";
 export const NOW = new Date("2026-10-05T12:00:00Z");

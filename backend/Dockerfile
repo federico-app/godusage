@@ -1,8 +1,8 @@
-# The teams backend as a Node server on SQLite, for Coolify (see docs/teams-backend.md).
-# Build context: this directory (backend/). Mount a volume at /data: it holds the database.
+# The teams backend: a Node server on Postgres and Redis, run by Coolify from docker-compose.yml (see
+# docs/teams-backend.md). Build context: this directory (backend/).
 FROM node:24-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 COPY . .
 RUN npm run typecheck && npm run build:server
@@ -10,14 +10,12 @@ RUN npm run typecheck && npm run build:server
 FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production \
-    PORT=8787 \
-    DATABASE_PATH=/data/godusage.db
+    PORT=8787
+# One bundled file (dependencies included) and the Postgres migrations it applies at startup.
 COPY --from=build /app/dist/server.mjs ./server.mjs
 COPY migrations ./migrations
-RUN mkdir -p /data && chown node:node /data
 USER node
-VOLUME ["/data"]
 EXPOSE 8787
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD wget -qO- http://127.0.0.1:8787/v1/health || exit 1
 CMD ["node", "server.mjs"]

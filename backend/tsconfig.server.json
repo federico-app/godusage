@@ -1,9 +1,0 @@
-{
-  // The Node server (Docker image): the Worker's sources plus server/, with Node's types.
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "types": ["./worker-configuration.d.ts", "node"]
-  },
-  "include": ["src", "server", "test/node", "vitest.node.config.ts", "worker-configuration.d.ts"],
-  "exclude": []
-}

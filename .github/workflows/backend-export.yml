@@ -1,7 +1,8 @@
 name: Export Backend Database
 
-# Exports a D1 database as SQL (the workflow artifact), to move the teams backend to the Docker
-# server: `node server.mjs import <dump.sql>` loads it into a new SQLite database. Run by hand.
+# Exports a D1 database as SQL (the workflow artifact), to move the teams backend to Coolify:
+# `node server.mjs import-d1 <dump.sql>` loads it into the new Postgres database (the runbook is in
+# docs/teams-backend.md). Run by hand. Wrangler comes from the proxy Worker's package.
 on:
   workflow_dispatch:
     inputs:
@@ -19,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        working-directory: backend/proxy
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
@@ -31,7 +32,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: backend/proxy/package-lock.json
 
       - name: Install
         run: npm ci
@@ -41,12 +42,12 @@ jobs:
           if [ "${{ inputs.environment }}" = prod ]; then
             npx wrangler d1 export godusage --remote --output godusage-prod.sql
           else
-            npx wrangler d1 export godusage-dev --env dev --remote --output godusage-dev.sql
+            npx wrangler d1 export godusage-dev --remote --output godusage-dev.sql
           fi
 
       - name: Upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: godusage-${{ inputs.environment }}-db
-          path: backend/godusage-${{ inputs.environment }}.sql
+          path: backend/proxy/godusage-${{ inputs.environment }}.sql
           retention-days: 3

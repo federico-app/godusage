@@ -1,5 +1,6 @@
+import { timingSafeEqual } from "node:crypto";
 import { verifyAppleIdentityToken } from "../apple";
-import type { Handler, RouteContext } from "../context";
+import type { Env, Handler, RouteContext } from "../context";
 import { ApiError, badRequest, base64url, isRecord, json, randomToken, readJSONObject, requireName, sha256Hex, unauthorized } from "../http";
 import { createSession, WEB_SESSION_DAYS, webSessionCookie } from "../session";
 import { escapeHTML } from "./pages";
@@ -10,8 +11,8 @@ import { DISPLAY_NAME_MAX, findOrCreateUser } from "./account";
  * builds: their profiles never grant the Sign in with Apple entitlement).
  *
  * 1. The app opens /v1/auth/apple/start in an ASWebAuthenticationSession with its own `state` and a
- *    PKCE `code_challenge`; the Worker redirects to Apple with a server state and nonce.
- * 2. Apple posts the identity token to /v1/auth/apple/callback. The Worker verifies it (audience =
+ *    PKCE `code_challenge`; the server redirects to Apple with a server state and nonce.
+ * 2. Apple posts the identity token to /v1/auth/apple/callback. The server verifies it (audience =
  *    the Services ID, nonce = this request's), and redirects to godusage://auth with a one-time code.
  * 3. The app posts the code and its PKCE verifier to /v1/auth/apple/exchange for a session token.
  */
@@ -77,12 +78,13 @@ async function redirectToApple(
 ): Promise<Response> {
   const state = randomToken(24);
   const nonce = randomToken(24);
-  await env.DB.batch([
-    env.DB.prepare("DELETE FROM auth_requests WHERE expires_at < ?").bind(now.toISOString()),
-    env.DB.prepare(
-      "INSERT INTO auth_requests (state, nonce, code_challenge, app_state, expires_at, kind, return_to) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    ).bind(state, nonce, request.challenge, request.appState, new Date(now.getTime() + REQUEST_TTL_MS).toISOString(), request.kind, request.returnTo),
-  ]);
+  await env.db.transaction(async (tx) => {
+    await tx.run("DELETE FROM auth_requests WHERE expires_at < $1", [now.toISOString()]);
+    await tx.run(
+      "INSERT INTO auth_requests (state, nonce, code_challenge, app_state, expires_at, kind, return_to) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [state, nonce, request.challenge, request.appState, new Date(now.getTime() + REQUEST_TTL_MS).toISOString(), request.kind, request.returnTo],
+    );
+  });
 
   const apple = new URL(APPLE_AUTHORIZE_URL);
   apple.search = new URLSearchParams({
@@ -111,11 +113,10 @@ export const finishWebSignIn: Handler = async (context: RouteContext) => {
     return typeof value === "string" ? value : "";
   };
 
-  const pending = await env.DB.prepare(
-    "DELETE FROM auth_requests WHERE state = ? RETURNING nonce, code_challenge, app_state, expires_at, kind, return_to",
-  )
-    .bind(field("state"))
-    .first<{ nonce: string; code_challenge: string; app_state: string; expires_at: string; kind: "app" | "web"; return_to: string | null }>();
+  const pending = await env.db.first<{ nonce: string; code_challenge: string; app_state: string; expires_at: string; kind: "app" | "web"; return_to: string | null }>(
+    "DELETE FROM auth_requests WHERE state = $1 RETURNING nonce, code_challenge, app_state, expires_at, kind, return_to",
+    [field("state")],
+  );
   const now = deps.now();
   if (!pending || new Date(pending.expires_at) <= now) {
     return errorPage("This sign-in expired. Go back to GodUsage and try again.", 400);
@@ -139,16 +140,20 @@ export const finishWebSignIn: Handler = async (context: RouteContext) => {
     return appRedirect({ state: pending.app_state, error: "invalid_token" });
   }
 
-  const { user, created } = await findOrCreateUser(env.DB, identity.sub, nameFromAppleUser(field("user")));
+  const { user, created } = await findOrCreateUser(env.db, identity.sub, nameFromAppleUser(field("user")));
   if (pending.kind === "web") {
-    const token = await createSession(env.DB, user.id, WEB_SESSION_DAYS);
+    const token = await createSession(env.db, user.id, WEB_SESSION_DAYS);
     console.log(JSON.stringify({ event: "browser_sign_in", userID: user.id, created }));
     return seeOther(safeReturnPath(pending.return_to), webSessionCookie(token));
   }
   const code = randomToken(32);
-  await env.DB.prepare("INSERT INTO login_codes (code_hash, user_id, code_challenge, created, expires_at) VALUES (?, ?, ?, ?, ?)")
-    .bind(await sha256Hex(code), user.id, pending.code_challenge, created ? 1 : 0, new Date(now.getTime() + CODE_TTL_MS).toISOString())
-    .run();
+  await env.db.run("INSERT INTO login_codes (code_hash, user_id, code_challenge, created, expires_at) VALUES ($1, $2, $3, $4, $5)", [
+    await sha256Hex(code),
+    user.id,
+    pending.code_challenge,
+    created ? 1 : 0,
+    new Date(now.getTime() + CODE_TTL_MS).toISOString(),
+  ]);
   console.log(JSON.stringify({ event: "web_sign_in", userID: user.id, created }));
   return appRedirect({ state: pending.app_state, code });
 };
@@ -159,23 +164,22 @@ export const exchangeWebSignIn: Handler = async ({ request, env, deps }) => {
   if (typeof body.code !== "string" || typeof body.codeVerifier !== "string" || !TOKENISH.test(body.codeVerifier)) {
     throw badRequest("code and codeVerifier are required.");
   }
-  const row = await env.DB.prepare("DELETE FROM login_codes WHERE code_hash = ? RETURNING user_id, code_challenge, created, expires_at")
-    .bind(await sha256Hex(body.code))
-    .first<{ user_id: string; code_challenge: string; created: number; expires_at: string }>();
+  const row = await env.db.first<{ user_id: string; code_challenge: string; created: number; expires_at: string }>(
+    "DELETE FROM login_codes WHERE code_hash = $1 RETURNING user_id, code_challenge, created, expires_at",
+    [await sha256Hex(body.code)],
+  );
   if (!row || new Date(row.expires_at) <= deps.now()) throw unauthorized("This sign-in expired. Sign in again.");
 
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body.codeVerifier)));
   const expected = new TextEncoder().encode(row.code_challenge);
   const actual = new TextEncoder().encode(base64url(digest));
-  if (expected.byteLength !== actual.byteLength || !crypto.subtle.timingSafeEqual(expected, actual)) {
+  if (expected.byteLength !== actual.byteLength || !timingSafeEqual(expected, actual)) {
     throw unauthorized("This sign-in was started by a different app. Sign in again.");
   }
 
-  const user = await env.DB.prepare("SELECT id, display_name FROM users WHERE id = ?")
-    .bind(row.user_id)
-    .first<{ id: string; display_name: string }>();
+  const user = await env.db.first<{ id: string; display_name: string }>("SELECT id, display_name FROM users WHERE id = $1", [row.user_id]);
   if (!user) throw unauthorized("This account no longer exists. Sign in again.");
-  const token = await createSession(env.DB, user.id);
+  const token = await createSession(env.db, user.id);
   const created = row.created === 1;
   return json({ token, user: { id: user.id, displayName: user.display_name }, created }, created ? 201 : 200);
 };

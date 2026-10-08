@@ -1,7 +1,9 @@
 import type { Handler } from "../context";
 import { badRequest, conflict, forbidden, json, noContent, notFound, nowISO, readJSONObject } from "../http";
 import { requireUser, type SessionUser } from "../session";
-import { cachedTeamResult, forgetTeamCache, guardedWork, readGuard, type ReadGuard } from "../readGuard";
+import type { Env } from "../context";
+import type { Queryable } from "../db";
+import { cachedTeamResult } from "../teamCache";
 import { teamUsage } from "../teamUsage";
 import { addDays, dayKey, isValidDay } from "../usagePayload";
 
@@ -37,10 +39,10 @@ export interface Standing {
   value: number;
 }
 
-async function requireMembership(db: D1Database, teamID: string, user: SessionUser): Promise<"owner" | "member"> {
-  const role = await db.prepare("SELECT role FROM team_members WHERE team_id = ? AND user_id = ?").bind(teamID, user.id).first<"owner" | "member">("role");
-  if (!role) throw notFound("Team not found.");
-  return role;
+async function requireMembership(db: Queryable, teamID: string, user: SessionUser): Promise<"owner" | "member"> {
+  const row = await db.first<{ role: "owner" | "member" }>("SELECT role FROM team_members WHERE team_id = $1 AND user_id = $2", [teamID, user.id]);
+  if (!row) throw notFound("Team not found.");
+  return row.role;
 }
 
 /** The viewer's "today": their local day when within a day of UTC, else the UTC date. */
@@ -50,11 +52,9 @@ export function viewerToday(url: URL, now: Date): string {
   return requested && isValidDay(requested) && requested >= addDays(utc, -1) && requested <= addDays(utc, 1) ? requested : utc;
 }
 
-export async function challengeStandings(db: D1Database, teamID: string, challenge: ChallengeRow): Promise<Standing[]> {
+export async function challengeStandings(db: Queryable, teamID: string, challenge: ChallengeRow): Promise<Standing[]> {
   const [members, usage] = await Promise.all([
-    db.prepare("SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = ?")
-      .bind(teamID)
-      .all<{ id: string; display_name: string }>(),
+    db.query<{ id: string; display_name: string }>("SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = $1", [teamID]),
     teamUsage(db, teamID, challenge.starts_on, challenge.ends_on, { models: true }),
   ]);
   const totals = new Map<string, { tokens: number; cost: number; models: Set<string> }>();
@@ -72,7 +72,7 @@ export async function challengeStandings(db: D1Database, teamID: string, challen
     if (row.tokens > 0) entry(row.user_id).models.add(`${row.provider}/${row.model.toLowerCase()}`);
   }
 
-  const candidates = members.results.flatMap((member) => {
+  const candidates = members.flatMap((member) => {
     const value = totals.get(member.id);
     switch (challenge.kind) {
       case "lowest_spend":
@@ -102,7 +102,7 @@ export async function challengeStandings(db: D1Database, teamID: string, challen
   return standings;
 }
 
-async function describe(db: D1Database, teamID: string, challenge: ChallengeRow, today: string) {
+async function describe(db: Queryable, teamID: string, challenge: ChallengeRow, today: string) {
   const standings = await challengeStandings(db, teamID, challenge);
   const finished = challenge.ends_on < today;
   const leaders = standings.filter((s) => s.rank === 1 && (challenge.kind === "lowest_spend" || challenge.kind === "best_efficiency" || s.value > 0));
@@ -121,35 +121,38 @@ async function describe(db: D1Database, teamID: string, challenge: ChallengeRow,
 }
 
 /** Active challenges (soonest to end first) and the last five finished, with standings. */
-export async function teamChallengeList(db: D1Database, teamID: string, today: string) {
-  const [active, finished] = await db.batch([
-    db.prepare("SELECT id, kind, starts_on, ends_on, created_by FROM challenges WHERE team_id = ? AND ends_on >= ? ORDER BY ends_on, id").bind(teamID, today),
-    db.prepare("SELECT id, kind, starts_on, ends_on, created_by FROM challenges WHERE team_id = ? AND ends_on < ? ORDER BY ends_on DESC, id LIMIT ?").bind(teamID, today, RECENT_FINISHED),
+export async function teamChallengeList(db: Queryable, teamID: string, today: string) {
+  const [active, finished] = await Promise.all([
+    db.query<ChallengeRow>("SELECT id, kind, starts_on, ends_on, created_by FROM challenges WHERE team_id = $1 AND ends_on >= $2 ORDER BY ends_on, id", [teamID, today]),
+    db.query<ChallengeRow>(
+      "SELECT id, kind, starts_on, ends_on, created_by FROM challenges WHERE team_id = $1 AND ends_on < $2 ORDER BY ends_on DESC, id LIMIT $3",
+      [teamID, today, RECENT_FINISHED],
+    ),
   ]);
-  const rows = [...(active!.results as ChallengeRow[]), ...(finished!.results as ChallengeRow[])];
+  const rows = [...active, ...finished];
   const challenges = [];
   for (const row of rows) challenges.push(await describe(db, teamID, row, today));
   return challenges;
 }
 
-/** The team's challenges from the cache (see `readGuard.ts`), recomputed at most every 5 minutes. */
-export function cachedChallengeList(guard: ReadGuard, teamID: string, today: string) {
-  return cachedTeamResult(guard, teamID, `challenges|${today}`, 5 * 60_000, (db) => teamChallengeList(db, teamID, today));
+/** The team's challenges from the cache (see `teamCache.ts`), recomputed at most every 5 minutes. */
+export function cachedChallengeList(env: Pick<Env, "db" | "cache">, now: Date, teamID: string, today: string) {
+  return cachedTeamResult(env.cache, now, teamID, `challenges|${today}`, 5 * 60_000, () => teamChallengeList(env.db, teamID, today));
 }
 
 /** GET /v1/teams/:teamID/challenges?today=… — active challenges and the last five finished. */
 export const listChallenges: Handler = async ({ request, env, url, params, deps }) => {
-  const user = await requireUser(request, env.DB);
-  await requireMembership(env.DB, params.teamID!, user);
-  const result = await cachedChallengeList(readGuard(env, deps.now()), params.teamID!, viewerToday(url, deps.now()));
-  return json({ challenges: result.value, paused: result.paused });
+  const user = await requireUser(request, env.db);
+  await requireMembership(env.db, params.teamID!, user);
+  const result = await cachedChallengeList(env, deps.now(), params.teamID!, viewerToday(url, deps.now()));
+  return json({ challenges: result.value });
 };
 
 /** POST /v1/teams/:teamID/challenges { kind, days, today? } — starts today, any member. */
 export const createChallenge: Handler = async ({ request, env, url, params, deps }) => {
-  const user = await requireUser(request, env.DB);
+  const user = await requireUser(request, env.db);
   const teamID = params.teamID!;
-  await requireMembership(env.DB, teamID, user);
+  await requireMembership(env.db, teamID, user);
   const body = await readJSONObject(request);
   if (typeof body.kind !== "string" || !CHALLENGE_KINDS.includes(body.kind as ChallengeKind)) {
     throw badRequest("kind must be lowest_spend, most_models, most_tokens, or best_efficiency.");
@@ -157,8 +160,8 @@ export const createChallenge: Handler = async ({ request, env, url, params, deps
   if (typeof body.days !== "number" || !DURATIONS.includes(body.days)) throw badRequest("days must be 7, 14, or 30.");
 
   const today = viewerToday(new URL(`${url.origin}${url.pathname}?today=${typeof body.today === "string" ? body.today : ""}`), deps.now());
-  const active = await env.DB.prepare("SELECT COUNT(*) AS n FROM challenges WHERE team_id = ? AND ends_on >= ?").bind(teamID, today).first<number>("n");
-  if ((active ?? 0) >= MAX_ACTIVE) throw conflict(`A team can run at most ${MAX_ACTIVE} challenges at once.`);
+  const active = await env.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM challenges WHERE team_id = $1 AND ends_on >= $2", [teamID, today]);
+  if ((active?.n ?? 0) >= MAX_ACTIVE) throw conflict(`A team can run at most ${MAX_ACTIVE} challenges at once.`);
 
   const row: ChallengeRow = {
     id: crypto.randomUUID(),
@@ -167,26 +170,25 @@ export const createChallenge: Handler = async ({ request, env, url, params, deps
     ends_on: addDays(today, body.days - 1),
     created_by: user.id,
   };
-  await env.DB.batch([
-    env.DB.prepare("INSERT INTO challenges (id, team_id, kind, starts_on, ends_on, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .bind(row.id, teamID, row.kind, row.starts_on, row.ends_on, row.created_by, nowISO()),
-    forgetTeamCache(env.DB, teamID, "challenges|"),
-  ]);
-  return json({ challenge: await guardedWork(readGuard(env, deps.now()), (db) => describe(db, teamID, row, today)) }, 201);
+  await env.db.run(
+    "INSERT INTO challenges (id, team_id, kind, starts_on, ends_on, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+    [row.id, teamID, row.kind, row.starts_on, row.ends_on, row.created_by, nowISO()],
+  );
+  await env.cache.forgetTeams([teamID], "challenges|");
+  return json({ challenge: await describe(env.db, teamID, row, today) }, 201);
 };
 
 /** DELETE /v1/teams/:teamID/challenges/:challengeID — the creator or the owner. */
 export const deleteChallenge: Handler = async ({ request, env, params }) => {
-  const user = await requireUser(request, env.DB);
-  const role = await requireMembership(env.DB, params.teamID!, user);
-  const row = await env.DB.prepare("SELECT created_by FROM challenges WHERE id = ? AND team_id = ?")
-    .bind(params.challengeID!, params.teamID!)
-    .first<{ created_by: string | null }>();
+  const user = await requireUser(request, env.db);
+  const role = await requireMembership(env.db, params.teamID!, user);
+  const row = await env.db.first<{ created_by: string | null }>("SELECT created_by FROM challenges WHERE id = $1 AND team_id = $2", [
+    params.challengeID!,
+    params.teamID!,
+  ]);
   if (!row) throw notFound("Challenge not found.");
   if (row.created_by !== user.id && role !== "owner") throw forbidden("Only the creator or a team owner can cancel a challenge.");
-  await env.DB.batch([
-    env.DB.prepare("DELETE FROM challenges WHERE id = ?").bind(params.challengeID!),
-    forgetTeamCache(env.DB, params.teamID!, "challenges|"),
-  ]);
+  await env.db.run("DELETE FROM challenges WHERE id = $1", [params.challengeID!]);
+  await env.cache.forgetTeams([params.teamID!], "challenges|");
   return noContent();
 };

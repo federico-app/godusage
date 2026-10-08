@@ -1,0 +1,70 @@
+# The teams backend for Coolify's "Docker Compose" build pack (see docs/teams-backend.md#coolify):
+# base directory /backend, Docker Compose location /docker-compose.yml. Production and development
+# are two Coolify resources from this same file, each with its own variables, database, and Redis.
+#
+# Coolify fills the SERVICE_* variables itself: SERVICE_URL_API_8787 gives the api service a domain
+# routed to port 8787, SERVICE_USER_* / SERVICE_PASSWORD_* generate credentials once and keep them.
+# Variables written ${NAME:?} are required: Coolify won't deploy until they are set.
+#
+# On a developer machine: docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local.yml up --build
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - SERVICE_URL_API_8787
+      - PORT=8787
+      - DATABASE_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/godusage
+      - REDIS_URL=redis://default:${SERVICE_PASSWORD_REDIS}@redis:6379
+      # Bundle IDs whose native Sign in with Apple tokens are accepted, and the web flow's Services ID.
+      - APPLE_AUDIENCES=${APPLE_AUDIENCES:?}
+      - APPLE_WEB_CLIENT_ID=${APPLE_WEB_CLIENT_ID:?}
+      # Shared with the proxy Worker (its PROXY_SECRET secret), so the server trusts the public host it sends.
+      - PROXY_SECRET=${SERVICE_PASSWORD_64_PROXY}
+      - DOWNLOAD_URL=${DOWNLOAD_URL:-https://github.com/federico-app/godusage/releases/latest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+      - POSTGRES_DB=godusage
+      # Byte-order text sorting, the same as SQLite's (ids and ISO dates sort as they did on D1).
+      - POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Only a cache (computed boards, rate-limit counters): nothing in it is lost data, so it keeps no volume.
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      - REDIS_PASSWORD=${SERVICE_PASSWORD_REDIS}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --save '' --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
