@@ -43,8 +43,10 @@ Export the Developer ID Application cert (with its private key) from Keychain Ac
 - the app is **GodUsage DEV** (`com.montinovo.godusage.dev`, iCloud container `iCloud.com.montinovo.godusage.dev`), so it installs beside the release app and keeps its own settings, iCloud data, and teams backend; its dashboard shows an orange **DEV** badge next to the Total Spend title (or in its own row when that card is hidden);
 - the version is the newest stable tag plus the build number, for example `0.8.16-dev.642`;
 - it is Developer ID-signed and notarized like production, published as the prerelease `dev-<build>` with `GodUsage-DEV-<version>.dmg`, and never becomes the GitHub "Latest" release;
+- it is built for Apple Silicon only (`ARCHS=arm64`), which halves the compile; production stays universal. Intel Macs are not offered DEV updates;
+- the tests run in a job beside the build, and nothing is published until both pass. Each job restores the previous run's `.build` from the Actions cache, so the build is incremental;
 - it updates `appcast-dev.xml` on `update-feed` (last 10 builds) and deploys `update-feed` to GitHub Pages itself, so it does not depend on workflows on `main`. Installed DEV apps update from that feed and never see production releases, and production apps never see DEV builds. The production pipeline ignores `dev-*` prereleases when it checks the feed's release history.
-- it runs in its own queue, so a push to `develop` never cancels a production release that is waiting to start. If a DEV build and a production release publish `update-feed` at the same moment, one push fails; rerun it.
+- it runs in its own queue, so a push to `develop` never cancels a production release that is waiting to start. A newer push replaces a DEV run that is still waiting, so the feed only moves forward. If a DEV build and a production release publish `update-feed` at the same moment, one push fails; rerun it.
 
 Merge `develop` into `main` and tag it to ship production.
 
