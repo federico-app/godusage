@@ -30,6 +30,8 @@ struct MemberReactions: Codable, Hashable, Sendable {
     var clown: Int
     /// The viewer's own reactions to this member today.
     var mine: [TeamReaction]
+    /// Who gave each reaction today, by reaction (`fire`, `clap`, `clown`) → user ids. Nil from older servers.
+    var from: [String: [String]]? = nil
 
     static let none = MemberReactions(fire: 0, clap: 0, clown: 0, mine: [])
 

@@ -1,7 +1,9 @@
 import type { Handler } from "../context";
 import { badRequest, json, notFound } from "../http";
 import { requireUser } from "../session";
+import { teamMomentum } from "../momentum";
 import { cachedTeamStats, parseStatsQuery, type TeamStats } from "../stats";
+import { cachedTeamResult } from "../teamCache";
 import { dayKey } from "../usagePayload";
 import { reactionSummary, teamChampions } from "./social";
 
@@ -11,7 +13,8 @@ const EXTRA_RANGES = ["today", "mtd"] as const;
 /**
  * GET /v1/teams/:teamID/stats?range=today|7d|30d|365d|mtd&sort=cost|tokens&today=YYYY-MM-DD&include=today,mtd
  * — members only. Besides the stats: today's (UTC) reactions per member, the last 12 months'
- * champions, and with `include` the Today and Month to Date spend boards. Stats come from the cache:
+ * champions, each member's momentum (spend in the last hour and 0–3 ⚡, see `momentum.ts`), and with
+ * `include` the Today and Month to Date spend boards. Stats come from the cache:
  * `computedAt` says when they were computed (at most 10 minutes ago).
  */
 export const getTeamStats: Handler = async ({ request, env, url, params, deps }) => {
@@ -29,8 +32,10 @@ export const getTeamStats: Handler = async ({ request, env, url, params, deps })
   }
   const now = deps.now();
   const day = dayKey(now);
-  const [stats, reactions, champions, ...extras] = await Promise.all([
+  const [stats, momentum, reactions, champions, ...extras] = await Promise.all([
     cachedTeamStats(env, now, team.id, query),
+    // Momentum is about the last hour, whatever the range: recomputed at most once a minute.
+    cachedTeamResult(env.cache, now, team.id, "momentum", 60_000, () => teamMomentum(env.db, team.id, now)),
     reactionSummary(env.db, team.id, day, user.id),
     teamChampions(env, now, team.id, query.today),
     ...include.map((range) => cachedTeamStats(env, now, team.id, { range: range as (typeof EXTRA_RANGES)[number], sort: "cost", today: query.today })),
@@ -41,6 +46,7 @@ export const getTeamStats: Handler = async ({ request, env, url, params, deps })
     team,
     stats: stats.value,
     computedAt: stats.computedAt,
+    momentum: momentum.value,
     reactions: { day, week: day, byMember: reactions },
     champions,
     ...(include.length > 0 ? { extra } : {}),

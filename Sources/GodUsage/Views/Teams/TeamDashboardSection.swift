@@ -124,18 +124,26 @@ struct TeamDashboardSection: View {
         HStack(spacing: 8) {
             teamPicker
             Spacer(minLength: 4)
-            if isLoading || isRefreshing {
-                ProgressView().controlSize(.mini)
-            } else {
-                Button {
-                    Task { await refresh() }
-                } label: {
-                    Image(systemName: "arrow.clockwise").font(.caption.weight(.semibold))
+            // A 28pt target around a 14pt glyph; the spinner takes the same slot, so nothing shifts.
+            Group {
+                if isLoading || isRefreshing {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button {
+                        Task { await refresh() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 14, weight: .semibold))
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Refresh Team")
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("Refresh Team")
             }
+            .frame(width: 28, height: 28)
+            .padding(-4)
         }
     }
 
@@ -287,6 +295,8 @@ struct TeamDashboardSection: View {
     private func memberRow(_ member: TeamStats.Member, top: Double, stats: TeamStats) -> some View {
         let isExpanded = expandedMemberID == member.userID
         let isMe = member.userID == container.teams.user?.id
+        let teamID = container.teams.selectedTeamID
+        let momentum = teamID.flatMap { container.teams.momentumByTeam[$0]?[member.userID] }
         return VStack(alignment: .leading, spacing: 6) {
             Button {
                 withAnimation(Motion.spring) { expandedMemberID = isExpanded ? nil : member.userID }
@@ -297,9 +307,11 @@ struct TeamDashboardSection: View {
                             .font(.callout.monospacedDigit().weight(.semibold))
                             .foregroundStyle(member.rank == 1 ? .primary : .secondary)
                             .frame(width: 18, alignment: .trailing)
+                        // The top line keeps the name readable: badges live on the status line below.
                         Text(member.displayName)
                             .fontWeight(isMe ? .semibold : .regular)
                             .lineLimit(1)
+                            .layoutPriority(1)
                         if isMe {
                             Text("You")
                                 .font(.caption2.weight(.medium))
@@ -308,24 +320,31 @@ struct TeamDashboardSection: View {
                                 .padding(.vertical, 1)
                                 .background(.secondary.opacity(0.12), in: Capsule())
                         }
-                        // Movement compares server ranks, which Cost/MTok re-ranks.
-                        if metric != .costPerMtok {
-                            RankChangeBadge(member: member, range: range, sort: sort)
-                        }
-                        if let teamID = container.teams.selectedTeamID {
-                            MemberBadges(teamID: teamID, userID: member.userID)
-                        }
                         Spacer(minLength: 6)
-                        if let teamID = container.teams.selectedTeamID {
-                            ReactionCounts(reactions: container.teamsSocial.reactions(teamID: teamID, userID: member.userID))
-                        }
                         Text(metric.format(member.totals))
                             .font(.callout.monospacedDigit().weight(.semibold))
+                            .layoutPriority(2)
                     }
                     providerBar(member, top: top)
                         .padding(.leading, 26)
-                    TeamSyncNote(member: member)
-                        .padding(.leading, 26)
+                    HStack(spacing: 6) {
+                        MemberStatusNote(member: member, momentum: momentum, newestVersion: TeamsFormat.newestVersion(stats.members))
+                        Spacer(minLength: 6)
+                        // Badges never truncate: the status note gives way first.
+                        HStack(spacing: 6) {
+                            // Movement compares server ranks, which Cost/MTok re-ranks.
+                            if metric != .costPerMtok {
+                                RankChangeBadge(member: member, range: range, sort: sort)
+                            }
+                            MomentumBolts(momentum: momentum)
+                            if let teamID {
+                                MemberBadges(teamID: teamID, userID: member.userID)
+                                ReactionCounts(reactions: container.teamsSocial.reactions(teamID: teamID, userID: member.userID))
+                            }
+                        }
+                        .fixedSize()
+                    }
+                    .padding(.leading, 26)
                 }
                 .contentShape(Rectangle())
             }
@@ -357,6 +376,8 @@ struct TeamDashboardSection: View {
             .prefix(3)
         VStack(alignment: .leading, spacing: 4) {
             if let teamID = container.teams.selectedTeamID {
+                MemberDetailNotes(member: member, stats: stats, range: range, teamID: teamID)
+                    .padding(.bottom, 4)
                 ReactionButtons(teamID: teamID, member: member, compact: true)
                     .padding(.bottom, 2)
                 if let projection = container.teamsSocial.projection(teamID: teamID, userID: member.userID), projection.spentSoFar > 0 {
