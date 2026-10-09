@@ -1,5 +1,55 @@
 # Changelog
 
+## v1.1.0
+
+### New Features
+- Move the teams backend to Postgres and Redis on Coolify, behind a proxy Worker by @andreaAppload
+- Point the app straight at the Coolify domains by @andreaAppload
+- Let team plans cover only the members they pay for by @andreaAppload
+- Check for updates with ⌘U ([#28](https://github.com/federico-app/godusage/pull/28)) by @andreaAppload
+- Refresh the team from the dashboard, and say when uploads fail by @andreaAppload
+- Link the iPhone app to a Teams account with a QR code by @andreaAppload
+- Teams tab on iPhone: link by QR code, your usage, team boards by @andreaAppload
+- Sign in with Apple in Safari, and give the DEV app its own URL scheme by @andreaAppload
+- GodUsage DEV for iPhone: a separate app on TestFlight by @andreaAppload
+- iPhone icons: the GodUsage Zeus, with a DEV band on GodUsage DEV by @andreaAppload
+
+### Bug Fixes
+- Make the Settings window wider and resizable by @andreaAppload
+- Keep the Settings window at its width instead of collapsing it by @andreaAppload
+
+### Chores
+- Run the teams backend as a Docker container for Coolify by @andreaAppload
+- Document the Coolify backend, the proxy Worker, and the D1 cutover by @andreaAppload
+- Ship DEV builds in about half the time by @andreaAppload
+- Stop running CI again on every push to develop by @andreaAppload
+- Separate GodUsage and GodUsage DEV schemes for running and archiving by @andreaAppload
+- Keep Xcode's formatting of the iOS project and Info.plist by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.0.9...v1.1.0](https://github.com/federico-app/godusage/compare/v1.0.9...v1.1.0)
+
+- [6c83d68](https://github.com/federico-app/godusage/commit/6c83d68a835ed432dbcd42a51b593a3bb9373657) Keep the Settings window at its width instead of collapsing it by @andreaAppload
+- [3bd4878](https://github.com/federico-app/godusage/commit/3bd48787edfac47c9abcbe5441d254fe3c2e7212) Keep Xcode's formatting of the iOS project and Info.plist by @andreaAppload
+- [6f33911](https://github.com/federico-app/godusage/commit/6f3391174c79639950f912b07ffda5407fe63f07) iPhone icons: the GodUsage Zeus, with a DEV band on GodUsage DEV by @andreaAppload
+- [1986836](https://github.com/federico-app/godusage/commit/198683698accc2362f3da4ebad3e96c1c671124c) Separate GodUsage and GodUsage DEV schemes for running and archiving by @andreaAppload
+- [45394ca](https://github.com/federico-app/godusage/commit/45394ca7bbcf93c5712138a2756ff5e507fc9008) Stop running CI again on every push to develop by @andreaAppload
+- [d3faeb4](https://github.com/federico-app/godusage/commit/d3faeb4eab613ff06688653eedebc467e022eb4e) GodUsage DEV for iPhone: a separate app on TestFlight by @andreaAppload
+- [50461a9](https://github.com/federico-app/godusage/commit/50461a953cb694b2b143fdb5f4467dfc9f127533) Make the Settings window wider and resizable by @andreaAppload
+- [3d9dd0b](https://github.com/federico-app/godusage/commit/3d9dd0be8a60cd4e52fd8db2e26e62838a2c637b) Sign in with Apple in Safari, and give the DEV app its own URL scheme by @andreaAppload
+- [4072edd](https://github.com/federico-app/godusage/commit/4072eddac0815b775e09cc17fe55bdc1e757e1d3) Teams tab on iPhone: link by QR code, your usage, team boards by @andreaAppload
+- [1e459ce](https://github.com/federico-app/godusage/commit/1e459ce0c94fe897ed5a1fc2497c49b28f13a88f) Link the iPhone app to a Teams account with a QR code by @andreaAppload
+- [e2eea79](https://github.com/federico-app/godusage/commit/e2eea795fed91a682239dd76be6b803ee42806e0) Refresh the team from the dashboard, and say when uploads fail by @andreaAppload
+- [cad92f3](https://github.com/federico-app/godusage/commit/cad92f3bbdf5c2a259004ce95241ff7242f099af) Ship DEV builds in about half the time by @andreaAppload
+- [5f0efda](https://github.com/federico-app/godusage/commit/5f0efda81d63a9795115696a66c8596eb314de59) Point the app straight at the Coolify domains by @andreaAppload
+- [2463de6](https://github.com/federico-app/godusage/commit/2463de67a091feef944aeb4ea6783ae3221a3780) Check for updates with ⌘U (#28) by @andreaAppload
+- [039677d](https://github.com/federico-app/godusage/commit/039677db9f4fc40389e1d27ea938e3717a9286b6) Let team plans cover only the members they pay for by @andreaAppload
+- [48527c5](https://github.com/federico-app/godusage/commit/48527c5346b5e225964f8e0eb0469e61134d8e5e) Document the Coolify backend, the proxy Worker, and the D1 cutover by @andreaAppload
+- [c54cec7](https://github.com/federico-app/godusage/commit/c54cec7dc2cd908f437a84787ba95e7e3cac47fc) Move the teams backend to Postgres and Redis on Coolify, behind a proxy Worker by @andreaAppload
+- [38ef86c](https://github.com/federico-app/godusage/commit/38ef86c50f9cdc01b73482dd9bf80fb4224dd512) Run the teams backend as a Docker container for Coolify by @andreaAppload
+
 ## v1.0.9
 
 ### Bug Fixes
