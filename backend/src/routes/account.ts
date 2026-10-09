@@ -114,12 +114,13 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
   const user = await requireUser(request, env.db);
   const id = [user.id];
   // One transaction, so the document is one consistent snapshot.
-  const [account, sessions, linkedDevices, devices, days, models, teams, given, received, challenges] = await env.db.transaction((tx) =>
+  const [account, sessions, linkedDevices, devices, pulses, days, models, teams, given, received, challenges] = await env.db.transaction((tx) =>
     Promise.all([
       tx.query("SELECT id, apple_sub, display_name, created_at FROM users WHERE id = $1", id),
       tx.query("SELECT COUNT(*) AS n FROM sessions WHERE user_id = $1", id),
       tx.query("SELECT paired_device AS name, created_at FROM sessions WHERE user_id = $1 AND paired_device IS NOT NULL ORDER BY created_at", id),
       tx.query("SELECT id, name, updated_at FROM devices WHERE user_id = $1 ORDER BY updated_at DESC", id),
+      tx.query("SELECT device_id, bucket, cost_usd FROM spend_pulses WHERE user_id = $1 ORDER BY bucket, device_id", id),
       tx.query("SELECT device_id, provider, day, scope, tokens, cost_usd FROM usage_days WHERE user_id = $1 ORDER BY day, provider", id),
       tx.query("SELECT device_id, provider, day, model, scope, tokens, cost_usd FROM usage_model_days WHERE user_id = $1 ORDER BY day, provider, model", id),
       tx.query("SELECT t.id, t.name, m.role, m.joined_at FROM team_members m JOIN teams t ON t.id = m.team_id WHERE m.user_id = $1 ORDER BY t.name", id),
@@ -136,6 +137,7 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
     activeSessions: (sessions[0] as { n: number }).n,
     linkedDevices,
     devices,
+    spendPulses: pulses,
     usageDays: days,
     usageModelDays: models,
     teams,

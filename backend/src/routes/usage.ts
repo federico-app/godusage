@@ -1,5 +1,6 @@
 import type { Handler } from "../context";
 import { badRequest, json, noContent, notFound, readJSONObject } from "../http";
+import { recordPulse } from "../momentum";
 import { requireUser } from "../session";
 import type { Env } from "../context";
 import type { Queryable } from "../db";
@@ -60,6 +61,9 @@ export async function storeDeviceUsage(env: Pick<Env, "db" | "cache">, userID: s
   );
 
   const { written, usageChanged } = await env.db.transaction(async (tx) => {
+    // Before anything is stored: how much the recent days grew. A device's first upload is skipped.
+    const known = await tx.first("SELECT 1 AS known FROM devices WHERE user_id = $1 AND id = $2", [userID, deviceID]);
+    if (known) await recordPulse(tx, userID, deviceID, upload.days, now);
     const device = await tx.run(
       `INSERT INTO devices (user_id, id, name, updated_at, app_version) VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (user_id, id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at, app_version = excluded.app_version`,

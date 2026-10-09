@@ -25,7 +25,8 @@ The backend used to run as a Cloudflare Worker on D1. D1's free plan (5M rows re
 - **Sessions:** only the SHA-256 hash of each session token. A session expires after 180 days without use. A session made by [QR pairing](#qr-pairing) also keeps the name of the phone or iPad it belongs to.
 - **Pairing codes:** only the SHA-256 hash of each code, until it is used or replaced (three minutes at most).
 - **Teams:** name, the account whose deletion deletes the team (`owner_id`, always one of its owners), one invite code, and an optional public-board token. Roles (`owner` or `member`) live on each membership; a team can have several owners.
-- **Usage:** for each of the user's Macs, daily tokens and spend per provider and per model. The full history is kept: each upload replaces only the days in its window. No credentials, logs, prompts, project names, or account ids.
+- **Usage:** for each of the user's Macs, daily tokens and spend per provider and per model.
+- **Spend pulses:** for each Mac, how much its spend grew in each five-minute window of the last seven days, for [momentum](#momentum). The full history is kept: each upload replaces only the days in its window. No credentials, logs, prompts, project names, or account ids.
 
 Deleting an account deletes its sessions, Macs, usage, memberships, and the teams it owns.
 
@@ -62,6 +63,12 @@ Day keys are each Mac's local calendar days. A stats request can pass the viewer
 - **Reactions:** a member can give each teammate 🔥 (`fire`), 👏 (`clap`), and 🤡 (`clown`), one of each per day. Reactions belong to the UTC day they were given in, so every day starts clean at midnight UTC. Nobody can react to themselves.
 - **Champions:** the stats response lists the top spender of each of the last 12 complete calendar months among current members (the current month never counts until it is over). The server reuses a team's champions for up to 10 minutes, and recomputes them when its members change.
 - **Challenges:** any member starts one for 7, 14, or 30 days, from today. Kinds: `lowest_spend` (least spend among members who spent anything), `most_models` (most different models), `most_tokens`, and `best_efficiency` (lowest cost per million tokens, with at least 100K tokens). Standings update live from usage in the window; once it has ended, the leaders are the winners. A team runs at most five at once. The creator or an owner can cancel one.
+
+## Momentum
+
+The ⚡ on boards (`src/momentum.ts`). Each upload adds how much the Mac's recent days (yesterday and today, UTC) grew since its previous upload to `spend_pulses`, in five-minute buckets kept seven days. Device-scope rows grow from that Mac's stored row; account-scope rows from the largest any of the user's Macs stored, so two Macs reporting one Cursor account count once; shared accounts count for no one. A device's first upload records nothing, since its whole day would look just spent.
+
+`momentum` in the stats response maps each member with spend in the last 60 minutes to `{ lastHourUSD, level, reasons, typicalHourUSD }`. `level` (0–3) counts the `reasons` met once the last hour reaches $1: `fast` ($5 or more), `self` (at least twice `typicalHourUSD`, the average of the member's hours with spend in the previous seven days, the last hour left out), and `top` (nobody in the team spent more). It is cached per team like the other results, recomputed at most once a minute.
 
 ## Invites and roles
 
@@ -114,7 +121,7 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `POST /v1/teams/:id/invite` | Owner rotates the invite link. |
 | `PATCH /v1/teams/:id/members/:userID` | Owner sets `{ role: "owner" \| "member" }`. |
 | `DELETE /v1/teams/:id/members/:userID` | Leave (yourself) or remove a member (owner). |
-| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD&include=today,mtd`. Leaderboard (with each member's previous-period rank, except for Year), provider totals, top 20 models, per-day totals by member and by provider, today's `reactions` (`day` is the UTC day; `week` repeats it for older apps), and the last 12 months' `champions`. `include` adds the Today and Month to Date spend boards in `extra`, so the app needs one request instead of three. `computedAt` says when the stats were computed (see [Caching](#caching)). |
+| `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD&include=today,mtd`. Leaderboard (with each member's previous-period rank, except for Year), provider totals, top 20 models, per-day totals by member and by provider, today's `reactions` per member (counts, the viewer's own in `mine`, and who gave each in `from`; `day` is the UTC day; `week` repeats it for older apps), the last 12 months' `champions`, and `momentum` (see [Momentum](#momentum)). `include` adds the Today and Month to Date spend boards in `extra`, so the app needs one request instead of three. `computedAt` says when the stats were computed (see [Caching](#caching)). |
 | `PUT`, `DELETE /v1/teams/:id/members/:userID/reactions/:emoji` | Give or take back `fire`, `clap`, or `clown` for today (UTC). |
 | `GET`, `POST /v1/teams/:id/challenges` | List active challenges and the last five finished (with standings and winners), or start one (`{ kind, days, today? }`). |
 | `DELETE /v1/teams/:id/challenges/:challengeID` | Cancel a challenge (creator or owner). |

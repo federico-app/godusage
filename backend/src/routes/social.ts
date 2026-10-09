@@ -16,6 +16,8 @@ export interface MemberReactions {
   clown: number;
   /** The viewer's own reactions to this member today. */
   mine: Reaction[];
+  /** Who gave each reaction today (user ids, oldest first), for the member's detail. */
+  from: Record<Reaction, string[]>;
 }
 
 async function requireMember(db: Queryable, teamID: string, userID: string): Promise<void> {
@@ -31,8 +33,9 @@ export async function reactionSummary(db: Queryable, teamID: string, day: string
   );
   const summary: Record<string, MemberReactions> = {};
   for (const row of rows) {
-    const entry = (summary[row.to_user] ??= { fire: 0, clap: 0, clown: 0, mine: [] });
+    const entry = (summary[row.to_user] ??= { fire: 0, clap: 0, clown: 0, mine: [], from: { fire: [], clap: [], clown: [] } });
     entry[row.emoji] += 1;
+    entry.from[row.emoji].push(row.from_user);
     if (row.from_user === viewerID) entry.mine.push(row.emoji);
   }
   return summary;

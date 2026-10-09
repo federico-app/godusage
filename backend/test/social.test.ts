@@ -27,10 +27,16 @@ describe("reactions", () => {
     const stats = (await api("GET", `/v1/teams/${team.id}/stats?range=today`, { token: owner.token })).body;
     expect(stats.reactions.day).toBe("2026-10-05");
     expect(stats.reactions.week).toBe("2026-10-05"); // legacy key for installed apps
-    expect(stats.reactions.byMember[bea.userID]).toEqual({ fire: 2, clap: 0, clown: 1, mine: ["fire"] });
+    expect(stats.reactions.byMember[bea.userID]).toEqual({
+      fire: 2,
+      clap: 0,
+      clown: 1,
+      mine: ["fire"],
+      from: { fire: [owner.userID, cy.userID], clap: [], clown: [cy.userID] },
+    });
 
     const removed = await api("DELETE", path(bea.userID, "fire"), { token: owner.token });
-    expect(removed.body.reactions[bea.userID]).toEqual({ fire: 1, clap: 0, clown: 1, mine: [] });
+    expect(removed.body.reactions[bea.userID]).toEqual({ fire: 1, clap: 0, clown: 1, mine: [], from: { fire: [cy.userID], clap: [], clown: [cy.userID] } });
   });
 
   it("starts each UTC day clean", async () => {
@@ -41,7 +47,7 @@ describe("reactions", () => {
     expect(nextDay.body.reactions).toEqual({ day: "2026-10-06", week: "2026-10-06", byMember: {} });
     // Yesterday's reaction doesn't count today, so the same one can be given again.
     const again = await api("PUT", path, { token: owner.token, now: new Date("2026-10-06T00:02:00Z") });
-    expect(again.body.reactions[members[0]!.userID]).toEqual({ fire: 0, clap: 1, clown: 0, mine: ["clap"] });
+    expect(again.body.reactions[members[0]!.userID]).toEqual({ fire: 0, clap: 1, clown: 0, mine: ["clap"], from: { fire: [], clap: [owner.userID], clown: [] } });
   });
 
   it("refuses self-reactions, unknown emoji, and outsiders", async () => {
