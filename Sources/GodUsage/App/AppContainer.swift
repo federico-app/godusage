@@ -17,6 +17,8 @@ final class AppContainer {
     /// Reactions, challenges, champions, and the end-of-month projection.
     let teamsSocial: TeamsSocialStore
     let teamPlans: TeamPlansStore
+    /// Linking the iPhone app to the teams account by QR code.
+    let devicePairing: DevicePairingStore
     /// Which provider to use right now: the dashboard's suggestion banner and its notification.
     let usageAdvice: UsageAdviceStore
     /// Single source of truth for which providers the user has turned off. Both stores consult it (via
@@ -175,6 +177,7 @@ final class AppContainer {
         self.teamsSocial = teamsSocial
         let teamPlans = TeamPlansStore(teams: teams)
         self.teamPlans = teamPlans
+        self.devicePairing = DevicePairingStore(teams: teams)
         let usageAdvice = UsageAdviceStore(
             registry: registry, dataStore: dataStore,
             isEnabled: { [enablement] in enablement.isEnabled($0) },

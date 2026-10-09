@@ -9,12 +9,14 @@ struct TeamPlan: Codable, Hashable, Sendable, Identifiable {
     var monthlyCostUSD: Double
     /// Day of the month the plan renews (29–31 fall on the last day of shorter months).
     var renewalDay: Int
+    /// The members the plan covers. Nil covers every member.
+    var memberIDs: [String]?
 
-    private enum CodingKeys: String, CodingKey { case provider, name, monthlyCostUSD, renewalDay }
+    private enum CodingKeys: String, CodingKey { case provider, name, monthlyCostUSD, renewalDay, memberIDs }
 }
 
-/// One plan in the Plans report: its cost against the team's usage of its provider at API prices,
-/// in the plan's current billing cycle. Computed by the server.
+/// One plan in the Plans report: its cost against the covered members' usage of its provider at API
+/// prices, in the plan's current billing cycle. Computed by the server.
 struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
     struct Cycle: Decodable, Hashable, Sendable {
         var from: String
@@ -29,6 +31,9 @@ struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
     var name: String
     var monthlyCostUSD: Double
     var renewalDay: Int
+    var memberIDs: [String]?
+    /// Whether the plan covers the signed-in user.
+    var includesYou: Bool
     var cycle: Cycle
     var valueUSD: Double
     var projectedValueUSD: Double
@@ -36,7 +41,7 @@ struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
     var underused: Bool
 
     var plan: TeamPlan {
-        TeamPlan(id: id, provider: provider, name: name, monthlyCostUSD: monthlyCostUSD, renewalDay: renewalDay)
+        TeamPlan(id: id, provider: provider, name: name, monthlyCostUSD: monthlyCostUSD, renewalDay: renewalDay, memberIDs: memberIDs)
     }
 }
 

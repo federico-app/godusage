@@ -1,4 +1,4 @@
-import { env } from "cloudflare:test";
+import { env } from "./env";
 import { describe, expect, it } from "vitest";
 import { safeReturnPath } from "../src/routes/webSignIn";
 import { api, appleToken, makeApp, NOW } from "./support";
@@ -64,8 +64,8 @@ describe("members-only web leaderboard", () => {
     expect(html).toContain("Crew");
     expect(html).toContain("Signed in as Ada");
 
-    const lifetime = await env.DB.prepare("SELECT lifetime_days FROM sessions ORDER BY created_at DESC LIMIT 1").first("lifetime_days");
-    expect(lifetime).toBe(30);
+    const session = await env.db.first<{ lifetime_days: number }>("SELECT lifetime_days FROM sessions ORDER BY created_at DESC LIMIT 1");
+    expect(session?.lifetime_days).toBe(30);
   });
 
   it("refuses signed-in people who are not members", async () => {

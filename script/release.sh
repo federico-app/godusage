@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Builds a distributable, Developer ID-signed, notarized GodUsage.app and wraps it in a DMG. The app
-# is a universal binary (arm64 + x86_64) so it runs on both Apple Silicon and Intel Macs; the DMG is the
+# is a universal binary (arm64 + x86_64, see ARCHS) so it runs on Apple Silicon and Intel Macs; the DMG is the
 # only output. The appcast is produced separately by Sparkle's generate_appcast (in release.yml), which
 # signs the DMG with the EdDSA key and writes/updates appcast.xml. Runs in CI (release.yml) and locally
 # on a Mac with the same env. This script does NOT push anything to GitHub.
@@ -20,6 +20,9 @@ set -euo pipefail
 #                         carry a suffix (0.8.16-dev.642); prod accepts only a stable version.
 #   GODUSAGE_BUILD       CFBundleVersion (monotonic). Default: git commit count.
 #   FEED_URL              appcast URL baked into the app. Default: GitHub Pages project URL.
+#   ARCHS                 space-separated slices to build. Default: "arm64 x86_64" (universal). The dev
+#                         channel builds "arm64" only, which halves the build; Sparkle then offers that
+#                         build only to Apple Silicon Macs.
 #   APPLE_NOTARY_KEY_PATH / APPLE_NOTARY_KEY_ID / APPLE_NOTARY_ISSUER_ID
 #                         App Store Connect API private key path, key ID, and issuer ID for notarytool.
 #                         When all three are set, the app and DMG are notarized + stapled.
@@ -43,6 +46,7 @@ case "$CHANNEL" in
     ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage"
     FEED_FILE="appcast.xml"
     DMG_PREFIX="GodUsage"
+    URL_SCHEME="godusage"   # AppChannel.urlScheme: invite links and the Sign in with Apple return
     ;;
   dev)
     APP_DISPLAY_NAME="GodUsage DEV"
@@ -50,6 +54,7 @@ case "$CHANNEL" in
     ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage.dev"
     FEED_FILE="appcast-dev.xml"
     DMG_PREFIX="GodUsage-DEV"
+    URL_SCHEME="godusage-dev"
     ;;
   *)
     echo "CHANNEL must be prod or dev, got: $CHANNEL" >&2
@@ -124,13 +129,16 @@ notarize() {  # $1: artifact to submit (.zip or .dmg)
     --wait
 }
 
-echo "==> building $APP_DISPLAY_NAME $VERSION ($BUILD) — universal (arm64 + x86_64)"
-# Build both arch slices and let SwiftPM lipo-merge them into one universal binary. With multiple
-# --arch, --show-bin-path resolves to the merged products dir (.build/apple/Products/Release), which
-# also holds the *.bundle resources, so the staging loop below is unchanged.
-swift build -c release --arch arm64 --arch x86_64 --product GodUsage
-swift build -c release --arch arm64 --arch x86_64 --product godusage-cli
-BUILD_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+ARCHS="${ARCHS:-arm64 x86_64}"
+ARCH_FLAGS=()
+for arch in $ARCHS; do ARCH_FLAGS+=(--arch "$arch"); done
+echo "==> building $APP_DISPLAY_NAME $VERSION ($BUILD) — $ARCHS"
+# With several --arch, SwiftPM lipo-merges the slices into one universal binary and --show-bin-path
+# resolves to the merged products dir (.build/apple/Products/Release), which also holds the *.bundle
+# resources, so the staging loop below is the same for one arch or several.
+swift build -c release "${ARCH_FLAGS[@]}" --product GodUsage
+swift build -c release "${ARCH_FLAGS[@]}" --product godusage-cli
+BUILD_DIR="$(swift build -c release "${ARCH_FLAGS[@]}" --show-bin-path)"
 BUILD_BINARY="$BUILD_DIR/$APP_NAME"
 BUILD_CLI_BINARY="$BUILD_DIR/godusage-cli"
 [ -x "$BUILD_BINARY" ] || { echo "missing built binary: $BUILD_BINARY" >&2; exit 1; }
@@ -144,12 +152,14 @@ cp "$BUILD_CLI_BINARY" "$CLI_BINARY"
 chmod +x "$APP_BINARY"
 chmod +x "$CLI_BINARY"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$CLI_BINARY"
-# Fail loudly if the build ever silently regresses to a single arch (e.g. a dropped --arch flag): a
-# fat binary is the whole point, and generate_appcast derives Sparkle's hardwareRequirements from it.
-lipo -archs "$APP_BINARY" | grep -q "x86_64" && lipo -archs "$APP_BINARY" | grep -q "arm64" \
-  || { echo "Expected a universal (arm64 + x86_64) binary, got: $(lipo -archs "$APP_BINARY")" >&2; exit 1; }
-lipo -archs "$CLI_BINARY" | grep -q "x86_64" && lipo -archs "$CLI_BINARY" | grep -q "arm64" \
-  || { echo "Expected a universal CLI, got: $(lipo -archs "$CLI_BINARY")" >&2; exit 1; }
+# Fail loudly if the build ever silently drops a slice (e.g. a lost --arch flag): generate_appcast
+# derives Sparkle's hardwareRequirements from the binary, so a missing x86_64 would strand Intel Macs.
+for binary in "$APP_BINARY" "$CLI_BINARY"; do
+  for arch in $ARCHS; do
+    lipo -archs "$binary" | tr ' ' '\n' | grep -qx "$arch" \
+      || { echo "Expected $arch in $binary, got: $(lipo -archs "$binary")" >&2; exit 1; }
+  done
+done
 
 # SwiftPM stamps LC_BUILD_VERSION's `sdk` field with the deployment target (macOS 15), not the real
 # SDK it compiled against. macOS gates the modern Liquid Glass control appearance (pop-up buttons,
@@ -212,7 +222,7 @@ cat >"$APP_CONTENTS/Info.plist" <<PLIST
   <array>
     <dict>
       <key>CFBundleURLName</key><string>$BUNDLE_ID.invite</string>
-      <key>CFBundleURLSchemes</key><array><string>godusage</string></array>
+      <key>CFBundleURLSchemes</key><array><string>$URL_SCHEME</string></array>
     </dict>
   </array>
   <key>SUFeedURL</key><string>$FEED_URL</string>

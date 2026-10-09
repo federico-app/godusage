@@ -1,6 +1,5 @@
 import type { Handler } from "../context";
 import { clearedWebSessionCookie, cookieUser, deleteSession } from "../session";
-import { readGuard } from "../readGuard";
 import { cachedTeamStats, parseStatsQuery } from "../stats";
 import { boardExtras, escapeHTML, page, renderBoard } from "./pages";
 import { startBrowserSignIn } from "./webSignIn";
@@ -17,7 +16,7 @@ const TEAM_ID = /^[A-Za-z0-9-]{1,64}$/;
 export const memberBoardPage: Handler = async ({ request, env, url, params, deps }) => {
   const teamID = params.teamID!;
   if (!TEAM_ID.test(teamID)) return page("Not Found", `<h1>Not Found</h1>`, 404);
-  const user = await cookieUser(request, env.DB);
+  const user = await cookieUser(request, env.db);
   const signInPath = `/teams/${encodeURIComponent(teamID)}/sign-in`;
 
   if (!user) {
@@ -30,11 +29,10 @@ export const memberBoardPage: Handler = async ({ request, env, url, params, deps
     );
   }
 
-  const team = await env.DB.prepare(
-    `SELECT t.id, t.name FROM teams t JOIN team_members m ON m.team_id = t.id WHERE t.id = ? AND m.user_id = ?`,
-  )
-    .bind(teamID, user.id)
-    .first<{ id: string; name: string }>();
+  const team = await env.db.first<{ id: string; name: string }>(
+    `SELECT t.id, t.name FROM teams t JOIN team_members m ON m.team_id = t.id WHERE t.id = $1 AND m.user_id = $2`,
+    [teamID, user.id],
+  );
   const account = `<div class="account"><span class="muted">Signed in as ${escapeHTML(user.displayName)}</span>
     <form method="post" action="/sign-out"><button class="linkbutton" type="submit">Sign Out</button></form></div>`;
   if (!team) {
@@ -46,9 +44,9 @@ export const memberBoardPage: Handler = async ({ request, env, url, params, deps
   }
 
   const query = parseStatsQuery(url, deps.now());
-  const guard = readGuard(env, deps.now());
-  const [stats, extras] = await Promise.all([cachedTeamStats(guard, team.id, query), boardExtras(guard, team.id, query)]);
-  return page(`${team.name} Leaderboard`, account + renderBoard(team.name, stats.value, url, { ...extras, paused: extras.paused || stats.paused }, deps.now()));
+  const now = deps.now();
+  const [stats, extras] = await Promise.all([cachedTeamStats(env, now, team.id, query), boardExtras(env, now, team.id, query)]);
+  return page(`${team.name} Leaderboard`, account + renderBoard(team.name, stats.value, url, extras, now));
 };
 
 /** GET /teams/:teamID/sign-in — starts Sign in with Apple and comes back to the board. */
@@ -63,7 +61,7 @@ export const memberBoardSignIn: Handler = async ({ env, url, params, deps }) => 
 export const browserSignOut: Handler = async ({ request, env, url }) => {
   const origin = request.headers.get("origin");
   if (origin !== null && origin !== url.origin) return page("Not Allowed", `<h1>Not Allowed</h1>`, 403);
-  await deleteSession(request, env.DB);
+  await deleteSession(request, env.db);
   return new Response(null, {
     status: 303,
     headers: { location: "/", "set-cookie": clearedWebSessionCookie(), "cache-control": "no-store" },

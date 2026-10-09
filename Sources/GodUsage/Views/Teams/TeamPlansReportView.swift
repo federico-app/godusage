@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The Teams window's Plans tab: each subscription's cost against the team's usage of its provider
-/// at API prices in the plan's current billing cycle, the end-of-cycle projection, and the plans
+/// The Teams window's Plans tab: each subscription's cost against its covered members' usage of its
+/// provider at API prices in the plan's current billing cycle, the end-of-cycle projection, and the plans
 /// projected to be worth less than they cost.
 struct TeamPlansReportView: View {
     @Environment(AppContainer.self) private var container
@@ -19,7 +19,7 @@ struct TeamPlansReportView: View {
                     summary(report)
                     underused(report)
                     planList(report)
-                    Text("Value is the team's usage of each provider in the plan's current cycle, priced at API rates. Several plans of one provider split its usage by cost.")
+                    Text("Value is the usage of each provider by the members a plan covers, in the plan's current cycle, priced at API rates. Plans of one provider that cover the same usage split it by cost.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
@@ -30,7 +30,10 @@ struct TeamPlansReportView: View {
                 HStack { Spacer(); ProgressView(); Spacer() }.padding(.vertical, 40)
             }
         }
-        .task(id: teamID) { await container.teamPlans.load(teamID: teamID) }
+        .task(id: teamID) {
+            if container.teams.details[teamID] == nil { await container.teams.loadTeam(teamID) }
+            await container.teamPlans.load(teamID: teamID)
+        }
     }
 
     private func emptyState(canEdit: Bool) -> some View {
@@ -131,7 +134,19 @@ struct TeamPlansReportView: View {
             }
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
+            if let covered = coverageText(plan) {
+                Text(covered).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
         }
+    }
+
+    /// Who a plan with a member list covers; nothing for plans that cover everyone.
+    private func coverageText(_ plan: TeamPlanReport) -> String? {
+        guard let ids = plan.memberIDs else { return nil }
+        let members = container.teams.details[teamID]?.members ?? []
+        let names = members.filter { ids.contains($0.id) }.map(\.displayName)
+        guard !names.isEmpty else { return nil }
+        return "Covers \(names.joined(separator: ", "))" + (plan.includesYou ? "" : " · not you")
     }
 
     private func renewalText(_ cycle: TeamPlanReport.Cycle) -> String {

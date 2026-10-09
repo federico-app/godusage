@@ -83,10 +83,15 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
     private var window: SettingsWindow?
     private var hosting: NSHostingController<AnyView>?
     private var selectedPane: SettingsPane
+    /// The content width the window keeps. Never read back from the frame: assigning the content
+    /// view controller shrinks the window to the SwiftUI content's minimum width, and reading that
+    /// back collapsed the window. Only a user drag changes it (`windowDidResize`).
+    private var contentWidth: CGFloat = SettingsPaneHost.defaultContentWidth
 
     private static let paneKey = "godusage.settings.pane"
     private static let topLeftXKey = "godusage.settings.topLeftX"
     private static let topLeftYKey = "godusage.settings.topLeftY"
+    private static let widthKey = "godusage.settings.width"
     /// Opening guess for a pane that has never reported its content height.
     private static let defaultContentHeight: CGFloat = 440
     private static let minimumContentHeight: CGFloat = 140
@@ -139,14 +144,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
         hosting.sizingOptions = []
         self.hosting = hosting
 
+        contentWidth = rememberedWidth()
         let window = SettingsWindow(
             contentRect: NSRect(
                 x: 0,
                 y: 0,
-                width: SettingsPaneHost.contentWidth,
+                width: contentWidth,
                 height: rememberedHeight(for: selectedPane)
             ),
-            styleMask: [.titled, .closable, .miniaturizable],
+            // Resizable sideways only: the height follows the pane (see `setContentHeight`).
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -261,19 +268,21 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
     private func setContentHeight(_ height: CGFloat, animated: Bool) {
         guard let window else { return }
         let clamped = clampedContentHeight(height)
-        guard abs(clamped - targetContentHeight) > 0.5 else { return }
+        let currentWidth = window.contentRect(forFrameRect: window.frame).width
+        guard abs(clamped - targetContentHeight) > 0.5 || abs(currentWidth - contentWidth) > 0.5 else { return }
         targetContentHeight = clamped
-        let contentRect = NSRect(
-            origin: .zero,
-            size: NSSize(width: SettingsPaneHost.contentWidth, height: clamped)
-        )
+        let contentRect = NSRect(origin: .zero, size: NSSize(width: contentWidth, height: clamped))
+        // Pin the height so a drag can only change the width; the pane's content decides the height.
+        window.contentMinSize = NSSize(width: SettingsPaneHost.minimumContentWidth, height: clamped)
+        window.contentMaxSize = NSSize(width: SettingsPaneHost.maximumContentWidth, height: clamped)
         var frame = window.frameRect(forContentRect: contentRect)
         // Top-left anchored, like every macOS settings window — then constrained so the grown bottom
         // edge can't land below the usable screen (AppKit does not constrain programmatic setFrame,
-        // and a non-resizable window with off-screen controls is unusable until dragged).
+        // and a window with off-screen controls is unusable until dragged).
         frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
         frame = constrainedToScreen(frame)
-        if animated, window.isVisible {
+        // Text rewraps while the user drags the width, so the height follows live, without animating.
+        if animated, window.isVisible, !window.inLiveResize {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.22
                 context.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -292,7 +301,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
         let chrome = window.map {
             $0.frameRect(forContentRect: NSRect(
                 origin: .zero,
-                size: NSSize(width: SettingsPaneHost.contentWidth, height: 0)
+                size: NSSize(width: SettingsPaneHost.minimumContentWidth, height: 0)
             )).height
         } ?? 100
         return min(max(raw, Self.minimumContentHeight), visible - chrome)
@@ -301,7 +310,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
     /// Shifts a frame back inside the usable screen: lifts it when its bottom would fall below the
     /// visible area (a taller pane on a low-positioned window), keeps the title bar under the menu
     /// bar, and pulls it back horizontally (a saved position from a disconnected or rearranged
-    /// display would otherwise reopen the non-resizable window fully off-screen — AppKit's
+    /// display would otherwise reopen the window fully off-screen — AppKit's
     /// order-front constraint doesn't cover X). Height is already capped to fit; on a display
     /// narrower than the window the left edge wins.
     private func constrainedToScreen(_ rawFrame: NSRect) -> NSRect {
@@ -320,6 +329,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
     private func rememberedHeight(for pane: SettingsPane) -> CGFloat {
         let stored = defaults.double(forKey: Self.heightKey(for: pane))
         return stored > 0 ? clampedContentHeight(CGFloat(stored)) : Self.defaultContentHeight
+    }
+
+    private func rememberedWidth() -> CGFloat {
+        let stored = CGFloat(defaults.double(forKey: Self.widthKey))
+        guard stored > 0 else { return SettingsPaneHost.defaultContentWidth }
+        return min(max(stored, SettingsPaneHost.minimumContentWidth), SettingsPaneHost.maximumContentWidth)
     }
 
     private static func heightKey(for pane: SettingsPane) -> String {
@@ -346,6 +361,15 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
     /// fight the user's hand.
     func windowDidChangeScreen(_ notification: Notification) {
         setContentHeight(rememberedHeight(for: selectedPane), animated: false)
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard let window, window.inLiveResize else { return }
+        contentWidth = window.contentRect(forFrameRect: window.frame).width
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        defaults.set(Double(contentWidth), forKey: Self.widthKey)
     }
 
     /// The whole point of the teardown: a closed Settings window keeps no SwiftUI tree, no hosting

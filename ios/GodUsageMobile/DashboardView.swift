@@ -4,6 +4,12 @@ import SwiftUI
 struct DashboardView: View {
     var model: UsageCloudModel
 
+    #if DEV_CHANNEL
+    private static let title = "GodUsage DEV"
+    #else
+    private static let title = "GodUsage"
+    #endif
+
     var body: some View {
         NavigationStack {
             List {
@@ -35,7 +41,7 @@ struct DashboardView: View {
                     deviceSection(device)
                 }
             }
-            .navigationTitle("GodUsage")
+            .navigationTitle(Self.title)
             .refreshable { await model.refresh() }
             .overlay(alignment: .bottom) {
                 if model.isLoading, model.devices.isEmpty {

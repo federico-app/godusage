@@ -33,7 +33,7 @@ A banner at the top of the dashboard (under any update, first-run, or setup card
 - **A reset expires soon**: a reset credit expires within 48 hours. Use that provider freely and claim it if you hit the limit.
 - **Use it before it resets**: a Weekly (or Cursor's Total Usage) resets within the last 30% of its window, about 2 days of a week, with at least 30% projected to go unused at the current pace.
 - **Switch providers**: a Weekly is used up or projected to run out before it resets, and another provider has at least 30% of its own left. Without such a provider, nothing shows; the red bar already tells the story.
-- **Use the team's plan**: a plan of the selected team is flagged underused in the [Plans](teams.md#leaderboards) report and renews within 7 days. Only for providers enabled on this Mac. **Open Plans** opens the Teams window.
+- **Use the team's plan**: a plan of the selected team is flagged underused in the [Plans](teams.md#leaderboards) report and renews within 7 days. Only for plans that cover you, and providers enabled on this Mac. **Open Plans** opens the Teams window.
 - **Lean on a provider**: a card has 2 or more reset credits, so its limits stretch further.
 
 Ties go to the soonest deadline. Quotas and credits are this Mac's own; only the plans are team-wide. GodUsage reloads the selected team's plans at most every 30 minutes for this. Turn on **Usage Suggestions** in [Notifications settings](settings.md#notifications) to also get a notification once for each new suggestion that tops the banner.
@@ -125,6 +125,7 @@ When GodUsage ships a new default metric, existing layouts get it once, in that 
 | ⌘, | Open the [Settings window](settings.md) (closes the popover) |
 | ⌘M | Open the [Memory Explorer](memory-explorer.md) (closes the popover) |
 | ⌘T | Open the [Teams](teams.md#leaderboards) window |
+| ⌘U | Check for updates (see [Updates](updates.md)) |
 
 A global shortcut (recorded in Settings) toggles the popover from anywhere.
 

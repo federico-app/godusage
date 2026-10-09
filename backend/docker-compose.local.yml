@@ -1,0 +1,7 @@
+# Runs the Coolify stack on a developer machine: publishes the api on 127.0.0.1 (Coolify routes its
+# domain instead). Use with an env file that sets what Coolify would generate (see .env.local.example):
+#   docker compose --env-file .env.local -f docker-compose.yml -f docker-compose.local.yml up --build
+services:
+  api:
+    ports:
+      - "127.0.0.1:${API_PORT:-8787}:8787"

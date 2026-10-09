@@ -165,7 +165,7 @@ cat >"$INFO_PLIST" <<PLIST
       <string>$BUNDLE_ID.invite</string>
       <key>CFBundleURLSchemes</key>
       <array>
-        <string>godusage</string>
+        <string>godusage-dev</string>
       </array>
     </dict>
   </array>

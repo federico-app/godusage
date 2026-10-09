@@ -1,4 +1,7 @@
+import type { webcrypto } from "node:crypto";
 import { base64urlDecode, isRecord, unauthorized } from "./http";
+
+type JsonWebKey = webcrypto.JsonWebKey;
 
 const APPLE_ISSUER = "https://appleid.apple.com";
 export const APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys";

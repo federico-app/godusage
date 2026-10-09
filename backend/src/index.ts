@@ -1,7 +1,6 @@
-import { fetchAppleKeys } from "./apple";
-import type { AppDeps, Handler } from "./context";
+import type { AppDeps, Env, Handler } from "./context";
 import { ApiError, errorResponse, json } from "./http";
-import { bindingRateLimiter, RateLimitedError, rateLimitKey, rateLimitKind } from "./rateLimit";
+import { cacheRateLimiter, RateLimitedError, rateLimitKey, rateLimitKind } from "./rateLimit";
 import { deleteMe, exportMe, getMe, signInWithApple, signOut, updateMe } from "./routes/account";
 import { privacyPage, termsPage } from "./routes/legal";
 import { escapeHTML, homePage, invitePage, page, publicBoardPage } from "./routes/pages";
@@ -22,6 +21,8 @@ import { deleteDevice, listDevices, putDeviceUsage } from "./routes/usage";
 import { createChallenge, deleteChallenge, listChallenges } from "./routes/challenges";
 import { addReaction, removeReaction } from "./routes/social";
 import { getPlans, putPlans } from "./routes/plans";
+import { getMyUsage } from "./routes/myUsage";
+import { createPairingCode, exchangePairingCode, listLinkedDevices, unlinkDevice } from "./routes/pairing";
 import { browserSignOut, memberBoardPage, memberBoardSignIn } from "./routes/webBoard";
 import { exchangeWebSignIn, finishWebSignIn, startWebSignIn } from "./routes/webSignIn";
 
@@ -40,16 +41,25 @@ const route = (method: Method, pathname: string, handler: Handler): Route => ({
 });
 
 const ROUTES: Route[] = [
-  route("GET", "/v1/health", async () => json({ ok: true })),
+  // Coolify's health check: the server answers only while Postgres and Redis do.
+  route("GET", "/v1/health", async ({ env }) => {
+    await Promise.all([env.db.first("SELECT 1 AS ok"), env.cache.ping()]);
+    return json({ ok: true });
+  }),
   route("POST", "/v1/auth/apple", signInWithApple),
   route("GET", "/v1/auth/apple/start", startWebSignIn),
   route("POST", "/v1/auth/apple/callback", finishWebSignIn),
   route("POST", "/v1/auth/apple/exchange", exchangeWebSignIn),
+  route("POST", "/v1/auth/pairing", createPairingCode),
+  route("POST", "/v1/auth/pairing/exchange", exchangePairingCode),
   route("POST", "/v1/auth/logout", signOut),
   route("GET", "/v1/me", getMe),
   route("PATCH", "/v1/me", updateMe),
   route("DELETE", "/v1/me", deleteMe),
   route("GET", "/v1/me/export", exportMe),
+  route("GET", "/v1/me/usage", getMyUsage),
+  route("GET", "/v1/me/linked-devices", listLinkedDevices),
+  route("DELETE", "/v1/me/linked-devices/:id", unlinkDevice),
   route("GET", "/v1/teams", listTeams),
   route("POST", "/v1/teams", createTeam),
   route("GET", "/v1/teams/:teamID", getTeam),
@@ -97,7 +107,7 @@ export function createApp(deps: AppDeps) {
         try {
           const limitKind = rateLimitKind(url.pathname);
           if (limitKind) {
-            const limiter = deps.rateLimiter ?? bindingRateLimiter(env);
+            const limiter = deps.rateLimiter ?? cacheRateLimiter(env.cache);
             if (!(await limiter(limitKind, await rateLimitKey(request, limitKind)))) {
               const response = limitKind === "page" ? errorPage(new RateLimitedError()) : errorResponse(new RateLimitedError());
               response.headers.set("retry-after", "60");
@@ -130,9 +140,3 @@ export function createApp(deps: AppDeps) {
 function errorPage(error: ApiError): Response {
   return page("Something Went Wrong", `<h1>Something Went Wrong</h1><p class="muted">${escapeHTML(error.message)}</p>`, error.status);
 }
-
-const app = createApp({ fetchAppleKeys, now: () => new Date() });
-
-export default {
-  fetch: (request, env) => app.fetch(request, env),
-} satisfies ExportedHandler<Env>;

@@ -36,8 +36,11 @@ enum SettingsPane: String, CaseIterable, Sendable {
 /// scroll view that only engages when the display can't fit the content (the window normally sizes
 /// itself to the pane via the height callback).
 struct SettingsPaneHost: View {
-    /// Fixed content width of every pane; the window controller sizes the window to match.
-    static let contentWidth: CGFloat = 440
+    /// The window opens this wide; the user can drag it between the minimum and maximum, and the
+    /// window controller remembers the width. Panes fill whatever width the window has.
+    static let defaultContentWidth: CGFloat = 560
+    static let minimumContentWidth: CGFloat = 440
+    static let maximumContentWidth: CGFloat = 960
 
     let pane: SettingsPane
     /// Reports the pane content's intrinsic height (a vertical scroll view proposes nil height, so
@@ -49,7 +52,7 @@ struct SettingsPaneHost: View {
             paneBody
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
-                .frame(width: Self.contentWidth)
+                .frame(maxWidth: .infinity)
                 .onGeometryChange(for: CGFloat.self) { proxy in
                     proxy.size.height
                 } action: { height in

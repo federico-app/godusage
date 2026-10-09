@@ -124,13 +124,13 @@ final class UsageAdviceStore {
         }
     }
 
-    /// The selected team's plans, for providers this Mac uses: advice to use a provider you don't
-    /// have helps nobody.
+    /// The selected team's plans that cover you, for providers this Mac uses: advice to use a plan
+    /// you are not on, or a provider you don't have, helps nobody.
     private func teamPlans() -> [UsageAdvisor.Plan] {
         guard teams.isSignedIn, let teamID = teams.selectedTeamID,
               let report = plans.report(teamID: teamID) else { return [] }
         let families = Set(enabledDescriptors().map { ProviderAccountID.family(of: $0.providerID) })
-        return report.plans.filter { families.contains($0.provider) }.map { plan in
+        return Self.plansForYou(report, families: families).map { plan in
             UsageAdvisor.Plan(
                 id: plan.id, family: plan.provider,
                 providerName: registry.provider(id: plan.provider)?.displayName ?? plan.provider.capitalized,
@@ -138,5 +138,9 @@ final class UsageAdviceStore {
                 daysLeft: plan.cycle.daysLeft + 1, cycleEnd: plan.cycle.to
             )
         }
+    }
+
+    static func plansForYou(_ report: TeamPlansReport, families: Set<String>) -> [TeamPlanReport] {
+        report.plans.filter { $0.includesYou && families.contains($0.provider) }
     }
 }

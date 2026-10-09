@@ -22,13 +22,16 @@ The release workflow needs these repository secrets (Settings → Secrets and va
 | `APPLE_NOTARY_ISSUER_ID` | the App Store Connect API issuer ID |
 | `APPLE_DEVELOPER_ID_ICLOUD_PROFILE` | base64 Developer ID provisioning profile for `com.montinovo.godusage` (production iCloud container, Sign in with Apple) |
 | `APPLE_DEVELOPER_ID_DEV_PROFILE` | base64 Developer ID provisioning profile for `com.montinovo.godusage.dev` (dev iCloud container, Sign in with Apple) |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API token that can edit Workers and D1 in the account in `backend/wrangler.jsonc` |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token that can edit Workers (and read D1, for the export) in the account in `backend/proxy/wrangler.jsonc` |
+| `BACKEND_PROXY_SECRET`, `BACKEND_DEV_PROXY_SECRET` | Each environment's api `PROXY_SECRET` (Coolify's `SERVICE_PASSWORD_64_PROXY`), for the proxy Worker. With the repository variables `BACKEND_ORIGIN_URL` and `BACKEND_DEV_ORIGIN_URL` (the Coolify domains) |
 | `SPARKLE_PUBLIC_KEY` | base64 EdDSA public key, baked into the build as `SUPublicEDKey` |
 | `SPARKLE_PRIVATE_KEY` | base64 EdDSA private key used to sign the DMG |
 | `APPLE_DISTRIBUTION_CERTIFICATE_BASE64` | base64 of the Apple Distribution `.p12` that signs the iOS app |
 | `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD` | the password set when exporting that `.p12` |
 | `APPLE_IOS_APP_STORE_PROFILE` | base64 App Store provisioning profile for the iOS app |
 | `APPLE_IOS_WIDGET_APP_STORE_PROFILE` | base64 App Store provisioning profile for the iOS widget extension |
+| `APPLE_IOS_DEV_APP_STORE_PROFILE` | base64 App Store provisioning profile for GodUsage DEV on iOS (`com.montinovo.godusage.mobile.dev`) |
+| `APPLE_IOS_DEV_WIDGET_APP_STORE_PROFILE` | base64 App Store provisioning profile for its widget extension (`com.montinovo.godusage.mobile.dev.widgets`) |
 | `HOMEBREW_TAP_DEPLOY_KEY` | private half of an SSH deploy key with write access to `federico-app/homebrew-tap` (see [Homebrew](#homebrew)) |
 
 ### macOS signing and notarization
@@ -42,10 +45,25 @@ Export the Developer ID Application cert (with its private key) from Keychain Ac
 - the app is **GodUsage DEV** (`com.montinovo.godusage.dev`, iCloud container `iCloud.com.montinovo.godusage.dev`), so it installs beside the release app and keeps its own settings, iCloud data, and teams backend; its dashboard shows an orange **DEV** badge next to the Total Spend title (or in its own row when that card is hidden);
 - the version is the newest stable tag plus the build number, for example `0.8.16-dev.642`;
 - it is Developer ID-signed and notarized like production, published as the prerelease `dev-<build>` with `GodUsage-DEV-<version>.dmg`, and never becomes the GitHub "Latest" release;
+- it is built for Apple Silicon only (`ARCHS=arm64`), which halves the compile; production stays universal. Intel Macs are not offered DEV updates;
+- the tests run in a job beside the build, and nothing is published until both pass. Each job restores the previous run's `.build` from the Actions cache, so the build is incremental;
 - it updates `appcast-dev.xml` on `update-feed` (last 10 builds) and deploys `update-feed` to GitHub Pages itself, so it does not depend on workflows on `main`. Installed DEV apps update from that feed and never see production releases, and production apps never see DEV builds. The production pipeline ignores `dev-*` prereleases when it checks the feed's release history.
-- it runs in its own queue, so a push to `develop` never cancels a production release that is waiting to start. If a DEV build and a production release publish `update-feed` at the same moment, one push fails; rerun it.
+- it runs in its own queue, so a push to `develop` never cancels a production release that is waiting to start. A newer push replaces a DEV run that is still waiting, so the feed only moves forward. If a DEV build and a production release publish `update-feed` at the same moment, one push fails; rerun it.
+
+CI (`ci.yml`) runs on pull requests and on pushes to `main`, not on pushes to `develop`: the PR already ran it, and branch protection on `develop` requires the PR branch to be up to date before merging.
 
 Merge `develop` into `main` and tag it to ship production.
+
+### iOS DEV channel
+
+The same workflow uploads **GodUsage DEV** for iPhone (`com.montinovo.godusage.mobile.dev`) to TestFlight when a push changes `ios/`, `script/release_ios.sh`, or the workflow (a manual run always uploads). It runs `script/release_ios.sh` with `CHANNEL=dev`, which archives the **Dev** configuration: dev teams server, dev iCloud container in its Production environment (where the Mac DEV app writes). The version is the newest stable one (TestFlight takes plain numbers only) and the build is the commit count. Only internal testers get it, so there is no Beta App Review. It runs beside the Mac DEV build, and a failure of one does not stop the other.
+
+Until both `APPLE_IOS_DEV_*` secrets are set, the job is skipped with a warning. One-time setup:
+
+1. In Certificates, Identifiers & Profiles, register the App IDs `com.montinovo.godusage.mobile.dev` and `com.montinovo.godusage.mobile.dev.widgets`, each with iCloud (CloudKit) and the container `iCloud.com.montinovo.godusage.dev`.
+2. In App Store Connect, create the app **GodUsage DEV** with bundle id `com.montinovo.godusage.mobile.dev`.
+3. Under TestFlight → Internal Testing, create a group with **automatic distribution** on and add the testers.
+4. Create App Store provisioning profiles for both App IDs with the Apple Distribution certificate, and store them base64-encoded in `APPLE_IOS_DEV_APP_STORE_PROFILE` and `APPLE_IOS_DEV_WIDGET_APP_STORE_PROFILE`.
 
 The dev container needs its CloudKit schema deployed to **Production** too, because a Developer ID build uses the Production environment (see [iCloud Sync](icloud-sync.md#development-and-release-setup)).
 
@@ -70,7 +88,7 @@ The tap name means the command is not just `brew install godusage`. That needs t
 
 ## Teams backend
 
-[.github/workflows/backend-deploy.yml](../.github/workflows/backend-deploy.yml) deploys the [teams backend](teams-backend.md) on the same channels. A push to `develop` that changes `backend/` migrates and deploys the dev Worker. A stable tag migrates and deploys production. It can also be run by hand for either environment. It needs `CLOUDFLARE_API_TOKEN`.
+The [teams backend](teams-backend.md) runs on Coolify, which deploys it from git: the production resource follows `main`, the development one follows `develop`, and each applies its migrations at startup. [.github/workflows/backend-deploy.yml](../.github/workflows/backend-deploy.yml) deploys the proxy Worker that serves apps before 1.1.0, on the app's channels: a push to `develop` that changes `backend/proxy/` deploys the dev proxy, a stable tag deploys production, and it can be run by hand. It needs `CLOUDFLARE_API_TOKEN`, the proxy secrets, and the origin variables above.
 
 ### iOS signing
 

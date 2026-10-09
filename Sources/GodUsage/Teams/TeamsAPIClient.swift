@@ -49,15 +49,20 @@ protocol TeamsAPI: Sendable {
     func deleteDevice(token: String, deviceID: String) async throws
     func plans(token: String, teamID: String, today: String) async throws -> TeamPlansReport
     func savePlans(token: String, teamID: String, plans: [TeamPlan], today: String) async throws -> TeamPlansReport
+    /// A one-time code the iPhone app trades for a session of this account (shown as a QR code).
+    func createPairingCode(token: String) async throws -> PairingCode
+    func linkedDevices(token: String) async throws -> [LinkedDevice]
+    func unlinkDevice(token: String, id: String) async throws
 }
 
-/// The teams backend over HTTPS. Dev builds (`….dev` bundle id) talk to the dev Worker, which has
+/// The teams backend over HTTPS. Dev builds (`….dev` bundle id) talk to the dev server, which has
 /// its own database and accepts only dev-build sign-ins, so testing never touches real teams.
+/// Apps before 1.1.0 call the old `*.federico-c80.workers.dev` hosts, which proxy to the same servers.
 struct TeamsAPIClient: TeamsAPI {
-    static let productionBaseURL = URL(string: "https://godusage-api.federico-c80.workers.dev")!
-    static let developmentBaseURL = URL(string: "https://godusage-api-dev.federico-c80.workers.dev")!
+    static let productionBaseURL = URL(string: "https://api.godusage.com")!
+    static let developmentBaseURL = URL(string: "https://api-dev.godusage.com")!
     /// `defaults write <bundle id> godusage.teams.apiBaseURL http://127.0.0.1:8787` points a build at
-    /// `wrangler dev`.
+    /// a local server (`docker compose` in `backend/`).
     static let baseURLOverrideKey = "godusage.teams.apiBaseURL"
 
     static func defaultBaseURL(bundleIdentifier: String? = Bundle.main.bundleIdentifier, defaults: UserDefaults = .standard) -> URL {
@@ -215,6 +220,20 @@ struct TeamsAPIClient: TeamsAPI {
     func savePlans(token: String, teamID: String, plans: [TeamPlan], today: String) async throws -> TeamPlansReport {
         struct Body: Encodable { var plans: [TeamPlan] }
         return try await send("PUT", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))", token: token, body: Body(plans: plans))
+    }
+
+    func createPairingCode(token: String) async throws -> PairingCode {
+        try await send("POST", "/v1/auth/pairing", token: token)
+    }
+
+    func linkedDevices(token: String) async throws -> [LinkedDevice] {
+        struct Envelope: Decodable { var devices: [LinkedDevice] }
+        let response: Envelope = try await send("GET", "/v1/me/linked-devices", token: token)
+        return response.devices
+    }
+
+    func unlinkDevice(token: String, id: String) async throws {
+        try await sendEmpty("DELETE", "/v1/me/linked-devices/\(escaped(id))", token: token)
     }
 
     // MARK: - Transport
