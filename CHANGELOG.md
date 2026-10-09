@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.1
+
+### New Features
+- Show who is spending fast right now on team boards ([#41](https://github.com/federico-app/godusage/pull/41)) by @andreaAppload
+
+### Chores
+- Accept an emptied defaults domain in the telemetry cleanup test ([#42](https://github.com/federico-app/godusage/pull/42)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.1.0...v1.1.1](https://github.com/federico-app/godusage/compare/v1.1.0...v1.1.1)
+
+- [d1851dd](https://github.com/federico-app/godusage/commit/d1851dd55e8897f1237d25282e2c9093449892b7) Show who is spending fast right now on team boards by @andreaAppload
+- [bcea3ea](https://github.com/federico-app/godusage/commit/bcea3eafd68e0d02dfd0e2875cd5f03443598e06) Accept an emptied defaults domain in the telemetry cleanup test by @andreaAppload
+
 ## v1.1.0
 
 ### New Features
