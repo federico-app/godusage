@@ -50,10 +50,13 @@ struct TeamSharedAccountRow: View {
 /// ("· v1.0.8") when known. Shows nothing if they never synced.
 struct TeamSyncNote: View {
     let member: TeamStats.Member
+    /// The newest version in the team: the member's version shows only when it is older.
+    var newestVersion: String?
     var now = Date()
 
     var body: some View {
-        if let note = TeamsFormat.syncNote(member.lastSyncAt, now: now, appVersion: member.appVersion) {
+        let outdated = TeamsFormat.isOutdated(member.appVersion, newest: newestVersion)
+        if let note = TeamsFormat.syncNote(member.lastSyncAt, now: now, appVersion: outdated ? member.appVersion.map { "\($0), outdated" } : nil) {
             Group {
                 if note.stale {
                     Label(note.text, systemImage: "exclamationmark.arrow.triangle.2.circlepath")

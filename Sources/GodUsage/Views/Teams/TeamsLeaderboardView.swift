@@ -179,7 +179,10 @@ struct TeamsLeaderboardView: View {
                     summary(stats)
                     switch mode {
                     case .leaderboard:
-                        TeamsRankingList(stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName, teamID: currentTeamID)
+                        TeamsRankingList(
+                            stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName, teamID: currentTeamID,
+                            momentum: currentTeamID.flatMap { container.teams.momentumByTeam[$0] } ?? [:]
+                        )
                         if let teamID = currentTeamID { TeamChallengesSection(teamID: teamID) }
                         TeamsCharts(stats: stats, sort: sort, providerName: providerName)
                         if let teamID = currentTeamID { HallOfFameSection(teamID: teamID) }
@@ -292,6 +295,10 @@ private struct TeamsRankingList: View {
     let currentUserID: String?
     let providerName: (String) -> String
     let teamID: String?
+    /// Spend in the last hour and ⚡ level, by user id.
+    let momentum: [String: TeamMomentum]
+
+    private func momentum(_ member: TeamStats.Member) -> TeamMomentum? { momentum[member.userID] }
 
     var body: some View {
         let top = stats.rankingTop(for: TeamMetric(sort))
@@ -315,8 +322,9 @@ private struct TeamsRankingList: View {
                                     .background(.secondary.opacity(0.12), in: Capsule())
                             }
                             RankChangeBadge(member: member, range: stats.range.name, sort: sort)
+                            MomentumBolts(momentum: momentum(member))
                             if let teamID { MemberBadges(teamID: teamID, userID: member.userID) }
-                            TeamSyncNote(member: member)
+                            MemberStatusNote(member: member, momentum: momentum(member), newestVersion: TeamsFormat.newestVersion(stats.members))
                         }
                         ProviderSplitBar(providers: member.providers, top: top, sort: sort, height: 6)
                     }

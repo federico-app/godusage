@@ -27,6 +27,8 @@ final class TeamsStore {
     var reactionsByTeam: [String: TeamReactions] = [:]
     /// Each team's monthly champions (newest first), from the latest stats.
     private(set) var championsByTeam: [String: [TeamChampion]] = [:]
+    /// Each team's members' spend in the last hour and ⚡ level, by user id, from the latest stats.
+    private(set) var momentumByTeam: [String: [String: TeamMomentum]] = [:]
     /// Run after each successful upload, after the team notifications (challenge results).
     @ObservationIgnored var afterUploadHooks: [@MainActor () async -> Void] = []
 
@@ -304,6 +306,7 @@ final class TeamsStore {
             let response = try await api.stats(token: token, teamID: teamID, range: range, sort: sort, today: today, include: include)
             if let reactions = response.reactions { reactionsByTeam[teamID] = reactions }
             if let champions = response.champions { championsByTeam[teamID] = champions }
+            momentumByTeam[teamID] = response.momentum ?? [:]
             for (name, stats) in response.extra ?? [:] {
                 guard let extraRange = StatsRange(rawValue: name) else { continue }
                 cachedStats[StatsKey(teamID: teamID, range: extraRange, sort: .cost, endingOn: endingOn)] = stats
@@ -524,6 +527,7 @@ final class TeamsStore {
         cachedStats = [:]
         reactionsByTeam = [:]
         championsByTeam = [:]
+        momentumByTeam = [:]
         statsError = nil
         do { try sessionStore.save(nil) } catch {
             AppLog.error(.teams, "couldn't remove the saved teams session: \(error)")

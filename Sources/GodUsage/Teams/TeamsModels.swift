@@ -214,6 +214,16 @@ struct TeamStats: Codable, Hashable, Sendable {
     }
 }
 
+/// Who is spending fast right now: spend in the last hour and 0–3 ⚡ (see `backend/src/momentum.ts`).
+struct TeamMomentum: Codable, Hashable, Sendable {
+    var lastHourUSD: Double
+    var level: Int
+    /// The rules met: `fast`, `self`, `top`.
+    var reasons: [String]? = nil
+    /// The member's typical active hour over the previous seven days; nil without history.
+    var typicalHourUSD: Double? = nil
+}
+
 struct TeamStatsResponse: Codable, Hashable, Sendable {
     struct Team: Codable, Hashable, Sendable {
         var id: String
@@ -225,6 +235,8 @@ struct TeamStatsResponse: Codable, Hashable, Sendable {
     /// Optional so an older backend's responses still decode.
     var reactions: TeamReactions?
     var champions: [TeamChampion]?
+    /// By user id; members with no spend in the last hour are missing. Nil from older servers.
+    var momentum: [String: TeamMomentum]?
     /// The boards asked for with `include`, by range (`today`, `mtd`).
     var extra: [String: TeamStats]?
     /// The server's daily database budget is spent: these stats stay as they are until midnight UTC.
