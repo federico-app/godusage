@@ -65,16 +65,40 @@ struct ClaudeCredentialWriteBack: Sendable {
     func writeKeychain(service: String, account: String, blob: String) -> Bool {
         guard helperIsSilentlyAuthorized(service, account) else { return false }
         let command = "add-generic-password -U -a \"\(Self.escaped(account))\" -s \"\(Self.escaped(service))\" -w \"\(Self.escaped(blob))\"\n"
-        guard let result = try? stdinRunner.run(
-            executable: Self.helperPath,
-            arguments: ["-i"],
-            stdin: command,
-            timeout: 5
-        ), result.succeeded else {
-            AppLog.warn(.keychain, "helper credential write failed for service '\(service)'")
+        let result: ProcessResult
+        do {
+            result = try stdinRunner.run(
+                executable: Self.helperPath,
+                arguments: ["-i"],
+                stdin: command,
+                timeout: 5
+            )
+        } catch {
+            AppLog.warn(.keychain, "helper credential write failed for service '\(service)': \(error.localizedDescription)")
+            return false
+        }
+        guard result.succeeded else {
+            AppLog.warn(.keychain, "helper credential write failed for service '\(service)': \(Self.failureDetail(result, secrets: [blob, Self.escaped(blob)]))")
             return false
         }
         return true
+    }
+
+    /// The exit code and the helper's own diagnostics, so a failed write says why. Output is
+    /// scrubbed of the credential (`security -i` can echo the command line) and capped in length.
+    static func failureDetail(_ result: ProcessResult, secrets: [String]) -> String {
+        var output = [result.stderr, result.stdout]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " | ")
+        for secret in secrets where !secret.isEmpty {
+            output = output.replacingOccurrences(of: secret, with: "<redacted>")
+        }
+        output = output.replacingOccurrences(of: "\n", with: " ")
+        if output.count > 300 {
+            output = String(output.prefix(300)) + "…"
+        }
+        return "exit \(result.exitCode)" + (output.isEmpty ? "" : ", \(output)")
     }
 
     /// `security -i` lexes double-quoted arguments with backslash escapes (verified round-trip on
