@@ -1,6 +1,6 @@
 # Agent Skills
 
-Skills that agents (Claude Code, Codex, Cursor) can load from this repo. `.claude` is a symlink to `.agents` so Claude Code finds them.
+Skills that agents (Claude Code, Codex, Cursor) can load from this repo. `.claude/skills` is a symlink to `.agents/skills` so Claude Code finds them. `.claude` itself stays a real folder: Claude Code creates session worktrees inside it and refuses to do so through a symlink.
 
 ## GodUsage skills
 
