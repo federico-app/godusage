@@ -345,6 +345,12 @@ enum SpendTileMapper {
         var namedCount = 0
 
         for entry in entries {
+            // Keep auto-review named even when a period combines paid historical and free
+            // requests: its small aggregate cost must not fold its measured tokens into Other.
+            if entry.model == CodexUsagePricing.autoReviewModel {
+                visible.append(entry)
+                continue
+            }
             // Tokens the logs couldn't tie to a model (Grok) read as noise under their own
             // "Unattributed" row — the panel is an insight, not an accounting ledger, so they just
             // count into Other however large they are.

@@ -200,45 +200,39 @@ final class CodexLogUsageScannerTests: XCTestCase {
         XCTAssertEqual(CodexLogUsageScanner.parseFile(Data(line.utf8)).first?.cached, 100)
     }
 
-    // MARK: - Auto-review fallbacks
+    // MARK: - Auto-review
 
-    func testAutoReviewSlugMapsToDatedCodexModel() {
-        XCTAssertEqual(CodexLogUsageScanner.autoReviewFallback(at: "2026-08-20T00:00:00Z"), "gpt-5.6-luna")
-        XCTAssertEqual(CodexLogUsageScanner.autoReviewFallback(at: "2026-07-09T00:00:00Z"), "gpt-5.6-luna")
-        XCTAssertEqual(CodexLogUsageScanner.autoReviewFallback(at: "2026-07-08T23:59:59Z"), "gpt-5.5")
-        XCTAssertEqual(CodexLogUsageScanner.autoReviewFallback(at: "2026-05-01T00:00:00Z"), "gpt-5.5")
-        XCTAssertEqual(CodexLogUsageScanner.autoReviewFallback(at: "2026-03-10T00:00:00Z"), "gpt-5.4")
-        XCTAssertEqual(CodexLogUsageScanner.autoReviewFallback(at: "2025-12-25T00:00:00Z"), "gpt-5.2-codex")
-        XCTAssertEqual(CodexLogUsageScanner.autoReviewFallback(at: "2025-01-01T00:00:00Z"), "gpt-5")
-        XCTAssertEqual(CodexLogUsageScanner.autoReviewFallback(at: "garbage"), "gpt-5")
+    func testAutoReviewSlugMapsToDatedCodexModelUntilItWentFree() {
+        func model(_ timestamp: String) -> String {
+            CodexUsagePricing.pricingModel(for: "codex-auto-review", at: GodUsageISO8601.date(from: timestamp)!)
+        }
+        XCTAssertEqual(model("2026-10-06T00:00:00Z"), "codex-auto-review")
+        XCTAssertEqual(model("2026-10-05T23:59:59Z"), "gpt-5.6-luna")
+        XCTAssertEqual(model("2026-08-20T00:00:00Z"), "gpt-5.6-luna")
+        XCTAssertEqual(model("2026-07-09T00:00:00Z"), "gpt-5.6-luna")
+        XCTAssertEqual(model("2026-07-08T23:59:59Z"), "gpt-5.5")
+        XCTAssertEqual(model("2026-05-01T00:00:00Z"), "gpt-5.5")
+        XCTAssertEqual(model("2026-03-10T00:00:00Z"), "gpt-5.4")
+        XCTAssertEqual(model("2025-12-25T00:00:00Z"), "gpt-5.2-codex")
+        XCTAssertEqual(model("2025-01-01T00:00:00Z"), "gpt-5")
+        XCTAssertEqual(
+            CodexUsagePricing.pricingModel(for: "gpt-5.6-luna", at: GodUsageISO8601.date(from: "2026-10-07T00:00:00Z")!),
+            "gpt-5.6-luna"
+        )
     }
 
-    func testAutoReviewLinesKeepSlugAndResolvePricingByLineDate() {
-        let lines = [
-            CodexLogFixture.turnContext(timestamp: "2026-03-10T08:00:00.000Z", model: "codex-auto-review"),
-            CodexLogFixture.tokenCount(
-                timestamp: "2026-03-10T08:01:00.000Z",
-                last: CodexLogFixture.usage(input: 10, output: 5)
-            )
-        ].joined(separator: "\n")
+    func testAutoReviewLinesKeepSlug() {
+        for date in ["2026-03-10", "2026-08-20", "2026-10-06"] {
+            let lines = [
+                CodexLogFixture.turnContext(timestamp: "\(date)T08:00:00.000Z", model: "codex-auto-review"),
+                CodexLogFixture.tokenCount(
+                    timestamp: "\(date)T08:01:00.000Z",
+                    last: CodexLogFixture.usage(input: 10, output: 5)
+                )
+            ].joined(separator: "\n")
 
-        let event = CodexLogUsageScanner.parseFile(Data(lines.utf8)).first
-        XCTAssertEqual(event?.model, "codex-auto-review")
-        XCTAssertEqual(event?.pricingModel, "gpt-5.4")
-    }
-
-    func testRecentAutoReviewLinesUseLunaPricing() {
-        let lines = [
-            CodexLogFixture.turnContext(timestamp: "2026-08-20T08:00:00.000Z", model: "codex-auto-review"),
-            CodexLogFixture.tokenCount(
-                timestamp: "2026-08-20T08:01:00.000Z",
-                last: CodexLogFixture.usage(input: 10, output: 5)
-            )
-        ].joined(separator: "\n")
-
-        let event = CodexLogUsageScanner.parseFile(Data(lines.utf8)).first
-        XCTAssertEqual(event?.model, "codex-auto-review")
-        XCTAssertEqual(event?.pricingModel, "gpt-5.6-luna")
+            XCTAssertEqual(CodexLogUsageScanner.parseFile(Data(lines.utf8)).first?.model, "codex-auto-review", date)
+        }
     }
 
     // MARK: - Chunked (tail) parsing
@@ -540,11 +534,11 @@ final class CodexLogUsageScannerTests: XCTestCase {
 
     private func makeEvent(
         _ timestamp: String, model: String = "gpt-5.2", input: Int = 100, cached: Int = 0,
-        output: Int = 50, reasoning: Int = 0, isFast: Bool = false, pricingModel: String? = nil
+        output: Int = 50, reasoning: Int = 0, isFast: Bool = false
     ) -> CodexLogUsageScanner.Event {
         CodexLogUsageScanner.Event(
             timestamp: GodUsageISO8601.date(from: timestamp)!,
-            model: model, pricingModel: pricingModel, input: input, cached: cached, output: output, reasoning: reasoning,
+            model: model, input: input, cached: cached, output: output, reasoning: reasoning,
             total: input + output, isFast: isFast
         )
     }
@@ -569,30 +563,14 @@ final class CodexLogUsageScannerTests: XCTestCase {
         XCTAssertEqual(may12Models, [ModelUsageEntry(model: "gpt-5.2", totalTokens: 300, costUSD: 0.5)])
     }
 
-    func testAggregateAttributesAutoReviewUsageToSlugWhileUsingFallbackPrice() {
-        let scan = CodexLogUsageScanner.aggregate(
-            events: [makeEvent(
-                "2026-05-12T08:00:00.000Z", model: "codex-auto-review",
-                pricingModel: "gpt-5.2"
-            )],
-            since: .distantPast, pricing: fixedRates()
-        )
-
-        XCTAssertEqual(scan.series.daily.first?.costUSD ?? 0, 0.25, accuracy: 0.0001)
-        XCTAssertEqual(
-            scan.modelUsage?.daily.first?.models,
-            [ModelUsageEntry(model: "codex-auto-review", totalTokens: 150, costUSD: 0.25)]
-        )
-    }
-
     func testAggregatePricesAutoReviewAcrossLunaCutoffIndependently() {
         let luna = makeEvent(
             "2026-08-20T08:00:00.000Z", model: "codex-auto-review",
-            input: 100_000, output: 0, pricingModel: "gpt-5.6-luna"
+            input: 100_000, output: 0
         )
         let gpt55 = makeEvent(
             "2026-07-08T08:00:00.000Z", model: "codex-auto-review",
-            input: 100_000, output: 0, pricingModel: "gpt-5.5"
+            input: 100_000, output: 0
         )
         let scan = CodexLogUsageScanner.aggregate(
             events: [luna, gpt55], since: .distantPast, pricing: pricing
