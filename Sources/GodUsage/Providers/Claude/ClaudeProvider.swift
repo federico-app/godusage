@@ -26,6 +26,7 @@ final class ClaudeProvider: ProviderRuntime {
     let tokenRenewal: ClaudeTokenRenewal
     let now: @Sendable () -> Date
     let pricing: @Sendable () async -> ModelPricing
+    let accountVerifier: ClaudeAccountVerifier
 
     /// Per-store backoff after a failed renewal attempt (`invalid_grant`, network failure), so an
     /// unrecoverable chain doesn't get a token-endpoint call every 5-minute cycle.
@@ -57,6 +58,7 @@ final class ClaudeProvider: ProviderRuntime {
         self.tokenRenewal = tokenRenewal
         self.now = now
         self.pricing = pricing
+        self.accountVerifier = ClaudeAccountVerifier(usageClient: usageClient, now: now)
     }
 
     var widgetDescriptors: [WidgetDescriptor] {
@@ -292,7 +294,7 @@ final class ClaudeProvider: ProviderRuntime {
             // it reaches the header triangle even when the badge/note lines aren't in the user's layout.
             warning = mapped.warning
             warningAction = mapped.warningAction
-            loginRequired = warningAction == .wait ? nil : false
+            loginRequired = mapped.requiresLogin ? true : (warningAction == .wait ? nil : false)
         case .missingProfileScope:
             // The login authenticates for inference but lacks the `user:profile` scope the usage endpoint
             // needs (typically a `claude setup-token` token). Don't leave the session/weekly bars silently
@@ -387,6 +389,15 @@ final class ClaudeProvider: ProviderRuntime {
     ) async throws -> ClaudeMappedUsage {
         activateLiveUsageCache(for: state.oauth)
 
+        // A token already known to belong to another account never serves cached bars either.
+        if let expected = state.expectedAccount,
+           case .mismatch(let tokenAccount)? = accountVerifier.cachedOutcome(
+               fingerprint: Self.credentialFingerprint(state.oauth), expected: expected
+           )
+        {
+            return ClaudeUsageMapper.accountMismatchUsage(tokenAccount: tokenAccount)
+        }
+
         // Inside an active rate-limit cooldown, skip the live call and serve the last-good usage so a
         // constantly-limited endpoint doesn't blank the dashboard (and we don't pile on more 429s).
         if let until = rateLimitedUntil, now() < until {
@@ -404,6 +415,20 @@ final class ClaudeProvider: ProviderRuntime {
             var renewedState = state
             renewedState.oauth = renewed
             return try await fetchLiveUsage(state: renewedState, allowRenewal: false)
+        }
+
+        // The token must belong to the account this card is named after (the state file's), or its
+        // usage would be published under the wrong name. See `ClaudeAccountVerifier`.
+        if let expected = state.expectedAccount {
+            let outcome = await accountVerifier.verify(
+                accessToken: state.oauth.accessToken ?? "",
+                fingerprint: Self.credentialFingerprint(state.oauth),
+                expected: expected,
+                profileURL: try authStore.profileEndpoint()
+            )
+            if case .mismatch(let tokenAccount) = outcome {
+                return ClaudeUsageMapper.accountMismatchUsage(tokenAccount: tokenAccount)
+            }
         }
 
         let usageURL = try authStore.usageEndpoint()

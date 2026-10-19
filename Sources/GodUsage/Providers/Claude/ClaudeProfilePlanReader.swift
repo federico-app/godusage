@@ -1,17 +1,27 @@
 import Foundation
 
+/// What Claude Code's state file (`.claude.json`) says about the signed-in account: the plan values
+/// the badge should trust and the account the card is named after.
+struct ClaudeStateFileProfile: Equatable, Sendable {
+    var subscriptionType: String?
+    var rateLimitTier: String?
+    /// The account the state file names — what the token is checked against before its usage is
+    /// published under this card. `nil` when the file carries no account UUID.
+    var account: ClaudeAccountIdentity?
+}
+
 /// Reads the plan values the badge should trust from Claude Code's state file (`.claude.json`),
 /// which its regular profile refetch keeps current — unlike the credential blob's copies, written
-/// once at login and stale after a plan change. `read()` returns `nil` (no file, no account,
-/// nothing usable) to keep the blob's values. A file that exists but can't be read or parsed also
-/// falls back — the badge must never fail a refresh — but is logged so a stale badge stays
-/// diagnosable.
+/// once at login and stale after a plan change — plus the account identity the file names. `read()`
+/// returns `nil` (no file, no account) to keep the blob's values. A file that exists but can't be
+/// read or parsed also falls back — the badge must never fail a refresh — but is logged so a stale
+/// badge stays diagnosable.
 struct ClaudeProfilePlanReader: Sendable {
     var environment: EnvironmentReading
     var files: TextFileAccessing
     let scope: ClaudeCredentialScope
 
-    func read() -> (subscriptionType: String?, rateLimitTier: String?)? {
+    func read() -> ClaudeStateFileProfile? {
         let text: String?
         do {
             text = try files.readTextIfPresent(stateFilePath())
@@ -39,8 +49,15 @@ struct ClaudeProfilePlanReader: Sendable {
         // indistinguishable from a pre-plan-fields Claude Code state file, and unknown org shapes
         // (Team/enterprise) land here too. The blob's login-time values stand; a truly lapsed
         // subscription surfaces through the failing usage fetch, not the badge.
-        guard tier != nil || subscription != nil else { return nil }
-        return (subscription, tier)
+        let identity = account.accountUuid?.nilIfEmpty.map {
+            ClaudeAccountIdentity(
+                accountUUID: $0,
+                organizationUUID: account.organizationUuid?.nilIfEmpty,
+                email: account.emailAddress?.nilIfEmpty
+            )
+        }
+        guard tier != nil || subscription != nil || identity != nil else { return nil }
+        return ClaudeStateFileProfile(subscriptionType: subscription, rateLimitTier: tier, account: identity)
     }
 
     /// Claude Code's state file for this scope — inside a custom config dir, but next to (not
