@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.2.0
+
+### Bug Fixes
+- Warn when a Claude login belongs to another account ([#47](https://github.com/federico-app/godusage/pull/47)) by @andreaAppload
+- Check the Claude Desktop fallback against the card account too ([#47](https://github.com/federico-app/godusage/pull/47)) by @andreaAppload
+- Log why a Claude credential write-back fails ([#48](https://github.com/federico-app/godusage/pull/48)) by @andreaAppload
+
+### Refactor
+- Remove iCloud Sync from the Mac app, the iOS app, and its widgets ([#49](https://github.com/federico-app/godusage/pull/49)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.1.1...v1.2.0](https://github.com/federico-app/godusage/compare/v1.1.1...v1.2.0)
+
+- [e9a4c1c](https://github.com/federico-app/godusage/commit/e9a4c1cc400e35d8a331fd3c87ca5ceffe7d2826) Warn when a Claude login belongs to another account by @andreaAppload
+- [7939e2f](https://github.com/federico-app/godusage/commit/7939e2f9e81a930f3e0f8bc7771741adea7a81cd) Check the Claude Desktop fallback against the card account too by @andreaAppload
+- [265b823](https://github.com/federico-app/godusage/commit/265b8233f49feafa3ac6123d40b63b3415fd45f5) Log why a Claude credential write-back fails (#48) by @andreaAppload
+- [e46264d](https://github.com/federico-app/godusage/commit/e46264ded275fcfc32932c67a21fb2dfb977bcb1) Remove iCloud Sync from the Mac app, the iOS app, and its widgets by @andreaAppload
+
 ## v1.1.1
 
 ### New Features
