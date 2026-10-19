@@ -540,6 +540,79 @@ final class ClaudeDesktopAuthStoreTests: XCTestCase {
         XCTAssertEqual(httpClient.requests.count, 1)
     }
 
+    @MainActor
+    func testDesktopFallbackFromAnotherAccountShowsMismatchInsteadOfUsage() async throws {
+        // Regression: the CLI login's token had lapsed, the card fell back to Claude Desktop, and
+        // Desktop was signed into another account — its usage appeared under this card's name.
+        let fixture = try makeFixture(
+            activeOrganization: organization,
+            v2: [cacheKey(organization: organization): tokenEntry("desktop-token", expiresIn: 3_600)]
+        )
+        fixture.files.files["/tmp/claude/.credentials.json"] =
+            #"{"claudeAiOauth":{"accessToken":"expired-cli","expiresAt":1,"scopes":["user:profile"]}}"#
+        fixture.files.files["/tmp/claude/.claude.json"] =
+            #"{"oauthAccount":{"accountUuid":"ACC-TEAM","organizationUuid":"ORG-TEAM"}}"#
+        let httpClient = RoutingHTTPClient { request in
+            if request.url.path.hasSuffix("/api/oauth/profile") {
+                return HTTPResponse(statusCode: 200, headers: [:], body: Data(
+                    #"{"account":{"uuid":"ACC-PERSONAL","email":"me@example.com"},"organization":{"uuid":"ORG-PERSONAL"}}"#.utf8
+                ))
+            }
+            return HTTPResponse(statusCode: 200, headers: [:], body: Data(
+                #"{"five_hour":{"utilization":26,"resets_at":"2099-01-01T00:00:00.000Z"}}"#.utf8
+            ))
+        }
+        let now = now
+        let provider = ClaudeProvider(
+            authStore: ClaudeAuthStore(
+                environment: FakeEnvironment(["CLAUDE_CONFIG_DIR": "/tmp/claude"]),
+                files: fixture.files,
+                keychain: FakeKeychain(),
+                desktop: fixture.store,
+                now: { now }
+            ),
+            usageClient: ClaudeUsageClient(httpClient: httpClient),
+            logUsageScanner: ClaudeLogFixture.scanner(home: nil),
+            now: { now },
+            pricing: { TestPricing.bundled }
+        )
+
+        let snapshot = await ProviderRefreshContext.$isManual.withValue(true) {
+            await provider.refresh()
+        }
+
+        XCTAssertFalse(snapshot.lines.contains { $0.label == "Session" })
+        XCTAssertEqual(snapshot.warning, "This login belongs to another account (me@example.com). Run `claude /login` again.")
+        XCTAssertEqual(snapshot.loginRequired, true)
+        let profileAuth = httpClient.requests.first { $0.url.path.hasSuffix("/api/oauth/profile") }?.headers["Authorization"]
+        XCTAssertEqual(profileAuth, "Bearer desktop-token")
+        XCTAssertFalse(httpClient.requests.contains { $0.url.path.hasSuffix("/api/oauth/usage") })
+    }
+
+    func testDesktopCandidateCarriesTheCardAccountButNotItsPlan() throws {
+        let fixture = try makeFixture(
+            activeOrganization: organization,
+            v2: [cacheKey(organization: organization): tokenEntry("desktop-token", expiresIn: 3_600)]
+        )
+        fixture.files.files["/tmp/claude/.claude.json"] =
+            #"{"oauthAccount":{"accountUuid":"ACC-TEAM","organizationUuid":"ORG-TEAM","organizationType":"claude_team"}}"#
+        let now = now
+        let authStore = ClaudeAuthStore(
+            environment: FakeEnvironment(["CLAUDE_CONFIG_DIR": "/tmp/claude"]),
+            files: fixture.files,
+            keychain: FakeKeychain(),
+            desktop: fixture.store,
+            now: { now }
+        )
+
+        let desktop = authStore.loadCredentialSet(allowDesktopInteraction: true).candidates.first
+
+        XCTAssertEqual(desktop?.source, .desktop)
+        XCTAssertEqual(desktop?.expectedAccount?.accountUUID, "ACC-TEAM")
+        XCTAssertEqual(desktop?.expectedAccount?.organizationUUID, "ORG-TEAM")
+        XCTAssertNil(desktop?.profileSubscriptionType)
+    }
+
     private func makeFixture(
         activeOrganization: String,
         v2: [String: Any],

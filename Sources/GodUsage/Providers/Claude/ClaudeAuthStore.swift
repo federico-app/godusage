@@ -274,9 +274,17 @@ struct ClaudeAuthStore: Sendable {
         // name, and a failed keychain login still falls through to the file account's own
         // freshly-written blob. Generation snapshots opt out: their candidates
         // keep only oauth + source, so the state-file read would be pure overhead there.
-        if includeProfileTier, !stored.isEmpty,
-           let profile = ClaudeProfilePlanReader(environment: environment, files: files, scope: scope).read()
-        {
+        var stateFileProfile: ClaudeStateFileProfile?
+        var stateFileRead = false
+        func readStateFileProfile() -> ClaudeStateFileProfile? {
+            guard includeProfileTier else { return nil }
+            if !stateFileRead {
+                stateFileProfile = ClaudeProfilePlanReader(environment: environment, files: files, scope: scope).read()
+                stateFileRead = true
+            }
+            return stateFileProfile
+        }
+        if !stored.isEmpty, let profile = readStateFileProfile() {
             stored[0].profileSubscriptionType = profile.subscriptionType
             stored[0].profileRateLimitTier = profile.rateLimitTier
             stored[0].expectedAccount = profile.account
@@ -305,10 +313,13 @@ struct ClaudeAuthStore: Sendable {
             let result = desktop.load(allowInteraction: allowDesktopInteraction)
             desktopStatus = result.status
             if let oauth = result.oauth {
+                // Desktop keeps its own plan metadata, but its usage still lands on this card, so its
+                // token is checked against the card's account like the CLI login's.
                 stored.insert(ClaudeCredentialState(
                     oauth: oauth,
                     source: .desktop,
-                    inferenceOnly: false
+                    inferenceOnly: false,
+                    expectedAccount: readStateFileProfile()?.account
                 ), at: 0)
             }
         }
