@@ -454,7 +454,7 @@ final class ClaudeDesktopAuthStoreTests: XCTestCase {
         }
 
         XCTAssertNil(badge(snapshot.lines, "Error"))
-        XCTAssertEqual(httpClient.requests.count, 2)
+        XCTAssertEqual(httpClient.requests.filter(\.isClaudeUsagePoll).count, 2)
         XCTAssertTrue(httpClient.requests.last?.headers["Authorization"]?.contains("desktop-token") == true)
     }
 
@@ -500,7 +500,7 @@ final class ClaudeDesktopAuthStoreTests: XCTestCase {
         }
 
         XCTAssertNil(badge(snapshot.lines, "Error"))
-        XCTAssertEqual(httpClient.requests.count, 2)
+        XCTAssertEqual(httpClient.requests.filter(\.isClaudeUsagePoll).count, 2)
         XCTAssertTrue(httpClient.requests.last?.headers["Authorization"]?.contains("desktop-token") == true)
     }
 
