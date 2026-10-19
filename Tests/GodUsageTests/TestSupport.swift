@@ -512,3 +512,15 @@ final class RoutingHTTPClient: HTTPClient, @unchecked Sendable {
         return try await handler(request)
     }
 }
+
+extension HTTPRequest {
+    /// The hourly Claude reset-grants check (`/api/oauth/usage?cedar_ember=1&skip_spend=1`).
+    var isClaudeResetGrantsCheck: Bool {
+        url.path.hasSuffix("/api/oauth/usage") && url.query?.contains("cedar_ember=1") == true
+    }
+
+    /// The plain Claude usage read every refresh makes.
+    var isClaudeUsagePoll: Bool {
+        url.path.hasSuffix("/api/oauth/usage") && !isClaudeResetGrantsCheck
+    }
+}

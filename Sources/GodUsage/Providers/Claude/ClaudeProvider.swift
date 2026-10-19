@@ -41,6 +41,8 @@ final class ClaudeProvider: ProviderRuntime {
     private var lastGoodUsage: ClaudeMappedUsage?
     private var rateLimitedUntil: Date?
     private static let rateLimitCooldown: TimeInterval = 5 * 60
+    /// The last hourly reset-grants check (see `ClaudeProvider+ResetGrants.swift`).
+    var resetGrantsCheck: ClaudeResetGrantsCheck?
 
     init(
         provider: Provider = ClaudeProvider.makeProvider(),
@@ -414,6 +416,7 @@ final class ClaudeProvider: ProviderRuntime {
             }
             var renewedState = state
             renewedState.oauth = renewed
+            carryResetGrantsCheck(from: state.oauth, to: renewed)
             return try await fetchLiveUsage(state: renewedState, allowRenewal: false)
         }
 
@@ -456,7 +459,10 @@ final class ClaudeProvider: ProviderRuntime {
             return rateLimitedSnapshot(credentials: state.displayOAuth, retryAfterSeconds: retryAfterSeconds)
         }
 
-        let mapped = try ClaudeUsageMapper.mapUsageResponse(response, credentials: state.displayOAuth, now: now())
+        var mapped = try ClaudeUsageMapper.mapUsageResponse(response, credentials: state.displayOAuth, now: now())
+        if let resetGrants = await resetGrantsLine(credentials: state.oauth, usageURL: usageURL) {
+            mapped.lines.append(resetGrants)
+        }
         lastGoodUsage = mapped
         rateLimitedUntil = nil
         return mapped
@@ -511,6 +517,8 @@ final class ClaudeProvider: ProviderRuntime {
             subscriptionType: credentials.subscriptionType,
             rateLimitTier: credentials.rateLimitTier
         )
+        // A held reset grant past its deadline is gone, even while the live call is paused.
+        mapped.lines = mapped.lines.map { ClaudeUsageMapper.droppingElapsedResetGrants($0, now: now()) }
         mapped.lines.append(ClaudeUsageMapper.rateLimitedNote(retryAfterSeconds: retryAfterSeconds))
         mapped.warning = ClaudeUsageMapper.rateLimitedWarning(retryAfterSeconds: retryAfterSeconds)
         // Last-good usage is a clean fetch, so its action is `.refresh`; the rate-limit notice replacing
@@ -529,7 +537,7 @@ final class ClaudeProvider: ProviderRuntime {
         rateLimitedUntil = nil
     }
 
-    private static func credentialFingerprint(_ credentials: ClaudeOAuth) -> Data {
+    static func credentialFingerprint(_ credentials: ClaudeOAuth) -> Data {
         let access = Data((credentials.accessToken ?? "").utf8)
         let refresh = Data((credentials.refreshToken ?? "").utf8)
         var pair = Data(SHA256.hash(data: access))

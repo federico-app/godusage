@@ -38,7 +38,7 @@ final class ClaudeAccountIsolationTests: XCTestCase {
         let fixture = makeFixture(
             credentials: credentials(access: "shared", refresh: "refresh-a", plan: "pro")
         ) { request in
-            guard request.url.path.hasSuffix("/api/oauth/usage") else {
+            guard request.isClaudeUsagePoll else {
                 return HTTPResponse(statusCode: 404, headers: [:], body: Data())
             }
             return calls.next() == 1
@@ -176,7 +176,7 @@ final class ClaudeAccountIsolationTests: XCTestCase {
     }
 
     private func usageRequests(_ http: RoutingHTTPClient) -> [HTTPRequest] {
-        http.requests.filter { $0.url.path.hasSuffix("/api/oauth/usage") }
+        http.requests.filter { $0.isClaudeUsagePoll }
     }
 
     private func sessionUsage(_ snapshot: ProviderSnapshot) -> Double? {
