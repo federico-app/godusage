@@ -17,7 +17,7 @@ struct DailyUsageAccumulator {
     private var modelsByDay: [String: [String: ModelAccumulator]] = [:]
 
     /// Local calendar day as `yyyy-MM-dd`. The single day-key contract shared by the accumulator,
-    /// `SpendTileMapper`, and the Cursor CSV aggregation. `calendar` is injectable for tests; production
+    /// `SpendTileMapper`, and the Cursor usage-history aggregation. `calendar` is injectable for tests; production
     /// uses `.current`. Aggregation loops that key hundreds of thousands of entries should go through
     /// `DayKeyCache` instead of calling this per entry.
     static func dayKey(from date: Date, calendar: Calendar = .current) -> String {

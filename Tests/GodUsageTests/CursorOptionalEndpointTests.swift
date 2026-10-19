@@ -227,6 +227,40 @@ final class CursorOptionalEndpointTests: XCTestCase {
         XCTAssertTrue(logs.contains("optional prepaid-balance response contained invalid balance metadata"), logs)
     }
 
+    /// Regression: Connect answers in proto3 JSON, which omits default values. An account with no
+    /// grants returns `{}` and an untouched grant omits `usedCents`; both are valid, not "invalid grant
+    /// metadata" warnings on every refresh.
+    func testCreditGrantsOmittedProtoDefaultsAreNotTreatedAsInvalid() async throws {
+        for (body, expectedCredits) in [
+            ("{}", nil),
+            (#"{"hasCreditGrants":true,"totalCents":"5000"}"#, 50.0)
+        ] as [(String, Double?)] {
+            let provider = makeProvider { request in
+                switch request.url {
+                case CursorUsageClient.usageURL:
+                    return Self.primaryUsageResponse
+                case CursorUsageClient.planURL:
+                    return HTTPResponse(statusCode: 200, headers: [:], body: Data(#"{"planInfo":{"planName":"pro"}}"#.utf8))
+                case CursorUsageClient.creditsURL:
+                    return HTTPResponse(statusCode: 200, headers: [:], body: Data(body.utf8))
+                case CursorUsageClient.stripeURL:
+                    return HTTPResponse(statusCode: 200, headers: [:], body: Data(#"{"customerBalance":0}"#.utf8))
+                default:
+                    return HTTPResponse(statusCode: 404, headers: [:], body: Data())
+                }
+            }
+
+            let (snapshot, logs) = try await captureLogs { await provider.refresh() }
+
+            XCTAssertFalse(logs.contains("credit-grants response"), "\(body): \(logs)")
+            guard case .values(_, let values, _, _, _, _)? = snapshot.lines.first(where: { $0.label == "Credits" }) else {
+                XCTAssertNil(expectedCredits, body)
+                continue
+            }
+            XCTAssertEqual(values.first?.number, expectedCredits, body)
+        }
+    }
+
     func testFailedGenericRequestFallbackIsLoggedBeforePrimaryMappingError() async throws {
         let provider = makeProvider { request in
             if request.url.absoluteString.hasPrefix(CursorUsageClient.restUsageURL.absoluteString) {
@@ -277,7 +311,9 @@ final class CursorOptionalEndpointTests: XCTestCase {
             ),
             usageClient: CursorUsageClient(http: RoutingHTTPClient(handler: handler)),
             now: { Date(timeIntervalSince1970: 1_800_000_000) },
-            pricing: { TestPricing.bundled }
+            pricing: { TestPricing.bundled },
+            usageHistoryStore: CursorUsageHistoryStore(directory: FileManager.default.temporaryDirectory
+                .appendingPathComponent("cursor-optional-tests-\(UUID().uuidString)", isDirectory: true))
         )
     }
 

@@ -266,7 +266,7 @@ enum CopilotUsageMapper {
     }
 
     /// Never mutated after creation; `DateFormatter` is `Sendable` on current SDKs, so no isolation
-    /// annotation is needed (same pattern as `CursorUsageCSV`/`GodUsageISO8601`).
+    /// annotation is needed (same pattern as `GodUsageISO8601`).
     private static let dayOnlyFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
