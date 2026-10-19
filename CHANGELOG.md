@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.2.1
+
+### Bug Fixes
+- fix(claude): check reset grants hourly instead of on every refresh ([#53](https://github.com/federico-app/godusage/pull/53)) by @andreaAppload
+- fix(codex): port OpenUsage 0.7.15 dashboard link and free auto-review ([#54](https://github.com/federico-app/godusage/pull/54)) by @andreaAppload
+- fix(cursor): fetch spend history day by day and keep finished days per account ([#55](https://github.com/federico-app/godusage/pull/55)) by @andreaAppload
+
+### Chores
+- Make .claude a real folder that links only the skills ([#52](https://github.com/federico-app/godusage/pull/52)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.2.0...v1.2.1](https://github.com/federico-app/godusage/compare/v1.2.0...v1.2.1)
+
+- [8dc158b](https://github.com/federico-app/godusage/commit/8dc158b42f51f7c056f6194994b11f149281b4fc) Make .claude a real folder that links only the skills by @andreaAppload
+- [1ecd220](https://github.com/federico-app/godusage/commit/1ecd2208682e654d8a5e01070bdc2ccd1432afcb) fix(claude): check reset grants hourly instead of on every refresh by @andreaAppload
+- [1f6623a](https://github.com/federico-app/godusage/commit/1f6623ab1960e4b868c7b9d9cc9fce291c4b5b20) fix(codex): port OpenUsage 0.7.15 dashboard link and free auto-review by @andreaAppload
+- [0aac0ab](https://github.com/federico-app/godusage/commit/0aac0ab8b4815b631f708d3956a1e19b83001674) fix(cursor): fetch spend history day by day and keep finished days per account by @andreaAppload
+
 ## v1.2.0
 
 ### Bug Fixes
