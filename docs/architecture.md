@@ -32,7 +32,7 @@ Every provider produces the same `MetricLine` shapes, so the UI renders them all
 
 ### Credential ownership
 
-The app that owns a credential is the only app that changes it. Provider credentials belong to the provider's own tool (Claude Code, the `codex` CLI, the Cursor app, GitHub CLI, and so on). Every credential store reads through the read-only `KeychainReading`. The one Keychain write path is `ClaudeCredentialWriteBack`, used only by the guarded Claude Code renewal described below. GodUsage's own iCloud-sync device ID lives in Application Support through `GodUsageOwnedFileStore`.
+The app that owns a credential is the only app that changes it. Provider credentials belong to the provider's own tool (Claude Code, the `codex` CLI, the Cursor app, GitHub CLI, and so on). Every credential store reads through the read-only `KeychainReading`. The one Keychain write path is `ClaudeCredentialWriteBack`, used only by the guarded Claude Code renewal described below. GodUsage's own device ID (used by Teams) lives in Application Support through `GodUsageOwnedFileStore`.
 
 GodUsage never calls the OAuth token endpoints for Codex, Cursor, Copilot, or Muse. Two apps rotating the same login can trip the server's token-reuse protection and sign the user out. When one of those tokens lapses, the card shows a renewal notice naming the owning app. Claude Code is the guarded exception: when a stored token has already been expired for a while, so no live Claude Code session can be mid-rotation, GodUsage renews it and writes the result back to the same store (Keychain item or `.credentials.json`) so there is one token chain. See [Claude](providers/claude.md). Claude Desktop's login stays read-only. Antigravity refreshes its access token through Google OAuth, which is safe because Google refresh tokens do not rotate, and caches the result in GodUsage's own file. Grok and Kimi refresh their own file-based logins and write them back to the CLI's credential file.
 
@@ -44,11 +44,11 @@ Muse subscription meters use the Meta developer dashboard’s teams/subscription
 
 ## Stores
 
-- `WidgetDataStore`: the latest snapshot per provider, plus refresh and caching. Machine-local cached snapshots are kept separate from rendered snapshots so peer history is never written back out and counted twice.
+- `WidgetDataStore`: the latest snapshot per provider, plus refresh and caching. Every surface shows this Mac's own snapshots.
 - `LayoutStore`: which metrics are shown, the provider and metric order, and which metrics are starred for the menu bar.
 - `ProviderEnablementStore`: which providers are on or off.
-- `TeamsStore`: the Sign in with Apple session, teams, a pending invite, and this Mac's throttled usage upload to the teams backend (`backend/`). It reads `WidgetDataStore.localTeamHistorySources()`, so only this Mac's own history is uploaded, and uses `ICloudUsageSyncStore.durableDeviceID` so one Mac is one device everywhere. The API, session storage, and Apple sign-in are injected for tests. See [Teams](teams.md).
-- `ICloudUsageSyncStore`: one CloudKit record per device in the app's private database (history plus a live snapshot for companion apps), a five-minute peer poll, and the visible device and error state. Cloud access is injected for tests.
+- `TeamsStore`: the Sign in with Apple session, teams, a pending invite, and this Mac's throttled usage upload to the teams backend (`backend/`). It reads `WidgetDataStore.localTeamHistorySources()`, so only this Mac's own history is uploaded, and uses `DeviceIdentityStore.durableDeviceID` so one Mac is one device on the server. The API, session storage, and Apple sign-in are injected for tests. See [Teams](teams.md).
+- `DeviceIdentityStore`: this Mac's durable device ID. It reads the ID from Application Support, seeds it from the saved preference or a legacy Keychain item on upgrade, and stays provisional (no ID for Teams) while the lookup cannot finish. Storage is injected for tests.
 
 Refresh runs on a timer in `AppContainer`. Each pass respects the cache, so the app only hits the network once a snapshot has expired.
 

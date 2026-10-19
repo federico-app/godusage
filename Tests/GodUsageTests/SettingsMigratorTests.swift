@@ -352,6 +352,25 @@ final class SettingsMigratorTests: XCTestCase {
         )
     }
 
+    func testV7DropsICloudSyncPreferencesButKeepsTheDeviceID() {
+        let (defaults, domain) = makeDefaults("V7ICloudSync")
+        defer { defaults.removePersistentDomain(forName: domain) }
+        defaults.set(6, forKey: SettingsMigrator.schemaVersionKey)
+        defaults.set(false, forKey: "godusage.icloudSync.enabled.v1")
+        defaults.set(true, forKey: "godusage.icloudSync.pendingOptOutDeletion.v1")
+        defaults.set("aaaaaaaa-1111-2222-3333-444444444444", forKey: "godusage.icloudSync.deviceID.v1")
+
+        XCTAssertEqual(SettingsMigrator.migrate(defaults: defaults, domainName: domain), SettingsSchema.current)
+
+        XCTAssertNil(defaults.object(forKey: "godusage.icloudSync.enabled.v1"))
+        XCTAssertNil(defaults.object(forKey: "godusage.icloudSync.pendingOptOutDeletion.v1"))
+        XCTAssertEqual(
+            defaults.string(forKey: "godusage.icloudSync.deviceID.v1"),
+            "aaaaaaaa-1111-2222-3333-444444444444",
+            "Teams still keys this Mac's upload by the saved device id"
+        )
+    }
+
     /// A legacy install with no disabled providers (the all-on default) converts to all-on.
     func testV2ConvertsAllOnLegacyInstall() {
         let (defaults, domain) = makeDefaults("V2AllOn")

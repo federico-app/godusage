@@ -23,7 +23,7 @@ Returns the same envelope for every provider the ID names, including disabled pr
 
 Returns the older UI-oriented snapshots for all **enabled** providers, in your dashboard order. This route is deprecated but still supported. New consumers should use `/v1/limits`.
 
-Both routes read the same rendered snapshots. With iCloud Sync on, both see the same iCloud-combined usage as the dashboard. `/v1/usage` returns the old UI shape, and `/v1/limits` projects the data into stable resource IDs and raw values.
+Both routes read the same snapshots as the dashboard, so they report this Mac's usage only. `/v1/usage` returns the old UI shape, and `/v1/limits` projects the data into stable resource IDs and raw values.
 
 - **200 OK**: JSON array (empty `[]` when the app has not fetched anything yet).
 

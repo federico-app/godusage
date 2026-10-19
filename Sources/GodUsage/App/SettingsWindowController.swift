@@ -239,7 +239,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
     // MARK: - Sizing
 
     /// The pane's content reported its intrinsic height (initial layout or an in-pane change like an
-    /// error notice or the iCloud device list appearing). Remember it and follow it.
+    /// error notice appearing). Remember it and follow it.
     private func paneContentHeightChanged(_ pane: SettingsPane, _ height: CGFloat) {
         guard pane == selectedPane, height > 1 else { return }
         // Remember the RAW measured height — the screen cap belongs to whatever display the window

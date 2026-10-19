@@ -17,24 +17,19 @@ Only needed when the release will ship iOS: anything under `ios/` or the TestFli
 
 Check this before tagging. A profile problem fails the iOS job during signing, before the upload consumes the TestFlight build number, so it is recoverable on the same tag: fix the secret and `gh run rerun <run-id> --failed` (see step 7). Preflighting saves that round trip.
 
-Both App Store profiles must exist and be `ACTIVE`:
+The App Store profile `GodUsage Mobile App Store` (→ `com.montinovo.godusage.mobile`) must exist and be `ACTIVE`.
 
-- `GodUsage Mobile App Store` → `com.montinovo.godusage.mobile`
-- `GodUsage Mobile Widgets App Store` → `com.montinovo.godusage.mobile.widgets`
-
-Editing an App ID's capabilities silently invalidates every existing profile built on it. The profile flips to `INVALID` and signing fails later with an unrelated-looking error. If capabilities changed since the last release, regenerate both profiles and refresh `APPLE_IOS_APP_STORE_PROFILE` and `APPLE_IOS_WIDGET_APP_STORE_PROFILE` together.
-
-Both App IDs must keep both iCloud containers enabled: `iCloud.com.montinovo.godusage` for Release and `iCloud.com.montinovo.godusage.dev` for Debug. A profile granting only one signs one configuration and breaks the other.
+Editing an App ID's capabilities silently invalidates every existing profile built on it. The profile flips to `INVALID` and signing fails later with an unrelated-looking error. If capabilities changed since the last release, regenerate the profile and refresh `APPLE_IOS_APP_STORE_PROFILE`.
 
 Verify a downloaded profile before trusting it:
 
 ```sh
 script/decode_provisioning_profile.sh profile.mobileprovision /tmp/p.plist
-/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.developer.icloud-container-identifiers' /tmp/p.plist
-/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.developer.icloud-container-environment' /tmp/p.plist
+/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' /tmp/p.plist
+/usr/libexec/PlistBuddy -c 'Print :ExpirationDate' /tmp/p.plist
 ```
 
-Expect both containers and both environments (`Production`, `Development`).
+Expect `S6X72K86R8.com.montinovo.godusage.mobile` and a future expiration date.
 
 ### 1. Choose the version
 

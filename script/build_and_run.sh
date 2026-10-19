@@ -14,8 +14,6 @@ set -euo pipefail
 # Usage: script/build_and_run.sh [run|build|logs|verify]
 # Env:   CODESIGN_IDENTITY  override signing identity (exact display name)
 #        CONFIG             "release" (default) or "debug"
-#        ICLOUD_PROVISIONING_PROFILE  optional override for the development provisioning profile;
-#                         otherwise the newest matching installed profile is selected automatically
 #        KEEP_PROVIDER_HOMES  set to 1 to launch with the shell's CLAUDE_CONFIG_DIR / CODEX_HOME
 #                         overrides intact (they are stripped by default so an agent session's
 #                         sandboxed homes don't leak into the dev app)
@@ -26,9 +24,7 @@ CONFIG="${CONFIG:-release}"
 TARGET_NAME="GodUsage"                 # SwiftPM target / binary name
 APP_DISPLAY="GodUsage DEV"             # user-facing app name; DEV tells it apart from the release app
 BUNDLE_ID="${BUNDLE_ID:-com.montinovo.godusage.dev}"
-ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage.dev"
 APPLE_TEAM_ID="${APPLE_TEAM_ID:-S6X72K86R8}"
-export APPLE_TEAM_ID
 MIN_SYSTEM_VERSION="15.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,7 +45,6 @@ APP_BINARY="$APP_MACOS/$TARGET_NAME"
 CLI_BINARY="$APP_HELPERS/godusage"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 RESOURCE_BUNDLE_NAME="${TARGET_NAME}_${TARGET_NAME}.bundle"
-ENTITLEMENTS="$ROOT_DIR/script/GodUsage.dev.entitlements.plist"
 SIGN_ENTITLEMENTS="$ROOT_DIR/script/GodUsage.local.entitlements.plist"
 
 pkill -x "$TARGET_NAME" >/dev/null 2>&1 || true
@@ -169,53 +164,9 @@ cat >"$INFO_PLIST" <<PLIST
       </array>
     </dict>
   </array>
-  <key>NSUbiquitousContainers</key>
-  <dict>
-    <key>iCloud.com.montinovo.godusage.dev</key>
-    <dict>
-      <key>NSUbiquitousContainerIsDocumentScopePublic</key>
-      <false/>
-      <key>NSUbiquitousContainerName</key>
-      <string>GodUsage</string>
-      <key>NSUbiquitousContainerSupportedFolderLevels</key>
-      <string>None</string>
-    </dict>
-  </dict>
 </dict>
 </plist>
 PLIST
-
-if [ -n "${ICLOUD_PROVISIONING_PROFILE:-}" ] && [ ! -f "$ICLOUD_PROVISIONING_PROFILE" ]; then
-  echo "iCloud provisioning profile not found: $ICLOUD_PROVISIONING_PROFILE" >&2
-  exit 1
-fi
-
-if [ -z "${ICLOUD_PROVISIONING_PROFILE:-}" ]; then
-  ICLOUD_PROVISIONING_PROFILE=$("$ROOT_DIR/script/find_icloud_provisioning_profile.sh" \
-    "$BUNDLE_ID" "$ICLOUD_CONTAINER_ID" || true)
-fi
-
-EMBEDDED_PROFILE=""
-if [ -n "${ICLOUD_PROVISIONING_PROFILE:-}" ]; then
-  echo "==> using iCloud provisioning profile: $ICLOUD_PROVISIONING_PROFILE"
-  EMBEDDED_PROFILE="$ICLOUD_PROVISIONING_PROFILE"
-  cp "$ICLOUD_PROVISIONING_PROFILE" "$APP_CONTENTS/embedded.provisionprofile"
-  SIGN_ENTITLEMENTS="$DIST_DIR/GodUsage.dev.resolved.entitlements.plist"
-  "$ROOT_DIR/script/render_icloud_entitlements.sh" \
-    "$ENTITLEMENTS" "$ICLOUD_PROVISIONING_PROFILE" "$SIGN_ENTITLEMENTS" \
-    "$ICLOUD_CONTAINER_ID"
-elif SIGNIN_PROFILE=$("$ROOT_DIR/script/find_signin_provisioning_profile.sh" "$BUNDLE_ID"); then
-  # A profile without the iCloud container still enables Sign in with Apple (Teams).
-  echo "==> using Sign in with Apple provisioning profile (no iCloud container): $SIGNIN_PROFILE"
-  echo "WARNING: the profile has no iCloud container; iCloud Sync will be unavailable in this build." >&2
-  EMBEDDED_PROFILE="$SIGNIN_PROFILE"
-  cp "$SIGNIN_PROFILE" "$APP_CONTENTS/embedded.provisionprofile"
-  SIGN_ENTITLEMENTS="$DIST_DIR/GodUsage.dev.resolved.entitlements.plist"
-  "$ROOT_DIR/script/render_icloud_entitlements.sh" \
-    "$ROOT_DIR/script/GodUsage.local.entitlements.plist" "$SIGNIN_PROFILE" "$SIGN_ENTITLEMENTS"
-else
-  echo "WARNING: no matching installed provisioning profile was found; iCloud Sync and Teams sign-in will be unavailable in this build." >&2
-fi
 
 # Pick a stable Apple Development identity from the team so ad-hoc cdhash churn doesn't
 # re-trigger permission prompts on every rebuild. The native helper queries Security.framework
@@ -227,19 +178,7 @@ find_apple_development_identity() {
 }
 
 CODESIGN_IDENTITY="${CODESIGN_IDENTITY:-}"
-IDENTITY_FROM_PROFILE=0
-# An embedded profile only works with a certificate it lists, so prefer that one.
-if [ -z "$CODESIGN_IDENTITY" ] && [ -n "$EMBEDDED_PROFILE" ]; then
-  if profile_identity=$("$ROOT_DIR/script/profile_signing_identity.sh" "$EMBEDDED_PROFILE"); then
-    CODESIGN_IDENTITY="$profile_identity"
-    IDENTITY_FROM_PROFILE=1
-  else
-    echo "WARNING: none of the provisioning profile's certificates is installed; signing with another identity, so the app may refuse to launch." >&2
-  fi
-fi
-if [ "$IDENTITY_FROM_PROFILE" = 1 ]; then
-  : # found in the keychain by profile_signing_identity.sh
-elif [ -z "$CODESIGN_IDENTITY" ]; then
+if [ -z "$CODESIGN_IDENTITY" ]; then
   if resolved_identity="$(find_apple_development_identity)"; then
     CODESIGN_IDENTITY="$resolved_identity"
   else

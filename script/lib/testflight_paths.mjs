@@ -1,7 +1,6 @@
 // Everything the shipped iOS build and its pipeline are made from. Keep the workflow isolated so
-// unrelated macOS release edits cannot trip this filter. The wire-contract rule keeps the source
-// boundary sound: a Mac-side change that matters to the phone must update ios/Shared/SyncWire.swift
-// (docs/ios-app.md), so it always lands under ios/.
+// unrelated macOS release edits cannot trip this filter. The phone reads only the teams backend, so
+// its sources all live under ios/.
 const TESTFLIGHT_FILES = new Set([
   ".github/workflows/release-ios.yml",
   "script/decode_provisioning_profile.sh",

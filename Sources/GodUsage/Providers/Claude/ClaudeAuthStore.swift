@@ -43,6 +43,9 @@ struct ClaudeCredentialState: Hashable, Sendable {
     /// while the profile Claude Code refetches regularly says `…_20x` (`claude_max`).
     var profileSubscriptionType: String? = nil
     var profileRateLimitTier: String? = nil
+    /// The account the state file names (the card's identity), set on the same candidate as the
+    /// profile plan. The provider checks the token's own account against it before publishing usage.
+    var expectedAccount: ClaudeAccountIdentity? = nil
 
     /// The credential values the plan badge is built from: the login blob with its plan family and
     /// rate-limit tier replaced by the fresher state-file values when they are known.
@@ -262,19 +265,29 @@ struct ClaudeAuthStore: Sendable {
         // refresh fall-through exists for exactly that case) and must keep its own blob metadata
         // rather than wear another account's plan. The Desktop candidate (inserted below) likewise
         // keeps its own. A refresh landing between a re-login's two writes (credentials before state
-        // file) can pair them across accounts for ONE cycle; that transient is accepted — the blob
-        // carries no account id to verify against, and both stores converge once the login completes.
-        // If a re-login instead lands in the lower-priority FILE beside a still-valid keychain login,
-        // the state file (and with it the card's whole identity, per DefaultAccountObserver) already
-        // describes the file account while usage comes from the keychain — the badge matching the
-        // card label there is the consistent choice, and a failed keychain login falls through to the
-        // file account's own freshly-written blob. Generation snapshots opt out: their candidates
+        // file) can pair them across accounts for ONE cycle; the provider's account check
+        // (`ClaudeAccountVerifier`) then shows the mismatch notice for that cycle, and both stores
+        // converge once the login completes. If a re-login instead lands in the lower-priority FILE
+        // beside a still-valid keychain login, the state file (and with it the card's whole identity,
+        // per DefaultAccountObserver) describes the file account while the keychain token belongs to
+        // another — the account check withholds that usage rather than publish it under the wrong
+        // name, and a failed keychain login still falls through to the file account's own
+        // freshly-written blob. Generation snapshots opt out: their candidates
         // keep only oauth + source, so the state-file read would be pure overhead there.
-        if includeProfileTier, !stored.isEmpty,
-           let plan = ClaudeProfilePlanReader(environment: environment, files: files, scope: scope).read()
-        {
-            stored[0].profileSubscriptionType = plan.subscriptionType
-            stored[0].profileRateLimitTier = plan.rateLimitTier
+        var stateFileProfile: ClaudeStateFileProfile?
+        var stateFileRead = false
+        func readStateFileProfile() -> ClaudeStateFileProfile? {
+            guard includeProfileTier else { return nil }
+            if !stateFileRead {
+                stateFileProfile = ClaudeProfilePlanReader(environment: environment, files: files, scope: scope).read()
+                stateFileRead = true
+            }
+            return stateFileProfile
+        }
+        if !stored.isEmpty, let profile = readStateFileProfile() {
+            stored[0].profileSubscriptionType = profile.subscriptionType
+            stored[0].profileRateLimitTier = profile.rateLimitTier
+            stored[0].expectedAccount = profile.account
         }
         var desktopStatus: ClaudeDesktopCredentialStatus = .notChecked
         // A working CLI login remains the source of truth and avoids a second Keychain prompt. Desktop
@@ -300,10 +313,13 @@ struct ClaudeAuthStore: Sendable {
             let result = desktop.load(allowInteraction: allowDesktopInteraction)
             desktopStatus = result.status
             if let oauth = result.oauth {
+                // Desktop keeps its own plan metadata, but its usage still lands on this card, so its
+                // token is checked against the card's account like the CLI login's.
                 stored.insert(ClaudeCredentialState(
                     oauth: oauth,
                     source: .desktop,
-                    inferenceOnly: false
+                    inferenceOnly: false,
+                    expectedAccount: readStateFileProfile()?.account
                 ), at: 0)
             }
         }
@@ -536,6 +552,15 @@ struct ClaudeAuthStore: Sendable {
             throw ClaudeAuthError.invalidOAuthURL(usageURLString)
         }
         return usageURL
+    }
+
+    /// `GET /api/oauth/profile`: names the account a token belongs to. Same base-URL rules as usage.
+    func profileEndpoint() throws -> URL {
+        let profileURLString = "\(resolveOAuthEndpoints().baseAPI)/api/oauth/profile"
+        guard let profileURL = URL(string: profileURLString) else {
+            throw ClaudeAuthError.invalidOAuthURL(profileURLString)
+        }
+        return profileURL
     }
 
     func keychainServiceCandidates() -> [String] {

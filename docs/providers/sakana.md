@@ -17,7 +17,7 @@ The five-hour window begins with the account's first request. Weekly usage reset
 
 Before a subscription window has any usage, Sakana Console returns that quota row as empty. GodUsage treats that as 0% used and keeps showing both meters. A missing quota field or malformed value still produces an unsupported-response error, so a real console format change is not mistaken for zero usage.
 
-The graph and spend rows come from local Codex logs and include only usage saved on this Mac. With iCloud sync on, GodUsage combines that machine-local history with history from your other Macs without double-counting the account-wide subscription meters.
+The graph and spend rows come from local Codex logs and include only usage saved on this Mac.
 
 ## Local Fugu history
 

@@ -32,7 +32,7 @@ enum LocalUsageAPI {
         /// A copy whose snapshots carry live card titles: `titles` maps card id → resolved title
         /// (from the account registry, so renames show). Applied where the state is captured — the
         /// snapshots themselves always store the derived name, so a rename never persists into the
-        /// cache or iCloud. Cards without an entry keep their baked name.
+        /// cache. Cards without an entry keep their baked name.
         func resolvingDisplayNames(_ titles: [String: String]) -> State {
             guard !titles.isEmpty else { return self }
             var state = self

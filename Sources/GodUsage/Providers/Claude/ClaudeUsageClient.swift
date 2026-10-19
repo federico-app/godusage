@@ -51,6 +51,25 @@ struct ClaudeUsageClient: Sendable {
         )
     }
 
+    /// `GET /api/oauth/profile`, the call Claude Code makes to learn which account and organization a
+    /// token belongs to. Read-only; the account check uses it to compare against the card's identity.
+    func fetchProfile(accessToken: String, profileURL: URL) async throws -> HTTPResponse {
+        try await httpClient.send(
+            HTTPRequest(
+                method: "GET",
+                url: profileURL,
+                headers: [
+                    "Authorization": "Bearer \(accessToken.trimmingCharacters(in: .whitespacesAndNewlines))",
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "anthropic-beta": "oauth-2025-04-20",
+                    "User-Agent": "claude-cli/2.1.280 (external, cli)"
+                ],
+                timeout: 10
+            )
+        )
+    }
+
     static func usageURLWithResetGrants(_ usageURL: URL) -> URL {
         guard var components = URLComponents(url: usageURL, resolvingAgainstBaseURL: false) else { return usageURL }
         components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: "cedar_ember", value: "1")]
