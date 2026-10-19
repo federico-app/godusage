@@ -149,6 +149,7 @@ private struct TeamsInviteCard: View {
 
 private struct TeamsAccountSection: View {
     let teams: TeamsStore
+    @Environment(AppContainer.self) private var container
     @State private var isRenaming = false
     @State private var newName = ""
 
@@ -179,6 +180,9 @@ private struct TeamsAccountSection: View {
             if let error = teams.uploadError {
                 SettingsInlineNotice(error)
             }
+            DeviceIdentityNotice(identity: container.deviceIdentity) {
+                teams.scheduleUpload(force: true)
+            }
             Divider()
             SettingsRow("Show Rank in Menu Bar") {
                 Toggle("", isOn: Binding(get: { teams.showRankInMenuBar }, set: { teams.showRankInMenuBar = $0 }))
@@ -208,6 +212,32 @@ private struct TeamsAccountSection: View {
         if teams.teams.isEmpty { return "Not sharing (no teams yet)" }
         guard let lastUploadAt = teams.lastUploadAt else { return "Sharing usage" }
         return "Shared \(lastUploadAt.formatted(.relative(presentation: .named)))"
+    }
+}
+
+/// Shown while this Mac's device id is unresolved or not durable. Recover Identity reads a legacy
+/// Keychain item with the user present, then uploads under the recovered id.
+private struct DeviceIdentityNotice: View {
+    let identity: DeviceIdentityStore
+    let onRecovered: () -> Void
+
+    var body: some View {
+        if let error = identity.identityError {
+            SettingsInlineNotice(error)
+            if identity.canRecoverIdentity {
+                Button("Recover Identity") {
+                    Task {
+                        await identity.recoverIdentity()
+                        if !identity.isProvisional { onRecovered() }
+                    }
+                }
+                .controlSize(.small)
+                .disabled(identity.isRecovering)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
     }
 }
 

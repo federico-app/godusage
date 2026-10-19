@@ -2,7 +2,7 @@ name: Release Dev
 
 # Every push to `develop` ships "GodUsage DEV" (com.montinovo.godusage.dev) as a GitHub prerelease
 # tagged dev-<build>, and updates appcast-dev.xml so installed DEV apps update themselves. The DEV
-# app has its own bundle id, iCloud container, teams backend, and feed, so it never touches the
+# app has its own bundle id, teams backend, and feed, so it never touches the
 # release app or its users. Production releases stay on stable tags (release.yml).
 on:
   push:
@@ -87,7 +87,6 @@ jobs:
           APPLE_NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY_BASE64 }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
-          APPLE_DEVELOPER_ID_DEV_PROFILE: ${{ secrets.APPLE_DEVELOPER_ID_DEV_PROFILE }}
           SPARKLE_PUBLIC_KEY: ${{ secrets.SPARKLE_PUBLIC_KEY }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
@@ -98,7 +97,6 @@ jobs:
             APPLE_NOTARY_PRIVATE_KEY_BASE64 \
             APPLE_NOTARY_KEY_ID \
             APPLE_NOTARY_ISSUER_ID \
-            APPLE_DEVELOPER_ID_DEV_PROFILE \
             SPARKLE_PUBLIC_KEY \
             SPARKLE_PRIVATE_KEY
           do
@@ -135,19 +133,16 @@ jobs:
       - name: Write signing inputs
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
-          DEV_PROFILE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_DEV_PROFILE }}
           APPLE_NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY_BASE64 }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
         run: |
           set -euo pipefail
           printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle_ed_private_key"
-          printf '%s' "$DEV_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/godusage-dev.provisionprofile"
           key_path="$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           printf '%s' "$APPLE_NOTARY_PRIVATE_KEY_BASE64" | base64 --decode > "$key_path"
           chmod 600 "$key_path"
           {
             echo "SPARKLE_PRIVATE_KEY_FILE=$RUNNER_TEMP/sparkle_ed_private_key"
-            echo "ICLOUD_PROVISIONING_PROFILE=$RUNNER_TEMP/godusage-dev.provisionprofile"
             echo "APPLE_NOTARY_KEY_PATH=$key_path"
           } >> "$GITHUB_ENV"
 
@@ -208,7 +203,7 @@ jobs:
         env:
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
         run: |
-          rm -f "$RUNNER_TEMP/godusage-dev.provisionprofile" "$RUNNER_TEMP/sparkle_ed_private_key"
+          rm -f "$RUNNER_TEMP/sparkle_ed_private_key"
           if [[ -n "$APPLE_NOTARY_KEY_ID" ]]; then
             rm -f "$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           fi
@@ -232,12 +227,11 @@ jobs:
           BEFORE: ${{ github.event.before }}
           EVENT: ${{ github.event_name }}
           DEV_PROFILE: ${{ secrets.APPLE_IOS_DEV_APP_STORE_PROFILE }}
-          DEV_WIDGET_PROFILE: ${{ secrets.APPLE_IOS_DEV_WIDGET_APP_STORE_PROFILE }}
         run: |
           set -euo pipefail
-          if [[ -z "$DEV_PROFILE" || -z "$DEV_WIDGET_PROFILE" ]]; then
+          if [[ -z "$DEV_PROFILE" ]]; then
             # Until the DEV app is set up in App Store Connect (docs/releasing.md), every run skips it.
-            echo "::warning::GodUsage DEV for iPhone skipped: APPLE_IOS_DEV_APP_STORE_PROFILE and APPLE_IOS_DEV_WIDGET_APP_STORE_PROFILE are not set."
+            echo "::warning::GodUsage DEV for iPhone skipped: APPLE_IOS_DEV_APP_STORE_PROFILE is not set."
             echo "ship=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -287,19 +281,16 @@ jobs:
       - name: Write signing inputs
         env:
           IOS_PROFILE_BASE64: ${{ secrets.APPLE_IOS_DEV_APP_STORE_PROFILE }}
-          IOS_WIDGET_PROFILE_BASE64: ${{ secrets.APPLE_IOS_DEV_WIDGET_APP_STORE_PROFILE }}
           APPLE_NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY_BASE64 }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
         run: |
           set -euo pipefail
           printf '%s' "$IOS_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/godusage-ios-dev.mobileprovision"
-          printf '%s' "$IOS_WIDGET_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/godusage-ios-dev-widgets.mobileprovision"
           key_path="$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           printf '%s' "$APPLE_NOTARY_PRIVATE_KEY_BASE64" | base64 --decode > "$key_path"
           chmod 600 "$key_path"
           {
             echo "IOS_PROVISIONING_PROFILE=$RUNNER_TEMP/godusage-ios-dev.mobileprovision"
-            echo "IOS_WIDGET_PROVISIONING_PROFILE=$RUNNER_TEMP/godusage-ios-dev-widgets.mobileprovision"
             echo "APPLE_NOTARY_KEY_PATH=$key_path"
           } >> "$GITHUB_ENV"
 
@@ -316,7 +307,7 @@ jobs:
         env:
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
         run: |
-          rm -f "$RUNNER_TEMP/godusage-ios-dev.mobileprovision" "$RUNNER_TEMP/godusage-ios-dev-widgets.mobileprovision"
+          rm -f "$RUNNER_TEMP/godusage-ios-dev.mobileprovision"
           if [[ -n "$APPLE_NOTARY_KEY_ID" ]]; then
             rm -f "$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           fi

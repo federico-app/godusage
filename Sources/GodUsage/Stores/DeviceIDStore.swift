@@ -1,6 +1,8 @@
 import Foundation
 
-protocol ICloudDeviceIDStoring: Sendable {
+/// Where this Mac's durable device id lives. Teams uses the id to tell this Mac apart from the
+/// user's other devices, so it must stay the same across launches and preference resets.
+protocol DeviceIDStoring: Sendable {
     func readDeviceID() throws -> String?
     func writeDeviceID(_ deviceID: String) throws
     /// Recover the device id from a legacy login-keychain location and persist it in the
@@ -13,7 +15,7 @@ protocol ICloudDeviceIDStoring: Sendable {
     func migrateLegacyDeviceID(allowInteraction: Bool) throws -> String?
 }
 
-extension ICloudDeviceIDStoring {
+extension DeviceIDStoring {
     func migrateLegacyDeviceID() throws -> String? {
         nil
     }
@@ -23,7 +25,7 @@ extension ICloudDeviceIDStoring {
     }
 }
 
-struct KeychainICloudDeviceIDStore: ICloudDeviceIDStoring {
+struct OwnedDeviceIDStore: DeviceIDStoring {
     private let service: String
     private let legacyOwnedService: String
     private let legacyService: String
@@ -37,6 +39,9 @@ struct KeychainICloudDeviceIDStore: ICloudDeviceIDStoring {
     ) {
         self.ownedStore = ownedStore
         self.legacyKeychain = legacyKeychain
+        // The service names predate Teams: the id was first minted for the retired iCloud Sync.
+        // They are frozen, because renaming them would give every existing Mac a new device id and
+        // register it on the Teams server a second time.
         self.service = "\(bundleIdentifier).icloud-sync-device-id.v3"
         self.legacyOwnedService = "\(bundleIdentifier).icloud-sync-device-id.v2"
         self.legacyService = "\(bundleIdentifier).icloud-sync-device-id.v1"
@@ -54,8 +59,8 @@ struct KeychainICloudDeviceIDStore: ICloudDeviceIDStoring {
     /// v1 was created through `/usr/bin/security`. A saved preference normally seeds the current
     /// private file without touching either item; these reads are only needed after a preferences
     /// reset. Automatic attempts inspect metadata/cache only, while Recover Identity may read the
-    /// old value interactively. Copying it keeps this device's existing iCloud record instead of
-    /// minting a duplicate. The old items remain orphaned once the current file exists; GodUsage does
+    /// old value interactively. Copying it keeps this device's existing id instead of minting a
+    /// duplicate. The old items remain orphaned once the current file exists; GodUsage does
     /// not modify or silently delete them.
     func migrateLegacyDeviceID() throws -> String? {
         try migrateLegacyDeviceID(allowInteraction: false)
@@ -88,7 +93,7 @@ struct KeychainICloudDeviceIDStore: ICloudDeviceIDStoring {
         case false:
             break
         case nil:
-            throw KeychainError.readFailed("Keychain could not be checked for this Mac's previous sync identity.")
+            throw KeychainError.readFailed("Keychain could not be checked for this Mac's previous device identity.")
         case true?:
             switch legacyKeychain.readGenericPasswordWithoutUserInteraction(
                 service: legacyOwnedService,
@@ -101,7 +106,7 @@ struct KeychainICloudDeviceIDStore: ICloudDeviceIDStoring {
                 break
             case .unavailable:
                 throw KeychainError.readFailed(
-                    "This Mac's previous sync identity needs your approval. Choose Recover Identity in Settings."
+                    "This Mac's previous device identity needs your approval. Choose Recover Identity in Teams settings."
                 )
             }
         }
@@ -109,13 +114,13 @@ struct KeychainICloudDeviceIDStore: ICloudDeviceIDStoring {
         // Tri-state on purpose. `false` is a confirmed fresh install — nothing to migrate, and the
         // secret read never runs. `nil` means the probe could not answer (locked keychain, a tripped
         // breaker, or a stuck flight): treating that as "absent" would mint a NEW id for a Mac that
-        // already has one and publish a duplicate device to iCloud, so fail instead and let the
+        // already has one and register a duplicate device, so fail instead and let the
         // caller surface its existing warning.
         switch legacyKeychain.genericPasswordForCurrentUserExists(service: legacyService) {
         case false:
             return nil
         case nil:
-            throw KeychainError.readFailed("Keychain could not be checked for this Mac's previous sync identity.")
+            throw KeychainError.readFailed("Keychain could not be checked for this Mac's previous device identity.")
         case true?:
             break
         }
@@ -130,7 +135,7 @@ struct KeychainICloudDeviceIDStore: ICloudDeviceIDStoring {
             return nil
         case .unavailable:
             throw KeychainError.readFailed(
-                "This Mac's previous sync identity needs your approval. Choose Recover Identity in Settings."
+                "This Mac's previous device identity needs your approval. Choose Recover Identity in Teams settings."
             )
         }
         try ownedStore.write(service: service, value: legacy)

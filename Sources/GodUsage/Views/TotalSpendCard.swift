@@ -37,21 +37,12 @@ struct TotalSpendCard: View {
     }
 
     private var total: TotalSpend {
-        // Accounts that live only on other Macs (synced, no card here) count toward the total and
-        // get their own legend slice ("claude@ab12cd34") — the number should be the whole truth
-        // even when a login isn't set up on this machine.
-        var aggregatedProviders = providers
-        var aggregatedSnapshots = dataStore.snapshots
-        for entry in dataStore.remoteOnlySpend {
-            aggregatedProviders.append(entry.provider)
-            aggregatedSnapshots[entry.provider.id] = entry.snapshot
-        }
         // Titles resolve here — the one place with registry access — so the legend AND the share
         // export (rendered outside the environment) carry live renames.
         return TotalSpendAggregator.total(
             for: period,
-            providers: aggregatedProviders,
-            snapshots: aggregatedSnapshots,
+            providers: providers,
+            snapshots: dataStore.snapshots,
             title: { container.displayName(for: $0) }
         )
     }

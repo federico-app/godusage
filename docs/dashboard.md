@@ -73,7 +73,7 @@ For Claude, Codex, Cursor, Grok, Muse, OpenCode, and Sakana Fugu spend rows, hov
 
 **Long card names** (like `Claude — matt@example.com`) get the full header line. If a name still does not fit, hovering the header scrolls it once to its end and holds there.
 
-With [iCloud Sync](icloud-sync.md) on, the machine-local providers' spend rows, trends, warnings, and model breakdowns are rebuilt from all synced Macs. Cursor is unchanged because its export is already account-wide. Quotas, plans, balances, and provider errors always describe this Mac's refresh.
+Every row describes this Mac only: spend rows, trends, and model breakdowns come from this Mac's logs (Cursor's export is account-wide), and quotas, plans, balances, and errors come from this Mac's refresh. To see usage across your Macs, use [Teams](teams.md).
 
 Rows with a reset date tick every 30 seconds, so countdowns and pace stay live between refreshes.
 

@@ -9,9 +9,8 @@ final class AppContainer {
     let registry: WidgetRegistry
     let layout: LayoutStore
     let dataStore: WidgetDataStore
-    /// Default-on private CloudKit sync: one record per device carrying additive machine-local
-    /// daily history plus the live snapshot companion apps read.
-    let iCloudSync: ICloudUsageSyncStore
+    /// This Mac's durable device id, which keys its Teams usage upload.
+    let deviceIdentity: DeviceIdentityStore
     /// Opt-in teams: Sign in with Apple, invites, leaderboards, and this Mac's usage upload.
     let teams: TeamsStore
     /// Reactions, challenges, champions, and the end-of-month projection.
@@ -120,10 +119,10 @@ final class AppContainer {
         dataStore.configureInteractiveRefreshPreparation(for: codexProviderIDs) {
             accountAssembly.startCodexIdentityBindingTask()
         }
-        let iCloudSync = ICloudUsageSyncStore(dataStore: dataStore)
+        let deviceIdentity = DeviceIdentityStore()
         let teams = TeamsStore(
             historySources: { [weak dataStore] in dataStore?.localTeamHistorySources() ?? [] },
-            deviceID: { [weak iCloudSync] in iCloudSync?.durableDeviceID },
+            deviceID: { [weak deviceIdentity] in deviceIdentity?.durableDeviceID },
             notificationSettings: { (notificationSettings.teamOvertakes, notificationSettings.teamWeeklyRecap) },
             postNotification: { id, title, subtitle, body in
                 await AppNotifications.shared.post(idPrefix: id, title: title, subtitle: subtitle, body: body)
@@ -140,9 +139,8 @@ final class AppContainer {
         // Re-enabling a provider should fetch it promptly, so clear any leftover failure backoff before
         // the enablement wake refreshes. `weak` breaks the cycle (dataStore already captures enablement).
         enablement.onProviderEnabled = { [weak dataStore] id in dataStore?.clearFailureBackoff(for: id) }
-        enablement.onChange = { [weak dataStore, weak iCloudSync, weak teams] in
+        enablement.onChange = { [weak dataStore, weak teams] in
             dataStore?.providerEnablementDidChange()
-            iCloudSync?.scheduleWrite()
             teams?.scheduleUpload(force: true)
         }
         // Fresh installs start minimal: seed the enabled-provider list (Claude/Codex/Cursor right away,
@@ -172,7 +170,7 @@ final class AppContainer {
         self.notificationSettings = notificationSettings
         self.layout = layout
         self.dataStore = dataStore
-        self.iCloudSync = iCloudSync
+        self.deviceIdentity = deviceIdentity
         self.teams = teams
         self.teamsSocial = teamsSocial
         let teamPlans = TeamPlansStore(teams: teams)

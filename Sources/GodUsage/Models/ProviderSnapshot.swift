@@ -4,15 +4,14 @@ import Foundation
 struct ProviderSnapshot: Hashable, Sendable, Codable {
     let providerID: String
     /// The card title at refresh time — always the baked DERIVED name (renames never reach the
-    /// cache or iCloud). The CLI/API boundary re-resolves it against the account registry at
+    /// cache). The CLI/API boundary re-resolves it against the account registry at
     /// respond time (`LocalUsageAPI.State.resolvingDisplayNames`), so human-facing output carries
     /// renames without persisting them.
     var displayName: String
     var plan: String?
     var lines: [MetricLine]
     var refreshedAt: Date
-    /// Raw normalized daily history used to build spend rows. This always belongs to this Mac; peer
-    /// history is combined only in the in-memory rendered view and is never written into the cache.
+    /// Raw normalized daily history used to build spend rows. It always belongs to this Mac.
     var usageHistory: ProviderUsageHistory?
     /// The metrics that apply to the account represented by this snapshot. `nil` preserves the
     /// provider's traditional behavior (every declared descriptor is applicable); a non-nil set lets
@@ -30,7 +29,7 @@ struct ProviderSnapshot: Hashable, Sendable, Codable {
     /// refreshes will make it worse" during an Anthropic rate limit — must mark itself `.wait`, or the
     /// triangle would offer the exact action its own text warns against.
     ///
-    /// Optional because snapshots are cached to disk and synced from peer Macs: one written before
+    /// Optional because snapshots are cached to disk: one written before
     /// this existed decodes as `nil` and reads as `.refresh` through `resolvedWarningAction`.
     enum WarningAction: String, Hashable, Sendable, Codable {
         /// A manual refresh can clear the notice (a login awaiting Keychain approval, a token the
@@ -45,7 +44,7 @@ struct ProviderSnapshot: Hashable, Sendable, Codable {
     /// been loaded into this process yet) rather than something that needs fixing. The dashboard
     /// renders it as a Connect affordance instead of the amber warning triangle.
     ///
-    /// Optional for the same cached/synced-snapshot reason as `warningAction`: older snapshots
+    /// Optional for the same cached-snapshot reason as `warningAction`: older snapshots
     /// decode as `nil` and read as `false`.
     var warningIsConnectPrompt: Bool?
     /// True: login unusable. False: a successful refresh verified it. Nil: unverified, such as

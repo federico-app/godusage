@@ -134,8 +134,7 @@ final class StaleWhileRevalidateTests: XCTestCase {
             local: firstSnapshot,
             history: history,
             descriptor: historyDescriptor,
-            now: fixedNow,
-            combined: false
+            now: fixedNow
         )
         let runtime = MutableProviderRuntime(
             provider: provider,
@@ -270,7 +269,7 @@ final class StaleWhileRevalidateTests: XCTestCase {
         )
         _ = await store.refresh(providerID: provider.id, force: true)
         var historyChangeCount = 0
-        store.onLocalStateChanged = { historyChangeCount += 1 }
+        store.addLocalStateObserver { historyChangeCount += 1 }
 
         runtime.snapshot = ProviderSnapshot(
             providerID: provider.id,

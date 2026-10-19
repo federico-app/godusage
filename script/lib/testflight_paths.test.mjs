@@ -9,7 +9,7 @@ import {
 test("iOS source and dedicated TestFlight pipeline changes are relevant", () => {
   const relevant = [
     "ios/GodUsageMobile/App/GodUsageMobileApp.swift",
-    "ios/Shared/SyncWire.swift",
+    "ios/GodUsageMobile/Teams/TeamsAPI.swift",
     ".github/workflows/release-ios.yml",
     "script/decode_provisioning_profile.sh",
     "script/release_ios.sh",
@@ -42,10 +42,10 @@ test("filter preserves only relevant paths and their order", () => {
   assert.deepEqual(
     testFlightRelevantPaths([
       ".github/workflows/release.yml",
-      "ios/Shared/SyncWire.swift",
+      "ios/GodUsageMobile/Teams/TeamsAPI.swift",
       "script/release.sh",
       ".github/workflows/release-ios.yml",
     ]),
-    ["ios/Shared/SyncWire.swift", ".github/workflows/release-ios.yml"],
+    ["ios/GodUsageMobile/Teams/TeamsAPI.swift", ".github/workflows/release-ios.yml"],
   );
 });

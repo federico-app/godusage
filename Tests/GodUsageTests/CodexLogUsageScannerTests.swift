@@ -1010,7 +1010,7 @@ final class CodexLogUsageScannerTests: XCTestCase {
     func testScanIgnoresConfigTomlServiceTier() async throws {
         // Regression: the tier used to be read from the *current* config.toml and applied to the
         // entire 30-day history, so toggling priority for one task retroactively ~doubled every
-        // past day (and the synced iCloud history with it). The current config must not matter;
+        // past day (and the Teams upload with it). The current config must not matter;
         // only the tier recorded in each session's log does.
         let day = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3600))
         let home = try CodexLogFixture.makeHome(files: [
