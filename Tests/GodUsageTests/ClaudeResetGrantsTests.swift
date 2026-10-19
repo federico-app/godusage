@@ -1,18 +1,14 @@
 import XCTest
 @testable import GodUsage
 
-/// The Claude "Rate Limit Resets" row, read from the usage body's `cedar_ember` block (Anthropic's one-off
-/// usage-limit reset grants). Read-only for now: no claim flow.
+/// The Claude "Rate Limit Resets" row, read from the reset-grants response's `cedar_ember` block
+/// (Anthropic's one-off usage-limit reset grants). Read-only for now: no claim flow.
 final class ClaudeResetGrantsTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_790_000_000) // 2026-09-21
 
     private func resetsLine(_ json: String) throws -> MetricLine? {
         let response = HTTPResponse(statusCode: 200, headers: [:], body: Data(json.utf8))
-        let mapped = try ClaudeUsageMapper.mapUsageResponse(response, credentials: ClaudeOAuth(subscriptionType: "max"), now: now)
-        return mapped.lines.first { line in
-            if case .values(let label, _, _, _, _, _) = line { return label == "Rate Limit Resets" }
-            return false
-        }
+        return try ClaudeUsageMapper.mapResetGrantsResponse(response, now: now)
     }
 
     private func countAndExpiries(_ line: MetricLine?) -> (Double?, [Date])? {
@@ -65,9 +61,31 @@ final class ClaudeResetGrantsTests: XCTestCase {
         XCTAssertNil(try resetsLine(#"{"five_hour":{"utilization":3}}"#))
     }
 
-    func testUsageRequestOptsInToResetGrants() {
-        let url = ClaudeUsageClient.usageURLWithResetGrants(URL(string: "https://api.anthropic.com/api/oauth/usage")!)
-        XCTAssertEqual(url.absoluteString, "https://api.anthropic.com/api/oauth/usage?cedar_ember=1")
+    func testResetGrantsRequestMatchesClaudeCode() {
+        let url = ClaudeUsageClient.resetGrantsURL(URL(string: "https://api.anthropic.com/api/oauth/usage")!)
+        XCTAssertEqual(url.absoluteString, "https://api.anthropic.com/api/oauth/usage?cedar_ember=1&skip_spend=1")
+    }
+
+    func testPlainUsageResponseNoLongerCarriesTheResetsRow() throws {
+        let body = #"{"five_hour":{"utilization":3},"cedar_ember":{"eligible":true,"grants":[{"id":"g","resets_left":1}]}}"#
+        let mapped = try ClaudeUsageMapper.mapUsageResponse(
+            HTTPResponse(statusCode: 200, headers: [:], body: Data(body.utf8)),
+            credentials: ClaudeOAuth(subscriptionType: "max"), now: now
+        )
+        XCTAssertNil(mapped.lines.first { $0.label == "Rate Limit Resets" })
+    }
+
+    func testHeldGrantDropsResetsWhoseDeadlinePassed() throws {
+        let line = try XCTUnwrap(try resetsLine("""
+        {"cedar_ember":{"eligible":true,"grants":[
+          {"id":"a","resets_left":1,"ends_at":"2026-09-22T00:00:00Z"},
+          {"id":"b","resets_left":1,"ends_at":"2026-10-22T00:00:00Z"},
+          {"id":"c","resets_left":1}]}}
+        """))
+        let later = GodUsageISO8601.date(from: "2026-09-23T00:00:00Z")!
+        let (count, expiries) = try XCTUnwrap(countAndExpiries(ClaudeUsageMapper.droppingElapsedResetGrants(line, now: later)))
+        XCTAssertEqual(count, 2)
+        XCTAssertEqual(expiries, [GodUsageISO8601.date(from: "2026-10-22T00:00:00Z")!])
     }
 
     func testUsageRequestIdentifiesAsClaudeCode() async throws {
