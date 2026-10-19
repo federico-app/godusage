@@ -10,6 +10,8 @@ struct ClaudeMappedUsage: Equatable, Sendable {
     /// notice is the one that must stay `.wait`: it tells the user manual refreshes make things worse,
     /// so the header triangle it drives must not offer one.
     var warningAction: ProviderSnapshot.WarningAction = .refresh
+    /// The live usage was withheld until the user signs in again (the account mismatch).
+    var requiresLogin = false
 }
 
 enum ClaudeUsageMapper {
@@ -74,6 +76,24 @@ enum ClaudeUsageMapper {
     /// (an inference-only token, e.g. from `claude setup-token`). Without it the Session / Weekly bars just
     /// read "No data" with no hint that a re-login restores them. The scanned spend tiles are unaffected
     /// and still load.
+    /// The card's token belongs to a different account than the one the card is named after. Its
+    /// usage is withheld (it is another account's), so the notice names the fix.
+    static func accountMismatchWarning(tokenAccount: ClaudeAccountIdentity) -> String {
+        let owner = tokenAccount.email.map { " (\($0))" } ?? ""
+        return "This login belongs to another account\(owner). Run `claude /login` again."
+    }
+
+    /// No live bars and no plan badge: both would describe the token's account, not the card's.
+    static func accountMismatchUsage(tokenAccount: ClaudeAccountIdentity) -> ClaudeMappedUsage {
+        ClaudeMappedUsage(
+            plan: nil,
+            lines: [],
+            warning: accountMismatchWarning(tokenAccount: tokenAccount),
+            warningAction: .refresh,
+            requiresLogin: true
+        )
+    }
+
     static let missingProfileScopeWarning = "Re-login for live usage. Run `claude` and sign in again to restore session and weekly limits."
 
     /// The "live usage is rate limited" note appended to a last-good snapshot so the still-shown bars are
