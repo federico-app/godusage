@@ -2,8 +2,7 @@ import Foundation
 import os
 
 /// The GodUsage teams backend, read-only from the phone (plus pairing and sign-out). Debug builds
-/// talk to the dev server, like the Mac's DEV channel and the dev CloudKit container; Release builds
-/// to production. A pairing code names its server, and the app accepts only its own.
+/// talk to the dev server, like the Mac's DEV channel; Release builds to production. A pairing code names its server, and the app accepts only its own.
 struct TeamsAPI: Sendable {
     #if DEV_CHANNEL
     static let baseURL = URL(string: "https://api-dev.godusage.com")!

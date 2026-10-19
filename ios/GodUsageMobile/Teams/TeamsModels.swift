@@ -78,10 +78,22 @@ struct TeamBoard: Decodable, Hashable, Sendable {
     var members: [Member]
 }
 
-/// Teams-only formatting; money and token counts use the shared `UsageFormat`.
+/// Display formatting for team numbers and names.
 enum TeamsFormat {
-    static func cost(_ value: Double) -> String { UsageFormat.dollars(value) }
-    static func tokens(_ value: Int) -> String { UsageFormat.tokens(Double(value)) }
+    static func cost(_ value: Double) -> String {
+        "$" + value.formatted(.number.precision(.fractionLength(value >= 1_000 ? 0 : 2)))
+    }
+
+    /// Counts below a million print in full with thousands separators ("58,342"); larger ones
+    /// stay compact ("1.2M", "3.4B") so rows don't overflow.
+    static func tokens(_ value: Int) -> String {
+        let number = Double(value)
+        switch abs(number) {
+        case 1_000_000_000...: return String(format: "%.1fB", number / 1_000_000_000)
+        case 1_000_000...: return String(format: "%.1fM", number / 1_000_000)
+        default: return value.formatted(.number)
+        }
+    }
 
     /// Provider ids as the Mac shows them, for the common ones; others are capitalized.
     static func providerName(_ id: String) -> String {

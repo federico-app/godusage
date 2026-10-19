@@ -41,8 +41,6 @@ An account entry may carry `account`, an anonymous fingerprint of the provider a
 
 The server keeps a small list of which fingerprints each user has uploaded, so finding shared accounts doesn't read anyone's usage history.
 
-This mirrors how [iCloud Sync](icloud-sync.md) combines Macs.
-
 ## Caching
 
 The app fetches stats on every popover open, every two minutes while it stays open, and after uploads, so computed results are kept in Redis per team (`src/teamCache.ts`): stats, challenges, plan reports, and champions.

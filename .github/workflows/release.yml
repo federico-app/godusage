@@ -77,7 +77,6 @@ jobs:
           APPLE_NOTARY_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_NOTARY_PRIVATE_KEY_BASE64 }}
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
           APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
-          APPLE_DEVELOPER_ID_ICLOUD_PROFILE: ${{ secrets.APPLE_DEVELOPER_ID_ICLOUD_PROFILE }}
           SPARKLE_PUBLIC_KEY: ${{ secrets.SPARKLE_PUBLIC_KEY }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
@@ -89,7 +88,6 @@ jobs:
             APPLE_NOTARY_PRIVATE_KEY_BASE64 \
             APPLE_NOTARY_KEY_ID \
             APPLE_NOTARY_ISSUER_ID \
-            APPLE_DEVELOPER_ID_ICLOUD_PROFILE \
             SPARKLE_PUBLIC_KEY \
             SPARKLE_PRIVATE_KEY
           do
@@ -130,14 +128,6 @@ jobs:
           set -euo pipefail
           printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle_ed_private_key"
           echo "SPARKLE_PRIVATE_KEY_FILE=$RUNNER_TEMP/sparkle_ed_private_key" >> "$GITHUB_ENV"
-
-      - name: Write iCloud provisioning profile
-        env:
-          ICLOUD_PROFILE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_ICLOUD_PROFILE }}
-        run: |
-          set -euo pipefail
-          printf '%s' "$ICLOUD_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/godusage-icloud.provisionprofile"
-          echo "ICLOUD_PROVISIONING_PROFILE=$RUNNER_TEMP/godusage-icloud.provisionprofile" >> "$GITHUB_ENV"
 
       - name: Write App Store Connect notarization key
         env:
@@ -317,7 +307,6 @@ jobs:
         env:
           APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
         run: |
-          rm -f "$RUNNER_TEMP/godusage-icloud.provisionprofile"
           rm -f "$RUNNER_TEMP/sparkle_ed_private_key"
           if [[ -n "$APPLE_NOTARY_KEY_ID" ]]; then
             rm -f "$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"

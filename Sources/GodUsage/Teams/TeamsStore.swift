@@ -380,7 +380,7 @@ final class TeamsStore {
         guard let token = session?.token else { return }
         guard let deviceID = deviceID() else {
             AppLog.warn(.teams, "teams upload skipped: this Mac's device identity is unresolved")
-            uploadError = "This Mac’s identity isn’t resolved yet, so its usage isn’t shared. See iCloud Sync in General settings."
+            uploadError = "This Mac’s identity isn’t resolved yet, so its usage isn’t shared."
             return
         }
         let upload = TeamUsageUpload.make(

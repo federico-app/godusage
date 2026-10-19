@@ -9,13 +9,12 @@ set -euo pipefail
 #
 # Required env:
 #   CODESIGN_IDENTITY     Developer ID Application identity display name
-#   ICLOUD_PROVISIONING_PROFILE  Developer ID provisioning profile with the production iCloud container
 #   SPARKLE_PUBLIC_KEY    base64 EdDSA public key -> baked into Info.plist (SUPublicEDKey). generate_appcast
 #                         only signs the DMG if this matches the private key it signs with.
 #   GODUSAGE_VERSION     human version, e.g. 0.7.0 (CFBundleShortVersionString)
 # Optional env:
 #   CHANNEL               "prod" (default) or "dev". dev builds "GodUsage DEV" (com.montinovo.godusage.dev,
-#                         its own iCloud container, appcast-dev.xml feed, GodUsage-DEV-<version>.dmg) so
+#                         its own appcast-dev.xml feed, GodUsage-DEV-<version>.dmg) so
 #                         it installs and updates beside the release app. GODUSAGE_VERSION may then
 #                         carry a suffix (0.8.16-dev.642); prod accepts only a stable version.
 #   GODUSAGE_BUILD       CFBundleVersion (monotonic). Default: git commit count.
@@ -33,7 +32,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 : "${CODESIGN_IDENTITY:?set CODESIGN_IDENTITY to your Developer ID Application identity}"
-: "${ICLOUD_PROVISIONING_PROFILE:?set ICLOUD_PROVISIONING_PROFILE to the iCloud provisioning profile path}"
 : "${SPARKLE_PUBLIC_KEY:?set SPARKLE_PUBLIC_KEY to your base64 EdDSA public key}"
 : "${GODUSAGE_VERSION:?set GODUSAGE_VERSION, e.g. 0.7.0}"
 
@@ -43,7 +41,6 @@ case "$CHANNEL" in
   prod)
     APP_DISPLAY_NAME="GodUsage"
     BUNDLE_ID="com.montinovo.godusage"
-    ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage"
     FEED_FILE="appcast.xml"
     DMG_PREFIX="GodUsage"
     URL_SCHEME="godusage"   # AppChannel.urlScheme: invite links and the Sign in with Apple return
@@ -51,7 +48,6 @@ case "$CHANNEL" in
   dev)
     APP_DISPLAY_NAME="GodUsage DEV"
     BUNDLE_ID="com.montinovo.godusage.dev"
-    ICLOUD_CONTAINER_ID="iCloud.com.montinovo.godusage.dev"
     FEED_FILE="appcast-dev.xml"
     DMG_PREFIX="GodUsage-DEV"
     URL_SCHEME="godusage-dev"
@@ -62,8 +58,6 @@ case "$CHANNEL" in
     ;;
 esac
 EXPECTED_TEAM_ID="${APPLE_TEAM_ID:-S6X72K86R8}"
-APPLE_TEAM_ID="$EXPECTED_TEAM_ID"
-export APPLE_TEAM_ID
 MIN_SYSTEM_VERSION="15.0"
 VERSION="$GODUSAGE_VERSION"
 if [ "$CHANNEL" = "prod" ]; then
@@ -88,17 +82,6 @@ APP_BINARY="$APP_MACOS/$APP_NAME"
 CLI_BINARY="$APP_HELPERS/godusage"
 DMG_PATH="$DIST_DIR/$DMG_NAME"
 DMG_CHECKSUM_PATH="$DMG_PATH.sha256"
-ENTITLEMENTS_TEMPLATE="$ROOT_DIR/script/GodUsage.release.entitlements.plist"
-if [ "$CHANNEL" = "dev" ]; then
-  # Same entitlements, pointed at the dev container.
-  mkdir -p "$DIST_DIR"
-  sed "s/iCloud\.com\.montinovo\.godusage</$ICLOUD_CONTAINER_ID</" "$ENTITLEMENTS_TEMPLATE" \
-    > "$DIST_DIR/GodUsage.release-dev.entitlements.plist"
-  ENTITLEMENTS_TEMPLATE="$DIST_DIR/GodUsage.release-dev.entitlements.plist"
-  grep -q "$ICLOUD_CONTAINER_ID<" "$ENTITLEMENTS_TEMPLATE" \
-    || { echo "could not point the entitlements at $ICLOUD_CONTAINER_ID" >&2; exit 1; }
-fi
-ENTITLEMENTS="$DIST_DIR/GodUsage.release.resolved.entitlements.plist"
 
 [[ "$CODESIGN_IDENTITY" == Developer\ ID\ Application:*"($EXPECTED_TEAM_ID)" ]] \
   || { echo "CODESIGN_IDENTITY must belong to team $EXPECTED_TEAM_ID" >&2; exit 1; }
@@ -229,35 +212,20 @@ cat >"$APP_CONTENTS/Info.plist" <<PLIST
   <key>SUPublicEDKey</key><string>$SPARKLE_PUBLIC_KEY</string>
   <key>SUEnableAutomaticChecks</key><true/>
   <key>SUScheduledCheckInterval</key><integer>3600</integer>
-  <key>NSUbiquitousContainers</key>
-  <dict>
-    <key>$ICLOUD_CONTAINER_ID</key>
-    <dict>
-      <key>NSUbiquitousContainerIsDocumentScopePublic</key><false/>
-      <key>NSUbiquitousContainerName</key><string>GodUsage</string>
-      <key>NSUbiquitousContainerSupportedFolderLevels</key><string>None</string>
-    </dict>
-  </dict>
 </dict>
 </plist>
 PLIST
-
-cp "$ICLOUD_PROVISIONING_PROFILE" "$APP_CONTENTS/embedded.provisionprofile"
-"$ROOT_DIR/script/render_icloud_entitlements.sh" \
-  "$ENTITLEMENTS_TEMPLATE" "$ICLOUD_PROVISIONING_PROFILE" "$ENTITLEMENTS" \
-  "$ICLOUD_CONTAINER_ID"
 
 # Embed + sign Sparkle (Developer ID, hardened runtime, secure timestamp).
 "$ROOT_DIR/script/embed_sparkle.sh" "$APP_BUNDLE" "$APP_BINARY" "$CODESIGN_IDENTITY" "--options runtime --timestamp"
 codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$CLI_BINARY"
 
 echo "==> signing app (Developer ID, hardened runtime)"
-# Not --deep: the Sparkle framework is signed above and must keep that signature.
-codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS" \
-  --sign "$CODESIGN_IDENTITY" "$APP_BUNDLE"
+# Not --deep: the Sparkle framework is signed above and must keep that signature. No get-task-allow
+# entitlement (that debug flag would fail notarization); a non-sandboxed app needs no entitlements and
+# no provisioning profile.
+codesign --force --options runtime --timestamp --sign "$CODESIGN_IDENTITY" "$APP_BUNDLE"
 codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
-codesign -d --entitlements :- "$APP_BUNDLE" 2>&1 | grep -q "$ICLOUD_CONTAINER_ID<" \
-  || { echo "signed app is missing the $ICLOUD_CONTAINER_ID iCloud entitlement" >&2; exit 1; }
 
 # Notarize + staple the app itself (not just the DMG) so it launches cleanly even offline after a
 # Sparkle update extracts it from the disk image.

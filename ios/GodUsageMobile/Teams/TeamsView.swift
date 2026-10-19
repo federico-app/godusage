@@ -1,7 +1,7 @@
 import Charts
 import SwiftUI
 
-/// The Teams tab: linking with a Mac by QR code, then your own usage from the server and your
+/// The app's one screen: linking with a Mac by QR code, then your own usage from the server and your
 /// teams' leaderboards.
 struct TeamsView: View {
     var model: TeamsModel
@@ -57,7 +57,7 @@ struct TeamsView: View {
             ContentUnavailableView {
                 Label("Link With Your Mac", systemImage: "qrcode.viewfinder")
             } description: {
-                Text("On your Mac, open GodUsage Settings → Teams and choose Link iPhone or iPad. Then scan the code to see your usage and your teams here, with any iCloud account.")
+                Text("On your Mac, open GodUsage Settings → Teams and choose Link iPhone or iPad. Then scan the code to see your usage and your teams here.")
             } actions: {
                 Button {
                     model.errorMessage = nil

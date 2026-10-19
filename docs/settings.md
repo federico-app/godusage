@@ -14,10 +14,6 @@ While Settings is open, GodUsage briefly appears in the Dock, the same as during
 | Launch at Login | on/off | Registers the app as a login item. The system's login-item registry is the source of truth. The dashboard recommends it with a [setup card](dashboard.md#setup-cards) until you turn it on or close the card. |
 | Global Shortcut | record a shortcut | Toggles the popover from anywhere. Click the field and press a combo. The ⓧ clears it. |
 
-### iCloud Sync
-
-**Sync Across Macs** is on by default. Turn it off here to keep this Mac local-only. It shares normalized GodUsage history and each device's latest usage snapshot through the app's private CloudKit database, and combines machine-local tokens and spend across Macs signed into the same iCloud account. Settings shows the five-minute write cadence and each device's relative **Updated** time. It also reports unavailable iCloud, loading, write, and malformed-record states. See [iCloud Sync](icloud-sync.md).
-
 ### Privacy
 
 | Setting | Options | What it does |
@@ -76,7 +72,7 @@ Signed out, the pane shows **Sign In with Apple**. Signed in, it has four sectio
 
 | Section | What it holds |
 |---|---|
-| Account | Your display name (**Edit Name…**), when this Mac last shared its usage or why it isn't, and **Show Rank in Menu Bar** (off by default). |
+| Account | Your display name (**Edit Name…**), when this Mac last shared its usage or why it isn't, and **Show Rank in Menu Bar** (off by default). If this Mac's device ID can't be read, a notice says its usage isn't shared, with **Recover Identity** when an older copy can be read from the Keychain with your approval. |
 | Teams | Your teams; select one to manage it (the popover and Teams window follow). **New Team…** and **Join Team…** (paste an invite link). |
 | *Selected team* | Members, **Invite Link** (Copy; owners can make a **New Link**), **Web Leaderboard** (members-only, Copy or Open), the owners' **Public Leaderboard** switch, **Open Leaderboards**, **Leave Team…** (hidden for the last owner), and the owners' **Delete Team…**. Owners manage each member from the **⋯** menu: **Make Owner…**, **Make Member**, **Remove…**. |
 | Account Actions | **Sign Out** removes this Mac's usage from your teams, then signs out. **Export My Data…** saves everything the Teams service keeps about you as JSON. **Delete…** deletes the account, the usage every Mac shared, and the teams you own. Links to the service's Terms and Privacy Policy. |

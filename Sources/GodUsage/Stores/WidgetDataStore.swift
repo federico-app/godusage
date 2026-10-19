@@ -83,11 +83,10 @@ final class WidgetDataStore {
     private static let failureRetryBackoff: TimeInterval = 60
     static let defaultSlowProviderRefreshThreshold: TimeInterval = 10
 
-    /// Rendered snapshots consumed by every UI/API surface. Equal to `localSnapshots` when iCloud sync
-    /// is off; machine-local history rows are rebuilt from the union while sync is on.
+    /// Rendered snapshots consumed by every UI/API surface. Published from `localSnapshots` on each
+    /// rebuild, so a refresh batch can coalesce its updates into one UI change.
     var snapshots: [String: ProviderSnapshot] = [:]
-    /// Last-good snapshots produced on this Mac. These alone are cached and exported to iCloud, so a
-    /// peer contribution can never echo back out and multiply on the next device.
+    /// Last-good snapshots produced on this Mac. These are what the cache persists.
     private(set) var localSnapshots: [String: ProviderSnapshot] = [:]
     /// Cached credits remain visible at launch, but cannot trigger new alerts until revalidated.
     private var providersRefreshedThisLaunch: Set<String> = []
@@ -117,12 +116,8 @@ final class WidgetDataStore {
     /// just gathers each pass's enabled bounded metrics and delegates.
     @ObservationIgnored private let notificationEvaluator = QuotaNotificationEvaluator()
 
-    /// Fires when this Mac's publishable sync state changes: refreshed usage history or a provider
-    /// error transition (the synced snapshot carries `providerErrors`, so failures must publish
-    /// too). Wired by `ICloudUsageSyncStore`; debounced there so a concurrent provider batch
-    /// produces one write.
-    @ObservationIgnored var onLocalStateChanged: (@MainActor () -> Void)?
-    /// Further listeners for the same signal (the Teams uploader), so iCloud keeps its own slot.
+    /// Listeners (the Teams uploader) told when this Mac's usage state changes: refreshed usage
+    /// history or a provider error transition. Each debounces on its own side.
     @ObservationIgnored private var localStateObservers: [@MainActor () -> Void] = []
     /// One-time user-attended preparation for hidden credential-backed accounts. The provider-id set
     /// makes applicability explicit: disabling that provider family must also disable its secret reads.
@@ -135,8 +130,6 @@ final class WidgetDataStore {
     /// Included in the footer's global refresh state so a pending Keychain approval is visible and
     /// repeated clicks cannot launch another Refresh All while the bounded preparation is active.
     private(set) var isPreparingInteractiveRefresh = false
-    /// Readable (not writable) so the sync tests can assert what peers actually contribute.
-    @ObservationIgnored private(set) var peerHistoryDocuments: [UsageHistoryDocument] = []
     /// Non-zero while `refreshAll` is coalescing per-provider completion work into short debounced
     /// rebuilds plus one batch-end rebuild + cache persist. Plain counters — everything here is
     /// MainActor-serialized.
@@ -144,9 +137,6 @@ final class WidgetDataStore {
     @ObservationIgnored private var pendingSnapshotRebuild = false
     /// The in-flight debounce for mid-batch publishing; see `requestSnapshotRebuild`.
     @ObservationIgnored private var coalescedRebuildTask: Task<Void, Never>?
-    /// Accounts synced from other Macs that have NO card here: surfaced in Total Spend only (their
-    /// synthesized snapshots carry the usual Today/Yesterday/Last 30 Days lines), never as cards.
-    private(set) var remoteOnlySpend: [(provider: Provider, snapshot: ProviderSnapshot)] = []
 
     /// Global meter style: whether every bounded tile (and the menu-bar value) renders as "used" or
     /// "left/remaining". Persisted so the choice survives relaunch; defaults to `.remaining`.
@@ -282,8 +272,8 @@ final class WidgetDataStore {
         let failed = outcomes.count { $0 == .failed }
         let cached = outcomes.count { $0 == .cacheHit }
         let backedOff = outcomes.count { $0 == .backedOff }
-        // Failures publish too: the synced snapshot's error map must not stay frozen on a Mac whose
-        // every provider is failing. Cached/backed-off outcomes changed nothing, so they don't.
+        // Failures notify too, so listeners see error transitions. Cached/backed-off outcomes changed
+        // nothing, so they don't.
         if refreshed > 0 || failed > 0 { notifyLocalStateChanged() }
         AppLog.info(.refresh, "batch end (\(durationMs)ms, \(refreshed) ok / \(failed) failed / \(cached) cached / \(backedOff) backed off)")
     }
@@ -375,7 +365,7 @@ final class WidgetDataStore {
     }
 
     /// Reset-credit reminders cover enabled providers even when the row is hidden in Customize.
-    /// Read only local snapshots; peer history and sample values cannot create expiry reminders.
+    /// Read only local snapshots; sample values cannot create expiry reminders.
     func resetExpiryNotificationMetrics() -> [ResetExpiryNotificationEvaluator.Metric] {
         registry.descriptors.compactMap { descriptor in
             guard descriptor.sample.showsResetExpiries,
@@ -618,8 +608,7 @@ final class WidgetDataStore {
                 local: snapshot,
                 history: history,
                 descriptor: descriptor,
-                now: now(),
-                combined: false
+                now: now()
             )
             AppLog.debug(.refresh, "preserved last-good history for \(providerID) after scan miss")
         }
@@ -650,23 +639,8 @@ final class WidgetDataStore {
         failureRetryAfter[providerID] = nil
     }
 
-    /// Rebuild the in-memory union immediately after a provider toggle. Local cached data remains
-    /// available to direct API reads, but disabled providers stop receiving peer contributions.
+    /// Republish the rendered snapshots immediately after a provider toggle.
     func providerEnablementDidChange() {
-        rebuildRenderedSnapshots()
-    }
-
-    /// Replaces the downloaded peer set. A duplicate device document resolves to the newest valid
-    /// one, and this Mac's own downloaded copy is excluded in favor of current memory.
-    func setPeerHistoryDocuments(_ documents: [UsageHistoryDocument], ownDeviceID: String) {
-        peerHistoryDocuments = UsageHistoryDocument.newestByDevice(documents)
-            .filter { $0.deviceID != ownDeviceID }
-        rebuildRenderedSnapshots()
-    }
-
-    func clearPeerHistoryDocuments() {
-        guard !peerHistoryDocuments.isEmpty else { return }
-        peerHistoryDocuments = []
         rebuildRenderedSnapshots()
     }
 
@@ -675,13 +649,11 @@ final class WidgetDataStore {
     }
 
     private func notifyLocalStateChanged() {
-        onLocalStateChanged?()
         for observer in localStateObservers { observer() }
     }
 
     /// This Mac's own daily history for every enabled provider that classifies it, account-wide
-    /// sources (Cursor) included, for the Teams upload. Peer (iCloud) contributions are never
-    /// included, so each Mac reports only what it read itself.
+    /// sources (Cursor) included, for the Teams upload.
     func localTeamHistorySources() -> [TeamHistorySource] {
         registry.historyDescriptorsByProvider.compactMap { providerID, descriptor in
             guard isProviderEnabled(providerID), let history = localSnapshots[providerID]?.usageHistory else { return nil }
@@ -689,75 +661,10 @@ final class WidgetDataStore {
         }
     }
 
-    func localHistoryDocument(deviceID: String, deviceName: String, updatedAt: Date = Date()) -> UsageHistoryDocument {
-        var providers: [String: ProviderUsageHistory] = [:]
-        var identities: [String: String] = [:]
-        // Every machine-local card syncs — account cards included. Their ids are identity-derived,
-        // so they mean the same account on every Mac; the identities map additionally lets peers
-        // match a default card's history to whatever card that account is over there (see
-        // `PeerHistoryRemapper`).
-        for (providerID, descriptor) in registry.historyDescriptorsByProvider
-        where descriptor.scope == .machineLocal && isProviderEnabled(providerID) {
-            if let history = localSnapshots[providerID]?.usageHistory {
-                providers[providerID] = history
-                if let identity = providerIdentityKeys[providerID] {
-                    identities[providerID] = identity
-                }
-            }
-        }
-        return UsageHistoryDocument(
-            deviceID: deviceID,
-            deviceName: deviceName,
-            updatedAt: updatedAt,
-            providers: providers,
-            identities: identities.isEmpty ? nil : identities
-        )
-    }
-
-    /// The companion payload to `localHistoryDocument`: this Mac's rendered live state for every
-    /// enabled provider, written for the iOS app. Built from `localSnapshots` only — peer
-    /// contributions never republish — and unlike history it includes account-wide providers such
-    /// as Cursor, because a live snapshot is per-device display state, not additive history.
-    func localSnapshotDocument(deviceID: String, deviceName: String, updatedAt: Date = Date()) -> DeviceSnapshotDocument {
-        var snapshots = localSnapshots.filter { isProviderEnabled($0.key) }
-        for (id, var snapshot) in snapshots {
-            // Strip the raw daily series: the rendered lines already carry every display value, and
-            // the machine-local series ships in the record's history payload. Not duplicating it
-            // keeps the per-device record far from CloudKit's 1 MB record limit.
-            snapshot.usageHistory = nil
-            // The publish boundary is a display boundary, like the CLI/API: renames live only in
-            // the account registry (never baked into cached snapshots), so resolve them here or
-            // companion apps would show the derived name instead of the user's chosen one.
-            if let resolved = resolveDisplayName?(id) {
-                snapshot.displayName = resolved
-            }
-            snapshots[id] = snapshot
-        }
-        let errors = providerErrors.filter { isProviderEnabled($0.key) }
-        // Error-only providers (no last-good snapshot) carry no display name anywhere else in the
-        // record, so resolve theirs here — same boundary rule as the card titles above.
-        var names: [String: String] = [:]
-        for id in errors.keys where snapshots[id] == nil {
-            names[id] = resolveDisplayName?(id) ?? registry.provider(id: id)?.displayName ?? id
-        }
-        // The connect-prompt flavor travels with the errors it describes, so a companion app can
-        // render those entries neutrally instead of as warnings.
-        let connectPrompts = providerConnectPrompts.filter { errors.keys.contains($0) }
-        return DeviceSnapshotDocument(
-            deviceID: deviceID,
-            deviceName: deviceName,
-            updatedAt: updatedAt,
-            snapshots: snapshots,
-            providerErrors: errors,
-            providerNames: names.isEmpty ? nil : names,
-            providerConnectPrompts: connectPrompts.isEmpty ? nil : connectPrompts
-        )
-    }
-
     /// Rebuild now, unless a batch pass is in flight — then via a short debounce so a burst of
     /// provider completions costs one rebuild while a fast provider still publishes promptly
     /// instead of waiting out the batch's slowest card. Only the refresh paths route through this;
-    /// user-driven changes (enablement, peer documents) rebuild immediately.
+    /// user-driven changes (enablement) rebuild immediately.
     private func requestSnapshotRebuild() {
         guard snapshotRebuildDeferrals > 0 else {
             rebuildRenderedSnapshots()
@@ -785,106 +692,7 @@ final class WidgetDataStore {
     }
 
     private func rebuildRenderedSnapshots() {
-        guard !peerHistoryDocuments.isEmpty else {
-            snapshots = localSnapshots
-            remoteOnlySpend = []
-            return
-        }
-        let renderDate = now()
-        let enabledDescriptors = registry.historyDescriptorsByProvider.reduce(
-            into: [String: UsageHistoryDescriptor]()
-        ) { result, entry in
-            if isProviderEnabled(entry.key) { result[entry.key] = entry.value }
-        }
-        // Match peers by account identity, not card id — the same account can be the default card
-        // on one Mac and an extra account card on another. Whatever matches no local card at all
-        // becomes a Total Spend-only remote entry below.
-        let remapped = PeerHistoryRemapper.remap(
-            documents: peerHistoryDocuments,
-            localCardIDs: Set(registry.providers.map(\.id)),
-            localIdentityByCardID: providerIdentityKeys
-        )
-        let merged = UsageHistoryAggregator.merged(
-            localSnapshots: localSnapshots,
-            peerHistories: remapped.histories,
-            descriptors: enabledDescriptors,
-            now: renderDate
-        )
-        remoteOnlySpend = Self.renderRemoteOnlySpend(
-            remapped.remoteOnly,
-            registry: registry,
-            enabledDescriptors: enabledDescriptors,
-            now: renderDate
-        )
-        var rendered = localSnapshots
-        for (providerID, history) in merged {
-            guard let descriptor = registry.historyDescriptorsByProvider[providerID],
-                  let provider = registry.provider(id: providerID)
-            else { continue }
-            let local = localSnapshots[providerID] ?? ProviderSnapshot(
-                providerID: providerID,
-                displayName: provider.displayName,
-                lines: [],
-                refreshedAt: peerHistoryDocuments.map(\.updatedAt).max() ?? renderDate
-            )
-            rendered[providerID] = UsageHistorySnapshotRenderer.render(
-                local: local,
-                history: history,
-                descriptor: descriptor,
-                now: renderDate
-            )
-        }
-        snapshots = rendered
-    }
-
-    /// Synthesize Total Spend entries for accounts that exist only on other Macs: a pseudo provider
-    /// (family icon, "Claude · Mac mini" name) plus a snapshot carrying the standard spend-tile
-    /// lines, rendered from the merged remote history by the same renderer real cards use.
-    private static func renderRemoteOnlySpend(
-        _ remoteOnly: [PeerHistoryRemapper.RemoteOnlyHistory],
-        registry: WidgetRegistry,
-        enabledDescriptors: [String: UsageHistoryDescriptor],
-        now: Date
-    ) -> [(provider: Provider, snapshot: ProviderSnapshot)] {
-        remoteOnly.compactMap { entry in
-            // Scoped account cards are the complete local family when no default-home login exists,
-            // so the bare provider may be absent. Any ENABLED sibling carries the same icon and
-            // history rendering metadata needed for a remote-only Total Spend slice. If the whole
-            // family is disabled, its peer-only spend stays out of Total Spend too.
-            guard let familyProvider = registry.providers.first(where: {
-                let isFamily = ProviderAccountID.family(of: $0.id) == entry.family
-                return isFamily && enabledDescriptors[$0.id] != nil
-            }),
-                  let descriptor = enabledDescriptors[familyProvider.id]
-            else { return nil }
-            let history = UsageHistoryAggregator.mergeHistories(entry.histories, now: now)
-            guard !history.series.daily.isEmpty else { return nil }
-
-            // The slice is named by the account's identity-derived card id ("claude@ab12cd34") —
-            // unique per account, and the exact id the account's card gets the day it's signed in
-            // here (and the id the CLI/API answer to on the Mac that has it). Which Mac the spend
-            // came from is irrelevant to the total, so it's not part of the name. The pseudo
-            // provider id stays distinct from real card ids so a slice can never collide with a
-            // live card.
-            let provider = Provider(
-                id: "\(entry.family)@peer-\(ProviderAccountID.hash8(entry.identityKey))",
-                displayName: entry.cardID,
-                icon: familyProvider.icon
-            )
-            let empty = ProviderSnapshot(
-                providerID: provider.id,
-                displayName: provider.displayName,
-                lines: [],
-                refreshedAt: now
-            )
-            let snapshot = UsageHistorySnapshotRenderer.render(
-                local: empty,
-                history: history,
-                descriptor: descriptor,
-                now: now
-            )
-            return (provider, snapshot)
-        }
+        snapshots = localSnapshots
     }
 
     func loginRequired(for providerID: String) -> Bool {

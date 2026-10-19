@@ -1,7 +1,8 @@
 import Foundation
 
-/// Whether a provider's daily spend history may be added across Macs. Every provider with shared
-/// spend tiles declares this explicitly so a future account-wide source cannot silently double-count.
+/// Whether a provider's daily spend history belongs to this Mac or to the whole account. Every
+/// provider with shared spend tiles declares this explicitly, so Teams never adds an account-wide
+/// source once per device.
 struct UsageHistoryDescriptor: Hashable, Sendable {
     enum Scope: String, Hashable, Sendable {
         case machineLocal

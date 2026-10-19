@@ -51,7 +51,7 @@ GodUsage is a fork of OpenUsage rebuilt for speed. We measured both on the same 
 - **[Sakana Fugu](docs/providers/sakana.md)**: subscription quota plus local Fugu Ultra usage trend and estimated API-rate value
 - **[Z.ai](docs/providers/zai.md)**: session, weekly, and web-search quotas (GLM Coding Plan, API key)
 
-Most providers read the credentials already on your Mac (keychain, auth files, app state). OpenRouter and Z.ai have no local credential to reuse, so you supply an API key (see [OpenRouter setup](docs/providers/openrouter.md) or [Z.ai setup](docs/providers/zai.md)). GodUsage uses each credential only for that provider's requests. GodUsage collects no analytics. The [Privacy](docs/privacy.md) page covers the public pricing downloads and optional iCloud sync.
+Most providers read the credentials already on your Mac (keychain, auth files, app state). OpenRouter and Z.ai have no local credential to reuse, so you supply an API key (see [OpenRouter setup](docs/providers/openrouter.md) or [Z.ai setup](docs/providers/zai.md)). GodUsage uses each credential only for that provider's requests. GodUsage collects no analytics. The [Privacy](docs/privacy.md) page covers the public pricing downloads and the optional Teams service.
 
 ## Features
 
@@ -69,13 +69,7 @@ Most providers read the credentials already on your Mac (keychain, auth files, a
 
 ## iPhone companion
 
-GodUsage for iOS shows combined usage from every Mac you run: spend today, yesterday, and over the last 30 days. Data syncs privately over iCloud. Lock screen and home screen widgets can show cost or tokens. See the [iOS app](docs/ios-app.md).
-
-<p align="center">
-  <img src="assets/ios-lockscreen.png" width="270" alt="GodUsage lock screen widgets showing today's AI spend synced from your Macs">
-  &nbsp;&nbsp;
-  <img src="assets/ios-home-widgets.png" width="510" alt="GodUsage home screen widgets with today, yesterday, and 30-day spend plus a usage trend chart">
-</p>
+GodUsage for iOS shows your [Teams](docs/teams.md) usage: spend today and over the last 30 days across your Macs, plus your teams' leaderboards. Link it to a Mac signed in to Teams by scanning a QR code. See the [iOS app](docs/ios-app.md).
 
 ## Documentation
 

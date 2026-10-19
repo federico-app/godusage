@@ -30,7 +30,7 @@ struct SettingsMigration: Sendable {
 enum SettingsSchema {
     /// Current schema version. Keep equal to the highest migration `version` below (or the baseline when
     /// there are none). This is NOT the app version — bump it only alongside a migration you add.
-    static let current = 6
+    static let current = 7
 
     /// The provider IDs that existed when the v2 migration shipped, frozen forever. A migration is a
     /// point-in-time transform: any future build with more providers also contains this migration, so a
@@ -116,6 +116,12 @@ enum SettingsSchema {
                 }
                 defaults.set(pins, forKey: "godusage.layout.v1.menuBarPins")
             }
+        },
+        // v7 drops the retired iCloud Sync preferences. The device id saved beside them
+        // (`godusage.icloudSync.deviceID.v1`) stays: Teams still keys this Mac's upload by it.
+        SettingsMigration(version: 7) { defaults in
+            defaults.removeObject(forKey: "godusage.icloudSync.enabled.v1")
+            defaults.removeObject(forKey: "godusage.icloudSync.pendingOptOutDeletion.v1")
         }
     ]
 

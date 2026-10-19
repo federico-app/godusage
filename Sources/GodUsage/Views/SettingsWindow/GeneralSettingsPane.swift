@@ -2,7 +2,7 @@ import KeyboardShortcuts
 import SwiftUI
 
 /// The Settings window's General pane: app behavior (Total Spend card, login item, global
-/// shortcut), iCloud sync, and privacy.
+/// shortcut) and privacy.
 struct GeneralSettingsPane: View {
     @Environment(AppContainer.self) private var container
 
@@ -36,7 +36,6 @@ struct GeneralSettingsPane: View {
                         .hoverTooltip("Open GodUsage from anywhere")
                 }
             }
-            ICloudSyncSettingsSection(sync: container.iCloudSync)
             SettingsSection("Privacy") {
                 SettingsRow("Hide From Screen Share") {
                     Toggle("", isOn: $privacy.hideUsageWhileScreenSharing)

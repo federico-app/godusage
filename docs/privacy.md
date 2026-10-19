@@ -4,7 +4,7 @@ GodUsage collects no product analytics or usage statistics. It has no analytics 
 
 On the first launch after upgrading from a version that included analytics, GodUsage deletes the retired analytics identifier and counters that version stored locally.
 
-Provider usage stays on your Mac except for the network requests needed to read each provider's limits, and the optional services described below (iCloud Sync and Teams), which you can turn off.
+Provider usage stays on your Mac except for the network requests needed to read each provider's limits, and the optional Teams service described below, which you can turn off.
 
 ## Credentials stored on this Mac
 
@@ -27,11 +27,7 @@ Release builds also check the signed update feed. See [Updates](updates.md).
 
 To avoid re-reading unchanged Claude, Codex, Grok, Muse, and pi logs after every relaunch, GodUsage keeps parsed usage events in `~/Library/Application Support/GodUsage/log-scan-cache/`. These records hold the usage metadata needed for local totals, including any per-event cost a provider recorded, but not raw JSONL lines or conversation text.
 
-The cache is private to your macOS account and is never sent to a provider or iCloud. GodUsage drops old source-file records as the scan window advances and removes identity caches unused for 35 days. Pricing runs after the cache is read, so computed totals are not stored in it.
-
-## iCloud Sync
-
-iCloud Sync is on by default. You can turn it off in Settings. With [iCloud Sync](icloud-sync.md) on, GodUsage writes normalized daily tokens, spend, and model totals to its private CloudKit database, plus each device's latest rendered usage snapshot (current quotas, plans, balances, and refresh errors). Your own devices use this data to show one combined summary and live usage. It stays inside your iCloud account and is never visible to GodUsage's developers or any provider. Credentials, raw provider responses, and raw logs are never written there. Turning sync off deletes this device's record from iCloud.
+The cache is private to your macOS account and is never sent to a provider. GodUsage drops old source-file records as the scan window advances and removes identity caches unused for 35 days. Pricing runs after the cache is read, so computed totals are not stored in it.
 
 ## Teams
 
