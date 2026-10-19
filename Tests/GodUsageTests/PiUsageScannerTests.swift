@@ -96,7 +96,7 @@ final class PiUsageScannerTests: XCTestCase {
         )))
         let scan = PiUsageScanner.aggregate(
             entries: [entry], cardID: "codex", since: .distantPast, pricing: pricing,
-            estimateCost: { CodexUsagePricing.estimatedCost(pricing: pricing, model: $0, tokens: $1) }
+            estimateCost: { CodexUsagePricing.estimatedCost(pricing: pricing, model: $0, tokens: $1, at: $2) }
         )
 
         XCTAssertEqual(scan.series.daily.first?.costUSD ?? 0, 2.55, accuracy: 0.000_001)
@@ -112,6 +112,43 @@ final class PiUsageScannerTests: XCTestCase {
         )
 
         XCTAssertEqual(scan.series.daily.first?.costUSD ?? 0, 0.25, accuracy: 0.000_001)
+    }
+
+    func testCodexAutoReviewEstimatesRespectFreeCutoff() throws {
+        let pricing = TestPricing.bundled
+        for carriedCost in [nil, "0", "0.75"] as [String?] {
+            for (timestamp, paidCost) in [
+                ("2026-10-05T23:59:59.999Z", carriedCost == "0.75" ? 0.75 : 0.0248),
+                ("2026-10-06T00:00:00.000Z", 0),
+                ("2026-10-06T00:00:00.001Z", 0)
+            ] {
+                // Pi records disjoint input and cache buckets, unlike native Codex's inclusive input.
+                let entry = try XCTUnwrap(PiUsageScanner.parseLine(line(
+                    ts: timestamp, provider: "openai-codex", model: "codex-auto-review",
+                    input: 60_000, output: 10_000, cacheRead: 40_000, total: 110_000, cost: carriedCost
+                )))
+                let scan = PiUsageScanner.aggregate(
+                    entries: [entry], cardID: "codex", since: .distantPast, pricing: pricing,
+                    estimateCost: { model, tokens, date in
+                        XCTAssertEqual(date, entry.timestamp)
+                        return CodexUsagePricing.estimatedCost(pricing: pricing, model: model, tokens: tokens, at: date)
+                    }
+                )
+
+                XCTAssertEqual(try XCTUnwrap(scan.series.daily.first?.costUSD), paidCost, accuracy: 0.000_001)
+                XCTAssertEqual(scan.series.daily.first?.totalTokens, 110_000)
+                XCTAssertEqual(scan.modelUsage?.daily.first?.models.first?.model, "codex-auto-review")
+                XCTAssertTrue(scan.unknownModelsByDay.isEmpty)
+            }
+        }
+    }
+
+    func testAutoReviewCarriedCostOnAnotherCardIsUnchanged() throws {
+        let entry = try XCTUnwrap(PiUsageScanner.parseLine(line(
+            ts: "2026-10-06T00:00:00.000Z", provider: "anthropic", model: "codex-auto-review", cost: "0.75"
+        )))
+        let scan = PiUsageScanner.aggregate(entries: [entry], cardID: "claude", since: .distantPast, pricing: .empty)
+        XCTAssertEqual(try XCTUnwrap(scan.series.daily.first?.costUSD), 0.75, accuracy: 0.000_001)
     }
 
     func testUnpriceableZeroCostBecomesUnknownModel() {
