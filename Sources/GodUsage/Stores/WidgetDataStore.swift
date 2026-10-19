@@ -595,7 +595,7 @@ final class WidgetDataStore {
         }
         // Recovered: drop any backoff so the provider resumes the normal cadence immediately.
         failureRetryAfter[providerID] = nil
-        // A provider can refresh its live limits successfully while its optional local log/CSV scan
+        // A provider can refresh its live limits successfully while its optional local log scan or usage-history fetch
         // produces no result. Keep only the last-good normalized history in that case; the new plan,
         // limits, warnings, and timestamp still win. A non-nil empty history remains authoritative and
         // clears the old rows, because it proves the scan completed and found no usage.
