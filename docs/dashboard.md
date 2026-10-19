@@ -65,7 +65,7 @@ The header's share icon (or right-clicking the card) copies a branded PNG of the
 
 **Metrics without a limit** (daily spend, balances) show as a single line like `$4.08 spent` or `1.2M tokens`. The Today, Yesterday, and Last 30 Days rows combine cost and tokens (`$4.08 · 1.2M tokens`) and can be turned on or off in Customize. A day with no usage reads "No data" instead of `$0.00 · 0 tokens`, the same as when the source cannot be loaded. Big numbers are abbreviated (`$2.06K`, `1.5B`). Hover the value for the exact figures and the source note, such as a local estimate.
 
-For Claude, Codex, Cursor, Grok, Muse, OpenCode, and Sakana Fugu spend rows, hovering the value for a moment opens a model breakdown for that period: a ranked list of models with name and spend on one line, share percentage and tokens on the next, and a thin share bar. Cursor groups its per-thinking-effort export slugs (like `claude-opus-4-8-thinking-max`) under the base model. Long tails fold into **Other** (anything past the top named models or under 5% of the period). Models no pricing source can price do not appear here or in the row's totals. The row's warning triangle names them instead (see [Pricing](pricing.md)).
+For Claude, Codex, Cursor, Grok, Muse, OpenCode, and Sakana Fugu spend rows, hovering the value for a moment opens a model breakdown for that period: a ranked list of models with name and spend on one line, share percentage and tokens on the next, and a thin share bar. Cursor groups its per-thinking-effort model names (like `claude-opus-4-8-thinking-max`) under the base model. Long tails fold into **Other** (anything past the top named models or under 5% of the period). Models no pricing source can price do not appear here or in the row's totals. The row's warning triangle names them instead (see [Pricing](pricing.md)).
 
 **Usage Trend** (Claude, Codex, Cursor, Grok, Muse, OpenCode, and Sakana Fugu) is a small bar chart of the last 30 days of token usage, one bar per day, from the same source as that provider's spend rows. Hover it for the peak day, the date range, and the source. It is on by default. Turn it off or reorder it from Customize like any other metric. It cannot be starred for the menu bar.
 
@@ -73,7 +73,7 @@ For Claude, Codex, Cursor, Grok, Muse, OpenCode, and Sakana Fugu spend rows, hov
 
 **Long card names** (like `Claude — matt@example.com`) get the full header line. If a name still does not fit, hovering the header scrolls it once to its end and holds there.
 
-Every row describes this Mac only: spend rows, trends, and model breakdowns come from this Mac's logs (Cursor's export is account-wide), and quotas, plans, balances, and errors come from this Mac's refresh. To see usage across your Macs, use [Teams](teams.md).
+Every row describes this Mac only: spend rows, trends, and model breakdowns come from this Mac's logs (Cursor's usage history is account-wide), and quotas, plans, balances, and errors come from this Mac's refresh. To see usage across your Macs, use [Teams](teams.md).
 
 Rows with a reset date tick every 30 seconds, so countdowns and pace stay live between refreshes.
 

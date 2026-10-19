@@ -2,7 +2,7 @@ import Foundation
 
 /// GodUsage's own pricing feed: models that no public catalog carries (Cursor-native `auto`,
 /// `composer-*`, `github_bugbot`), fast-variant multipliers the catalogs omit, and the alias rules
-/// that map provider log/CSV slugs to canonical pricing keys. Ships bundled as
+/// that map provider log and usage slugs to canonical pricing keys. Ships bundled as
 /// `pricing_supplement.json` and refreshes from the public update feed, so entries update without an
 /// app release.
 struct PricingSupplement: Sendable {

@@ -16,17 +16,26 @@ final class CursorProvider: ProviderRuntime {
     let usageClient: CursorUsageClient
     let now: @Sendable () -> Date
     let pricing: @Sendable () async -> ModelPricing
+    /// Wall-clock budget for one refresh's spend-history fetch. Kept well under the 10s slow-refresh
+    /// threshold: a steady-state refresh only re-fetches today and yesterday, and a first-time
+    /// backfill that runs out of budget resumes on the next refresh.
+    let spendHistoryBudget: TimeInterval
+    let usageHistoryStore: CursorUsageHistoryStore
 
     init(
         authStore: CursorAuthStore = CursorAuthStore(),
         usageClient: CursorUsageClient = CursorUsageClient(),
         now: @escaping @Sendable () -> Date = Date.init,
-        pricing: @escaping @Sendable () async -> ModelPricing = ModelPricingStore.livePricing
+        pricing: @escaping @Sendable () async -> ModelPricing = ModelPricingStore.livePricing,
+        spendHistoryBudget: TimeInterval = 6,
+        usageHistoryStore: CursorUsageHistoryStore = CursorUsageHistoryStore()
     ) {
         self.authStore = authStore
         self.usageClient = usageClient
         self.now = now
         self.pricing = pricing
+        self.spendHistoryBudget = spendHistoryBudget
+        self.usageHistoryStore = usageHistoryStore
     }
 
     var widgetDescriptors: [WidgetDescriptor] {
@@ -50,7 +59,7 @@ final class CursorProvider: ProviderRuntime {
                 .exportingHistory(
                     scope: .accountWide,
                     estimatedCost: true,
-                    sourceNote: "From your Cursor usage export"
+                    sourceNote: "From your Cursor usage history"
                 )
         ] + WidgetDescriptor.spendTiles(
             provider: provider,
@@ -259,60 +268,48 @@ final class CursorProvider: ProviderRuntime {
         lines.append(line)
     }
 
-    /// Strictly additive: fetch the usage CSV and append the three per-day spend tiles. Any failure
-    /// (no session, non-2xx, or undecodable body) appends nothing, so the live Cursor mapping is never
-    /// affected and the spend tiles fall back to "No data".
+    /// Strictly additive: build the 30-day spend history from Cursor's usage events and append the
+    /// per-day spend tiles. Any failure, or a backfill that hasn't stored all 30 days yet, appends
+    /// nothing, so the live Cursor mapping is never affected and the dashboard keeps its last-good
+    /// history.
     private func appendSpendLines(to lines: inout [MetricLine], accessToken: String) async -> ProviderUsageHistory? {
-        let calendar = Calendar.current
-        let end = now()
-        let startOfToday = calendar.startOfDay(for: end)
-        let start = calendar.date(byAdding: .day, value: -29, to: startOfToday) ?? startOfToday
-
-        let response: HTTPResponse?
-        do {
-            response = try await usageClient.fetchUsageCSV(accessToken: accessToken, start: start, end: end)
-        } catch {
-            AppLog.warn(LogTag.plugin("cursor"), "usage CSV request failed")
+        guard let session = CursorUsageClient.session(from: accessToken) else {
+            AppLog.warn(LogTag.plugin("cursor"), "usage events could not be prepared from the current session")
             return nil
         }
-        guard let response else {
-            AppLog.warn(LogTag.plugin("cursor"), "usage CSV request could not be prepared from the current session")
-            return nil
-        }
-        guard (200..<300).contains(response.statusCode) else {
-            AppLog.warn(LogTag.plugin("cursor"), "usage CSV request returned HTTP \(response.statusCode)")
-            return nil
-        }
-        guard let csv = String(data: response.body, encoding: .utf8) else {
-            AppLog.warn(LogTag.plugin("cursor"), "usage CSV response was not valid UTF-8")
+        let currentTime = now()
+        let fetcher = CursorSpendHistoryFetcher(
+            client: usageClient,
+            store: usageHistoryStore,
+            budget: spendHistoryBudget
+        )
+        guard let days = await fetcher.refresh(
+            accessToken: accessToken,
+            userID: session.userID,
+            now: currentTime
+        ) else {
             return nil
         }
         let pricing = await pricing()
-        do {
-            // Off the main actor: a heavy user's 30-day export is thousands of rows of date
-            // parsing and pricing lookups, and this refresh path is MainActor-isolated.
-            let parsed = try await loadOffMainActor { try CursorUsageCSV.parse(csv: csv, pricing: pricing) }
-            if parsed.rejectedRowCount > 0 {
-                AppLog.warn(
-                    LogTag.plugin("cursor"),
-                    "usage CSV ignored \(parsed.rejectedRowCount) malformed row\(parsed.rejectedRowCount == 1 ? "" : "s")"
+        let rows = days.flatMap { dayStart, day in
+            day.models.map { model, tokens in
+                CursorUsageRow(
+                    date: dayStart,
+                    model: model,
+                    tokens: tokens,
+                    // Day totals combine many requests, so their size can't prove any one request
+                    // crossed a long-context threshold; bill at the base rate.
+                    imputedCostDollars: pricing.estimatedCostDollars(
+                        model: model,
+                        tokens: tokens,
+                        applyLongContextRates: false
+                    )
                 )
             }
-            var history = CursorUsageMapper.appendSpendLines(rows: parsed.rows, now: end, pricing: pricing, to: &lines)
-            history.accountKey = CursorUsageClient.session(from: accessToken)
-                .map { TeamAccountKey.make(provider: "cursor", accountID: $0.userID) }
-            return history
-        } catch let error as CursorUsageCSVError {
-            switch error {
-            case .missingColumns(let columns):
-                AppLog.warn(LogTag.plugin("cursor"), "usage CSV missing required columns: \(columns.joined(separator: ", "))")
-            case .malformedCSV:
-                AppLog.warn(LogTag.plugin("cursor"), "usage CSV is structurally malformed")
-            }
-        } catch {
-            AppLog.warn(LogTag.plugin("cursor"), "usage CSV could not be parsed")
         }
-        return nil
+        var history = CursorUsageMapper.appendSpendLines(rows: rows, now: currentTime, pricing: pricing, to: &lines)
+        history.accountKey = TeamAccountKey.make(provider: "cursor", accountID: session.userID)
+        return history
     }
 
     private func fetchPlanName(accessToken: String) async -> (String?, Bool) {
@@ -338,13 +335,19 @@ final class CursorProvider: ProviderRuntime {
         }) else {
             return nil
         }
-        guard let hasCreditGrants = body["hasCreditGrants"] as? Bool else {
+        // Connect serializes proto3 JSON, which omits default values: an account with no grants
+        // answers `{}` (no `hasCreditGrants: false`), and a grant nothing has been spent from omits
+        // `usedCents`. Absent fields are those defaults; present ones must still be well-formed.
+        let rawHasCreditGrants = body["hasCreditGrants"] ?? false
+        guard let hasCreditGrants = rawHasCreditGrants as? Bool,
+              CFGetTypeID(rawHasCreditGrants as CFTypeRef) == CFBooleanGetTypeID() else {
             AppLog.warn(LogTag.plugin("cursor"), "optional credit-grants response contained invalid grant metadata")
             return nil
         }
         if hasCreditGrants {
             guard let totalCents = ProviderParse.number(body["totalCents"]), totalCents > 0,
-                  let usedCents = ProviderParse.number(body["usedCents"]), usedCents >= 0 else {
+                  let usedCents = body["usedCents"] == nil ? 0 : ProviderParse.number(body["usedCents"]),
+                  usedCents >= 0 else {
                 AppLog.warn(LogTag.plugin("cursor"), "optional credit-grants response contained invalid grant metadata")
                 return nil
             }

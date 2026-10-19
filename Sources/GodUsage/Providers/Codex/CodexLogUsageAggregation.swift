@@ -4,7 +4,6 @@ extension CodexLogUsageScanner {
     private struct EventKey: Hashable {
         var timestamp: Date
         var model: String
-        var pricingModel: String?
         var input: Int
         var cached: Int
         var output: Int
@@ -14,7 +13,9 @@ extension CodexLogUsageScanner {
 
     private struct PricingContextKey: Hashable {
         var model: String
-        var pricingModel: String?
+        /// `CodexUsagePricing.pricingModel(for:at:)`, so auto-review's paid eras and its free era
+        /// never reuse each other's rates.
+        var pricingModel: String
         var isFast: Bool
     }
 
@@ -53,7 +54,7 @@ extension CodexLogUsageScanner {
 
         for event in events where event.timestamp >= since {
             let key = EventKey(
-                timestamp: event.timestamp, model: event.model, pricingModel: event.pricingModel,
+                timestamp: event.timestamp, model: event.model,
                 input: event.input, cached: event.cached, output: event.output,
                 reasoning: event.reasoning, total: event.total
             )
@@ -61,7 +62,9 @@ extension CodexLogUsageScanner {
 
             let day = dayKeys.key(for: event.timestamp)
             let contextKey = PricingContextKey(
-                model: event.model, pricingModel: event.pricingModel, isFast: event.isFast
+                model: event.model,
+                pricingModel: CodexUsagePricing.pricingModel(for: event.model, at: event.timestamp),
+                isFast: event.isFast
             )
             let resolution: PricingResolution
             if let cached = pricingContexts[contextKey] {
@@ -69,7 +72,7 @@ extension CodexLogUsageScanner {
             } else {
                 resolution = resolvePricingContext(
                     rawModel: event.model,
-                    pricingModel: event.pricingModel,
+                    timestamp: event.timestamp,
                     isFast: event.isFast,
                     pricing: pricing
                 )
@@ -96,17 +99,17 @@ extension CodexLogUsageScanner {
 
     private static func resolvePricingContext(
         rawModel: String,
-        pricingModel: String?,
+        timestamp: Date,
         isFast: Bool,
         pricing: ModelPricing
     ) -> PricingResolution {
         // The breakdown, unknown-model warning, and hover panel share the measured slug. Rates
-        // may come from a dated fallback (auto-review) that must not replace that identity.
+        // may come from a dated fallback (auto-review before it went free) that must not replace
+        // that identity.
         guard let model = rawModel.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty else {
             return .unpriced(model: nil)
         }
-        let rateSource = pricingModel?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty ?? model
-        let resolution = CodexUsagePricing.resolveRates(pricing: pricing, model: rateSource)
+        let resolution = CodexUsagePricing.resolveRates(pricing: pricing, model: model, at: timestamp)
         guard let rates = resolution.rates else {
             return .unpriced(model: model)
         }

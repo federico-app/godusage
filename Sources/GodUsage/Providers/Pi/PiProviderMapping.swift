@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Mapped here but not yet consumed (only Claude and Codex read the pi slice today; the rest have no
 /// local usage-trend card to fold into, or use a different spend path): `cursor` (Cursor's trend is
-/// built from its CSV export), `zai`/`zhipu`, `google-antigravity`, `github-copilot`.
+/// built from its usage history), `zai`/`zhipu`, `google-antigravity`, `github-copilot`.
 enum PiProviderMapping {
     /// pi `provider` value → GodUsage `Provider.id`.
     static let providerToCard: [String: String] = [

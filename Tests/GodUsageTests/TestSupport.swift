@@ -1,4 +1,5 @@
 import XCTest
+import os
 @testable import GodUsage
 
 /// The shipped pricing resources (supplement + LiteLLM/models.dev snapshots) as a ready-to-use
@@ -500,7 +501,9 @@ final class TogglingProviderRuntime: ProviderRuntime {
 /// Routes each request through a handler and records every request — for multi-request flows like
 /// the 401 → token refresh → retry sequence, where a single canned response can't express the flow.
 final class RoutingHTTPClient: HTTPClient, @unchecked Sendable {
-    var requests: [HTTPRequest] = []
+    // Locked: Cursor's spend-history fetcher sends day requests concurrently.
+    private let requestsLock = OSAllocatedUnfairLock(initialState: [HTTPRequest]())
+    var requests: [HTTPRequest] { requestsLock.withLock { $0 } }
     private let handler: @Sendable (HTTPRequest) async throws -> HTTPResponse
 
     init(handler: @escaping @Sendable (HTTPRequest) async throws -> HTTPResponse) {
@@ -508,7 +511,19 @@ final class RoutingHTTPClient: HTTPClient, @unchecked Sendable {
     }
 
     func send(_ request: HTTPRequest) async throws -> HTTPResponse {
-        requests.append(request)
+        requestsLock.withLock { $0.append(request) }
         return try await handler(request)
+    }
+}
+
+extension HTTPRequest {
+    /// The hourly Claude reset-grants check (`/api/oauth/usage?cedar_ember=1&skip_spend=1`).
+    var isClaudeResetGrantsCheck: Bool {
+        url.path.hasSuffix("/api/oauth/usage") && url.query?.contains("cedar_ember=1") == true
+    }
+
+    /// The plain Claude usage read every refresh makes.
+    var isClaudeUsagePoll: Bool {
+        url.path.hasSuffix("/api/oauth/usage") && !isClaudeResetGrantsCheck
     }
 }

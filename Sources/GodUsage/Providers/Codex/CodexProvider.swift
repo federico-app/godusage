@@ -11,7 +11,7 @@ final class CodexProvider: ProviderRuntime {
             icon: .providerMark("codex"),
             links: [
                 .init(label: "Status", url: "https://status.openai.com/"),
-                .init(label: "Dashboard", url: "https://chatgpt.com/codex/settings/usage")
+                .init(label: "Dashboard", url: "https://chatgpt.com/settings/usage")
             ]
         )
     }
@@ -272,7 +272,7 @@ final class CodexProvider: ProviderRuntime {
             cardID: piUsageCardID,
             now: now(),
             pricing: pricing,
-            estimateCost: { CodexUsagePricing.estimatedCost(pricing: pricing, model: $0, tokens: $1) }
+            estimateCost: { CodexUsagePricing.estimatedCost(pricing: pricing, model: $0, tokens: $1, at: $2) }
         )
     }
 

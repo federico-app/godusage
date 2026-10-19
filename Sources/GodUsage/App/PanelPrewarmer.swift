@@ -60,7 +60,7 @@ final class PanelPrewarmer {
 
             // Second pass: after the launch refresh batch actually completes, so it warms the
             // content that batch delivered. A fixed +12s assumed the batch was done by then, but a
-            // slow provider (Cursor's CSV export alone budgets 30s) can land later and re-dirty
+            // slow provider (Cursor's spend history alone budgets 6s) can land later and re-dirty
             // the tree AFTER the warm-up. Wait out in-flight refreshes, bounded at +60s so a hung
             // provider can't postpone the pass forever (its snapshot wouldn't change content anyway).
             try? await Task.sleep(until: launch + .seconds(12), clock: .continuous)
