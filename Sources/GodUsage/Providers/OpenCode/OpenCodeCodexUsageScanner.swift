@@ -72,18 +72,20 @@ struct OpenCodeCodexUsageScanner: Sendable {
 
         var accumulator = DailyUsageAccumulator()
         var dayKeys = DailyUsageAccumulator.DayKeyCache()
-        // Codex pricing depends only on the model slug, and resolving one walks every supplement alias
-        // rule. Real histories run to thousands of rows across a handful of models, so resolve once each.
+        // Resolving a model walks every supplement alias rule, and real histories run to thousands of
+        // rows across a handful of models, so resolve once per effective pricing model. Auto-review's
+        // rates change over time, so caching by its raw slug would mix historical and free requests.
         var preparedByModel: [String: CodexUsagePricing.Prepared?] = [:]
         for row in Self.deduplicated(rows) where row.timestamp >= since {
             let day = dayKeys.key(for: row.timestamp)
             guard let model = row.model.nilIfEmpty else { continue }
+            let pricingModel = CodexUsagePricing.pricingModel(for: model, at: row.timestamp)
             let prepared: CodexUsagePricing.Prepared?
-            if let cached = preparedByModel[model] {
+            if let cached = preparedByModel[pricingModel] {
                 prepared = cached
             } else {
-                prepared = CodexUsagePricing.prepare(pricing: pricing, model: model)
-                preparedByModel[model] = prepared
+                prepared = CodexUsagePricing.prepare(pricing: pricing, model: model, at: row.timestamp)
+                preparedByModel[pricingModel] = prepared
             }
             guard let prepared else {
                 if row.reportedTotalTokens > 0 {

@@ -961,7 +961,11 @@ final class ClaudeProviderTests: XCTestCase {
         XCTAssertEqual(values(snapshot.lines, "Today"),
                        [MetricValue(number: 0.25, kind: .dollars, estimated: true),
                         MetricValue(number: 150, kind: .count, label: "tokens")])
-        XCTAssertTrue(httpClient.requests.contains { $0.url.absoluteString == "https://api.anthropic.com/api/oauth/usage?cedar_ember=1" })
+        // Plain usage on every refresh; the reset-grants variant is the separate hourly check.
+        XCTAssertEqual(httpClient.requests.map(\.url.absoluteString), [
+            "https://api.anthropic.com/api/oauth/usage",
+            "https://api.anthropic.com/api/oauth/usage?cedar_ember=1&skip_spend=1"
+        ])
     }
 
     func testInferenceOnlyScopeSurfacesReloginWarningAndSkipsUsageCallButKeepsSpendTiles() async throws {
@@ -1325,7 +1329,7 @@ final class ClaudeProviderTests: XCTestCase {
         XCTAssertEqual(Self.progress(third.lines, "Session")?.used, 25)
         XCTAssertEqual(third.warning?.hasPrefix("Updates blocked by Anthropic"), true)
         XCTAssertEqual(third.resolvedWarningAction, .wait)
-        XCTAssertEqual(httpClient.requests.filter { $0.url.path.hasSuffix("/api/oauth/usage") }.count, 2)
+        XCTAssertEqual(httpClient.requests.filter(\.isClaudeUsagePoll).count, 2)
     }
 
     func testRateLimitedSnapshotPicksUpTierChangeFromStateFile() async {

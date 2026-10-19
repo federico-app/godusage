@@ -48,7 +48,7 @@ final class ClaudeAccountMismatchTests: XCTestCase {
     }
 
     private func calls(_ http: RoutingHTTPClient, _ suffix: String) -> Int {
-        http.requests.filter { $0.url.path.hasSuffix(suffix) }.count
+        http.requests.filter { $0.url.path.hasSuffix(suffix) && !$0.isClaudeResetGrantsCheck }.count
     }
 
     private func hasSession(_ snapshot: ProviderSnapshot) -> Bool {

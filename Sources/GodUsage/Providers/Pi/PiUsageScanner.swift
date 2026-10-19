@@ -17,7 +17,7 @@ actor PiUsageScanner {
     /// How a card prices a pi request that carries no cost of its own. Providers with their own
     /// request rules (Codex's long-context and priority tiers) supply their estimator; the rest use
     /// the shared pricing engine.
-    typealias CostEstimator = @Sendable (String, TokenBreakdown) -> Double?
+    typealias CostEstimator = @Sendable (String, TokenBreakdown, Date) -> Double?
 
     static let shared = PiUsageScanner()
 
@@ -152,14 +152,15 @@ actor PiUsageScanner {
     }
 
     /// Bucket the card's entries into local calendar days. Cost is pi's carried total when it recorded
-    /// one, else the tokens priced through `pricing`; a model that can't be priced and carries no cost
+    /// one (except free Codex auto-review, which is always $0), else the timestamped tokens priced
+    /// through `pricing`; a model that can't be priced and carries no cost
     /// is excluded from the totals and surfaced as the tile's unknown-model warning, matching the log
     /// scanners.
     static func aggregate(
         entries: [Entry], cardID: String, since: Date, pricing: ModelPricing,
         estimateCost: CostEstimator? = nil
     ) -> LogUsageScan {
-        let estimate = estimateCost ?? { pricing.estimatedCostDollars(model: $0, tokens: $1) }
+        let estimate = estimateCost ?? { model, tokens, _ in pricing.estimatedCostDollars(model: model, tokens: tokens) }
         var accumulator = DailyUsageAccumulator()
         var dayKeys = DailyUsageAccumulator.DayKeyCache()
         for entry in entries where entry.cardID == cardID && entry.timestamp >= since {
@@ -168,9 +169,12 @@ actor PiUsageScanner {
             let modelName = trimmedModel ?? ModelUsageEntry.unattributedModelName
 
             let cost: Double
-            if let carried = entry.carriedCost, carried > 0 {
+            if cardID == "codex", CodexUsagePricing.isFreeAutoReview(model: modelName, at: entry.timestamp) {
+                // A carried estimate must not charge for free ChatGPT auto-review requests.
+                cost = 0
+            } else if let carried = entry.carriedCost, carried > 0 {
                 cost = carried
-            } else if let model = trimmedModel, let estimated = estimate(model, entry.tokens) {
+            } else if let model = trimmedModel, let estimated = estimate(model, entry.tokens, entry.timestamp) {
                 cost = estimated
             } else {
                 if let model = trimmedModel, entry.reportedTotalTokens > 0 {

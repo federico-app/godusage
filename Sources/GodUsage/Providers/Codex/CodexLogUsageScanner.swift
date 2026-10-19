@@ -25,7 +25,8 @@ import Foundation
 ///   is a re-emitted stale snapshot, not new usage, and is skipped even when it carries a
 ///   `last_token_usage`.
 /// - Early sessions without model metadata fall back to `gpt-5`. The `codex-auto-review` slug stays
-///   visible in usage breakdowns and carries a dated fallback model only for cost estimation.
+///   visible in usage breakdowns with its measured tokens. It uses dated model estimates before
+///   October 6, 2026 (00:00 UTC), and zero cost from then on (see `CodexUsagePricing`).
 /// - Identical events (same timestamp + model + token counts) appearing in multiple files (copied
 ///   session logs) count once.
 /// - Cost per event: `(input - cached) x input rate + cached x cache-read rate + output x output
@@ -67,12 +68,9 @@ actor CodexLogUsageScanner {
     /// One turn's token usage, normalized from a `token_count` line (deltas already applied).
     /// `isFast` records whether the session was on the fast/priority service tier when the turn
     /// ran, tracked from the session's own log; absent tier metadata means standard.
-    /// `pricingModel` is the dated GPT fallback used only for auto-review cost; nil when `model`
-    /// is already the rate key.
     struct Event: Codable, Sendable, Equatable {
         var timestamp: Date
         var model: String
-        var pricingModel: String? = nil
         var input: Int
         var cached: Int
         var output: Int
@@ -85,7 +83,7 @@ actor CodexLogUsageScanner {
     /// once. The version is the parser schema version; bump it when `Event` semantics change.
     private static let sharedScanner = IncrementalJSONLScanner<Event>(
         logTag: LogTag.plugin("codex"),
-        persistence: JSONLScanCachePersistence(namespace: "codex", schemaVersion: 2)
+        persistence: JSONLScanCachePersistence(namespace: "codex", schemaVersion: 3)
     )
 
     static func flushPersistentCacheWrites() async {
@@ -375,7 +373,6 @@ actor CodexLogUsageScanner {
             events.append(Event(
                 timestamp: timestamp,
                 model: model,
-                pricingModel: model == Self.autoReviewModel ? autoReviewFallback(at: timestampRaw) : nil,
                 input: usage.input,
                 cached: min(usage.cached, usage.input),
                 output: usage.output,
@@ -526,34 +523,5 @@ actor CodexLogUsageScanner {
         }
         currentModel = "gpt-5"
         return "gpt-5"
-    }
-
-    private static let autoReviewModel = "codex-auto-review"
-
-    /// `codex-auto-review` release timeline (newest first), from ccusage's embedded snapshot: a
-    /// line dated on/after a release prices as that codex model.
-    ///
-    /// The `gpt-5.6-luna` entry is ours; ccusage's snapshot still stops at gpt-5.5. OpenAI moved
-    /// auto-review onto the GPT-5.6 family when it shipped on 2026-07-09, and the Codex model
-    /// catalog (`~/.codex/models_cache.json`) lists `codex-auto-review` with Luna's exact profile.
-    /// Without this entry every auto-review event since July prices at gpt-5.5 rates, which are 25x
-    /// Luna's across input, cache reads and output alike.
-    private static let autoReviewFallbacks: [(releasedOn: String, model: String)] = [
-        ("2026-07-09", "gpt-5.6-luna"),
-        ("2026-04-23", "gpt-5.5"),
-        ("2026-03-05", "gpt-5.4"),
-        ("2026-02-05", "gpt-5.3-codex"),
-        ("2025-12-11", "gpt-5.2-codex"),
-        ("2025-11-13", "gpt-5.1-codex"),
-        ("2025-09-15", "gpt-5-codex"),
-        ("2025-08-07", "gpt-5")
-    ]
-
-    static func autoReviewFallback(at timestamp: String) -> String {
-        let date = String(timestamp.prefix(10))
-        guard date.count == 10, date.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil else {
-            return "gpt-5"
-        }
-        return autoReviewFallbacks.first(where: { date >= $0.releasedOn })?.model ?? "gpt-5"
     }
 }
