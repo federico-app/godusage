@@ -57,7 +57,7 @@ describe("team plans", () => {
     expect(claude).toMatchObject({ valueUSD: 50, projectedValueUSD: 310, projectedMultiple: 1.55, underused: false });
     expect(claude.cycle).toMatchObject({ from: "2026-10-01", to: "2026-10-31", daysElapsed: 5, daysLeft: 26 });
     expect(cursor).toMatchObject({ valueUSD: 10, projectedValueUSD: 62, projectedMultiple: 0.31, underused: true });
-    expect(report.totals).toEqual({ monthlyCostUSD: 400, valueUSD: 60, projectedValueUSD: 372 });
+    expect(report.totals).toEqual({ monthlyCostUSD: 400, cycleCostUSD: 400, valueUSD: 60, projectedValueUSD: 372 });
   });
 
   it("splits a provider's value between its plans by cost", async () => {

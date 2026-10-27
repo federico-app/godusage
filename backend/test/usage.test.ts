@@ -40,6 +40,7 @@ describe("usage upload", () => {
     ["duplicate provider", upload([{ provider: "codex", days: [] }, { provider: "codex", days: [] }])],
     ["bad scope", { ...upload([]), providers: [{ provider: "codex", scope: "global", days: [] }] }],
     ["bad date", upload([{ provider: "codex", days: [{ date: "2026-02-30", tokens: 1 }] }])],
+    ["month 13", upload([{ provider: "codex", days: [{ date: "2026-13-01", tokens: 1 }] }])],
     ["duplicate date", upload([{ provider: "codex", days: [{ date: "2026-10-05", tokens: 1 }, { date: "2026-10-05", tokens: 2 }] }])],
     ["negative tokens", upload([{ provider: "codex", days: [{ date: "2026-10-05", tokens: -1 }] }])],
     ["fractional tokens", upload([{ provider: "codex", days: [{ date: "2026-10-05", tokens: 1.5 }] }])],
