@@ -83,7 +83,7 @@ export function parseCost(value: unknown, field: string): number {
  * The terms in effect today always win, so editing a plan's name or price edits its current terms.
  */
 export function parsePriceHistory(current: Terms, value: unknown, today: string): PriceHistory {
-  if (value === undefined || value === null) return { base: current, changes: [] };
+  if (value === null) return { base: current, changes: [] };
   if (!Array.isArray(value)) throw badRequest("changes must be an array.");
   if (value.length > MAX_CHANGES) throw badRequest(`At most ${MAX_CHANGES} changes per plan.`);
   const changes = value.map((entry): PlanChange => {
@@ -96,14 +96,23 @@ export function parsePriceHistory(current: Terms, value: unknown, today: string)
   }
   if (changes.length === 0) return { base: current, changes };
   const first = value[0] as Record<string, unknown>;
-  let base: Terms = {
+  const base: Terms = {
     name: requireName(first.previousName, "previousName", LABEL_MAX),
     monthlyCostUSD: parseCost(first.previousMonthlyCostUSD, "previousMonthlyCostUSD"),
   };
+  return withCurrentTerms({ base, changes }, current, today);
+}
+
+/**
+ * Writes the terms in effect `today` into the history: into the change in effect today, or into the
+ * starting terms when none applies yet. Earlier terms are never touched.
+ */
+export function withCurrentTerms(history: PriceHistory, current: Terms, today: string): PriceHistory {
+  const changes = history.changes.map((change) => ({ ...change }));
   const inEffect = changes.filter((change) => change.effectiveFrom <= today).length - 1;
-  if (inEffect >= 0) changes[inEffect] = { ...changes[inEffect]!, ...current };
-  else base = current;
-  return { base, changes };
+  if (inEffect < 0) return { base: { ...current }, changes };
+  changes[inEffect] = { ...changes[inEffect]!, ...current };
+  return { base: { ...history.base }, changes };
 }
 
 /** The linked detected-plan label: missing or null for none. */

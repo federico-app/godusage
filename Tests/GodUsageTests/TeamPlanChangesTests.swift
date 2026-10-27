@@ -93,6 +93,14 @@ final class TeamPlanChangesTests: XCTestCase {
         XCTAssertNil(TeamPlanChanges.prefilledLink(linked, labels: covered))
     }
 
+    /// Regression: an omitted `detectedPlan` keeps the server's stored link, so unlinking must send null.
+    func testAnUnlinkedPlanSendsAnExplicitNull() throws {
+        let json = try XCTUnwrap(String(data: JSONEncoder().encode(plan()), encoding: .utf8))
+        XCTAssertTrue(json.contains("\"detectedPlan\":null"))
+        XCTAssertTrue(json.contains("\"changes\":[]"))
+        XCTAssertTrue(json.contains("\"ignoredPlans\":[]"))
+    }
+
     func testPlanSendsItsHistoryAndDetectedPlan() throws {
         var plan = plan()
         plan.addChange(effectiveFrom: "2026-11-01", to: TeamPlanTerms(name: "Pro", monthlyCostUSD: 20), today: today)

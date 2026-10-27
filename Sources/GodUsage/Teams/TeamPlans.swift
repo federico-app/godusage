@@ -32,6 +32,20 @@ struct TeamPlan: Codable, Hashable, Sendable, Identifiable {
     private enum CodingKeys: String, CodingKey {
         case provider, name, monthlyCostUSD, renewalDay, memberIDs, changes, detectedPlan, ignoredPlans
     }
+
+    /// `detectedPlan` goes out as an explicit null when unlinked: the server keeps a stored link when
+    /// the field is missing (saves from apps before plan changes).
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(provider, forKey: .provider)
+        try container.encode(name, forKey: .name)
+        try container.encode(monthlyCostUSD, forKey: .monthlyCostUSD)
+        try container.encode(renewalDay, forKey: .renewalDay)
+        try container.encodeIfPresent(memberIDs, forKey: .memberIDs)
+        try container.encode(changes, forKey: .changes)
+        try container.encode(detectedPlan, forKey: .detectedPlan)
+        try container.encode(ignoredPlans, forKey: .ignoredPlans)
+    }
 }
 
 /// A covered member whose Mac detects another plan than the one a team plan is linked to.

@@ -1,7 +1,7 @@
 import type { Queryable } from "./db";
 import { badRequest, isRecord, requireName } from "./http";
 import {
-  cyclePeriods, parseCost, parseDetectedPlan, parseIgnoredPlans, parsePriceHistory, termsOn, wireChanges,
+  cyclePeriods, parseCost, parseDetectedPlan, parseIgnoredPlans, parsePriceHistory, termsOn, wireChanges, withCurrentTerms,
   type PriceHistory, type Terms, type WireChange,
 } from "./planChanges";
 import { planMismatches, type Detection, type Mismatch } from "./planDetection";
@@ -75,7 +75,7 @@ export interface PlanReport extends Terms {
  * Validates the owner's plan list (the system boundary). `name` and `monthlyCostUSD` are the terms in
  * effect `today`; `changes` carries the price history (see `parsePriceHistory`).
  */
-export function parsePlans(body: Record<string, unknown>, today: string): PlanInput[] {
+export function parsePlans(body: Record<string, unknown>, today: string): ParsedPlan[] {
   if (!Array.isArray(body.plans)) throw badRequest("plans must be an array.");
   if (body.plans.length > MAX_PLANS) throw badRequest(`At most ${MAX_PLANS} plans per team.`);
   return body.plans.map((entry) => {
@@ -88,9 +88,49 @@ export function parsePlans(body: Record<string, unknown>, today: string): PlanIn
       provider: entry.provider,
       renewalDay: day,
       memberIDs: parseMemberIDs(entry.memberIDs),
-      ...parsePriceHistory(current, entry.changes, today),
+      ...(entry.changes === undefined ? { base: current, changes: [] } : parsePriceHistory(current, entry.changes, today)),
       detectedPlan: parseDetectedPlan(entry.detectedPlan),
       ignoredPlans: parseIgnoredPlans(entry.ignoredPlans),
+      current,
+      sent: { changes: "changes" in entry, detectedPlan: "detectedPlan" in entry, ignoredPlans: "ignoredPlans" in entry },
+    };
+  });
+}
+
+/** A plan as the owner sent it, and which of the fields older apps don't know about it carried. */
+export interface ParsedPlan extends PlanInput {
+  current: Terms;
+  sent: { changes: boolean; detectedPlan: boolean; ignoredPlans: boolean };
+}
+
+/**
+ * Apps from before plan changes send plans without `changes`, `detectedPlan`, and `ignoredPlans`.
+ * Saving from one must not wipe them, so a field that is absent (not null, not empty) keeps the stored
+ * plan's value, with the sent name and price as the terms in effect today. Plan ids change on every
+ * save and old apps don't send them, so a sent plan matches the stored plan of its provider whose
+ * current name is the same (what the old app showed it), else the stored plan at its position when
+ * that one is of the same provider. Each stored plan matches at most once; an unmatched plan starts
+ * fresh.
+ */
+export function keepUnsentFields(parsed: ParsedPlan[], stored: PlanRow[], today: string): PlanInput[] {
+  const used = new Set<number>();
+  const match = (plan: ParsedPlan, position: number): PlanRow | undefined => {
+    let index = stored.findIndex((row, at) => !used.has(at) && row.provider === plan.provider && termsOn(row, today).name === plan.current.name);
+    if (index < 0 && stored[position]?.provider === plan.provider && !used.has(position)) index = position;
+    if (index < 0) return undefined;
+    used.add(index);
+    return stored[index];
+  };
+  return parsed.map((plan, position) => {
+    const { current, sent, ...input } = plan;
+    if (sent.changes && sent.detectedPlan && sent.ignoredPlans) return input;
+    const old = match(plan, position);
+    if (!old) return input;
+    return {
+      ...input,
+      ...(sent.changes ? {} : withCurrentTerms(old, current, today)),
+      detectedPlan: sent.detectedPlan ? input.detectedPlan : old.detectedPlan,
+      ignoredPlans: sent.ignoredPlans ? input.ignoredPlans : old.ignoredPlans,
     };
   });
 }

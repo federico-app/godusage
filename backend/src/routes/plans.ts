@@ -1,6 +1,6 @@
 import type { Handler } from "../context";
 import { badRequest, forbidden, json, notFound, nowISO, readJSONObject } from "../http";
-import { covers, parsePlans, planReports, type PlanReport, type PlanRow } from "../plans";
+import { covers, keepUnsentFields, parsePlans, planReports, type PlanReport, type PlanRow } from "../plans";
 import { teamDetections, type Detection } from "../planDetection";
 import { requireUser } from "../session";
 import type { Env } from "../context";
@@ -108,12 +108,14 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
   const role = await memberRole(env.db, teamID, user.id);
   if (role !== "owner") throw forbidden("Only team owners can change plans.");
   const today = viewerToday(url, deps.now());
-  const plans = parsePlans(await readJSONObject(request), today);
+  const parsed = parsePlans(await readJSONObject(request), today);
   const members = await env.db.query<{ user_id: string }>("SELECT user_id FROM team_members WHERE team_id = $1", [teamID]);
   const memberIDs = new Set(members.map((row) => row.user_id));
-  if (plans.some((plan) => plan.memberIDs?.some((id) => !memberIDs.has(id)))) throw badRequest("A plan covers someone who is not in the team.");
+  if (parsed.some((plan) => plan.memberIDs?.some((id) => !memberIDs.has(id)))) throw badRequest("A plan covers someone who is not in the team.");
   const updatedAt = nowISO();
   await env.db.transaction(async (tx) => {
+    // Fields an older app leaves out keep their stored values (see `keepUnsentFields`).
+    const plans = keepUnsentFields(parsed, await loadPlans(tx, teamID), today);
     // Changes go with their plans (ON DELETE CASCADE).
     await tx.run("DELETE FROM team_plans WHERE team_id = $1", [teamID]);
     for (const [position, plan] of plans.entries()) {
