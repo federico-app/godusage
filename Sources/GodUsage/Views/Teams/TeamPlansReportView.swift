@@ -56,7 +56,9 @@ struct TeamPlansReportView: View {
 
     private func summary(_ report: TeamPlansReport) -> some View {
         let totals = report.totals
-        let multiple = totals.monthlyCostUSD > 0 ? totals.projectedValueUSD / totals.monthlyCostUSD : 0
+        // A cycle with a price change costs each price for the days it applies.
+        let cycleCost = totals.cycleCostUSD ?? totals.monthlyCostUSD
+        let multiple = cycleCost > 0 ? totals.projectedValueUSD / cycleCost : 0
         return HStack(alignment: .firstTextBaseline, spacing: 28) {
             stat(Formatters.currency(totals.monthlyCostUSD), "paid per month")
             stat(Formatters.currency(totals.valueUSD), "API value so far")
@@ -95,7 +97,7 @@ struct TeamPlansReportView: View {
     }
 
     private func planList(_ report: TeamPlansReport) -> some View {
-        let scale = report.plans.map { max($0.projectedValueUSD, $0.monthlyCostUSD) }.max() ?? 1
+        let scale = report.plans.map { max($0.projectedValueUSD, $0.cycleCost) }.max() ?? 1
         return VStack(spacing: 0) {
             ForEach(Array(report.plans.enumerated()), id: \.element.id) { index, plan in
                 if index > 0 { Divider() }
@@ -136,6 +138,16 @@ struct TeamPlansReportView: View {
             .foregroundStyle(.secondary)
             if let covered = coverageText(plan) {
                 Text(covered).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
+            ForEach(plan.plan.visibleChanges(today: container.teams.localToday()), id: \.effectiveFrom) { change in
+                Text(TeamPlanChanges.describe(change, renewalDay: plan.renewalDay, today: container.teams.localToday()))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if abs(plan.cycleCost - plan.monthlyCostUSD) >= 0.01 {
+                Text("This cycle costs \(Formatters.currency(plan.cycleCost)), each price for the days it applies.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -180,11 +192,11 @@ private struct PlanValueBar: View {
                 Rectangle()
                     .fill(Color.primary.opacity(0.7))
                     .frame(width: 2, height: 12)
-                    .offset(x: x(plan.monthlyCostUSD) - 1)
+                    .offset(x: x(plan.cycleCost) - 1)
             }
         }
         .frame(height: 8)
         .accessibilityElement()
-        .accessibilityLabel("\(Formatters.currency(plan.valueUSD)) of API value so far, on pace for \(Formatters.currency(plan.projectedValueUSD)), against \(Formatters.currency(plan.monthlyCostUSD)) a month")
+        .accessibilityLabel("\(Formatters.currency(plan.valueUSD)) of API value so far, on pace for \(Formatters.currency(plan.projectedValueUSD)), against \(Formatters.currency(plan.cycleCost)) this cycle")
     }
 }

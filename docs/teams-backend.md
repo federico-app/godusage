@@ -137,6 +137,8 @@ Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
   "deviceName": "MacBook Pro",
   "appVersion": "1.0.8",
   "windowStart": "2026-09-05",
+  "localDay": "2026-10-05",
+  "detectedPlans": [{ "provider": "claude", "plan": "Max 20x" }],
   "providers": [
     {
       "provider": "claude",
@@ -154,7 +156,11 @@ Upload body (`PUT /v1/devices/:id/usage`, at most 512 KB):
 }
 ```
 
-Plans (`GET /v1/teams/:id/plans?today=` for members, `PUT` with `{ plans: [{ provider, name, monthlyCostUSD, renewalDay, memberIDs }] }` for the owner, replacing the list, at most 30): `memberIDs` lists the team members the plan covers, and a missing or null value covers everyone. The response carries each plan with its `memberIDs`, `includesYou` (whether it covers the caller), its `cycle` (`from`, `to`, `daysElapsed`, `daysTotal`, `daysLeft`), `valueUSD` (the covered members' effective spend on the provider from `cycle.from` to today, shared accounts once and counted when any member who shares them is covered, split by cost across the plans of one provider that cover the same usage), `projectedValueUSD`, `projectedMultiple`, and `underused` (projected under 1×), plus `totals` and `canEdit`.
+`detectedPlans` (optional, at most 40, one per provider, each plan name at most 60 characters) is the plan GodUsage detected per provider on this Mac. The server keeps it per Mac (`detected_plans`), stamped with the time and `localDay` (the Mac's calendar day, within a day of UTC; the UTC day when missing) only when the name changes, and drops providers the upload no longer lists. An upload without `detectedPlans` (apps before plan detection) leaves them alone. A change drops the uploader's teams' cached plan reports. Removing the Mac removes them.
+
+Plans (`GET /v1/teams/:id/plans?today=` for members, `PUT` with `{ plans: [{ provider, name, monthlyCostUSD, renewalDay, memberIDs, changes, detectedPlan, ignoredPlans }] }` for the owner, replacing the list, at most 30): `memberIDs` lists the team members the plan covers, and a missing or null value covers everyone. `name` and `monthlyCostUSD` are the terms in effect `today`. `changes` (optional, at most 100, strictly by date) is the price history: `{ effectiveFrom, name, monthlyCostUSD, previousName, previousMonthlyCostUSD }`, from `effectiveFrom` on the plan has `name` and `monthlyCostUSD`. The server stores the terms before the first change (the first change's `previous…`) and each change's new terms (`team_plan_changes`); later changes' `previous…` are derived, and the plan's own `name`/`monthlyCostUSD` overwrite the change in effect today (or the starting terms before any applies), so editing them edits the current terms. A saved list replaces every change; leaving one out cancels it. `detectedPlan` (optional) links the plan to a detected plan name; `ignoredPlans` (optional, at most 20) lists detected names the owner ignores for it.
+
+The response carries each plan with its `memberIDs`, `includesYou` (whether it covers the caller), `name`/`monthlyCostUSD` in effect today, `changes` (with `previous…` filled in), `detectedPlan`, `ignoredPlans`, its `cycle` (`from`, `to`, `daysElapsed`, `daysTotal`, `daysLeft`), `cycleCostUSD` (each price in the cycle times the days it applies, over `daysTotal`), `periods` (`{ from, to, name, monthlyCostUSD, costUSD, valueUSD }` per stretch of the cycle at one price), `valueUSD` (the covered members' effective spend on the provider from `cycle.from` to today, shared accounts once and counted when any member who shares them is covered, split across the plans of one provider that cover the same usage by each one's price that day), `projectedValueUSD`, `projectedMultiple` (projected value ÷ `cycleCostUSD`), `underused` (projected under 1×), and `mismatches`, plus `totals` (with `cycleCostUSD`), `detectedPlans`, and `canEdit`. `mismatches` lists `{ userID, displayName, detectedPlan, detectedAt, detectedOn }` for covered members whose latest detected plan for the provider (of their Macs, the one that changed last) differs, ignoring case, from `detectedPlan`, an ignored name, and the names of changes from `cycle.from` on. `detectedPlans` lists every member's latest detected plan per provider. Both are for owners: members get empty lists.
 
 Account-scope entries may add `"account": "<64 hex characters>"`; it is rejected on device scope.
 

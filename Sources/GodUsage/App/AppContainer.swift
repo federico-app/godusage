@@ -174,7 +174,13 @@ final class AppContainer {
         self.deviceIdentity = deviceIdentity
         self.teams = teams
         self.teamsSocial = teamsSocial
-        let teamPlans = TeamPlansStore(teams: teams)
+        let teamPlans = TeamPlansStore(
+            teams: teams,
+            changeAlertsEnabled: { notificationSettings.teamPlanChanges },
+            postNotification: { id, title, subtitle, body in
+                await AppNotifications.shared.post(idPrefix: id, title: title, subtitle: subtitle, body: body)
+            }
+        )
         self.teamPlans = teamPlans
         self.devicePairing = DevicePairingStore(teams: teams)
         let usageAdvice = UsageAdviceStore(
