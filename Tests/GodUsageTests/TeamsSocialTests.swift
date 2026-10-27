@@ -36,7 +36,7 @@ final class TeamProjectionTests: XCTestCase {
 
 @MainActor
 final class TeamsSocialStoreTests: XCTestCase {
-    private func makeStores(alerts: Bool = false, posted: @escaping (String) -> Void = { _ in }) async -> (TeamsStore, TeamsSocialStore, FakeTeamsAPI) {
+    private func makeStores(alerts: Bool = false, reactionAlerts: Bool = false, posted: @escaping (String) -> Void = { _ in }) async -> (TeamsStore, TeamsSocialStore, FakeTeamsAPI) {
         let api = FakeTeamsAPI()
         api.teamsResult = [TeamSummary(id: "t1", name: "Crew", role: .member, memberCount: 2)]
         let sessions = InMemoryTeamsSessionStore()
@@ -48,7 +48,7 @@ final class TeamsSocialStoreTests: XCTestCase {
         )
         await teams.refresh()
         let social = TeamsSocialStore(
-            teams: teams, api: api, challengeAlertsEnabled: { alerts },
+            teams: teams, api: api, challengeAlertsEnabled: { alerts }, reactionAlertsEnabled: { reactionAlerts },
             postNotification: { _, title, _, _ in posted(title); return true }, defaults: defaults
         )
         return (teams, social, api)
@@ -81,6 +81,51 @@ final class TeamsSocialStoreTests: XCTestCase {
 
         await social.checkChallengeResults()
         XCTAssertEqual(posted.count, 1)
+    }
+
+    func testReceivedReactionsAlertOnceAfterTheBaseline() async {
+        var posted: [String] = []
+        let (_, social, api) = await makeStores(reactionAlerts: true) { posted.append($0) }
+        api.statsResult = TeamStats(
+            range: .init(name: .today, from: "2026-10-05", to: "2026-10-05"), sort: .cost,
+            totals: UsageTotals(tokens: 2, costUSD: 3),
+            members: [
+                TeamStats.Member(userID: "u1", displayName: "Fede", rank: 1, tokens: 1, costUSD: 2, providers: []),
+                TeamStats.Member(userID: "ada", displayName: "Ada", rank: 2, tokens: 1, costUSD: 1, providers: []),
+                TeamStats.Member(userID: "bea", displayName: "Bea", rank: 3, tokens: 0, costUSD: 0, providers: []),
+            ],
+            providers: [], models: [], daily: []
+        )
+        func received(_ from: [String: [String]], day: String = "2026-10-05") -> TeamReactions {
+            TeamReactions(week: day, byMember: ["u1": MemberReactions(fire: 0, clap: 0, clown: 0, mine: [], from: from)])
+        }
+        api.statsReactions = received(["fire": ["ada"]])
+        await social.checkReceivedReactions()
+        XCTAssertTrue(posted.isEmpty, "reactions already there when the alert turns on are only recorded")
+
+        api.statsReactions = received(["fire": ["ada"], "clap": ["ada"], "clown": ["bea"]])
+        await social.checkReceivedReactions()
+        XCTAssertEqual(posted, ["2 Teammates Reacted to You"])
+
+        api.statsReactions = received(["clown": ["bea"]])
+        await social.checkReceivedReactions()
+        api.statsReactions = received(["fire": ["ada"], "clown": ["bea"]])
+        await social.checkReceivedReactions()
+        XCTAssertEqual(posted.count, 1, "a reaction taken back and given again the same day isn't announced twice")
+
+        api.statsReactions = received(["fire": ["ada"]], day: "2026-10-06")
+        await social.checkReceivedReactions()
+        XCTAssertEqual(posted, ["2 Teammates Reacted to You", "Ada Reacted to You"])
+    }
+
+    func testReactionMessageGroupsByGiver() {
+        let message = TeamEvents.reactionMessage(
+            [.init(reaction: .fire, fromUserID: "ada"), .init(reaction: .clap, fromUserID: "ada")],
+            names: ["ada": "Ada"]
+        )
+        XCTAssertEqual(message?.title, "Ada Reacted to You")
+        XCTAssertEqual(message?.body, "Ada gave you 🔥 👏.")
+        XCTAssertEqual(TeamEvents.receivedReactions(TeamReactions(week: "d", byMember: [:]), me: "u1"), [])
     }
 
     func testCreateAndCancelChallenges() async {

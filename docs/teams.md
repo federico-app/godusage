@@ -96,14 +96,14 @@ An owner can also turn on **Public Leaderboard** for a team. That gives a read-o
 
 ## Notifications
 
-Three team alerts in **Settings → Notifications**, all on by default:
+Four team alerts in **Settings → Notifications**, all on by default:
 
 - **Team Overtakes**: when a teammate passes you by spend over the last 7 days. The first check after you turn it on only records where everyone stands, so it never alerts about old moves.
 - **Weekly Team Recap**: from Monday 9:00, one notification per team about the week that just ended: your rank (and how it moved), your spend, who led, and your top model.
-
 - **Team Challenges**: who won, when a challenge ends. Challenges that had already ended when you turned it on are never announced.
+- **Team Reactions**: when a teammate gives you 🔥, 👏, or 🤡, one notification per team listing who gave what. Each reaction is announced once per day, even if it's taken back and given again. Reactions you already had when you turned it on are never announced.
 
-All three are checked after each upload, so after a refresh that changed your usage or at least every 15 minutes, and only while GodUsage is running.
+All four are checked after each upload, so after a refresh that changed your usage or at least every 15 minutes, and only while GodUsage is running.
 
 ## Requirements
 

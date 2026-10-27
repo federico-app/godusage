@@ -403,11 +403,12 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
     var statsResult: TeamStats?
     var statsCalls: [(range: StatsRange, include: [StatsRange])] = []
     var statsPaused: Bool?
+    var statsReactions: TeamReactions?
     func stats(token: String, teamID: String, range: StatsRange, sort: StatsSort, today: String, include: [StatsRange]) async throws -> TeamStatsResponse {
         statsCalls.append((range, include))
         guard let statsResult else { throw TeamsAPIError(kind: .server, message: "unused") }
         let extra = Dictionary(uniqueKeysWithValues: include.map { ($0.rawValue, statsResult) })
-        return TeamStatsResponse(team: .init(id: teamID, name: "Crew"), stats: statsResult, extra: include.isEmpty ? nil : extra, paused: statsPaused)
+        return TeamStatsResponse(team: .init(id: teamID, name: "Crew"), stats: statsResult, reactions: statsReactions, extra: include.isEmpty ? nil : extra, paused: statsPaused)
     }
 
     var takesPartialUploads = true
