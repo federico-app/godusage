@@ -11,7 +11,7 @@ Tracks your Cursor plan usage using the login from the Cursor app.
 | Requests | Optional copy of the included request count vs. cap for custom layouts |
 | Cursor Models | Cursor-native model usage percent (Grok, Composer) |
 | Other Models | Third-party model usage percent |
-| Grok Bot | Grok Bot weekly usage percent and reset countdown. Enabled by default, below the caret |
+| Grok Bot | Grok Bot weekly usage percent and reset countdown. Enabled by default, On Demand |
 | Extra Usage | On-demand spend, user-scoped when available, otherwise the team aggregate. Shown as a meter when Cursor returns a limit |
 
 When Cursor reports your plan name, GodUsage shows it beside the provider name.

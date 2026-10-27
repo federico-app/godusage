@@ -2,10 +2,19 @@ import SwiftUI
 
 struct ReorderLift {
     enum Payload {
-        case dashboardProvider(provider: Provider, plan: String?, rows: [WidgetData], errorMessage: String? = nil, errorIsConnectPrompt: Bool = false, errorAllowsRefresh: Bool = true)
+        case dashboardProvider(provider: Provider, plan: String?, rows: [WidgetData], expansion: DashboardExpansion? = nil, errorMessage: String? = nil, errorIsConnectPrompt: Bool = false, errorAllowsRefresh: Bool = true)
         case dashboardMetric(data: WidgetData)
         case customizeProviderRow(provider: Provider, isEnabled: Bool, metricCount: Int)
         case customizeMetric(title: String)
+    }
+
+    /// A lifted provider card's expander chrome, so the preview draws the same separator, quick
+    /// links, and caret as the live card. `nil` when the provider has nothing to expand.
+    struct DashboardExpansion {
+        /// Index in `rows` where the On Demand rows begin (the Always Visible count).
+        let dividerIndex: Int
+        let links: [ProviderLink]
+        let isExpanded: Bool
     }
 
     let id: String
@@ -60,11 +69,12 @@ struct ReorderLiftPreview: View {
     @ViewBuilder
     private var preview: some View {
         switch lift.payload {
-        case .dashboardProvider(let provider, let plan, let rows, let errorMessage, let errorIsConnectPrompt, let errorAllowsRefresh):
+        case .dashboardProvider(let provider, let plan, let rows, let expansion, let errorMessage, let errorIsConnectPrompt, let errorAllowsRefresh):
             dashboardProviderPreview(
                 provider: provider,
                 plan: plan,
                 rows: rows,
+                expansion: expansion,
                 errorMessage: errorMessage,
                 errorIsConnectPrompt: errorIsConnectPrompt,
                 errorAllowsRefresh: errorAllowsRefresh
@@ -82,6 +92,7 @@ struct ReorderLiftPreview: View {
         provider: Provider,
         plan: String?,
         rows: [WidgetData],
+        expansion: ReorderLift.DashboardExpansion?,
         errorMessage: String?,
         errorIsConnectPrompt: Bool,
         errorAllowsRefresh: Bool
@@ -103,8 +114,20 @@ struct ReorderLiftPreview: View {
                         onRefresh: {}
                     )
                 }
-                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+                    if let expansion, expansion.isExpanded, expansion.dividerIndex == index {
+                        DashboardMetricCardSeparator()
+                    }
                     WidgetRowView(data: row)
+                }
+                if let expansion {
+                    if expansion.isExpanded, expansion.dividerIndex == rows.count {
+                        DashboardMetricCardSeparator()
+                    }
+                    if expansion.isExpanded, !expansion.links.isEmpty {
+                        ProviderLinksView(links: expansion.links)
+                    }
+                    DashboardMetricCardCaret(isExpanded: expansion.isExpanded, action: {})
                 }
             }
         }

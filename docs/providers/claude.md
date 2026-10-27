@@ -11,7 +11,7 @@ Tracks your Claude subscription limits using the login you already have from Cla
 | Sonnet | Separate weekly Sonnet limit (plan-dependent) |
 | Fable | Separate weekly Fable limit (model-scoped window from the `limits` array) |
 | Extra Usage | Extra-usage credits spent against your monthly cap |
-| Rate Limit Resets | Free usage-limit resets Anthropic grants (for example, a model-launch reset for Pro and Max), shown as a count such as `1 available`. On by default, below the caret |
+| Rate Limit Resets | Free usage-limit resets Anthropic grants (for example, a model-launch reset for Pro and Max), shown as a count such as `1 available`. On by default, On Demand |
 | Today / Yesterday / Last 30 Days | Local spend, as cost, tokens, or both (see below) |
 
 When Claude reports your plan name, GodUsage shows it beside the provider name. GodUsage prefers the current plan and tier in Claude Code's state file over the copies stored at sign-in, so an upgrade or downgrade shows up without signing in again.
