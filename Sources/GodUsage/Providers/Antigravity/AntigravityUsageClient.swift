@@ -8,6 +8,13 @@ enum CloudCodeOutcome: Sendable {
     case unavailable
 }
 
+/// Outcome of a Cloud Code call made on every base URL: the 2xx bodies in base-URL order.
+enum CloudCodeAllHostsOutcome: Sendable {
+    case ok([Data])
+    case authFailed
+    case unavailable
+}
+
 /// Result of a Google OAuth token refresh, split so a dead refresh token reads as expired auth while a
 /// 5xx/network failure reads as a transient outage.
 enum TokenRefreshOutcome: Sendable {
@@ -20,9 +27,10 @@ enum TokenRefreshOutcome: Sendable {
 /// Google Cloud Code endpoints, and the Google OAuth token refresh.
 struct AntigravityUsageClient: Sendable {
     static let lsService = "exa.language_server_pb.LanguageServerService"
+    // The daily endpoint can omit Gemini quotas from a successful response; prefer production.
     static let cloudCodeURLs = [
-        "https://daily-cloudcode-pa.googleapis.com",
-        "https://cloudcode-pa.googleapis.com"
+        "https://cloudcode-pa.googleapis.com",
+        "https://daily-cloudcode-pa.googleapis.com"
     ]
     static let fetchModelsPath = "/v1internal:fetchAvailableModels"
     static let loadCodeAssistPath = "/v1internal:loadCodeAssist"
@@ -41,13 +49,17 @@ struct AntigravityUsageClient: Sendable {
     /// Loopback session that trusts the LS's self-signed cert; remote calls use full validation.
     var lsHTTP: HTTPClient
     var http: HTTPClient
+    /// Installed Antigravity version for the `loadCodeAssist` User-Agent; nil uses the pinned fallback.
+    var clientVersion: @Sendable () -> String?
 
     init(
         lsHTTP: HTTPClient = URLSessionHTTPClient(allowsInsecureLoopback: true),
-        http: HTTPClient = URLSessionHTTPClient()
+        http: HTTPClient = URLSessionHTTPClient(),
+        clientVersion: @escaping @Sendable () -> String? = AntigravityClientVersion.installed
     ) {
         self.lsHTTP = lsHTTP
         self.http = http
+        self.clientVersion = clientVersion
     }
 
     /// Call a language-server RPC method. Returns nil on a transport failure (port not the live one).
@@ -73,25 +85,73 @@ struct AntigravityUsageClient: Sendable {
     /// next base and finally `.unavailable`.
     func cloudCode(path: String, token: String, userAgent: String, body: [String: String]) async -> CloudCodeOutcome {
         let payload = (try? JSONSerialization.data(withJSONObject: body)) ?? Data("{}".utf8)
+        return await cloudCode(path: path, token: token, userAgent: userAgent, payload: payload)
+    }
+
+    /// `loadCodeAssist` with Antigravity's client metadata. Without it the response carries only
+    /// `allowedTiers` — no `currentTier`/`paidTier` — so the plan can't be read.
+    func loadCodeAssist(token: String) async -> CloudCodeOutcome {
+        let userAgent = AntigravityClientVersion.userAgent(version: clientVersion())
+        return await cloudCode(path: Self.loadCodeAssistPath, token: token, userAgent: userAgent, payload: Self.loadCodeAssistPayload)
+    }
+
+    /// `ClientMetadata` enum names as they appear in the Antigravity language server's protos.
+    static let loadCodeAssistPayload = Data(
+        #"{"metadata":{"ideType":"ANTIGRAVITY","platform":"PLATFORM_UNSPECIFIED","pluginType":"GEMINI"}}"#.utf8
+    )
+
+    private func cloudCode(path: String, token: String, userAgent: String, payload: Data) async -> CloudCodeOutcome {
         for base in Self.cloudCodeURLs {
             guard let url = URL(string: base + path) else { continue }
-            let request = HTTPRequest(
-                method: "POST",
-                url: url,
-                headers: [
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer \(token)",
-                    "User-Agent": userAgent
-                ],
-                body: payload,
-                timeout: 15
-            )
+            let request = Self.cloudCodeRequest(url: url, token: token, userAgent: userAgent, payload: payload)
             guard let response = try? await http.send(request) else { continue }
             if response.statusCode == 401 || response.statusCode == 403 { return .authFailed }
             if (200..<300).contains(response.statusCode) { return .ok(response.body) }
         }
         return .unavailable
+    }
+
+    /// POST a Cloud Code endpoint on each base URL in order and return every 2xx body in base-URL order.
+    /// The hosts can disagree: `daily-cloudcode-pa` has answered the quota summary with only the Claude
+    /// group while `cloudcode-pa` also returned Gemini, so a caller merging by id may need both. Stops
+    /// after the first base when its 2xx body is one `isComplete` accepts: callers merge first-wins, so
+    /// a later answer couldn't change the result. Any 2xx wins; otherwise a 401/403 on any base is
+    /// `.authFailed`, and anything else `.unavailable`.
+    func cloudCodeAllHosts(
+        path: String,
+        token: String,
+        userAgent: String,
+        body: [String: String],
+        isComplete: (Data) -> Bool = { _ in false }
+    ) async -> CloudCodeAllHostsOutcome {
+        let payload = (try? JSONSerialization.data(withJSONObject: body)) ?? Data("{}".utf8)
+        var responses: [HTTPResponse] = []
+        for (index, base) in Self.cloudCodeURLs.enumerated() {
+            guard let url = URL(string: base + path) else { continue }
+            let request = Self.cloudCodeRequest(url: url, token: token, userAgent: userAgent, payload: payload)
+            guard let response = try? await http.send(request) else { continue }
+            responses.append(response)
+            if index == 0, (200..<300).contains(response.statusCode), isComplete(response.body) { break }
+        }
+        let bodies = responses.filter { (200..<300).contains($0.statusCode) }.map(\.body)
+        if !bodies.isEmpty { return .ok(bodies) }
+        if responses.contains(where: { $0.statusCode == 401 || $0.statusCode == 403 }) { return .authFailed }
+        return .unavailable
+    }
+
+    private static func cloudCodeRequest(url: URL, token: String, userAgent: String, payload: Data) -> HTTPRequest {
+        HTTPRequest(
+            method: "POST",
+            url: url,
+            headers: [
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": "Bearer \(token)",
+                "User-Agent": userAgent
+            ],
+            body: payload,
+            timeout: 15
+        )
     }
 
     /// Exchange a Google refresh token for a fresh access token. Distinguishes a dead refresh token
