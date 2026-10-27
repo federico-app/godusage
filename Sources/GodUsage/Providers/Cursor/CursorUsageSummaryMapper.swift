@@ -51,10 +51,22 @@ enum CursorUsageSummaryMapper {
             throw CursorUsageError.requestBasedUnavailable(unavailableMessage)
         }
 
+        // A live org membership corrects a GetPlanInfo that still says Pro (or is missing).
+        let summaryMembership = summary?["membershipType"] as? String
         return CursorMappedUsage(
-            plan: planLabel(planName) ?? planLabel(summary?["membershipType"] as? String),
+            plan: CursorUsageMapper.resolvedPlanLabel(
+                planInfoName: planName,
+                membershipType: CursorUsageMapper.preferredMembership(local: nil, summary: summaryMembership)
+            ),
             lines: lines
         )
+    }
+
+    /// The primary `GetCurrentPeriodUsage` mapping can carry model pools but omit on-demand. Merge the
+    /// On-demand row from usage-summary without touching the live pool meters.
+    static func appendMissingOnDemand(from summary: [String: Any], to lines: inout [MetricLine]) {
+        guard !lines.contains(where: { $0.label == "On-demand" }) else { return }
+        appendOnDemand(summary, cycle: billingCycle(summary: summary, requestUsage: nil), to: &lines)
     }
 
     /// The default Total Usage widget must carry the included allowance on request-based Enterprise
@@ -239,12 +251,6 @@ enum CursorUsageSummaryMapper {
             resetsAt: requestStart?.addingTimeInterval(TimeInterval(CursorUsageMapper.billingPeriodMs) / 1000),
             periodDurationMs: CursorUsageMapper.billingPeriodMs
         )
-    }
-
-    private static func planLabel(_ value: String?) -> String? {
-        guard let value else { return nil }
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed.titleCased(separator: \.isWhitespace)
     }
 
     private struct BillingCycle {
