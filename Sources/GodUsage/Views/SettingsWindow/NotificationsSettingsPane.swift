@@ -74,6 +74,8 @@ struct NotificationsSettingsPane: View {
                 SettingsCaption("Tells you who won when a team challenge ends.")
                 teamToggle("Team Reactions", isOn: $notifications.teamReactions)
                 SettingsCaption("Tells you when a teammate gives you 🔥, 👏, or 🤡.")
+                teamToggle("Team Plan Changes", isOn: $notifications.teamPlanChanges)
+                SettingsCaption("For team owners: tells you when a member’s Mac detects a different plan than the one the team pays for.")
                 if needsAttention {
                     actionRow
                 }

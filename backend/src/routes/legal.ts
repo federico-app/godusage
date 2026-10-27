@@ -6,7 +6,7 @@ import { page } from "./pages";
  * page and from the app's sign-in. Keep them in step with docs/teams-backend.md and docs/privacy.md.
  */
 
-const UPDATED = "October 8, 2026";
+const UPDATED = "October 27, 2026";
 const CONTACT = `<a href="https://github.com/federico-app/godusage/issues">GitHub issues</a> (for private requests, a <a href="https://github.com/federico-app/godusage/security/advisories/new">private report</a>)`;
 
 export const privacyPage: Handler = async () =>
@@ -21,7 +21,7 @@ export const privacyPage: Handler = async () =>
      <h2>What we collect</h2>
      <ul>
        <li><strong>Account:</strong> the user id Sign in with Apple gives us and the display name you choose. We never receive your email or your Apple ID password.</li>
-       <li><strong>Usage you share:</strong> for each of your Macs, its name and a random id, and daily tokens and estimated spend per AI provider and per model. For account-wide providers (Cursor), a one-way hash of the account, so a team counts an account several members share once. For seven days, how much your spend grew in each five-minute window, so your team sees who is spending fast right now. Never credentials, prompts, code, logs, project names, or provider account ids.</li>
+       <li><strong>Usage you share:</strong> for each of your Macs, its name and a random id, and daily tokens and estimated spend per AI provider and per model. For account-wide providers (Cursor), a one-way hash of the account, so a team counts an account several members share once. For seven days, how much your spend grew in each five-minute window, so your team sees who is spending fast right now. The plan GodUsage detects for each provider on each Mac (a plan name like "Max 20x") and since when, so your team's owners can tell when the plan they pay for changed. Never credentials, prompts, code, logs, project names, or provider account ids.</li>
        <li><strong>Teams:</strong> the teams you create or join, your role, reactions you give and receive, and challenges you start.</li>
        <li><strong>Sessions:</strong> a hash of each sign-in token. For an iPhone or iPad you link with a QR code, its name, so you can see and unlink it. In a browser, one cookie keeps you signed in to your team's leaderboard.</li>
        <li><strong>Service logs:</strong> our host keeps short-lived request logs (time, route, status) to operate and secure the service.</li>
@@ -31,7 +31,7 @@ export const privacyPage: Handler = async () =>
      <p>Only to run Teams: show your team's leaderboards, charts, reactions, and challenges, and send the notifications you turn on. No advertising, no selling or sharing data for marketing, no analytics profiles.</p>
 
      <h2>Who sees it</h2>
-     <p>Members of your teams see your display name and the usage you share. If a team owner turns on a public leaderboard, anyone with that link sees the team's names and usage. Nobody else does.</p>
+     <p>Members of your teams see your display name and the usage you share. Only your teams' owners see your detected plans. If a team owner turns on a public leaderboard, anyone with that link sees the team's names and usage. Nobody else does.</p>
 
      <h2>Service providers</h2>
      <p>Cloudflare hosts the service and its database. Apple provides Sign in with Apple. They process data only to provide those services.</p>
