@@ -132,6 +132,7 @@ final class AppContainer {
         let teamsSocial = TeamsSocialStore(
             teams: teams,
             challengeAlertsEnabled: { notificationSettings.teamChallenges },
+            reactionAlertsEnabled: { notificationSettings.teamReactions },
             postNotification: { id, title, subtitle, body in
                 await AppNotifications.shared.post(idPrefix: id, title: title, subtitle: subtitle, body: body)
             }

@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// The social side of Teams: reactions, challenges, challenge-result alerts, the end-of-month
+/// The social side of Teams: reactions and their alerts, challenges, challenge-result alerts, the end-of-month
 /// projection, and today's leader. Reads the session and stats from `TeamsStore`.
 @MainActor
 @Observable
@@ -13,23 +13,30 @@ final class TeamsSocialStore {
     @ObservationIgnored private let teams: TeamsStore
     @ObservationIgnored private let api: any TeamsAPI
     @ObservationIgnored private let challengeAlertsEnabled: @MainActor () -> Bool
+    @ObservationIgnored private let reactionAlertsEnabled: @MainActor () -> Bool
     @ObservationIgnored private let postNotification: @MainActor (_ id: String, _ title: String, _ subtitle: String, _ body: String) async -> Bool
     @ObservationIgnored private let defaults: UserDefaults
     private static let notifiedChallengesKey = "godusage.teams.notifiedChallenges.v1"
+    private static let notifiedReactionsKey = "godusage.teams.notifiedReactions.v1"
+    /// Two overlapping checks would both read the list before either saves it, and alert twice.
+    @ObservationIgnored private var isCheckingReactions = false
 
     init(
         teams: TeamsStore,
         api: any TeamsAPI = TeamsAPIClient(),
         challengeAlertsEnabled: @escaping @MainActor () -> Bool = { false },
+        reactionAlertsEnabled: @escaping @MainActor () -> Bool = { false },
         postNotification: @escaping @MainActor (String, String, String, String) async -> Bool = { _, _, _, _ in false },
         defaults: UserDefaults = .standard
     ) {
         self.teams = teams
         self.api = api
         self.challengeAlertsEnabled = challengeAlertsEnabled
+        self.reactionAlertsEnabled = reactionAlertsEnabled
         self.postNotification = postNotification
         self.defaults = defaults
         teams.afterUploadHooks.append { [weak self] in await self?.checkChallengeResults() }
+        teams.afterUploadHooks.append { [weak self] in await self?.checkReceivedReactions() }
     }
 
     func dismissError() { errorMessage = nil }
@@ -61,6 +68,46 @@ final class TeamsSocialStore {
             errorMessage = error.localizedDescription
             AppLog.warn(.teams, "reaction failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Alerts once per reaction a teammate gives you. The first check after the alert is turned on
+    /// only records today's reactions, so it never announces old ones. Keys from a previous UTC day
+    /// are dropped, so the list never grows past one day.
+    func checkReceivedReactions() async {
+        guard reactionAlertsEnabled() else {
+            defaults.removeObject(forKey: Self.notifiedReactionsKey)
+            return
+        }
+        guard let me = teams.user?.id, !teams.teams.isEmpty, !isCheckingReactions else { return }
+        isCheckingReactions = true
+        defer { isCheckingReactions = false }
+        let stored = defaults.stringArray(forKey: Self.notifiedReactionsKey)
+        var notified = Set(stored ?? [])
+        for team in teams.teams {
+            let stats: TeamStats
+            do {
+                stats = try await teams.stats(for: team.id, range: .today, sort: .cost)
+            } catch {
+                AppLog.warn(.teams, "reaction alerts: couldn't load \(team.id): \(error.localizedDescription)")
+                continue
+            }
+            guard let reactions = teams.reactionsByTeam[team.id] else { continue }
+            let day = reactions.week
+            notified = notified.filter { !$0.hasPrefix("\(team.id)|") || $0.hasPrefix("\(team.id)|\(day)|") }
+            let fresh = TeamEvents.receivedReactions(reactions, me: me)
+                .filter { !notified.contains($0.key(team: team.id, day: day)) }
+            guard !fresh.isEmpty else { continue }
+            let names = Dictionary(stats.members.map { ($0.userID, $0.displayName) }, uniquingKeysWith: { first, _ in first })
+            var delivered = stored == nil
+            if !delivered, let message = TeamEvents.reactionMessage(fresh, names: names) {
+                delivered = await postNotification("team-reaction", message.title, team.name, message.body)
+            }
+            // Retried on the next check when it couldn't be delivered (no permission yet).
+            if delivered { notified.formUnion(fresh.map { $0.key(team: team.id, day: day) }) }
+        }
+        let current = Set(teams.teams.map(\.id))
+        notified = notified.filter { current.contains(String($0.prefix { $0 != "|" })) }
+        defaults.set(Array(notified), forKey: Self.notifiedReactionsKey)
     }
 
     private func apply(reaction: TeamReaction, delta: Int, to value: inout MemberReactions) {

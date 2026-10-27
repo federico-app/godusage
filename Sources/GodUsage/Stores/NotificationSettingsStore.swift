@@ -19,6 +19,7 @@ final class NotificationSettingsStore {
     private static let teamOvertakesKey = "godusage.notifications.teamOvertakes"
     private static let teamWeeklyRecapKey = "godusage.notifications.teamWeeklyRecap"
     private static let teamChallengesKey = "godusage.notifications.teamChallenges"
+    private static let teamReactionsKey = "godusage.notifications.teamReactions"
     private static let usageSuggestionsKey = "godusage.notifications.usageSuggestions"
 
     /// Notify once when a new usage suggestion tops the dashboard banner.
@@ -29,6 +30,11 @@ final class NotificationSettingsStore {
     /// Announce the winners when a team challenge ends.
     var teamChallenges: Bool {
         didSet { defaults.set(teamChallenges, forKey: Self.teamChallengesKey) }
+    }
+
+    /// Alert when a teammate reacts to you (🔥, 👏, 🤡).
+    var teamReactions: Bool {
+        didSet { defaults.set(teamReactions, forKey: Self.teamReactionsKey) }
     }
 
     /// Alert when a teammate passes you by spend over the last 7 days.
@@ -72,6 +78,7 @@ final class NotificationSettingsStore {
         self.teamOvertakes = defaults.bool(forKey: Self.teamOvertakesKey, default: true)
         self.teamWeeklyRecap = defaults.bool(forKey: Self.teamWeeklyRecapKey, default: true)
         self.teamChallenges = defaults.bool(forKey: Self.teamChallengesKey, default: true)
+        self.teamReactions = defaults.bool(forKey: Self.teamReactionsKey, default: true)
         self.usageSuggestions = defaults.bool(forKey: Self.usageSuggestionsKey, default: true)
     }
 
@@ -89,6 +96,6 @@ final class NotificationSettingsStore {
     /// triggers off silences everything.
     var anyEnabled: Bool {
         underTenPercent || healthyToClose || closeToRunningOut || resetExpiryReminders || teamOvertakes || teamWeeklyRecap
-            || teamChallenges || usageSuggestions
+            || teamChallenges || teamReactions || usageSuggestions
     }
 }
