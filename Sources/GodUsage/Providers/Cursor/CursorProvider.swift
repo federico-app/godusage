@@ -200,16 +200,22 @@ final class CursorProvider: ProviderRuntime {
         }
         let currentToken = accessToken
 
-        let (planName, planInfoUnavailable) = await fetchPlanName(accessToken: currentToken)
+        // Some Enterprise / Team seats still get GetPlanInfo = Pro. The org membership may steer the
+        // fallback route and the badge, but `mapUsage` keeps branching on GetPlanInfo alone.
+        let (planInfoName, planInfoUnavailable) = await fetchPlanName(accessToken: currentToken)
+        let membershipType = authState.membershipType
+        let routingPlanName = CursorUsageMapper.routingPlanName(planInfoName: planInfoName, membershipType: membershipType)
+        let displayPlanName = CursorUsageMapper.resolvedPlanName(planInfoName: planInfoName, membershipType: membershipType)
+            ?? routingPlanName
         let fallback = CursorUsageMapper.shouldUseRequestBasedFallback(
             usage: usage,
-            planName: planName,
+            planName: routingPlanName,
             planInfoUnavailable: planInfoUnavailable
         )
         if fallback.shouldFallback {
             var mapped = try await usageSummaryAndRequestResult(
                 accessToken: currentToken,
-                planName: planName,
+                planName: displayPlanName,
                 unavailableMessage: fallback.message
             )
             await appendGrokBotUsage(to: &mapped.lines, accessToken: currentToken)
@@ -221,7 +227,7 @@ final class CursorProvider: ProviderRuntime {
             do {
                 var mapped = try await requestBasedResult(
                     accessToken: currentToken,
-                    planName: planName,
+                    planName: displayPlanName,
                     unavailableMessage: "Cursor request-based usage data unavailable. Try again later."
                 )
                 await appendGrokBotUsage(to: &mapped.lines, accessToken: currentToken)
@@ -235,13 +241,56 @@ final class CursorProvider: ProviderRuntime {
         let stripeBalanceCents = await fetchStripeBalanceCents(accessToken: currentToken)
         var mapped = try CursorUsageMapper.mapUsage(
             usage: usage,
-            planName: planName,
+            planName: planInfoName,
             creditGrants: creditGrants,
             stripeBalanceCents: stripeBalanceCents
+        )
+        mapped.plan = CursorUsageMapper.resolvedPlanLabel(planInfoName: planInfoName, membershipType: membershipType)
+        await enrichFromUsageSummaryIfNeeded(
+            &mapped,
+            usage: usage,
+            planInfoName: planInfoName,
+            membershipType: membershipType,
+            accessToken: currentToken
         )
         await appendGrokBotUsage(to: &mapped.lines, accessToken: currentToken)
         let history = await appendSpendLines(to: &mapped.lines, accessToken: currentToken)
         return snapshot(mapped, usageHistory: history)
+    }
+
+    /// Org seats (local org membership or a team-shaped payload) can map fine from the primary call
+    /// but omit on-demand there, and GetPlanInfo may still say Pro. usage-summary carries both the
+    /// Extra Usage bucket and the live membership. Personal seats are never probed.
+    private func enrichFromUsageSummaryIfNeeded(
+        _ mapped: inout CursorMappedUsage,
+        usage: [String: Any],
+        planInfoName: String?,
+        membershipType: String?,
+        accessToken: String
+    ) async {
+        let needsOnDemand = !mapped.lines.contains { $0.label == "On-demand" }
+        let localIsOrg = CursorUsageMapper.normalizedMembership(membershipType)
+            .map(CursorUsageMapper.orgMembershipTypes.contains) ?? false
+        guard localIsOrg || CursorPlanUsageFacts(usage: usage).isTeamByShape else { return }
+        // A local org membership already fixed the badge; nothing left to learn when on-demand is present.
+        if localIsOrg, !needsOnDemand { return }
+
+        guard let summary = await fetchOptionalJSONObject(label: "usage-summary", request: {
+            try await self.usageClient.fetchUsageSummary(accessToken: accessToken)
+        }) else {
+            return
+        }
+        guard CursorUsageSummaryMapper.hasUsableSummaryPayload(summary) else {
+            AppLog.warn(LogTag.plugin("cursor"), "optional usage-summary response contained no usable usage fields")
+            return
+        }
+        CursorUsageSummaryMapper.appendMissingOnDemand(from: summary, to: &mapped.lines)
+        let membership = CursorUsageMapper.preferredMembership(
+            local: membershipType,
+            summary: summary["membershipType"] as? String
+        )
+        mapped.plan = CursorUsageMapper.resolvedPlanLabel(planInfoName: planInfoName, membershipType: membership)
+            ?? mapped.plan
     }
 
     /// Grok Bot uses the same Cursor account but keeps a separate weekly allowance. Missing access is

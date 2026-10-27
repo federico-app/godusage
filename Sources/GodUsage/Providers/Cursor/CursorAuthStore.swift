@@ -7,6 +7,10 @@ struct CursorAuthState: Hashable, Sendable {
     }
 
     var accessToken: String?
+    /// Lowercased `cursorAuth/stripeMembershipType` from Cursor's state DB, set only when the state
+    /// is provably the state DB's own account (the SQLite login, or a keychain token with the same
+    /// subject). Never attached to another account's keychain session.
+    var membershipType: String? = nil
     var source: Source
 }
 
@@ -150,7 +154,12 @@ struct CursorAuthStore: Sendable {
                let subject = Self.tokenSubject(sqliteAccessToken),
                subject == Self.tokenSubject(keychainAccessToken)
             {
-                return .state(CursorAuthState(accessToken: keychainAccessToken, source: .keychain))
+                // Same subject, so the state DB's membership belongs to this account too.
+                return .state(CursorAuthState(
+                    accessToken: keychainAccessToken,
+                    membershipType: sqliteMembershipType,
+                    source: .keychain
+                ))
             }
 
             // The selected token is dead and a protected item may hold a live one for this account.
@@ -160,7 +169,11 @@ struct CursorAuthStore: Sendable {
                 return unreadableLoad
             }
 
-            return .state(CursorAuthState(accessToken: sqliteAccessToken, source: .sqlite))
+            return .state(CursorAuthState(
+                accessToken: sqliteAccessToken,
+                membershipType: sqliteMembershipType,
+                source: .sqlite
+            ))
         }
 
         // A protected item is a real login footprint (`hasLocalCredentials` must see it); only a
@@ -170,6 +183,8 @@ struct CursorAuthStore: Sendable {
         }
 
         if hasKeychainAuth {
+            // Keychain-only auth has no proven link to a state-DB membership row; leave it unset
+            // rather than attaching another account's stripeMembershipType.
             return .state(CursorAuthState(accessToken: keychainAccessToken, source: .keychain))
         }
         return .none
@@ -188,6 +203,8 @@ struct CursorAuthStore: Sendable {
         }
         let candidate: String?
         let source: CursorAuthState.Source
+        // Subject equality below proves the same account, so the state DB's membership applies.
+        var membershipType = state.membershipType
         switch state.source {
         case .sqlite:
             let read = readKeychainValue(
@@ -203,7 +220,9 @@ struct CursorAuthStore: Sendable {
             candidate = read.trimmedValue
             source = .keychain
         case .keychain:
-            candidate = readStateValues([Self.accessTokenKey])[Self.accessTokenKey]
+            let values = readStateValues([Self.accessTokenKey, Self.membershipTypeKey])
+            candidate = values[Self.accessTokenKey]
+            membershipType = values[Self.membershipTypeKey]?.lowercased()
             source = .sqlite
         }
         guard let candidate,
@@ -213,7 +232,7 @@ struct CursorAuthStore: Sendable {
         else {
             return .none
         }
-        return .state(CursorAuthState(accessToken: candidate, source: source))
+        return .state(CursorAuthState(accessToken: candidate, membershipType: membershipType, source: source))
     }
 
     /// `nil` from the probe means "cannot check" (locked keychain, stuck flight), not "absent" —

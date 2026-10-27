@@ -16,6 +16,14 @@ Tracks your Cursor plan usage using the login from the Cursor app.
 
 When Cursor reports your plan name, GodUsage shows it beside the provider name.
 
+Some Enterprise and Team seats still report the plan as **Pro**. When the billing membership says `enterprise` or `team` and the reported plan is missing or Pro, GodUsage shows Enterprise or Team instead. The membership comes from the Cursor app's local state, or from `usage-summary`. A keychain login for a different account never takes the local membership. Explicit plan names such as Ultra or Business are kept.
+
+Team and Enterprise accounts:
+
+- A dollar limit shows Total Usage as a dollar meter.
+- Without a dollar limit, Total Usage uses the reported total percentage.
+- When the main usage call has no on-demand row, GodUsage adds Extra Usage from `usage-summary` and leaves the other meters as they are. Personal seats never make this extra call.
+
 Grok Bot has its own weekly allowance, separate from Cursor's billing-cycle meter. It uses the existing Cursor login. Signing into the Grok CLI is not required. Accounts without a personal included allowance (including pooled enterprise seats) hide the meter.
 
 ## Where credentials come from
@@ -36,7 +44,7 @@ GodUsage leaves malformed usage events out instead of counting them as zero, and
 
 - **"Not logged in" / token errors**: open Cursor and make sure you are signed in, then refresh.
 - **Some metrics missing**: Cursor omits fields depending on plan type. Missing metrics show "No data".
-- **Optional lookup failed**: plan, credit-grant, prepaid-balance, Grok Bot, and request-fallback failures are nonfatal when primary usage is available. GodUsage records fixed, credential-free reasons in the log.
+- **Optional lookup failed**: plan, credit-grant, prepaid-balance, Grok Bot, usage-summary, and request-fallback failures are nonfatal when primary usage is available. GodUsage records fixed, credential-free reasons in the log.
 
 ## Under the hood
 
