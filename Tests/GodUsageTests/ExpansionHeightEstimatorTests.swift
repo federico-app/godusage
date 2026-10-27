@@ -43,7 +43,8 @@ final class ExpansionHeightEstimatorTests: XCTestCase {
             XCTAssertEqual(revealed.map(\.id), ["today"])
             XCTAssertEqual(
                 ExpansionHeightEstimator.estimatedDelta(revealedRows: revealed, linkCount: 0),
-                ExpansionHeightEstimator.estimatedRowHeight(textData(), condensedTop: false)
+                DashboardMetricCardSeparator.height
+                    + ExpansionHeightEstimator.estimatedRowHeight(textData(), condensedTop: false)
             )
         }
     }
@@ -89,6 +90,23 @@ final class ExpansionHeightEstimatorTests: XCTestCase {
         let cluster = [textRow("today"), textRow("yesterday"), textRow("month")]
         let estimate = ExpansionHeightEstimator.estimatedDelta(revealedRows: cluster, linkCount: 0)
         XCTAssertLessThan(estimate, 3 * DensitySetting.compact.estimatedMetricRowHeight)
+    }
+
+    func testOpenCardAddsSeparatorAboveExpandedContent() {
+        // An open card draws a thin line after the Always Visible rows and moves the caret to the
+        // bottom, so the expansion grows by the separator plus the revealed content.
+        let row = textRow("today")
+        XCTAssertEqual(
+            ExpansionHeightEstimator.estimatedDelta(revealedRows: [row], linkCount: 0),
+            DashboardMetricCardSeparator.height
+                + ExpansionHeightEstimator.estimatedRowHeight(textData(), condensedTop: false)
+        )
+        XCTAssertEqual(
+            ExpansionHeightEstimator.estimatedDelta(revealedRows: [], linkCount: 2),
+            DashboardMetricCardSeparator.height + ExpansionHeightEstimator.estimatedLinksRowHeight(linkCount: 2),
+            "A links-only expansion still opens with the separator"
+        )
+        XCTAssertEqual(ExpansionHeightEstimator.estimatedDelta(revealedRows: [], linkCount: 0), 0)
     }
 
     func testLinksRowHeightWrapsAtThreeAcross() {

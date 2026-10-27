@@ -657,7 +657,7 @@ final class WidgetDataStore {
     func localTeamHistorySources() -> [TeamHistorySource] {
         registry.historyDescriptorsByProvider.compactMap { providerID, descriptor in
             guard isProviderEnabled(providerID), let history = localSnapshots[providerID]?.usageHistory else { return nil }
-            return TeamHistorySource(cardID: providerID, scope: descriptor.scope, history: history)
+            return TeamHistorySource(cardID: providerID, scope: descriptor.scope, history: history, plan: localSnapshots[providerID]?.plan)
         }
     }
 

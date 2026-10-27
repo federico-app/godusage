@@ -27,7 +27,7 @@ struct WidgetRowView: View {
     @State private var modelHover = HoverPopoverState()
     /// Backs the resets popover's claim flow; `nil` outside the live dashboard (previews, share
     /// renders), which renders the timeline read-only.
-    @Environment(\.codexResetClaim) private var codexResetClaim
+    @Environment(\.resetClaim) private var resetClaim
     /// Party easter egg: fill meter bars with the party gradient instead of the severity color. Off by
     /// default everywhere else.
     @Environment(\.popoverPartyMode) private var partyMode
@@ -394,13 +394,16 @@ struct WidgetRowView: View {
                         count: data.resetCreditCount, expiries: data.expiriesAt,
                         onHoverChange: { inside in modelHover.detailHover(inside) },
                         onPinChange: { pinned in modelHover.setPinned(pinned) },
-                        // Codex cards bind a claim service; Claude, Grok, and static renders receive nil, so
-                        // the timeline stays read-only (GodUsage never calls Grok's RedeemReset).
-                        claim: codexResetClaim.map { service in
-                            { expiry, redeemRequestID in
+                        // Codex and Claude cards bind a claim service; Grok and static renders receive nil,
+                        // and a service with nothing to claim right now (a Claude account Anthropic names no
+                        // next reset for) also keeps the timeline read-only. GodUsage never calls Grok's
+                        // RedeemReset.
+                        claim: resetClaim.flatMap { service in
+                            service.isClaimable ? { expiry, redeemRequestID in
                                 await service.claim(creditExpiringAt: expiry, redeemRequestID: redeemRequestID)
-                            }
-                        }
+                            } : nil
+                        },
+                        confirmDetail: resetClaim?.confirmDetail
                     )
                 }
             }

@@ -23,9 +23,12 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
         return periodMs
     }
 
-    /// All four buckets, in scrambled group order, with the shapes seen in live probes.
-    private let fullGroupsJSON = """
+    /// Four shared quota windows and a separate Argon weekly quota, in scrambled group order.
+    let fullGroupsJSON = """
     "groups":[
+      {"displayName":"Gemini 4 Argon","buckets":[
+        {"bucketId":"gemini-argon-wtu-weekly","displayName":"Gemini 4 Argon Weekly Limit","window":"weekly","remainingFraction":0.6,"resetTime":"2026-10-20T08:00:00Z"}
+      ]},
       {"displayName":"Claude and other models","buckets":[
         {"bucketId":"3p-weekly","displayName":"Weekly","window":"weekly","remainingFraction":1,"resetTime":"2026-07-06T07:00:00Z"},
         {"bucketId":"3p-5h","displayName":"5-hour","window":"5h","remainingFraction":0.4,"resetTime":"2026-07-02T15:30:00Z"}
@@ -39,18 +42,19 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
 
     // MARK: - Parser
 
-    func testWrappedAndBarePayloadsProduceIdenticalFourLines() {
+    func testWrappedAndBarePayloadsProduceIdenticalFiveLines() {
         let bare = AntigravityUsageMapper.parseQuotaSummary(Data("{\(fullGroupsJSON)}".utf8))
         let wrapped = AntigravityUsageMapper.parseQuotaSummary(Data("{\"response\":{\(fullGroupsJSON)}}".utf8))
         XCTAssertEqual(bare, wrapped)
 
         guard let lines = bare else { return XCTFail("full summary did not parse") }
-        XCTAssertEqual(lines.map(\.label), ["Session", "Weekly", "Claude", "Claude Weekly"])
-        XCTAssertEqual(lines.map { used($0) }, [25, 10, 60, 0])
+        XCTAssertEqual(lines.map(\.label), ["Session", "Weekly", "Argon Weekly", "Claude", "Claude Weekly"])
+        XCTAssertEqual(lines.map { used($0) }, [25, 10, 40, 60, 0])
         XCTAssertEqual(resetsAt(lines[0]), GodUsageISO8601.date(from: "2026-07-02T16:00:00Z"))
-        XCTAssertEqual(resetsAt(lines[2]), GodUsageISO8601.date(from: "2026-07-02T15:30:00Z"))
+        XCTAssertEqual(resetsAt(lines[2]), GodUsageISO8601.date(from: "2026-10-20T08:00:00Z"))
+        XCTAssertEqual(resetsAt(lines[3]), GodUsageISO8601.date(from: "2026-07-02T15:30:00Z"))
         XCTAssertEqual(lines.map { periodMs($0) }, [
-            MetricPeriod.sessionMs, MetricPeriod.weekMs, MetricPeriod.sessionMs, MetricPeriod.weekMs
+            MetricPeriod.sessionMs, MetricPeriod.weekMs, MetricPeriod.weekMs, MetricPeriod.sessionMs, MetricPeriod.weekMs
         ])
     }
 
@@ -107,7 +111,7 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
     }
 
     func testWeeklyOnlyAndSessionOnlyShapes() {
-        // Free tier may lack the 5h buckets; Ultra may lack the weekly ones. Both are valid summaries.
+        // A summary may expose only one window. Both shapes remain valid summaries.
         let weeklyOnly = """
         {"response":{"groups":[{"buckets":[
           {"bucketId":"gemini-weekly","remainingFraction":0.8},
@@ -147,7 +151,10 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
     @MainActor
     func testDescriptorLabelsMatchMapperEmittedLabels() {
         let descriptorLabels = Set(AntigravityProvider().widgetDescriptors.map(\.metricLabel))
-        XCTAssertEqual(Set(AntigravityUsageMapper.summaryBuckets.map(\.label)), descriptorLabels)
+        XCTAssertEqual(
+            Set(AntigravityUsageMapper.summaryBuckets.map(\.label)).union([AntigravityMetric.argonWeeklyLabel]),
+            descriptorLabels
+        )
 
         let summaryLines = AntigravityUsageMapper.parseQuotaSummary(Data("{\(fullGroupsJSON)}".utf8)) ?? []
         XCTAssertEqual(Set(summaryLines.map(\.label)), descriptorLabels)
@@ -169,19 +176,47 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
         let wrapped = "go-keyring-base64:" + Data(inner.utf8).base64EncodedString()
         return AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(wrapped), files: FakeFiles()),
-            usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing),
+            usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing, clientVersion: { "9.8.7" }),
             discovery: LanguageServerDiscovery(processRunner: NoProcessRunner())
         )
     }
 
+    /// What `daily-cloudcode-pa` was seen returning on 2026-10-17: only the non-Gemini pool.
+    static let claudeOnlyGroupsJSON = """
+    "groups":[{"displayName":"Claude and GPT models","buckets":[
+      {"bucketId":"3p-5h","window":"5h","remainingFraction":0.4},
+      {"bucketId":"3p-weekly","window":"weekly","remainingFraction":1}
+    ]}]
+    """
+
+    private func assertSummaryRequests(
+        _ routing: RoutingHTTPClient, hosts: [String], file: StaticString = #filePath, line: UInt = #line
+    ) {
+        XCTAssertEqual(
+            routing.requests.filter { $0.url.path == AntigravityUsageClient.quotaSummaryPath }.compactMap { $0.url.host },
+            hosts, file: file, line: line
+        )
+        XCTAssertFalse(routing.requests.contains {
+            $0.url.path == AntigravityUsageClient.fetchModelsPath || $0.url.path == AntigravityUsageClient.retrieveQuotaPath
+        }, "a parsed summary must not touch the legacy endpoints", file: file, line: line)
+    }
+
     @MainActor
-    func testCloudCodeSummaryProducesFourMetersAndPlan() async {
+    func testCloudCodeSummaryProducesFiveMetersAndPlan() async {
         let groupsJSON = fullGroupsJSON
+        let partialGroupsJSON = Self.claudeOnlyGroupsJSON
         let routing = RoutingHTTPClient { request in
             let path = request.url.path
-            if path.contains("retrieveUserQuotaSummary") {
+            if path == AntigravityUsageClient.quotaSummaryPath {
                 // The remote endpoint returns the payload bare (no "response" wrapper).
-                return HTTPResponse(statusCode: 200, headers: [:], body: Data("{\(groupsJSON)}".utf8))
+                switch request.url.host {
+                case "cloudcode-pa.googleapis.com":
+                    return HTTPResponse(statusCode: 200, headers: [:], body: Data("{\(groupsJSON)}".utf8))
+                case "daily-cloudcode-pa.googleapis.com":
+                    return HTTPResponse(statusCode: 200, headers: [:], body: Data("{\(partialGroupsJSON)}".utf8))
+                default:
+                    return HTTPResponse(statusCode: 404, headers: [:], body: Data())
+                }
             }
             if path.contains("loadCodeAssist") {
                 return HTTPResponse(statusCode: 200, headers: [:], body: Data(#"{"paidTier":{"name":"Google AI Pro"}}"#.utf8))
@@ -192,10 +227,19 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
 
         let snapshot = await provider.refresh()
         XCTAssertEqual(snapshot.plan, "Pro")
-        XCTAssertEqual(snapshot.lines.map(\.label), ["Session", "Weekly", "Claude", "Claude Weekly"])
-        XCTAssertEqual(snapshot.lines.map { used($0) }, [25, 10, 60, 0])
-        XCTAssertFalse(routing.requests.contains { $0.url.path.contains("fetchAvailableModels") },
-                       "a parsed summary must not touch the legacy model endpoints")
+        XCTAssertEqual(snapshot.lines.map(\.label), ["Session", "Weekly", "Argon Weekly", "Claude", "Claude Weekly"])
+        XCTAssertEqual(snapshot.lines.map { used($0) }, [25, 10, 40, 60, 0])
+        assertSummaryRequests(routing, hosts: ["cloudcode-pa.googleapis.com"])
+        XCTAssertFalse(routing.requests.contains { $0.url.host == "daily-cloudcode-pa.googleapis.com" },
+                       "a complete production response must not be replaced by the partial daily response")
+
+        // Without Antigravity's client metadata and User-Agent, loadCodeAssist omits currentTier/paidTier.
+        let planRequest = routing.requests.first { $0.url.path.contains("loadCodeAssist") }
+        let planBody = planRequest?.body.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
+        XCTAssertEqual(planBody?["metadata"] as? [String: String], [
+            "ideType": "ANTIGRAVITY", "platform": "PLATFORM_UNSPECIFIED", "pluginType": "GEMINI"
+        ])
+        XCTAssertEqual(planRequest?.headers["User-Agent"]?.hasPrefix("antigravity/9.8.7 (aidev_client; os_type=darwin; arch="), true)
     }
 
     @MainActor
@@ -254,8 +298,8 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
 
         let snapshot = await provider.refresh()
         // Summary values win — not the single 1%-used line the legacy GetUserStatus configs would pool to.
-        XCTAssertEqual(snapshot.lines.map(\.label), ["Session", "Weekly", "Claude", "Claude Weekly"])
-        XCTAssertEqual(snapshot.lines.map { used($0) }, [25, 10, 60, 0])
+        XCTAssertEqual(snapshot.lines.map(\.label), ["Session", "Weekly", "Argon Weekly", "Claude", "Claude Weekly"])
+        XCTAssertEqual(snapshot.lines.map { used($0) }, [25, 10, 40, 60, 0])
         XCTAssertEqual(snapshot.plan, "Pro")
         XCTAssertFalse(routing.requests.contains { $0.url.path.hasSuffix("/GetCommandModelConfigs") })
     }
@@ -292,6 +336,7 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
                 {"userStatus":{"userTier":{"name":"Google AI Pro"},
                 "cascadeModelConfigData":{"clientModelConfigs":[
                   {"label":"Gemini 3 Pro","quotaInfo":{"remainingFraction":0.5}},
+                  {"label":"Gemini 4 Argon","modelOrAlias":{"model":"MODEL_PLACEHOLDER_M421"},"quotaInfo":{}},
                   {"label":"Claude Sonnet 4.6","quotaInfo":{"remainingFraction":0.8}}
                 ]}}}
                 """
@@ -310,7 +355,7 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
 
 /// Returns empty output for every subprocess, so language-server discovery finds nothing and the
 /// provider deterministically exercises the Cloud Code path.
-private struct NoProcessRunner: ProcessRunning {
+struct NoProcessRunner: ProcessRunning {
     func run(executable: String, arguments: [String], environment: [String: String], timeout: TimeInterval) throws -> ProcessResult {
         ProcessResult(exitCode: 0, stdout: "", stderr: "")
     }

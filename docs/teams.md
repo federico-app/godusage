@@ -59,11 +59,16 @@ Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac
 - the ranking (members with the same value share a rank), each bar split by provider,
 - **Who Uses What**: each member's usage, split by provider,
 - **By Day**: the team's usage per day, split by provider; hover a day for its numbers,
-- **Top Models**: the team's most used models, colored by provider.
+- **By Model**: the team's usage per day, week, or month, split by the period's eight largest models (the rest are summed as Other); hover a bar for its numbers. A year starts by month, shorter periods by day,
+- **Top Models**: the team's most used models. Each model takes its provider's color, in a different shade for each model of the same provider (the largest keeps the plain color), in both By Model and Top Models.
 
 The gear button in its toolbar opens Settings → Teams.
 
-**Plans.** Team owners list the subscriptions the team pays for in Settings → Teams → Plans: provider, name, monthly cost, the day of the month it renews (29–31 fall on the last day of shorter months), and who it **Covers**: **Everyone** (the default, including members who join later) or the members picked from the list. Every member sees the **Plans** tab in the Teams window. For each plan it shows the current billing cycle (last renewal to the day before the next), the covered members' usage of that provider in the cycle at API prices, the projection to the end of the cycle at the current pace, and the value per dollar (projected value ÷ monthly cost). A plan that covers only some members lists them. Plans projected under 1× are flagged as underused. Members a plan doesn't cover, like someone paying for their own Cursor, don't count toward its value. Usage counts like the leaderboard, shared accounts once; a shared account counts for a plan when anyone who shares it is covered. Plans of one provider that cover the same usage split it by cost. An underused plan that renews within 7 days also shows as a [suggestion](dashboard.md#suggestions) on the dashboard of the members it covers who use its provider.
+**Plans.** Team owners list the subscriptions the team pays for in Settings → Teams → Plans: provider, name, monthly cost, the day of the month it renews (29–31 fall on the last day of shorter months), and who it **Covers**: **Everyone** (the default, including members who join later) or the members picked from the list. Every member sees the **Plans** tab in the Teams window. For each plan it shows the current billing cycle (last renewal to the day before the next), the covered members' usage of that provider in the cycle at API prices, the projection to the end of the cycle at the current pace, and the value per dollar (projected value ÷ what the cycle costs). A plan that covers only some members lists them. Plans projected under 1× are flagged as underused. Members a plan doesn't cover, like someone paying for their own Cursor, don't count toward its value. Usage counts like the leaderboard, shared accounts once; a shared account counts for a plan when anyone who shares it is covered. Plans of one provider that cover the same usage split it by cost. An underused plan that renews within 7 days also shows as a [suggestion](dashboard.md#suggestions) on the dashboard of the members it covers who use its provider.
+
+**Plan changes.** **Change Plan…** on a plan marks a downgrade or upgrade: the new name, the new monthly price, and the **Effective** day. It defaults to the next renewal, and can be any later day or a past one (back to the day after the plan's last change). Saving it saves the plans. The plan keeps its price history: until the day, it has its old name and price; from the day, the new ones. A billing cycle with a change in it costs each price for the days it applies (monthly price ÷ the cycle's days, per day), and each day's usage counts against the price in effect that day, so the Plans tab shows the cycle's real cost and value per dollar. Under the plan, in Settings and in the Plans tab for every member, changes in the current cycle or later show as "↓ Downgrade to Claude Max 100 · $100/mo from Nov 30 (next renewal)" (↑ when the price goes up), or "↓ Downgraded to … on Oct 12" once the day has come. Owners can **Cancel Change** on any of them; the plan then keeps the terms it had before.
+
+**Detected plans.** Each Mac sends, with its usage, the plan GodUsage detects for each provider (the plan name a provider card shows, like "Max 20x"). In Settings, **Detected As** links a team plan to one of the plans detected on its covered members' Macs; when exactly one is detected and the plan has no link, it's filled in for you (save to keep it). When a covered member's Mac then detects another plan, owners see on that plan: "⚠ Detected Pro on Bea's Mac. This plan says Max 20x ($200/mo)." **Update Payment…** opens the change editor with the detected plan as the name and the day it was first detected (on Bea's Mac) as the effective day; enter the new price and save, and the plan links to the new detected plan. **Ignore** stops flagging that detected plan for this plan. A detected plan that a change in the current cycle or later already names is not flagged. Only owners see detected plans and warnings; members see the plan's changes.
 
 **Last update.** Each member shows when their Macs last uploaded, on the dashboard, in the Teams window, and on the web boards: **Updated 5m ago** (or **just now**, **3h ago**) within the last 24 hours, then **Not synced for N days** with a warning icon, so their numbers aren't read as no usage. In the app, the GodUsage version follows only when it is older than the newest one in the team (**· v1.0.8, outdated**), so you can tell who is behind on updates; the member's detail always shows it. Uploads from apps before 1.0.8 carry no version. Members who never synced show nothing.
 
@@ -96,14 +101,15 @@ An owner can also turn on **Public Leaderboard** for a team. That gives a read-o
 
 ## Notifications
 
-Three team alerts in **Settings → Notifications**, all on by default:
+Five team alerts in **Settings → Notifications**, all on by default:
 
 - **Team Overtakes**: when a teammate passes you by spend over the last 7 days. The first check after you turn it on only records where everyone stands, so it never alerts about old moves.
 - **Weekly Team Recap**: from Monday 9:00, one notification per team about the week that just ended: your rank (and how it moved), your spend, who led, and your top model.
-
 - **Team Challenges**: who won, when a challenge ends. Challenges that had already ended when you turned it on are never announced.
+- **Team Reactions**: when a teammate gives you 🔥, 👏, or 🤡, one notification per team listing who gave what. Each reaction is announced once per day, even if it's taken back and given again. Reactions you already had when you turned it on are never announced.
+- **Team Plan Changes** (owners only): when a covered member's Mac detects a different plan than the one a team plan is linked to (see **Plans**). Once per member and detected plan; mismatches already there when you turn it on are never announced.
 
-All three are checked after each upload, so after a refresh that changed your usage or at least every 15 minutes, and only while GodUsage is running.
+All five are checked after each upload, so after a refresh that changed your usage or at least every 15 minutes, and only while GodUsage is running.
 
 ## Requirements
 

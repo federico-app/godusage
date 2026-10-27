@@ -32,6 +32,8 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 }
 const TOP_MODELS = 20;
+/** The largest models that By Model splits each day into; the rest are summed as `otherModels`. */
+const DAILY_MODELS = 8;
 
 export interface StatsQuery {
   range: RangeName;
@@ -65,7 +67,15 @@ export interface TeamStats {
   members: MemberStats[];
   providers: (Totals & { provider: string })[];
   models: (Totals & { model: string; provider: string; members: (Totals & { userID: string })[] })[];
-  daily: { day: string; members: (Totals & { userID: string })[]; providers: (Totals & { provider: string })[] }[];
+  daily: {
+    day: string;
+    members: (Totals & { userID: string })[];
+    providers: (Totals & { provider: string })[];
+    /** The day's usage of the period's `DAILY_MODELS` largest models, largest first. */
+    models: (Totals & { model: string; provider: string })[];
+    /** Every other model that day; null when there is none. */
+    otherModels: Totals | null;
+  }[];
   /**
    * Accounts several members log into (one shared Cursor seat). Counted once in the team's totals,
    * providers, days, and models, and in no member's: they are not split per person.
@@ -123,7 +133,7 @@ export async function teamStats(db: Queryable, teamID: string, query: StatsQuery
   for (const device of [...usage.devices].sort((a, b) => (a.updated_at === b.updated_at ? (a.id < b.id ? -1 : 1) : a.updated_at > b.updated_at ? -1 : 1))) {
     if (!lastSync.has(device.user_id)) lastSync.set(device.user_id, { last_sync: device.updated_at, app_version: device.app_version });
   }
-  const { sharedDays, sharedModels, sharedMembers, days, models } = usage;
+  const { sharedDays, sharedModels, sharedMembers, days, models, modelDays } = usage;
   const previousDays = previousUsage.days;
   const members = memberRows;
 
@@ -202,12 +212,32 @@ export async function teamStats(db: Queryable, teamID: string, query: StatsQuery
       members: sortedTotals(group.members, "userID", metric),
     }));
 
+  const dailyModelKeys = new Set(topModels.slice(0, DAILY_MODELS).map((model) => `${model.provider}\u0000${model.model}`));
+  const dailyModels = new Map<string, Map<string, Totals & { model: string; provider: string }>>();
+  const dailyOther = new Map<string, Totals>();
+  for (const row of modelDays) {
+    const key = `${row.provider}\u0000${row.model}`;
+    if (!dailyModelKeys.has(key)) {
+      add(entry(dailyOther, row.day), row);
+      continue;
+    }
+    const byModel = nested(dailyModels, row.day);
+    const value = byModel.get(key) ?? { model: row.model, provider: row.provider, ...zero() };
+    add(value, row);
+    byModel.set(key, value);
+  }
+
   const daily: TeamStats["daily"] = [];
   for (let day = from; day <= to; day = addDays(day, 1)) {
+    const other = dailyOther.get(day);
     daily.push({
       day,
       members: sortedTotals(dailyTotals.get(day), "userID", metric),
       providers: sortedTotals(dailyProviders.get(day), "provider", metric),
+      models: [...(dailyModels.get(day)?.values() ?? [])]
+        .map((value) => ({ model: value.model, provider: value.provider, ...round(value) }))
+        .sort((a, b) => metric(b) - metric(a) || a.model.localeCompare(b.model)),
+      otherModels: other && (other.tokens > 0 || other.costUSD > 0) ? round(other) : null,
     });
   }
 

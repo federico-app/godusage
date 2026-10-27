@@ -200,16 +200,22 @@ final class CursorProvider: ProviderRuntime {
         }
         let currentToken = accessToken
 
-        let (planName, planInfoUnavailable) = await fetchPlanName(accessToken: currentToken)
+        // Some Enterprise / Team seats still get GetPlanInfo = Pro. The org membership may steer the
+        // fallback route and the badge, but `mapUsage` keeps branching on GetPlanInfo alone.
+        let (planInfoName, planInfoUnavailable) = await fetchPlanName(accessToken: currentToken)
+        let membershipType = authState.membershipType
+        let routingPlanName = CursorUsageMapper.routingPlanName(planInfoName: planInfoName, membershipType: membershipType)
+        let displayPlanName = CursorUsageMapper.resolvedPlanName(planInfoName: planInfoName, membershipType: membershipType)
+            ?? routingPlanName
         let fallback = CursorUsageMapper.shouldUseRequestBasedFallback(
             usage: usage,
-            planName: planName,
+            planName: routingPlanName,
             planInfoUnavailable: planInfoUnavailable
         )
         if fallback.shouldFallback {
             var mapped = try await usageSummaryAndRequestResult(
                 accessToken: currentToken,
-                planName: planName,
+                planName: displayPlanName,
                 unavailableMessage: fallback.message
             )
             await appendGrokBotUsage(to: &mapped.lines, accessToken: currentToken)
@@ -221,7 +227,7 @@ final class CursorProvider: ProviderRuntime {
             do {
                 var mapped = try await requestBasedResult(
                     accessToken: currentToken,
-                    planName: planName,
+                    planName: displayPlanName,
                     unavailableMessage: "Cursor request-based usage data unavailable. Try again later."
                 )
                 await appendGrokBotUsage(to: &mapped.lines, accessToken: currentToken)
@@ -235,9 +241,17 @@ final class CursorProvider: ProviderRuntime {
         let stripeBalanceCents = await fetchStripeBalanceCents(accessToken: currentToken)
         var mapped = try CursorUsageMapper.mapUsage(
             usage: usage,
-            planName: planName,
+            planName: planInfoName,
             creditGrants: creditGrants,
             stripeBalanceCents: stripeBalanceCents
+        )
+        mapped.plan = CursorUsageMapper.resolvedPlanLabel(planInfoName: planInfoName, membershipType: membershipType)
+        await enrichFromUsageSummaryIfNeeded(
+            &mapped,
+            usage: usage,
+            planInfoName: planInfoName,
+            membershipType: membershipType,
+            accessToken: currentToken
         )
         await appendGrokBotUsage(to: &mapped.lines, accessToken: currentToken)
         let history = await appendSpendLines(to: &mapped.lines, accessToken: currentToken)
@@ -371,7 +385,7 @@ final class CursorProvider: ProviderRuntime {
     /// Optional endpoints enrich a usable primary snapshot; they never fail the whole provider. Keep
     /// their boundary handling in one place so transport, preparation, status, and schema failures are
     /// all visible with fixed, credential-free diagnostics.
-    private func fetchOptionalJSONObject(
+    func fetchOptionalJSONObject(
         label: String,
         request: () async throws -> HTTPResponse?
     ) async -> [String: Any]? {

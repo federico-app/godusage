@@ -11,7 +11,7 @@ Tracks your Claude subscription limits using the login you already have from Cla
 | Sonnet | Separate weekly Sonnet limit (plan-dependent) |
 | Fable | Separate weekly Fable limit (model-scoped window from the `limits` array) |
 | Extra Usage | Extra-usage credits spent against your monthly cap |
-| Rate Limit Resets | Free usage-limit resets Anthropic grants (for example, a model-launch reset for Pro and Max), shown as a count such as `1 available`. On by default, below the caret |
+| Rate Limit Resets | Free usage-limit resets Anthropic grants (for example, a model-launch reset for Pro and Max), shown as a count such as `1 available`. On by default, On Demand |
 | Today / Yesterday / Last 30 Days | Local spend, as cost, tokens, or both (see below) |
 
 When Claude reports your plan name, GodUsage shows it beside the provider name. GodUsage prefers the current plan and tier in Claude Code's state file over the copies stored at sign-in, so an upgrade or downgrade shows up without signing in again.
@@ -22,8 +22,24 @@ Anthropic sometimes grants free usage-limit resets, for example one reset for Pr
 
 - The row counts the resets you have left. Hover the value for a timeline of when each one must be used, with a colored dot for the soonest deadline (blue beyond a week, yellow within a week, red within 48 hours).
 - A reset with no deadline still counts, but has no date to show. Used or lapsed grants are skipped.
-- Accounts outside the program read `0 available`. If Anthropic does not report the program for your plan, the row shows no data.
-- GodUsage only shows your resets. To use one, run `/rate-limit-options` in Claude Code, or accept it when Claude Code offers it at a usage limit.
+- Accounts outside the program read `0 available`. If Anthropic does not report the program for your plan, or reports a reset GodUsage can't read, the row shows no data.
+
+To use a reset, hover a node in the popover, click **Use**, then confirm with **Reset**. Anthropic decides which reset is spent (the next one it offers), and the confirm card says which limits it refills. **Use** only appears when Anthropic says your account is eligible and names a next reset. You can still use a reset with `/rate-limit-options` in Claude Code instead.
+
+Safeguards, because a claim spends a real reset:
+
+- Nothing is claimed automatically. Every claim is the two-click flow above, and GodUsage never retries one on its own.
+- The claim only uses the login the resets were read with, never another Claude login on the Mac. If that login is gone, or belongs to another account than the card, nothing is sent.
+- Each claim carries a request id. If Anthropic's answer never arrives, or it can't confirm the reset yet, trying again reuses that id (even after reopening the popover), so a retry can't spend a second reset.
+
+Afterwards GodUsage refreshes that Claude card right away, even during an "Updates blocked by Anthropic" wait, so the meters and the count show the result. The popover reports one of these:
+
+- **Reset claimed**: your limits were refilled.
+- **Your usage doesn't need a reset yet**: Anthropic refused because you aren't limited. Nothing was spent.
+- **That reset is no longer available**: it was used elsewhere, expired, or isn't the next one. Nothing was spent.
+- **Your reset may still be going through**: Anthropic took the request but couldn't confirm it yet. Check again in a minute.
+- **Resets can't be used right now**: a cooldown, a paused reset, or lower-priority mode is active. The line says when to try again when Anthropic reports it.
+- **Couldn't reset usage**: a network or sign-in problem, or an answer GodUsage doesn't recognize. Trying again is safe.
 
 ## Where credentials come from
 
@@ -91,7 +107,9 @@ In the [CLI](../cli.md) and [local API](../local-http-api.md), extra cards appea
 
 Every refresh calls `GET https://api.anthropic.com/api/oauth/usage` with the selected OAuth token, using Claude Code's User-Agent format.
 
-The Rate Limit Resets row comes from a separate `GET https://api.anthropic.com/api/oauth/usage?cedar_ember=1&skip_spend=1`, the exact request Claude Code makes when it checks for a reset to offer. Anthropic only reports grants to Claude Code clients, and throttles this request when it is polled, so GodUsage asks at most once an hour per login, right after a successful usage call. Between checks the row shows the last answer, and a reset drops off once its deadline passes. A failed check (a 429 or an outage) is logged, keeps the previous row, never affects the bars or the "Updates blocked by Anthropic" warning, and is retried an hour later. A different login checks right away; a renewed token keeps the hourly schedule.
+The Rate Limit Resets row comes from a separate `GET https://api.anthropic.com/api/oauth/usage?cedar_ember=1&skip_spend=1`, the exact request Claude Code makes when it checks for a reset to offer. Anthropic only reports grants to Claude Code clients, and throttles this request when it is polled, so GodUsage asks at most once an hour per login, right after a successful usage call. Between checks the row shows the last answer, and a reset drops off once its deadline passes. A failed check (a 429 or an outage) is logged, keeps the previous row, never affects the bars or the "Updates blocked by Anthropic" warning, and is retried an hour later. A different login checks right away; a renewed token keeps the hourly schedule. A claim that spent (or may have spent) a reset drops the cached answer, so the next refresh checks again.
+
+Using a reset sends `POST https://api.anthropic.com/api/organizations/{org}/reset_rate_limits` with `program: cedar_ember`, the next grant's id, and a request id, the same request Claude Code sends. The organization comes from the profile GodUsage already read for that token, or a fresh `GET /api/oauth/profile`. An already-expired token gets the same guarded renewal a refresh uses first. A successful claim also clears the cached usage and any 429 cooldown. See [the claim research](../research/claude-reset-grant-claim.md).
 
 An already-expired token gets one guarded renewal at the token endpoint (`POST https://platform.claude.com/v1/oauth/token`, Claude Code's own public client), with the rotated credential written back to its store. If that write fails, the app log records the `security` helper's exit code and output, with the credential removed. If a token is expired or revoked and renewal declines, GodUsage tries the next credential source, and when none is left it shows the renewal notice over the local spend tiles. Before the first usage call with a login, GodUsage calls `GET https://api.anthropic.com/api/oauth/profile` (as Claude Code does) to learn the token's account and organization, and compares them with the state file's `oauthAccount`.
 

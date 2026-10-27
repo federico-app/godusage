@@ -22,7 +22,7 @@ jobs:
     # built here reports minos 15.0. We do NOT add a macos-15 runner leg — back-deployment compiles
     # against the newest SDK, and a stock macos-15 runner ships Swift 6.1 without the macOS 26 SDK, so
     # it cannot build this package. Runtime verification on Sequoia is a manual smoke pass.
-    runs-on: macos-26
+    runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -41,7 +41,7 @@ jobs:
   # release-ios.yml. Unsigned simulator build only — signing and upload happen only at release time.
   ios:
     name: Build iOS App
-    runs-on: macos-26
+    runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

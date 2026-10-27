@@ -1,6 +1,7 @@
 import type { Handler } from "../context";
 import { badRequest, json, noContent, notFound, readJSONObject } from "../http";
 import { recordPulse } from "../momentum";
+import { storeDetectedPlans } from "../planDetection";
 import { requireUser } from "../session";
 import type { Env } from "../context";
 import type { Queryable } from "../db";
@@ -60,7 +61,7 @@ export async function storeDeviceUsage(env: Pick<Env, "db" | "cache">, userID: s
     })),
   );
 
-  const { written, usageChanged } = await env.db.transaction(async (tx) => {
+  const { written, usageChanged, plansChanged } = await env.db.transaction(async (tx) => {
     // Before anything is stored: how much the recent days grew. A device's first upload is skipped.
     const known = await tx.first("SELECT 1 AS known FROM devices WHERE user_id = $1 AND id = $2", [userID, deviceID]);
     if (known) await recordPulse(tx, userID, deviceID, upload.days, now);
@@ -104,10 +105,16 @@ export async function storeDeviceUsage(env: Pick<Env, "db" | "cache">, userID: s
       ),
     ];
     const keys = await syncAccountKeys(tx, userID, dayRows);
+    const plans = upload.detectedPlans === null ? 0 : await storeDetectedPlans(tx, userID, deviceID, upload.detectedPlans, now, upload.localDay);
     const changed = usage.reduce((total, count) => total + count, 0);
-    return { written: device + changed + keys, usageChanged: changed > 0 };
+    return { written: device + changed + keys + plans, usageChanged: changed > 0, plansChanged: plans > 0 };
   });
-  if (usageChanged) await env.cache.bumpTeams(await userTeamIDs(env.db, userID));
+  if (usageChanged || plansChanged) {
+    const teamIDs = await userTeamIDs(env.db, userID);
+    if (usageChanged) await env.cache.bumpTeams(teamIDs);
+    // A new detected plan flags the owner's Plans report at once.
+    if (plansChanged) await env.cache.forgetTeams(teamIDs, "plans|");
+  }
   return written;
 }
 

@@ -87,7 +87,7 @@ For bounded resources, `unit` follows the provider's live metric format. Cursor 
 | Claude | `session`, `weekly`, `sonnet`, `fable`, `extraUsage`, `rateLimitResets` |
 | Codex | `session`, `weekly`, `spark`, `sparkWeekly`, `credits`, `creditValue`, `rateLimitResets` |
 | Cursor | `totalUsage`, `autoUsage`, `apiUsage`, `grokBot`, `onDemand`, `requests`, `credits` |
-| Antigravity | `geminiSession`, `geminiWeekly`, `nonGeminiSession`, `nonGeminiWeekly` |
+| Antigravity | `geminiSession`, `geminiWeekly`, `argonWeekly`, `nonGeminiSession`, `nonGeminiWeekly` |
 | Copilot | `premiumCredits`, `extraUsage`, `orgCredits`, `orgSpend`, `chat`, `completions` |
 | Devin | `daily`, `weekly`, `extraUsageBalance` |
 | Grok | `weekly`, `rateLimitResets` |
@@ -97,7 +97,7 @@ For bounded resources, `unit` follows the provider's live metric format. Cursor 
 | Sakana Fugu | `session`, `weekly` |
 | Z.ai | `session`, `weekly`, `webSearches` |
 
-Charts, colors, subtitles, formatted badges, layout state, and historical spend periods are not part of this contract. Codex's combined Credits UI row becomes two resources: `credits` and `creditValue`.
+Charts, colors, subtitles, formatted badges, layout state, and historical spend periods are not part of this contract. Codex's combined Credits UI row becomes two resources: `credits` and `creditValue`. Antigravity's `argonWeekly` reports the separate Gemini 4 Argon weekly quota and is omitted when the account or endpoint does not report one.
 
 ## Legacy usage response shape
 

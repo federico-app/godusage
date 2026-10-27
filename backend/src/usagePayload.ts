@@ -42,6 +42,13 @@ export interface UsageUpload {
   partial: boolean;
   days: DayRow[];
   models: ModelRow[];
+  /**
+   * The plan GodUsage detected per provider on this Mac (e.g. "Max 20x"). Null from apps that don't
+   * send it: the stored detections are then left as they are.
+   */
+  detectedPlans: { provider: string; plan: string }[] | null;
+  /** The Mac's calendar day when it sent the upload; the UTC day when it didn't say. */
+  localDay: string;
 }
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -59,14 +66,18 @@ export function addDays(day: string, delta: number): string {
 }
 
 export function isValidDay(value: unknown): value is string {
-  return typeof value === "string" && DAY_PATTERN.test(value) && dayKey(new Date(`${value}T00:00:00Z`)) === value;
+  if (typeof value !== "string" || !DAY_PATTERN.test(value)) return false;
+  // A month past 12 is an invalid Date, which can't be formatted.
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && dayKey(date) === value;
 }
 
 const APP_VERSION_PATTERN = /^[0-9A-Za-z.+-]{1,32}$/;
 
 /**
  * Validates one device's upload (the system boundary for usage data) and flattens it into rows.
- * Shape: { schema, deviceName, appVersion?, windowStart?, partial?, providers: [{ provider, scope, account?, days: [{ date, tokens, costUSD, models? }] }] }
+ * Shape: { schema, deviceName, appVersion?, windowStart?, partial?, localDay?, detectedPlans?: [{ provider, plan }],
+ *   providers: [{ provider, scope, account?, days: [{ date, tokens, costUSD, models? }] }] }
  */
 export function parseUsageUpload(body: Record<string, unknown>, now: Date): UsageUpload {
   if (body.schema !== USAGE_SCHEMA) throw badRequest(`schema must be "${USAGE_SCHEMA}". Update GodUsage.`);
@@ -156,7 +167,29 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
   // Without an explicit window (older apps), the earliest day sent marks it.
   const earliestSent = days.reduce<string | null>((min, row) => (min === null || row.day < min ? row.day : min), null);
   const replaceFrom = partial ? null : (windowStart ?? earliestSent);
-  return { deviceName, appVersion, replaceFrom, partial, days, models };
+  let localDay = today;
+  if (body.localDay !== undefined) {
+    if (!isValidDay(body.localDay) || body.localDay < addDays(today, -1) || body.localDay > latest) {
+      throw badRequest("localDay must be today's YYYY-MM-DD date.");
+    }
+    localDay = body.localDay;
+  }
+  return { deviceName, appVersion, replaceFrom, partial, days, models, detectedPlans: parseDetectedPlans(body.detectedPlans), localDay };
+}
+
+function parseDetectedPlans(value: unknown): { provider: string; plan: string }[] | null {
+  if (value === undefined) return null;
+  if (!Array.isArray(value)) throw badRequest("detectedPlans must be an array.");
+  if (value.length > MAX_PROVIDERS) throw badRequest(`At most ${MAX_PROVIDERS} detected plans per upload.`);
+  const seen = new Set<string>();
+  return value.map((entry) => {
+    if (!isRecord(entry)) throw badRequest("Each detected plan must be an object.");
+    const provider = entry.provider;
+    if (typeof provider !== "string" || !PROVIDER_PATTERN.test(provider)) throw badRequest("Invalid provider id.");
+    if (seen.has(provider)) throw badRequest(`Duplicate detected plan for ${provider}.`);
+    seen.add(provider);
+    return { provider, plan: requireName(entry.plan, "plan", 60) };
+  });
 }
 
 function parseTokens(value: unknown): number {

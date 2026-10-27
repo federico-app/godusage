@@ -1,20 +1,26 @@
 import type { Queryable } from "./db";
 import { badRequest, isRecord, requireName } from "./http";
+import {
+  cyclePeriods, parseCost, parseDetectedPlan, parseIgnoredPlans, parsePriceHistory, termsOn, wireChanges, withCurrentTerms,
+  type PriceHistory, type Terms, type WireChange,
+} from "./planChanges";
+import { planMismatches, type Detection, type Mismatch } from "./planDetection";
 import { daysBetween } from "./stats";
 import { teamUsage } from "./teamUsage";
 import { addDays } from "./usagePayload";
 
 export const MAX_PLANS = 30;
-const MAX_MONTHLY_COST = 100_000;
 const PROVIDER_PATTERN = /^[a-z0-9][a-z0-9-]{0,39}$/;
 
-export interface PlanInput {
+export interface PlanInput extends PriceHistory {
   provider: string;
-  name: string;
-  monthlyCostUSD: number;
   renewalDay: number;
   /** The members the plan covers. Null covers every member. */
   memberIDs: string[] | null;
+  /** The detected plan label this plan stands for, e.g. "Max 20x". */
+  detectedPlan: string | null;
+  /** Detected labels the owner chose not to be told about for this plan. */
+  ignoredPlans: string[];
 }
 
 export interface PlanRow extends PlanInput {
@@ -31,33 +37,101 @@ export interface Cycle {
   daysLeft: number;
 }
 
-export interface PlanReport extends PlanRow {
+/** One stretch of the cycle at one price, with its share of the cycle's cost and value. */
+export interface ReportPeriod extends Terms {
+  from: string;
+  to: string;
+  costUSD: number;
+  valueUSD: number;
+}
+
+export interface PlanReport extends Terms {
+  id: string;
+  provider: string;
+  renewalDay: number;
+  memberIDs: string[] | null;
+  detectedPlan: string | null;
+  ignoredPlans: string[];
+  /** Every price change, past and future, with the terms each replaces. */
+  changes: WireChange[];
   cycle: Cycle;
+  /** What the cycle costs: each price prorated by the days it applies in the cycle. */
+  cycleCostUSD: number;
+  /** The cycle at one price per stretch; more than one when a change falls inside it. */
+  periods: ReportPeriod[];
   /** The covered members' usage of this provider in the cycle so far, at API prices. */
   valueUSD: number;
   /** `valueUSD` stretched over the whole cycle at the current pace. */
   projectedValueUSD: number;
-  /** Value per dollar paid (projected), e.g. 9.2 means $9.20 of API value per $1. */
+  /** Projected value per dollar the cycle costs, e.g. 9.2 means $9.20 of API value per $1. */
   projectedMultiple: number;
   /** Projected to be worth less than it costs. */
   underused: boolean;
+  /** Covered members whose Mac detects another plan. Shown to owners only. */
+  mismatches: Mismatch[];
 }
 
-/** Validates the owner's plan list (the system boundary). */
-export function parsePlans(body: Record<string, unknown>): PlanInput[] {
+/**
+ * Validates the owner's plan list (the system boundary). `name` and `monthlyCostUSD` are the terms in
+ * effect `today`; `changes` carries the price history (see `parsePriceHistory`).
+ */
+export function parsePlans(body: Record<string, unknown>, today: string): ParsedPlan[] {
   if (!Array.isArray(body.plans)) throw badRequest("plans must be an array.");
   if (body.plans.length > MAX_PLANS) throw badRequest(`At most ${MAX_PLANS} plans per team.`);
   return body.plans.map((entry) => {
     if (!isRecord(entry)) throw badRequest("Each plan must be an object.");
     if (typeof entry.provider !== "string" || !PROVIDER_PATTERN.test(entry.provider)) throw badRequest("Invalid provider id.");
-    const name = requireName(entry.name, "name", 60);
-    const cost = entry.monthlyCostUSD;
-    if (typeof cost !== "number" || !Number.isFinite(cost) || cost <= 0 || cost > MAX_MONTHLY_COST) {
-      throw badRequest("monthlyCostUSD must be a positive number.");
-    }
+    const current = { name: requireName(entry.name, "name", 60), monthlyCostUSD: parseCost(entry.monthlyCostUSD, "monthlyCostUSD") };
     const day = entry.renewalDay;
     if (typeof day !== "number" || !Number.isInteger(day) || day < 1 || day > 31) throw badRequest("renewalDay must be 1 to 31.");
-    return { provider: entry.provider, name, monthlyCostUSD: Math.round(cost * 100) / 100, renewalDay: day, memberIDs: parseMemberIDs(entry.memberIDs) };
+    return {
+      provider: entry.provider,
+      renewalDay: day,
+      memberIDs: parseMemberIDs(entry.memberIDs),
+      ...(entry.changes === undefined ? { base: current, changes: [] } : parsePriceHistory(current, entry.changes, today)),
+      detectedPlan: parseDetectedPlan(entry.detectedPlan),
+      ignoredPlans: parseIgnoredPlans(entry.ignoredPlans),
+      current,
+      sent: { changes: "changes" in entry, detectedPlan: "detectedPlan" in entry, ignoredPlans: "ignoredPlans" in entry },
+    };
+  });
+}
+
+/** A plan as the owner sent it, and which of the fields older apps don't know about it carried. */
+export interface ParsedPlan extends PlanInput {
+  current: Terms;
+  sent: { changes: boolean; detectedPlan: boolean; ignoredPlans: boolean };
+}
+
+/**
+ * Apps from before plan changes send plans without `changes`, `detectedPlan`, and `ignoredPlans`.
+ * Saving from one must not wipe them, so a field that is absent (not null, not empty) keeps the stored
+ * plan's value, with the sent name and price as the terms in effect today. Plan ids change on every
+ * save and old apps don't send them, so a sent plan matches the stored plan of its provider whose
+ * current name is the same (what the old app showed it), else the stored plan at its position when
+ * that one is of the same provider. Each stored plan matches at most once; an unmatched plan starts
+ * fresh.
+ */
+export function keepUnsentFields(parsed: ParsedPlan[], stored: PlanRow[], today: string): PlanInput[] {
+  const used = new Set<number>();
+  const match = (plan: ParsedPlan, position: number): PlanRow | undefined => {
+    let index = stored.findIndex((row, at) => !used.has(at) && row.provider === plan.provider && termsOn(row, today).name === plan.current.name);
+    if (index < 0 && stored[position]?.provider === plan.provider && !used.has(position)) index = position;
+    if (index < 0) return undefined;
+    used.add(index);
+    return stored[index];
+  };
+  return parsed.map((plan, position) => {
+    const { current, sent, ...input } = plan;
+    if (sent.changes && sent.detectedPlan && sent.ignoredPlans) return input;
+    const old = match(plan, position);
+    if (!old) return input;
+    return {
+      ...input,
+      ...(sent.changes ? {} : withCurrentTerms(old, current, today)),
+      detectedPlan: sent.detectedPlan ? input.detectedPlan : old.detectedPlan,
+      ignoredPlans: sent.ignoredPlans ? input.ignoredPlans : old.ignoredPlans,
+    };
   });
 }
 
@@ -72,7 +146,7 @@ function parseMemberIDs(value: unknown): string[] | null {
 }
 
 /** Whether `plan` covers `userID`. */
-export function covers(plan: PlanInput, userID: string): boolean {
+export function covers(plan: { memberIDs: string[] | null }, userID: string): boolean {
   return plan.memberIDs === null || plan.memberIDs.includes(userID);
 }
 
@@ -100,9 +174,11 @@ export function currentCycle(renewalDay: number, today: string): Cycle {
 /**
  * Each plan against its covered members' usage of its provider in its current cycle, counted like
  * the leaderboard (shared accounts once). A shared account counts when any member who shares it is
- * covered. Several plans of one provider split their common usage by cost.
+ * covered. Several plans of one provider split their common usage by what each costs that day. A
+ * cycle with a price change costs each price for the days it applies (daily rate = monthly price /
+ * the cycle's days), and its usage counts against the price in effect the day it was spent.
  */
-export async function planReports(db: Queryable, teamID: string, plans: PlanRow[], today: string): Promise<PlanReport[]> {
+export async function planReports(db: Queryable, teamID: string, plans: PlanRow[], today: string, detections: Detection[]): Promise<PlanReport[]> {
   if (plans.length === 0) return [];
   const cycles = plans.map((plan) => currentCycle(plan.renewalDay, today));
   const earliest = cycles.reduce((min, cycle) => (cycle.from < min ? cycle.from : min), today);
@@ -113,26 +189,48 @@ export async function planReports(db: Queryable, teamID: string, plans: PlanRow[
     ...usage.days.map((row) => ({ ...row, users: [row.user_id] })),
     ...usage.sharedDays.map((row) => ({ ...row, users: sharers.get(row.account_key) ?? [] })),
   ];
-  const coveredDays = (plan: PlanRow, from: string) =>
-    days.filter((row) => row.provider === plan.provider && row.day >= from && row.day <= today && row.users.some((user) => covers(plan, user)));
 
   return plans.map((plan, index) => {
     const cycle = cycles[index]!;
-    // Split each day's usage between the plans of the provider that cover it, by cost.
-    const value = coveredDays(plan, cycle.from).reduce((sum, row) => {
+    const periods = cyclePeriods(plan, cycle.from, cycle.to);
+    const values = periods.map(() => 0);
+    for (const row of days) {
+      if (row.provider !== plan.provider || row.day < cycle.from || row.day > today || !row.users.some((user) => covers(plan, user))) continue;
+      // Split the day's usage between the plans of the provider that cover it, by that day's prices.
       const sharing = plans.filter((other) => other.provider === plan.provider && row.users.some((user) => covers(other, user)));
-      const cost = sharing.reduce((total, other) => total + other.monthlyCostUSD, 0);
-      return sum + (row.cost * plan.monthlyCostUSD) / cost;
-    }, 0);
+      const cost = sharing.reduce((total, other) => total + termsOn(other, row.day).monthlyCostUSD, 0);
+      const period = periods.findIndex((stretch) => row.day >= stretch.from && row.day <= stretch.to);
+      values[period] = values[period]! + (row.cost * termsOn(plan, row.day).monthlyCostUSD) / cost;
+    }
+    const value = values.reduce((sum, amount) => sum + amount, 0);
+    const periodCost = (stretch: { monthlyCostUSD: number; days: number }) => (stretch.monthlyCostUSD * stretch.days) / cycle.daysTotal;
+    const cycleCost = periods.reduce((sum, stretch) => sum + periodCost(stretch), 0);
     const projected = (value / cycle.daysElapsed) * cycle.daysTotal;
-    const multiple = projected / plan.monthlyCostUSD;
+    const multiple = projected / cycleCost;
     return {
-      ...plan,
+      id: plan.id,
+      provider: plan.provider,
+      ...termsOn(plan, today),
+      renewalDay: plan.renewalDay,
+      memberIDs: plan.memberIDs,
+      detectedPlan: plan.detectedPlan,
+      ignoredPlans: plan.ignoredPlans,
+      changes: wireChanges(plan),
       cycle,
+      cycleCostUSD: round2(cycleCost),
+      periods: periods.map((stretch, at) => ({
+        name: stretch.name,
+        monthlyCostUSD: stretch.monthlyCostUSD,
+        from: stretch.from,
+        to: stretch.to,
+        costUSD: round2(periodCost(stretch)),
+        valueUSD: round2(values[at]!),
+      })),
       valueUSD: round2(value),
       projectedValueUSD: round2(projected),
       projectedMultiple: Math.round(multiple * 100) / 100,
       underused: multiple < 1,
+      mismatches: planMismatches(plan, (userID) => covers(plan, userID), cycle.from, detections),
     };
   });
 }
