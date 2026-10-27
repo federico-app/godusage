@@ -59,7 +59,8 @@ Ranges are Today, 7 Days, 30 Days, and Year. The server keeps every day each Mac
 - the ranking (members with the same value share a rank), each bar split by provider,
 - **Who Uses What**: each member's usage, split by provider,
 - **By Day**: the team's usage per day, split by provider; hover a day for its numbers,
-- **Top Models**: the team's most used models, colored by provider.
+- **By Model**: the team's usage per day, week, or month, split by the period's eight largest models (the rest are summed as Other); hover a bar for its numbers. A year starts by month, shorter periods by day,
+- **Top Models**: the team's most used models. Each model takes its provider's color, in a different shade for each model of the same provider (the largest keeps the plain color), in both By Model and Top Models.
 
 The gear button in its toolbar opens Settings → Teams.
 
