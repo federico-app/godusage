@@ -29,7 +29,7 @@ A card can also show **quick-link buttons** at the bottom of its expanded sectio
 
 A banner at the top of the dashboard (under any update, first-run, or setup card) suggests which provider to use right now. It shows the most urgent suggestion; close it to see the next one. A closed suggestion stays away until its situation changes (a new window, credit, or billing cycle). The suggestions, most urgent first:
 
-- **Claim a reset**: a Codex or Grok card whose Session or Weekly is used up still has reset credits.
+- **Claim a reset**: a Claude, Codex, or Grok card whose Session or Weekly is used up still has reset credits.
 - **A reset expires soon**: a reset credit expires within 48 hours. Use that provider freely and claim it if you hit the limit.
 - **Use it before it resets**: a Weekly (or Cursor's Total Usage) resets within the last 30% of its window, about 2 days of a week, with at least 30% projected to go unused at the current pace.
 - **Switch providers**: a Weekly is used up or projected to run out before it resets, and another provider has at least 30% of its own left. Without such a provider, nothing shows; the red bar already tells the story.

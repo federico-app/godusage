@@ -336,11 +336,11 @@ struct WidgetGroupedListView: View {
             onToggleMeterStyle: { dataStore.meterStyle.toggle() },
             condensedTop: condensedTop
         )
-            // Reset credits are the app's only provider write. Bind this row to the service for its
-            // exact Codex card; Grok and other non-Codex rows receive nil (read-only timeline).
+            // Reset claims are the app's only provider writes. Bind this row to the service for its
+            // exact Codex or Claude card; Grok and every other row receive nil (read-only timeline).
             .environment(
-                \.codexResetClaim,
-                container.codexResetClaims.service(for: providerID)
+                \.resetClaim,
+                container.resetClaims.service(for: providerID)
             )
             .contentShape(Rectangle())
             .opacity(isActive ? 0 : 1)
