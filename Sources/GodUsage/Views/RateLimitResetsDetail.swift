@@ -9,13 +9,14 @@ import SwiftUI
 /// but deliberately without their title header (an owner call: the timeline is self-explanatory and
 /// the header cost a full row of the small popover).
 ///
-/// When a `claim` closure is supplied (the Codex resets row), each node also becomes claimable: hovering
-/// a node reveals a "Use" affordance, clicking it expands that node in place into an inline confirm, and
-/// confirming runs the claim and shows the outcome. `claim` is `nil` for any non-claimable row (Grok,
-/// previews, share-card renders), which renders exactly the read-only timeline. Each credit's claim
-/// carries an idempotency key (a UUID minted the first time that credit enters confirm and reused for
-/// any retry), so a retried claim can never double-spend — the server answers `already_redeemed`,
-/// which counts as success.
+/// When a `claim` closure is supplied (the Codex and Claude resets rows), each node also becomes
+/// claimable: hovering a node reveals a "Use" affordance, clicking it expands that node in place into an
+/// inline confirm, and confirming runs the claim and shows the outcome. `claim` is `nil` for any
+/// non-claimable row (Grok, a Claude account with no next reset, previews, share-card renders), which
+/// renders exactly the read-only timeline. Each credit's claim carries an idempotency key (a UUID minted
+/// the first time that credit enters confirm and reused for any retry), so a retried claim can never
+/// double-spend — the server answers `already_redeemed` / `already_used`, which counts as success. A
+/// definitive answer releases the key, so a later claim from the same node is a new request.
 struct RateLimitResetsDetail: View {
     /// The row's "N available" count. Only used to disambiguate an empty `expiries` list: 0 → genuinely
     /// no credits (empty state); > 0 → credits we have but whose expiry times weren't fetched.
@@ -30,12 +31,17 @@ struct RateLimitResetsDetail: View {
     /// Claims the reset credit expiring at the given instant, using the given idempotency key (see the
     /// type doc). `nil` makes the timeline read-only (no "Use" affordance).
     var claim: ((_ expiry: Date, _ redeemRequestID: String) async -> ResetClaimOutcome)?
+    /// The confirm card's explanation line; `nil` keeps the generic one.
+    var confirmDetail: String?
 
     private let density = DensitySetting.compact
 
-    /// Which credits this popover has already claimed (keyed by expiry instant, which is unique per
-    /// credit), so a claimed node drops out of the timeline immediately without waiting for a refresh.
+    /// Which credits this popover has already claimed (keyed by expiry instant), so a claimed node drops
+    /// out of the timeline when the post-claim refresh hasn't landed yet. Fresh `expiries` replace it.
     @State private var claimedExpiries: Set<Date> = []
+    /// Bumped whenever `expiries` changes, so a claim can tell whether the refresh already reconciled
+    /// the timeline (then the provider's list is the truth, e.g. Claude spending a different grant).
+    @State private var expiriesVersion = 0
     /// The node currently in its inline confirm step, or being claimed, keyed by expiry instant.
     @State private var confirmingExpiry: Date?
     @State private var claimingExpiry: Date?
@@ -107,6 +113,8 @@ struct RateLimitResetsDetail: View {
         // (and release the pin) rather than stranding a pinned popover whose active node no longer
         // exists. An in-flight claim is left alone: its outcome handler owns the state.
         .onChange(of: expiries) { _, newValue in
+            expiriesVersion += 1
+            claimedExpiries = []
             if let confirming = confirmingExpiry, !newValue.contains(confirming) {
                 cancelConfirm()
             }
@@ -298,7 +306,7 @@ struct RateLimitResetsDetail: View {
             Text("Use this reset?")
                 .font(.system(size: density.supportingPointSize, weight: .medium))
                 .foregroundStyle(.primary)
-            Text("Immediately reset your usage limits. This can't be undone.")
+            Text(confirmDetail ?? "Immediately reset your usage limits. This can't be undone.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -389,102 +397,34 @@ struct RateLimitResetsDetail: View {
             confirmingExpiry = nil
             claimingExpiry = date
         }
+        let versionAtClaim = expiriesVersion
         Task {
             let outcome = await claim(date, redeemRequestID)
             withAnimation(Self.flowAnimation) {
                 claimingExpiry = nil
-                apply(outcome, for: date)
+                apply(outcome, for: date, refreshed: expiriesVersion != versionAtClaim)
+            }
+            // Only an answer that may still be landing keeps the key for a retry; a definitive one
+            // releases it, so the next claim from a node sharing this deadline is a new request.
+            if !Self.keepsRequestID(outcome) {
+                redeemRequestIDs[date] = nil
             }
             onPinChange?(false)
         }
     }
 
-    private func apply(_ outcome: ResetClaimOutcome, for date: Date) {
+    private func apply(_ outcome: ResetClaimOutcome, for date: Date, refreshed: Bool) {
+        banner = Self.banner(for: outcome)
         switch outcome {
         case .success:
-            claimedExpiries.insert(date)
+            if !refreshed { claimedExpiries.insert(date) }
             nothingToReset = true
-            banner = .init(text: "Reset claimed. Enjoy!", icon: "checkmark.circle.fill", tint: .green)
         case .nothingToReset:
             nothingToReset = true
-            banner = .init(text: "Your usage doesn't need a reset yet", icon: "info.circle.fill", tint: .accentColor)
         case .noCredit:
-            claimedExpiries.insert(date)
-            banner = .init(text: "That reset is no longer available", icon: "exclamationmark.triangle.fill", tint: .orange)
-        case .failed:
-            banner = .init(text: "Couldn't reset usage. Please try again.", icon: "xmark.circle.fill", tint: .red)
-        }
-    }
-
-    /// The tint + glyph for a result banner.
-    struct Banner: Equatable {
-        let text: String
-        let icon: String
-        let tint: Color
-    }
-
-    /// What the body renders, resolved once from the count and expiry list so the "empty vs. count-only
-    /// vs. timeline" choice is unit-testable and can't drift between the view and its tests.
-    enum Content: Equatable {
-        case timeline([Entry])
-        case unknownExpiries(count: Int)
-        case empty
-    }
-
-    /// Empty `expiries` is ambiguous: a genuinely empty balance (`count == 0`) shows the empty state,
-    /// but a positive `count` with no expiries means the dedicated expiry fetch was unavailable and the
-    /// row fell back to the usage-body count — show that count rather than "no resets".
-    static func content(count: Int, expiries: [Date], now: Date = Date()) -> Content {
-        let entries = entries(from: expiries, now: now)
-        if !entries.isEmpty { return .timeline(entries) }
-        if count > 0 { return .unknownExpiries(count: count) }
-        return .empty
-    }
-
-    /// One timeline node's display strings, derived from a credit's expiry instant. Pure and static so
-    /// the phrasing is unit-testable without a view.
-    struct Entry: Identifiable, Equatable {
-        let id: Int          // 0-based row index (soonest first)
-        let number: Int      // 1-based reset number, shown inside the dot
-        let date: Date       // the credit's expiry instant — identity for the claim flow
-        let key: Key         // view identity: the expiry plus its ordinal among equal expiries
-        let severity: WidgetData.MeterSeverity
-        let time: String       // exact expiry, e.g. "Jul 12 at 5:30 PM"; "Expiring soon" when imminent
-        let countdown: String? // "12d 18h"; nil when imminent (no useful countdown to show)
-
-        struct Key: Hashable {
-            let date: Date
-            let ordinal: Int
-        }
-
-        var accessibilityLabel: String {
-            "Reset \(number), \(time)" + (countdown.map { ", expires in \($0)" } ?? "")
-        }
-    }
-
-    /// Build the timeline entries from raw expiry instants: sort soonest-first, number from 1, and pair
-    /// each exact expiry time with its countdown. A past-due or ≤5-minute expiry can't print a useful
-    /// exact time or countdown, so it reads "Expiring soon" with no trailing countdown. Imminence keys
-    /// off the *relative* window — `Formatters.whenLabel(.relative)` collapses to `soon` at ≤5 minutes,
-    /// while `.absolute` only collapses once past-due — so both formats agree instead of the exact time
-    /// printing a wall-clock while the countdown reads "soon".
-    static func entries(from expiries: [Date], now: Date = Date()) -> [Entry] {
-        var seen: [Date: Int] = [:]
-        return expiries.sorted().enumerated().map { index, date in
-            let ordinal = seen[date, default: 0]
-            seen[date] = ordinal + 1
-            let relative = Formatters.whenLabel(at: date, mode: .relative, now: now)
-            let absolute = Formatters.whenLabel(at: date, mode: .absolute, now: now)
-            let imminent = (relative == nil || relative == Formatters.imminent)
-            return Entry(
-                id: index,
-                number: index + 1,
-                date: date,
-                key: Entry.Key(date: date, ordinal: ordinal),
-                severity: WidgetData.expirySeverity(secondsRemaining: date.timeIntervalSince(now)),
-                time: (imminent || absolute == nil) ? "Expiring soon" : absolute!,
-                countdown: imminent ? nil : relative
-            )
+            if !refreshed { claimedExpiries.insert(date) }
+        case .unconfirmed, .unavailableNow, .failed:
+            break
         }
     }
 }

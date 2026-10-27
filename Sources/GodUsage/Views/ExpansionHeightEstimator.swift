@@ -7,9 +7,11 @@ import CoreGraphics
 /// The guess must mirror `WidgetGroupedListView.metricContainer`'s render path exactly:
 /// - only applicability-filtered rows render (a Copilot seat's other-plan metrics never appear);
 /// - when that filtering empties the Always Visible side, the card PROMOTES the applicable
-///   On Demand rows above the caret, leaving the expansion metric-less (links only);
+///   On Demand rows into the always-visible group, leaving the expansion metric-less (links only);
 /// - each revealed row is priced by its rendered anatomy, with adjacent text rows condensing
-///   (per side — the expansion never condenses across the caret).
+///   (per side — the expansion never condenses across the separator);
+/// - an open card adds a separator line above the revealed rows and moves the caret below them,
+///   so the caret itself contributes no height change.
 /// Counting raw saved widgets at a flat per-row constant instead made the panel spring past the
 /// real height on a provider's first toggle — and, because the settle's learn step discards
 /// implausible values, replay that overshoot on every toggle for providers whose saved rows
@@ -39,8 +41,8 @@ enum ExpansionHeightEstimator {
         "\(providerID)|\(revealedRows.map(\.id).joined(separator: ","))\(hasLinks ? "|links" : "")"
     }
 
-    /// The full expansion guess: every revealed row priced by its anatomy, plus the quick-links
-    /// row. The real measurement replaces this within a couple of frames (with a small same-spring
+    /// The full expansion guess: the separator line that opens the expanded section, every revealed
+    /// row priced by its anatomy, plus the quick-links row. The real measurement replaces this within a couple of frames (with a small same-spring
     /// correction) and is remembered exactly afterwards.
     static func estimatedDelta(revealedRows: [Row], linkCount: Int) -> CGFloat {
         let datas = revealedRows.map(\.data)
@@ -48,7 +50,8 @@ enum ExpansionHeightEstimator {
         let rows = datas.enumerated().reduce(CGFloat(0)) { sum, row in
             sum + estimatedRowHeight(row.element, condensedTop: condensed.contains(row.offset))
         }
-        return rows + estimatedLinksRowHeight(linkCount: linkCount)
+        let separator = revealedRows.isEmpty && linkCount == 0 ? 0 : DashboardMetricCardSeparator.height
+        return separator + rows + estimatedLinksRowHeight(linkCount: linkCount)
     }
 
     /// One row's estimated rendered height, mirroring `WidgetRowView`'s anatomy branch by branch

@@ -19,17 +19,17 @@ Closing a card hides it for good. A card also hides while its step is done, for 
 
 ## Cards
 
-Each provider card leads with its **Always Visible** metrics. Metrics you have moved to **On Demand** sit behind the card's caret. Click the caret to reveal them in a single-column list below it, and click again to collapse. Closing the popover collapses every open card. A provider with no On Demand metrics and no quick links shows no caret.
+Each provider card leads with its **Always Visible** metrics. Metrics you have moved to **On Demand** sit behind the caret at the bottom of the card. Click the caret to expand: a thin line follows the Always Visible metrics, then the On Demand metrics in a single-column list and any quick links, with the caret at the bottom of the card. Click it again to collapse. Closing the popover collapses every open card. A provider with no On Demand metrics and no quick links shows no line or caret.
 
 When an Always Visible Weekly meter reaches its limit, the card temporarily hides its other Always Visible progress bars. Weekly becomes a compact **Usage Exhausted** message with a live countdown plus the reset date and time, without a bar or percentage; text rows and On Demand metrics stay available. The bars return in their saved order after a refresh reports usage below the weekly limit. This does not change Customize settings or saved menu-bar pins. In the menu bar, exhausted accounts show a faded provider icon without values (see [Menu Bar](menu-bar.md#exhausted-weekly-usage)). A weekly meter that is disabled or On Demand does not trigger hiding. Independent weekly pools (Antigravity and Codex Spark) hide only their own session bar.
 
-A card can also show **quick-link buttons** at the bottom of its expanded section (Status, Console, Dashboard, and so on) that open the provider's own pages in your browser. They are part of the expander, so collapsing the caret hides them too. Buttons lay out up to three across and wrap to a second row.
+A card can also show **quick-link buttons** at the bottom of its expanded section (Status, Console, Dashboard, and so on) that open the provider's own pages in your browser. They are part of the expander, so collapsing the caret hides them too. The caret sits below them. Buttons lay out up to three across and wrap to a second row.
 
 ## Suggestions
 
 A banner at the top of the dashboard (under any update, first-run, or setup card) suggests which provider to use right now. It shows the most urgent suggestion; close it to see the next one. A closed suggestion stays away until its situation changes (a new window, credit, or billing cycle). The suggestions, most urgent first:
 
-- **Claim a reset**: a Codex or Grok card whose Session or Weekly is used up still has reset credits.
+- **Claim a reset**: a Claude, Codex, or Grok card whose Session or Weekly is used up still has reset credits.
 - **A reset expires soon**: a reset credit expires within 48 hours. Use that provider freely and claim it if you hit the limit.
 - **Use it before it resets**: a Weekly (or Cursor's Total Usage) resets within the last 30% of its window, about 2 days of a week, with at least 30% projected to go unused at the current pace.
 - **Switch providers**: a Weekly is used up or projected to run out before it resets, and another provider has at least 30% of its own left. Without such a provider, nothing shows; the red bar already tells the story.
@@ -106,9 +106,9 @@ The **provider list** shows every provider with an on/off switch, a count of its
 
 A provider's **detail** has a back button and a Reset control in its top bar. Claude and Codex cards start with a **Name** field, the same rename the card's right-click menu offers. Then come two metric sections: **Always Visible** (shown on the card) and **On Demand** (behind the caret). Each metric row has a drag grip, its name, a star for the menu bar, and an on/off switch. Drag a metric into the other section, or onto one of its rows, to move it. An empty section shows a dashed **Drag metrics here** target. You can star up to two metrics per provider. OpenRouter and Z.ai also show an **API Key** section here, where you can add, replace, reveal, or clear that provider's key.
 
-Drag-reorder also works on the dashboard: drag a row within its provider, drag it across the caret boundary while the card is open, or drag a provider header to reorder cards. On a Force Touch trackpad you feel a light tap each time the dragged item snaps into a new slot.
+Drag-reorder also works on the dashboard: drag a row within its provider, drag it across the line between Always Visible and On Demand while the card is open, or drag a provider header to reorder cards. On a Force Touch trackpad you feel a light tap each time the dragged item snaps into a new slot.
 
-For Claude, the default layout keeps Session, Weekly, and Fable always visible. Codex and Grok keep only Weekly always visible. Sakana Fugu and Muse keep Five-Hour Usage and Weekly Usage always visible. For Claude, Codex, Grok, Muse, and Sakana Fugu, Usage Trend and the Today, Yesterday, and Last 30 Days rows start on demand. Codex and Grok also put Rate Limit Resets there, above the usage history. Their other metrics start off. Other providers keep their core meters above the caret and secondary details on demand.
+For Claude, the default layout keeps Session, Weekly, and Fable always visible. Codex and Grok keep only Weekly always visible. Sakana Fugu and Muse keep Five-Hour Usage and Weekly Usage always visible. For Claude, Codex, Grok, Muse, and Sakana Fugu, Usage Trend and the Today, Yesterday, and Last 30 Days rows start on demand. Codex and Grok also put Rate Limit Resets there, above the usage history. Their other metrics start off. Other providers keep their core meters always visible and secondary details on demand.
 
 Press **⌘Z** to undo. It works anywhere in the popover and steps back through your recent customization changes one at a time: hiding or showing a metric, reordering metrics or providers, starring or unstarring, and moving a metric across the divider. Undo is per session and resetting clears it.
 

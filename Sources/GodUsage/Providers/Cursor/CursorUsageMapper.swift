@@ -146,17 +146,29 @@ enum CursorUsageMapper {
         let isTeamAccount = normalizedPlan == "team" || facts.isTeamByShape
 
         if isTeamAccount {
-            guard let limitCents = facts.limit else {
+            // A dollar limit keeps the legacy Team dollar meter (even beside a zero-percent
+            // placeholder). Percent-only Team payloads have no limit but a usable total percentage.
+            if let limitCents = facts.limit {
+                lines.append(.progress(
+                    label: "Total usage",
+                    used: ProviderParse.centsToDollars(planUsedCents),
+                    limit: ProviderParse.centsToDollars(limitCents),
+                    format: .dollars,
+                    resetsAt: cycle.resetsAt,
+                    periodDurationMs: cycle.periodDurationMs
+                ))
+            } else if let percent = facts.totalPercentUsed {
+                lines.append(.progress(
+                    label: "Total usage",
+                    used: percent,
+                    limit: 100,
+                    format: .percent,
+                    resetsAt: cycle.resetsAt,
+                    periodDurationMs: cycle.periodDurationMs
+                ))
+            } else {
                 throw CursorUsageError.requestBasedUnavailable("Cursor request-based usage data unavailable. Try again later.")
             }
-            lines.append(.progress(
-                label: "Total usage",
-                used: ProviderParse.centsToDollars(planUsedCents),
-                limit: ProviderParse.centsToDollars(limitCents),
-                format: .dollars,
-                resetsAt: cycle.resetsAt,
-                periodDurationMs: cycle.periodDurationMs
-            ))
         } else {
             lines.append(.progress(
                 label: "Total usage",
@@ -265,10 +277,11 @@ enum CursorUsageMapper {
 
         let normalizedPlan = planName?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
 
-        if facts.planUsageUnusable && normalizedPlan == "enterprise" {
+        // A usable total percentage stays on the primary path even without a dollar limit.
+        if facts.planUsageUnusable && !facts.hasTotalUsagePercent && normalizedPlan == "enterprise" {
             return (true, "Enterprise usage data unavailable. Try again later.")
         }
-        if facts.planUsageUnusable && normalizedPlan == "team" {
+        if facts.planUsageUnusable && !facts.hasTotalUsagePercent && normalizedPlan == "team" {
             return (true, "Team request-based usage data unavailable. Try again later.")
         }
         if facts.planUsageUnusable && !facts.hasTotalUsagePercent && normalizedPlan.isEmpty && planInfoUnavailable {
@@ -440,7 +453,7 @@ enum CursorUsageMapper {
         )
     }
 
-    private static func planLabel(_ value: String?) -> String? {
+    static func planLabel(_ value: String?) -> String? {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }

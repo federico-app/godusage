@@ -43,6 +43,13 @@ final class ClaudeProvider: ProviderRuntime {
     private static let rateLimitCooldown: TimeInterval = 5 * 60
     /// The last hourly reset-grants check (see `ClaudeProvider+ResetGrants.swift`).
     var resetGrantsCheck: ClaudeResetGrantsCheck?
+    /// Bumped by each claim that changed something, so a grants or usage read that started before it
+    /// can't cache its pre-claim answer (see `ClaudeProvider+ResetClaim.swift`).
+    var resetClaimEpoch = 0
+    /// The last claim whose answer never settled, kept so a retry of that grant reuses its request id.
+    var unsettledResetClaim: (grantID: String, requestID: String)?
+    /// One claim at a time per card, so two popovers can't race to spend.
+    var resetClaimInFlight = false
 
     init(
         provider: Provider = ClaudeProvider.makeProvider(),
@@ -75,7 +82,7 @@ final class ClaudeProvider: ProviderRuntime {
                 .exportingLimit("fable", unit: "percent"),
             .boundedDollars(id: "\(provider.id).extra", provider: provider, title: "Extra Usage", metricLabel: "Extra usage spent", limit: 100, valueWord: "spent")
                 .exportingLimit("extraUsage", unit: "usd", source: .progressOrValue(kind: .dollars)),
-            // Anthropic's one-off usage-limit reset grants (`cedar_ember`), shown read-only in the same
+            // Anthropic's one-off usage-limit reset grants (`cedar_ember`), shown and claimable in the same
             // resets popover as Codex. Seeded On Demand and unpinned in `DefaultLayout`, like Codex's.
             .values(id: "\(provider.id).rateLimitResets", provider: provider, title: "Rate Limit Resets", metricLabel: "Rate Limit Resets", traySuffix: "resets", showsResetExpiries: true)
                 .exportingLimit("rateLimitResets", kind: .balance, unit: "resets", source: .value(kind: .count, label: "available")),
@@ -230,49 +237,6 @@ final class ClaudeProvider: ProviderRuntime {
         )
     }
 
-    /// API-key-only (or otherwise unauthenticated) installs still have local session logs. Serve those
-    /// spend tiles under the existing Not logged in notice when they contain usage; otherwise keep the
-    /// hard error card so an empty machine does not grow a blank Claude card.
-    private func unauthenticatedLocalUsageSnapshot() async -> ProviderSnapshot {
-        let error = ClaudeAuthError.notLoggedIn
-        let snapshot = await localUsageSnapshot(
-            mapped: ClaudeMappedUsage(plan: nil, lines: []),
-            warning: error.localizedDescription,
-            loginRequired: true
-        )
-        let hasLocalUsage = snapshot.usageHistory?.series.daily.contains {
-            $0.totalTokens > 0 || ($0.costUSD ?? 0) > 0
-        } == true
-        guard hasLocalUsage else {
-            return ProviderSnapshot.error(provider: provider, error: error)
-        }
-        return snapshot
-    }
-
-    /// Terminal failure handling: a lapsed login (`isLoginRenewal`) degrades to the local spend tiles
-    /// under a renewal notice — the data is still trustworthy and the fix belongs to the owning Claude
-    /// app — while every other failure stays a hard error card. `renewalState` only feeds the plan
-    /// badge; a stale Desktop-only login has none and still degrades.
-    private func failureSnapshot(
-        _ error: ClaudeAuthError,
-        renewalState: ClaudeCredentialState?
-    ) async -> ProviderSnapshot {
-        guard error.isLoginRenewal else {
-            return ProviderSnapshot.error(provider: provider, error: error)
-        }
-        AppLog.info(LogTag.auth("claude"), "login needs renewal; serving local usage with a renewal notice")
-        let mapped = ClaudeMappedUsage(
-            plan: renewalState.flatMap {
-                ClaudeUsageMapper.formatPlan(
-                    subscriptionType: $0.displayOAuth.subscriptionType,
-                    rateLimitTier: $0.displayOAuth.rateLimitTier
-                )
-            },
-            lines: []
-        )
-        return await localUsageSnapshot(mapped: mapped, warning: error.localizedDescription, loginRequired: true)
-    }
-
     private func probe(
         state: ClaudeCredentialState,
         fallbackWarning: (message: String, isConnectPrompt: Bool)?
@@ -322,57 +286,6 @@ final class ClaudeProvider: ProviderRuntime {
         }
         return await localUsageSnapshot(
             mapped: mapped,
-            warning: warning,
-            warningAction: warningAction,
-            warningIsConnectPrompt: warningIsConnectPrompt,
-            loginRequired: loginRequired
-        )
-    }
-
-    /// Assembles the published snapshot from whatever live usage is available plus the always-local
-    /// spend tiles and trend.
-    private func localUsageSnapshot(
-        mapped initialMapped: ClaudeMappedUsage,
-        warning: String?,
-        warningAction: ProviderSnapshot.WarningAction = .refresh,
-        warningIsConnectPrompt: Bool = false,
-        loginRequired: Bool? = nil
-    ) async -> ProviderSnapshot {
-        var mapped = initialMapped
-        // Local spend tiles, scanned natively from Claude Code's session logs and priced through the
-        // shared pricing store, merged with Claude usage that happened inside pi (attributed back here).
-        // Both scans run on their scanner actors, off the main actor.
-        let pricing = await pricing()
-        let nativeScan = await logUsageScanner.scan(now: now(), pricing: pricing)
-        let piScan = await PiUsageScanner.shared.scan(cardID: provider.id, now: now(), pricing: pricing)
-        var usageHistory: ProviderUsageHistory?
-        // Cancellation can land between the native and pi scans. Treat the pair as one unit so a
-        // partial result cannot replace the last-good combined history in WidgetDataStore.
-        if !Task.isCancelled, let scan = DailyUsageAccumulator.merged([nativeScan, piScan]) {
-            let note = piScan == nil
-                ? "From your Claude usage history (estimated)"
-                : "From your Claude usage history and pi (estimated)"
-            usageHistory = ProviderUsageHistory(
-                series: scan.series,
-                modelUsage: scan.modelUsage,
-                unknownModelsByDay: scan.unknownModelsByDay
-            )
-            SpendTileMapper.appendTokenUsage(
-                scan.series, to: &mapped.lines, now: now(),
-                unknownModelsByDay: scan.unknownModelsByDay,
-                modelUsage: scan.modelUsage,
-                modelSourceNote: note
-            )
-            SpendTileMapper.appendUsageTrend(scan.series, to: &mapped.lines, now: now(), note: note)
-        }
-
-        MetricLine.appendNoDataIfNeeded(&mapped.lines)
-        return ProviderSnapshot.make(
-            provider: provider,
-            plan: mapped.plan,
-            lines: mapped.lines,
-            refreshedAt: now(),
-            usageHistory: usageHistory,
             warning: warning,
             warningAction: warningAction,
             warningIsConnectPrompt: warningIsConnectPrompt,
@@ -435,6 +348,7 @@ final class ClaudeProvider: ProviderRuntime {
         }
 
         let usageURL = try authStore.usageEndpoint()
+        let claimEpoch = resetClaimEpoch
         let response: HTTPResponse
         do {
             response = try await usageClient.fetchUsage(
@@ -463,8 +377,12 @@ final class ClaudeProvider: ProviderRuntime {
         if let resetGrants = await resetGrantsLine(credentials: state.oauth, usageURL: usageURL) {
             mapped.lines.append(resetGrants)
         }
-        lastGoodUsage = mapped
-        rateLimitedUntil = nil
+        // A claim that landed during this fetch makes these pre-claim meters; don't cache them over the
+        // post-claim refresh's.
+        if resetClaimEpoch == claimEpoch {
+            lastGoodUsage = mapped
+            rateLimitedUntil = nil
+        }
         return mapped
     }
 
@@ -476,7 +394,7 @@ final class ClaudeProvider: ProviderRuntime {
     /// One guarded renewal attempt for this credential's store, with a per-store cooldown after a
     /// failed attempt so a revoked chain isn't retried every cycle. The renewal's blocking work
     /// (keychain reads, a possible helper subprocess) runs off the main actor.
-    private func renewToken(for state: ClaudeCredentialState) async -> ClaudeOAuth? {
+    func renewToken(for state: ClaudeCredentialState) async -> ClaudeOAuth? {
         let key: String
         switch state.source {
         case .keychainCurrentUser(let service): key = "keychain:\(service)"
@@ -525,6 +443,13 @@ final class ClaudeProvider: ProviderRuntime {
         // its warning must carry `.wait` with it or the triangle stays clickable on stale bars.
         mapped.warningAction = .wait
         return mapped
+    }
+
+    /// A reset claim changed the limits, so the last-good meters and any 429 cooldown are stale: the
+    /// post-claim refresh must fetch live usage instead of serving the pre-claim snapshot.
+    func forgetLiveUsageAfterResetClaim() {
+        lastGoodUsage = nil
+        rateLimitedUntil = nil
     }
 
     /// Cache state belongs to the complete access + refresh credential pair. A login change therefore

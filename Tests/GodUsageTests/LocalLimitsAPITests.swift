@@ -171,6 +171,47 @@ final class LocalLimitsAPITests: XCTestCase {
     }
 
     @MainActor
+    func testAntigravityArgonWeeklyExportsSeparatelyAndIsOmittedWhenAbsent() throws {
+        let descriptors = AntigravityProvider().widgetDescriptors
+        let reset = GodUsageISO8601.date(from: "2026-07-20T01:39:30.000Z")!
+        var snapshot = ProviderSnapshot(
+            providerID: "antigravity",
+            displayName: "Antigravity",
+            plan: "Pro",
+            lines: [
+                .progress(label: "Weekly", used: 10, limit: 100, format: .percent,
+                          periodDurationMs: MetricPeriod.weekMs),
+                .progress(label: "Argon Weekly", used: 75, limit: 100, format: .percent,
+                          resetsAt: reset, periodDurationMs: MetricPeriod.weekMs)
+            ],
+            refreshedAt: fetchedAt
+        )
+        func resources() throws -> [String: Any] {
+            let state = LocalUsageAPI.State(
+                enabledOrderedIDs: ["antigravity"],
+                knownIDs: ["antigravity"],
+                snapshots: ["antigravity": snapshot],
+                limitDescriptors: ["antigravity": descriptors],
+                generatedAt: generatedAt
+            )
+            let root = try json(LocalUsageAPI.respond(method: "GET", path: "/v1/limits", state: state).body)
+            let provider = try XCTUnwrap((root["providers"] as? [String: Any])?["antigravity"] as? [String: Any])
+            return try XCTUnwrap(provider["resources"] as? [String: Any])
+        }
+
+        let argon = try XCTUnwrap(try resources()["argonWeekly"] as? [String: Any])
+        XCTAssertEqual(argon["unit"] as? String, "percent")
+        XCTAssertEqual(argon["used"] as? Double, 75)
+        XCTAssertEqual(argon["remaining"] as? Double, 25)
+        XCTAssertEqual(argon["windowSeconds"] as? Double, 604_800)
+        XCTAssertEqual(argon["resetsAt"] as? String, GodUsageISO8601.string(from: reset))
+
+        // Older endpoints or accounts without the separate quota keep their existing resources.
+        snapshot.lines.removeAll { $0.label == "Argon Weekly" }
+        XCTAssertEqual(Set(try resources().keys), ["geminiWeekly"])
+    }
+
+    @MainActor
     func testCopilotPremiumCreditsExportsPersonalCountAndPaidPercent() throws {
         let credits = CopilotProvider().widgetDescriptors.first { $0.id == "copilot.premium" }!
         let personal = ProviderSnapshot(
@@ -258,7 +299,7 @@ final class LocalLimitsAPITests: XCTestCase {
             "claude": ["session", "weekly", "sonnet", "fable", "extraUsage", "rateLimitResets"],
             "codex": ["session", "weekly", "spark", "sparkWeekly", "credits", "creditValue", "rateLimitResets"],
             "cursor": ["totalUsage", "autoUsage", "apiUsage", "grokBot", "onDemand", "requests", "credits"],
-            "antigravity": ["geminiSession", "geminiWeekly", "nonGeminiSession", "nonGeminiWeekly"],
+            "antigravity": ["geminiSession", "geminiWeekly", "argonWeekly", "nonGeminiSession", "nonGeminiWeekly"],
             "copilot": ["premiumCredits", "extraUsage", "orgCredits", "orgSpend", "chat", "completions"],
             "devin": ["daily", "weekly", "extraUsageBalance"],
             "grok": ["weekly", "rateLimitResets"],

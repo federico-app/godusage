@@ -5,6 +5,8 @@ struct TeamHistorySource: Hashable, Sendable {
     var cardID: String
     var scope: UsageHistoryDescriptor.Scope
     var history: ProviderUsageHistory
+    /// The plan the card detected (`ProviderSnapshot.plan`), e.g. "Max 20x".
+    var plan: String? = nil
 }
 
 /// The body of `PUT /v1/devices/:id/usage`. Only totals leave the Mac: tokens and spend per day,
@@ -23,6 +25,11 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
         var tokens: Int
         var costUSD: Double?
         var models: [Model]
+    }
+
+    struct DetectedPlan: Encodable, Hashable, Sendable {
+        var provider: String
+        var plan: String
     }
 
     struct Provider: Encodable, Hashable, Sendable {
@@ -45,6 +52,11 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
     /// Set on a partial upload: it carries only the provider-days that changed since the last
     /// accepted upload, and the server replaces just those (see `partial(from:to:)`).
     var partial: Bool?
+    /// This Mac's calendar day, so the server dates a newly detected plan by the member's day.
+    var localDay: String?
+    /// The plan GodUsage detected per provider family, e.g. "Max 20x". The team's owners see it, to
+    /// notice when the plan they pay for changed.
+    var detectedPlans: [DetectedPlan] = []
     var providers: [Provider]
 
     /// Builds the upload from this Mac's cards. Account cards (`claude@ab12cd34`) fold into their
@@ -107,7 +119,22 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
             let isAccountWide = entry.scope == .accountWide
             return Provider(provider: family, scope: isAccountWide ? "account" : "device", account: isAccountWide ? entry.account : nil, days: days)
         }
-        return TeamUsageUpload(deviceName: deviceName, appVersion: appVersion, windowStart: dayKeys.min(), providers: providers)
+        // A family's plan is its first card's (by id) that detected one; the plain card sorts first.
+        var plans: [String: String] = [:]
+        for source in sources.sorted(by: { $0.cardID < $1.cardID }) {
+            let family = String(source.cardID.split(separator: "@", maxSplits: 1).first ?? Substring(source.cardID))
+            if plans[family] == nil, let plan = source.plan?.trimmingCharacters(in: .whitespacesAndNewlines), !plan.isEmpty {
+                plans[family] = String(plan.prefix(60))
+            }
+        }
+        return TeamUsageUpload(
+            deviceName: deviceName,
+            appVersion: appVersion,
+            windowStart: dayKeys.min(),
+            localDay: dayKeys.max(),
+            detectedPlans: plans.keys.sorted().map { DetectedPlan(provider: $0, plan: plans[$0]!) },
+            providers: providers
+        )
     }
 
     /// The provider-days of `current` that differ from `previous` (the last body the server accepted),

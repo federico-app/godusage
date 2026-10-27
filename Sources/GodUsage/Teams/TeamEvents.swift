@@ -75,4 +75,41 @@ enum TeamEvents {
         }
         return ("Last Week in \(team)", parts.joined(separator: " "))
     }
+
+    // MARK: - Reactions
+
+    /// One reaction a teammate gave you today.
+    struct ReceivedReaction: Hashable {
+        var reaction: TeamReaction
+        var fromUserID: String
+
+        /// Identifies it for the "already notified" list: team, UTC day, reaction, and giver.
+        func key(team: String, day: String) -> String {
+            "\(team)|\(day)|\(reaction.rawValue)|\(fromUserID)"
+        }
+    }
+
+    /// Who reacted to `me` today, by reaction then giver. Empty when the server doesn't say who.
+    static func receivedReactions(_ reactions: TeamReactions, me: String) -> [ReceivedReaction] {
+        guard let from = reactions.byMember[me]?.from else { return [] }
+        return TeamReaction.allCases.flatMap { reaction in
+            (from[reaction.rawValue] ?? []).filter { $0 != me }.sorted()
+                .map { ReceivedReaction(reaction: reaction, fromUserID: $0) }
+        }
+    }
+
+    /// One alert for every new reaction in a team, grouped by giver: "Ada gave you 🔥 👏."
+    static func reactionMessage(_ received: [ReceivedReaction], names: [String: String]) -> (title: String, body: String)? {
+        guard !received.isEmpty else { return nil }
+        var givers: [String] = []
+        var emojis: [String: [String]] = [:]
+        for item in received {
+            if emojis[item.fromUserID] == nil { givers.append(item.fromUserID) }
+            emojis[item.fromUserID, default: []].append(item.reaction.emoji)
+        }
+        let name = { (id: String) in names[id] ?? "Someone" }
+        let body = givers.map { "\(name($0)) gave you \(emojis[$0, default: []].joined(separator: " "))." }
+        let title = givers.count == 1 ? "\(name(givers[0])) Reacted to You" : "\(givers.count) Teammates Reacted to You"
+        return (title, body.joined(separator: " "))
+    }
 }

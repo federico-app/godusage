@@ -68,6 +68,12 @@ final class ClaudeAccountVerifier {
         return Self.compare(token: known.account, expected: expected)
     }
 
+    /// The account (and organization) already learned for this token, without a network call.
+    func knownAccount(fingerprint: Data) -> ClaudeAccountIdentity? {
+        guard let known, known.fingerprint == fingerprint else { return nil }
+        return known.account
+    }
+
     func verify(
         accessToken: String,
         fingerprint: Data,

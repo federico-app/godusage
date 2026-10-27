@@ -51,6 +51,7 @@ GodUsage can send a macOS notification when a metric runs low, its pace gets wor
 | Team Overtakes | On / Off | Tells you when a teammate passes you by spend over the last 7 days. See [Teams](teams.md#notifications). |
 | Weekly Team Recap | On / Off | Every Monday from 9:00, your rank, spend, and top model in each team last week. |
 | Team Challenges | On / Off | Who won, when a team challenge ends. |
+| Team Plan Changes | On / Off | For team owners: when a member's Mac detects a different plan than the one a team plan is linked to. See [Teams](teams.md#notifications). |
 
 Pace alerts fire on a new crossing or when pace worsens, then stay quiet while that condition is unchanged. A quota already in a bad state when GodUsage launches sets the baseline without alerting. If it recovers and later worsens again, the alert fires again. A new reset period also clears the reset-based history. **Almost Out** uses only the remaining share, so it also works for balances without a reset window. **Cutting It Close** and **Will Run Out** need a reset window. Metrics whose data cannot be read never alert. Turn all three pace settings off to silence pace alerts. Several alerts at once stack into one grouped banner.
 

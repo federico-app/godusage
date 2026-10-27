@@ -40,6 +40,7 @@ describe("usage upload", () => {
     ["duplicate provider", upload([{ provider: "codex", days: [] }, { provider: "codex", days: [] }])],
     ["bad scope", { ...upload([]), providers: [{ provider: "codex", scope: "global", days: [] }] }],
     ["bad date", upload([{ provider: "codex", days: [{ date: "2026-02-30", tokens: 1 }] }])],
+    ["month 13", upload([{ provider: "codex", days: [{ date: "2026-13-01", tokens: 1 }] }])],
     ["duplicate date", upload([{ provider: "codex", days: [{ date: "2026-10-05", tokens: 1 }, { date: "2026-10-05", tokens: 2 }] }])],
     ["negative tokens", upload([{ provider: "codex", days: [{ date: "2026-10-05", tokens: -1 }] }])],
     ["fractional tokens", upload([{ provider: "codex", days: [{ date: "2026-10-05", tokens: 1.5 }] }])],
@@ -171,6 +172,12 @@ describe("team stats", () => {
       { model: "auto", provider: "cursor", tokens: 50, costUSD: 5, members: [{ userID: owner.userID, tokens: 50, costUSD: 5 }] },
       { model: "opus", provider: "claude", tokens: 130, costUSD: 1.3, members: [{ userID: owner.userID, tokens: 130, costUSD: 1.3 }] },
     ]);
+    // By Model splits the day the same way: Macs summed, the account-wide row counted once.
+    expect(stats.daily[0].models).toEqual([
+      { model: "auto", provider: "cursor", tokens: 50, costUSD: 5 },
+      { model: "opus", provider: "claude", tokens: 130, costUSD: 1.3 },
+    ]);
+    expect(stats.daily[0].otherModels).toBeNull();
   });
 
   it("counts a shared account once for the team and for no member", async () => {

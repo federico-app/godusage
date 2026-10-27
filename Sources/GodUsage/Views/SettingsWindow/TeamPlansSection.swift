@@ -9,10 +9,12 @@ struct TeamPlansSection: View {
 
     @State private var drafts: [TeamPlan] = []
     @State private var loaded = false
+    @State private var editing: TeamPlanChangeEditor.Draft?
 
     private var store: TeamPlansStore { container.teamPlans }
     private var saved: [TeamPlan] { store.report(teamID: teamID)?.plans.map(\.plan) ?? [] }
     private var members: [TeamMember] { container.teams.details[teamID]?.members ?? [] }
+    private var today: String { container.teams.localToday() }
 
     var body: some View {
         SettingsSection("Plans") {
@@ -48,8 +50,11 @@ struct TeamPlansSection: View {
         .task(id: teamID) {
             if container.teams.details[teamID] == nil { await container.teams.loadTeam(teamID) }
             await store.load(teamID: teamID)
-            drafts = saved
+            drafts = saved.map(prefillingLink)
             loaded = true
+        }
+        .sheet(item: $editing) { draft in
+            TeamPlanChangeEditor(draft: draft) { result in applyChange(result) }
         }
     }
 
@@ -68,6 +73,14 @@ struct TeamPlansSection: View {
         if await store.save(teamID: teamID, plans: trimmed) { drafts = saved }
     }
 
+    /// Plan changes, ignores, and links made from a plan's notes save at once, with any other edits.
+    /// While another edit is invalid they wait for Save like the rest.
+    private func update(_ planID: String, _ change: (inout TeamPlan) -> Void) {
+        guard let index = drafts.firstIndex(where: { $0.id == planID }) else { return }
+        change(&drafts[index])
+        if isValid { Task { await save() } }
+    }
+
     private func newPlan() -> TeamPlan {
         let provider = container.registry.providers.first?.id ?? "claude"
         return TeamPlan(
@@ -78,7 +91,27 @@ struct TeamPlansSection: View {
         )
     }
 
-    /// Two lines so a plan fits the Settings width: provider and name, then cost and renewal day.
+    // MARK: - Detected plans
+
+    private func detectedLabels(for plan: TeamPlan) -> [String] {
+        TeamPlanChanges.detectedLabels(store.report(teamID: teamID)?.detectedPlans ?? [], provider: plan.provider, memberIDs: plan.memberIDs)
+    }
+
+    /// A plan with no linked detected plan links to the only one its members' Macs detect.
+    private func prefillingLink(_ plan: TeamPlan) -> TeamPlan {
+        var copy = plan
+        copy.detectedPlan = TeamPlanChanges.prefilledLink(plan, labels: detectedLabels(for: plan)) ?? plan.detectedPlan
+        return copy
+    }
+
+    private func mismatches(of plan: TeamPlan) -> [TeamPlanMismatch] {
+        store.report(teamID: teamID)?.plans.first { $0.id == plan.id }?.mismatches ?? []
+    }
+
+    // MARK: - Rows
+
+    /// Two lines so a plan fits the Settings width: provider and name, then cost and renewal day;
+    /// then coverage and the detected plan, the plan's changes, and any detected mismatch.
     private func planRow(_ plan: Binding<TeamPlan>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
@@ -116,10 +149,103 @@ struct TeamPlansSection: View {
             HStack(spacing: 8) {
                 Text("Covers").font(.caption).foregroundStyle(.secondary)
                 coverageMenu(plan.memberIDs)
+                detectedPlanMenu(plan)
                 Spacer()
+                Button("Change Plan…") { editing = changeDraft(for: plan.wrappedValue) }
+                    .controlSize(.small)
+            }
+            changeLines(plan.wrappedValue)
+            ForEach(mismatches(of: plan.wrappedValue), id: \.self) { mismatch in
+                mismatchNote(mismatch, plan: plan.wrappedValue)
             }
         }
         .padding(.vertical, 4)
+    }
+
+    /// The plan's changes in this cycle or later: "↓ Downgrade to … from Nov 30 (next renewal)".
+    @ViewBuilder
+    private func changeLines(_ plan: TeamPlan) -> some View {
+        ForEach(plan.visibleChanges(today: today), id: \.effectiveFrom) { change in
+            HStack(spacing: 8) {
+                Text(TeamPlanChanges.describe(change, renewalDay: plan.renewalDay, today: today))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Cancel Change") {
+                    update(plan.id) { $0.cancelChange(effectiveFrom: change.effectiveFrom, today: today) }
+                }
+                .buttonStyle(.link)
+                .font(.caption)
+            }
+        }
+    }
+
+    /// "⚠ Detected Max 5x on Bea's Mac. This plan says Max 20x ($200/mo)."
+    private func mismatchNote(_ mismatch: TeamPlanMismatch, plan: TeamPlan) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.notice).font(.caption)
+            Text("Detected \(mismatch.detectedPlan) on \(mismatch.displayName)’s Mac. This plan says \(plan.detectedPlan ?? plan.name) (\(TeamPlanChanges.monthly(plan.monthlyCostUSD))/mo).")
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button("Update Payment…") { editing = changeDraft(for: plan, from: mismatch) }
+                .controlSize(.small)
+            Button("Ignore") {
+                update(plan.id) { $0.ignoredPlans.append(mismatch.detectedPlan) }
+            }
+            .controlSize(.small)
+        }
+    }
+
+    // MARK: - Changes
+
+    /// A hand-marked change starts at the next renewal; one from a mismatch on the day the member's
+    /// Mac first detected the new plan, named after it.
+    private func changeDraft(for plan: TeamPlan, from mismatch: TeamPlanMismatch? = nil) -> TeamPlanChangeEditor.Draft {
+        let earliest = plan.earliestChangeDay(today: today)
+        var day = mismatch?.detectedOn ?? TeamPlanChanges.nextRenewal(renewalDay: plan.renewalDay, today: today)
+        if let earliest, day < earliest { day = earliest }
+        return TeamPlanChangeEditor.Draft(
+            planID: plan.id,
+            planName: plan.name,
+            name: mismatch?.detectedPlan ?? plan.name,
+            monthlyCostUSD: mismatch == nil ? plan.monthlyCostUSD : nil,
+            effective: TeamsFormat.date(day) ?? Date(),
+            earliest: earliest.flatMap(TeamsFormat.date),
+            linkDetectedPlan: mismatch?.detectedPlan
+        )
+    }
+
+    private func applyChange(_ draft: TeamPlanChangeEditor.Draft) {
+        guard let cost = draft.monthlyCostUSD else { return }
+        let day = DailyUsageAccumulator.dayKey(from: draft.effective, calendar: .current)
+        let terms = TeamPlanTerms(name: draft.name.trimmingCharacters(in: .whitespaces), monthlyCostUSD: cost)
+        update(draft.planID) { plan in
+            plan.addChange(effectiveFrom: day, to: terms, today: today)
+            if let label = draft.linkDetectedPlan { plan.detectedPlan = label }
+        }
+    }
+
+    // MARK: - Menus
+
+    /// Which detected plan this plan stands for, from those detected on its members' Macs.
+    @ViewBuilder
+    private func detectedPlanMenu(_ plan: Binding<TeamPlan>) -> some View {
+        let labels = detectedLabels(for: plan.wrappedValue)
+        let linked = plan.wrappedValue.detectedPlan
+        if !labels.isEmpty || linked != nil {
+            Text("Detected As").font(.caption).foregroundStyle(.secondary)
+            Menu {
+                Button("None") { plan.wrappedValue.detectedPlan = nil }
+                Divider()
+                ForEach(labels + (linked.map { link in labels.contains { TeamPlanChanges.sameLabel($0, link) } ? [] : [link] } ?? []), id: \.self) { label in
+                    Button(label) { plan.wrappedValue.detectedPlan = label }
+                }
+            } label: {
+                Text(linked ?? "None")
+            }
+            .fixedSize()
+        }
     }
 
     /// Everyone (members who join later too), or the members picked here. At least one stays picked.

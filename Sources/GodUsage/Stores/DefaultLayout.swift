@@ -7,7 +7,8 @@ import Foundation
 /// here: an empty saved order reconciles to plain registry order in `LayoutStore`.
 enum DefaultLayout {
     static let metricIDs: [String] = [
-        "antigravity.geminiPro", "antigravity.geminiWeekly", "antigravity.claude", "antigravity.claudeWeekly",
+        "antigravity.geminiPro", "antigravity.geminiWeekly", "antigravity.argonWeekly",
+        "antigravity.claude", "antigravity.claudeWeekly",
 
         "claude.session", "claude.weekly", "claude.fable", "claude.rateLimitResets", "claude.trend",
         "claude.today", "claude.yesterday", "claude.last30",
@@ -102,8 +103,8 @@ enum DefaultLayout {
     /// Filtered to the active registry by `LayoutStore`, and only seeded on a genuinely fresh launch
     /// (existing layouts keep everything always-shown unless they reset customization).
     static let expandedMetricIDs: [String] = [
-        // Antigravity: the Gemini pool pair (5h + weekly) stays above the fold; the non-Gemini
-        // (Claude) pool pair sits below the caret.
+        // Antigravity: the Gemini pool pair (5h + weekly) and Argon Weekly stay above the fold; the
+        // non-Gemini (Claude) pool pair sits below the caret.
         "antigravity.claude", "antigravity.claudeWeekly",
         // Claude: Session, Weekly, and Fable stay above the fold; reset grants and local history sit
         // below the caret.
