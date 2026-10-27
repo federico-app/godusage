@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.3.0
+
+### New Features
+- feat(teams): notify when a teammate reacts to you ([#58](https://github.com/federico-app/godusage/pull/58)) by @andreaAppload
+- feat(teams): By Model chart per day, week, or month and model shades ([#59](https://github.com/federico-app/godusage/pull/59)) by @andreaAppload
+- feat(dashboard): move card caret below expanded metrics ([#60](https://github.com/federico-app/godusage/pull/60)) by @andreaAppload
+- feat(claude): claim reset grants from the resets popover ([#63](https://github.com/federico-app/godusage/pull/63)) by @andreaAppload
+- feat(teams): plan changes with effective dates, proration, and detected-plan alerts ([#64](https://github.com/federico-app/godusage/pull/64)) by @andreaAppload
+
+### Bug Fixes
+- fix(cursor): Enterprise badge and Extra Usage from usage-summary ([#61](https://github.com/federico-app/godusage/pull/61)) by @andreaAppload
+- fix(antigravity): restore Gemini meters, plan badge, and add Argon Weekly ([#62](https://github.com/federico-app/godusage/pull/62)) by @andreaAppload
+
+### Chores
+- ci: run macOS jobs on macos-26-intel runners ([#65](https://github.com/federico-app/godusage/pull/65)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.2.1...v1.3.0](https://github.com/federico-app/godusage/compare/v1.2.1...v1.3.0)
+
+- [94a8acb](https://github.com/federico-app/godusage/commit/94a8acb7ff9dc7bbd034108a8f92bf8395ad640f) feat(teams): notify when a teammate reacts to you by @andreaAppload
+- [6b5e12a](https://github.com/federico-app/godusage/commit/6b5e12aaceaa9d7cb18ad0d8d7732ca81880b11e) feat(teams): By Model chart per day, week, or month and model shades by @andreaAppload
+- [8a903c6](https://github.com/federico-app/godusage/commit/8a903c6a424895aa7c8528c2b1a94e6b97acc9bb) feat(claude): claim reset grants from the resets popover by @andreaAppload
+- [3aec7cc](https://github.com/federico-app/godusage/commit/3aec7ccb7d951de723f8d81c1934de0303e5acc8) fix(cursor): Enterprise badge and Extra Usage from usage-summary by @andreaAppload
+- [7dc16e4](https://github.com/federico-app/godusage/commit/7dc16e458f76080563c8e7b9a29fa1d849b71b5a) feat(pricing): price Gemini 4 Argon by @andreaAppload
+- [7c60176](https://github.com/federico-app/godusage/commit/7c6017666b3f36aa7c819d9feadb70622e39059e) docs(claude): document claiming reset grants by @andreaAppload
+- [3a52b8f](https://github.com/federico-app/godusage/commit/3a52b8f9f11d85eb2066016127b6828278833b40) feat(dashboard): move card caret below expanded metrics by @andreaAppload
+- [2341a43](https://github.com/federico-app/godusage/commit/2341a437ad2be8184616b2c879696cb7fddbfb30) refactor(cursor): move usage-summary enrichment into its own file by @andreaAppload
+- [d709ef9](https://github.com/federico-app/godusage/commit/d709ef921c5d89b23e77fff18f18c5912be9c018) fix(antigravity): restore Gemini meters, plan badge, and add Argon Weekly by @andreaAppload
+- [dc14018](https://github.com/federico-app/godusage/commit/dc140189a0c552331c26ffca9cdc3eba4baa0038) refactor(claude): move snapshot assembly into an extension file by @andreaAppload
+- [b9421b5](https://github.com/federico-app/godusage/commit/b9421b58431b7fb563fbfced050fb3d7e2f97ce4) feat(backend): plan price history, prorated cycles, and detected-plan mismatches by @andreaAppload
+- [7da9070](https://github.com/federico-app/godusage/commit/7da90704f36d47ce4de83fe53c7383b3eb08abc0) feat(teams): plan changes, prorated cycles, and detected-plan alerts in the app by @andreaAppload
+- [010d053](https://github.com/federico-app/godusage/commit/010d053d436c2c34031d3946a4d7b4249eea77ce) fix(teams): keep plan history, link, and ignores on saves from older apps by @andreaAppload
+- [e0b9721](https://github.com/federico-app/godusage/commit/e0b9721975077f9caa4d6fd2fd8b92414caffb10) ci: run macOS jobs on macos-26-intel runners by @andreaAppload
+
 ## v1.2.1
 
 ### Bug Fixes
