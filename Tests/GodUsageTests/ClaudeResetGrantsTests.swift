@@ -2,7 +2,7 @@ import XCTest
 @testable import GodUsage
 
 /// The Claude "Rate Limit Resets" row, read from the reset-grants response's `cedar_ember` block
-/// (Anthropic's one-off usage-limit reset grants). Read-only for now: no claim flow.
+/// (Anthropic's one-off usage-limit reset grants). The claim is covered by `ClaudeResetClaimTests`.
 final class ClaudeResetGrantsTests: XCTestCase {
     private let now = Date(timeIntervalSince1970: 1_790_000_000) // 2026-09-21
 

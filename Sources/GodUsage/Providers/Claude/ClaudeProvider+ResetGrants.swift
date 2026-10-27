@@ -1,11 +1,12 @@
 import Foundation
 
-/// The last reset-grants answer for one login. A failed attempt keeps the previous line and still counts
-/// as the hour's check, so an outage or 429 is retried an hour later rather than on every refresh.
+/// The last reset-grants answer for one login. A failed attempt keeps the previous status and still
+/// counts as the hour's check, so an outage or 429 is retried an hour later rather than on every refresh.
+/// The claim reads the same status, and only ever claims with the login named by `credentialFingerprint`.
 struct ClaudeResetGrantsCheck {
     var credentialFingerprint: Data
     var checkedAt: Date
-    var line: MetricLine?
+    var status: ClaudeResetGrantStatus?
 }
 
 extension ClaudeProvider {
@@ -19,22 +20,30 @@ extension ClaudeProvider {
         let fingerprint = Self.credentialFingerprint(credentials)
         let now = now()
         let previous = resetGrantsCheck?.credentialFingerprint == fingerprint ? resetGrantsCheck : nil
-        let held = previous?.line.map { ClaudeUsageMapper.droppingElapsedResetGrants($0, now: now) }
+        let held = previous?.status?.line(now: now)
         if let previous, now.timeIntervalSince(previous.checkedAt) < Self.resetGrantsCheckInterval {
             return held
         }
+        let epoch = resetClaimEpoch
         do {
             let response = try await usageClient.fetchResetGrants(
                 accessToken: credentials.accessToken ?? "", usageURL: usageURL
             )
-            let line = try ClaudeUsageMapper.mapResetGrantsResponse(response, now: now)
-            resetGrantsCheck = ClaudeResetGrantsCheck(credentialFingerprint: fingerprint, checkedAt: now, line: line)
-            return line
+            let status = try ClaudeUsageMapper.mapResetGrantStatus(response)
+            // A claim landed while this read was in flight: the answer predates it, so leave the cache
+            // empty for the post-claim refresh to re-read.
+            guard resetClaimEpoch == epoch else { return status?.line(now: now) }
+            resetGrantsCheck = ClaudeResetGrantsCheck(credentialFingerprint: fingerprint, checkedAt: now, status: status)
+            return status?.line(now: now)
         } catch {
             // A cancelled refresh is not a verdict on the endpoint; let the next refresh try again.
             guard !Task.isCancelled else { return held }
+            // A claim during the request must not get the pre-claim status put back.
+            guard resetClaimEpoch == epoch else { return held }
             AppLog.warn(LogTag.plugin("claude"), "reset grants lookup failed; retrying in an hour: \(error.localizedDescription)")
-            resetGrantsCheck = ClaudeResetGrantsCheck(credentialFingerprint: fingerprint, checkedAt: now, line: previous?.line)
+            resetGrantsCheck = ClaudeResetGrantsCheck(
+                credentialFingerprint: fingerprint, checkedAt: now, status: previous?.status
+            )
             return held
         }
     }

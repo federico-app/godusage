@@ -17,7 +17,8 @@ enum ClaudeUsageError: Error, LocalizedError, Equatable {
     }
 }
 
-/// Read-only client for Claude's usage endpoint. Token rotation lives elsewhere and under strict
+/// Client for Claude's usage endpoints. Everything here is a read except `claimResetGrant`, which only
+/// the resets popover's explicit, confirmed claim calls. Token rotation lives elsewhere and under strict
 /// guards (`ClaudeTokenRenewal`): a second process refreshing a still-valid token can trip the
 /// server's reuse detection, so only an already-expired token is ever renewed, and the rotated
 /// credential is always written back to Claude Code's own store.
@@ -56,37 +57,53 @@ struct ClaudeUsageClient: Sendable {
 
     private func sendUsageRequest(url: URL, accessToken: String) async throws -> HTTPResponse {
         try await httpClient.send(
-            HTTPRequest(
-                method: "GET",
-                url: url,
-                headers: [
-                    "Authorization": "Bearer \(accessToken.trimmingCharacters(in: .whitespacesAndNewlines))",
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    "anthropic-beta": "oauth-2025-04-20",
-                    "User-Agent": "claude-cli/2.1.280 (external, cli)"
-                ],
-                timeout: 10
-            )
+            HTTPRequest(method: "GET", url: url, headers: Self.claudeCodeHeaders(accessToken), timeout: 10)
         )
+    }
+
+    /// `POST /api/organizations/{org}/reset_rate_limits`, the request Claude Code sends to spend one reset
+    /// grant. `request_id` makes a retry idempotent: a repeat answers `already_used` instead of spending
+    /// again. See docs/research/claude-reset-grant-claim.md.
+    func claimResetGrant(
+        accessToken: String, organizationUUID: String, grantID: String, requestID: String, usageURL: URL
+    ) async throws -> HTTPResponse {
+        let body = try JSONSerialization.data(withJSONObject: [
+            "program": "cedar_ember", "grant_id": grantID, "request_id": requestID
+        ])
+        return try await httpClient.send(HTTPRequest(
+            method: "POST",
+            url: Self.resetClaimURL(usageURL, organizationUUID: organizationUUID),
+            headers: Self.claudeCodeHeaders(accessToken),
+            body: body,
+            timeout: 25
+        ))
+    }
+
+    /// `…/api/oauth/usage` → `…/api/organizations/{org}/reset_rate_limits`, on the same (possibly custom)
+    /// API base as the usage read.
+    static func resetClaimURL(_ usageURL: URL, organizationUUID: String) -> URL {
+        usageURL.deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("organizations")
+            .appendingPathComponent(organizationUUID)
+            .appendingPathComponent("reset_rate_limits")
+    }
+
+    /// The headers Claude Code sends, including its `claude-cli/<version> (external, cli)` User-Agent.
+    private static func claudeCodeHeaders(_ accessToken: String) -> [String: String] {
+        [
+            "Authorization": "Bearer \(accessToken.trimmingCharacters(in: .whitespacesAndNewlines))",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "anthropic-beta": "oauth-2025-04-20",
+            "User-Agent": "claude-cli/2.1.280 (external, cli)"
+        ]
     }
 
     /// `GET /api/oauth/profile`, the call Claude Code makes to learn which account and organization a
     /// token belongs to. Read-only; the account check uses it to compare against the card's identity.
     func fetchProfile(accessToken: String, profileURL: URL) async throws -> HTTPResponse {
         try await httpClient.send(
-            HTTPRequest(
-                method: "GET",
-                url: profileURL,
-                headers: [
-                    "Authorization": "Bearer \(accessToken.trimmingCharacters(in: .whitespacesAndNewlines))",
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    "anthropic-beta": "oauth-2025-04-20",
-                    "User-Agent": "claude-cli/2.1.280 (external, cli)"
-                ],
-                timeout: 10
-            )
+            HTTPRequest(method: "GET", url: profileURL, headers: Self.claudeCodeHeaders(accessToken), timeout: 10)
         )
     }
 }

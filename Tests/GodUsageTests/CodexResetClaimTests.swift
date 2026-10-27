@@ -423,7 +423,7 @@ final class CodexResetClaimTests: XCTestCase {
             usageClient: client,
             credentialCandidates: { _ in [("work", "work")] }
         )
-        let router = CodexResetClaimRouter(servicesByProviderID: [
+        let router = ResetClaimRouter(servicesByProviderID: [
             "codex": personal,
             "codex@abcd1234": work,
         ])

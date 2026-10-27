@@ -43,6 +43,13 @@ final class ClaudeProvider: ProviderRuntime {
     private static let rateLimitCooldown: TimeInterval = 5 * 60
     /// The last hourly reset-grants check (see `ClaudeProvider+ResetGrants.swift`).
     var resetGrantsCheck: ClaudeResetGrantsCheck?
+    /// Bumped by each claim that changed something, so a grants or usage read that started before it
+    /// can't cache its pre-claim answer (see `ClaudeProvider+ResetClaim.swift`).
+    var resetClaimEpoch = 0
+    /// The last claim whose answer never settled, kept so a retry of that grant reuses its request id.
+    var unsettledResetClaim: (grantID: String, requestID: String)?
+    /// One claim at a time per card, so two popovers can't race to spend.
+    var resetClaimInFlight = false
 
     init(
         provider: Provider = ClaudeProvider.makeProvider(),
@@ -75,7 +82,7 @@ final class ClaudeProvider: ProviderRuntime {
                 .exportingLimit("fable", unit: "percent"),
             .boundedDollars(id: "\(provider.id).extra", provider: provider, title: "Extra Usage", metricLabel: "Extra usage spent", limit: 100, valueWord: "spent")
                 .exportingLimit("extraUsage", unit: "usd", source: .progressOrValue(kind: .dollars)),
-            // Anthropic's one-off usage-limit reset grants (`cedar_ember`), shown read-only in the same
+            // Anthropic's one-off usage-limit reset grants (`cedar_ember`), shown and claimable in the same
             // resets popover as Codex. Seeded On Demand and unpinned in `DefaultLayout`, like Codex's.
             .values(id: "\(provider.id).rateLimitResets", provider: provider, title: "Rate Limit Resets", metricLabel: "Rate Limit Resets", traySuffix: "resets", showsResetExpiries: true)
                 .exportingLimit("rateLimitResets", kind: .balance, unit: "resets", source: .value(kind: .count, label: "available")),
@@ -435,6 +442,7 @@ final class ClaudeProvider: ProviderRuntime {
         }
 
         let usageURL = try authStore.usageEndpoint()
+        let claimEpoch = resetClaimEpoch
         let response: HTTPResponse
         do {
             response = try await usageClient.fetchUsage(
@@ -463,8 +471,12 @@ final class ClaudeProvider: ProviderRuntime {
         if let resetGrants = await resetGrantsLine(credentials: state.oauth, usageURL: usageURL) {
             mapped.lines.append(resetGrants)
         }
-        lastGoodUsage = mapped
-        rateLimitedUntil = nil
+        // A claim that landed during this fetch makes these pre-claim meters; don't cache them over the
+        // post-claim refresh's.
+        if resetClaimEpoch == claimEpoch {
+            lastGoodUsage = mapped
+            rateLimitedUntil = nil
+        }
         return mapped
     }
 
@@ -476,7 +488,7 @@ final class ClaudeProvider: ProviderRuntime {
     /// One guarded renewal attempt for this credential's store, with a per-store cooldown after a
     /// failed attempt so a revoked chain isn't retried every cycle. The renewal's blocking work
     /// (keychain reads, a possible helper subprocess) runs off the main actor.
-    private func renewToken(for state: ClaudeCredentialState) async -> ClaudeOAuth? {
+    func renewToken(for state: ClaudeCredentialState) async -> ClaudeOAuth? {
         let key: String
         switch state.source {
         case .keychainCurrentUser(let service): key = "keychain:\(service)"
@@ -525,6 +537,13 @@ final class ClaudeProvider: ProviderRuntime {
         // its warning must carry `.wait` with it or the triangle stays clickable on stale bars.
         mapped.warningAction = .wait
         return mapped
+    }
+
+    /// A reset claim changed the limits, so the last-good meters and any 429 cooldown are stale: the
+    /// post-claim refresh must fetch live usage instead of serving the pre-claim snapshot.
+    func forgetLiveUsageAfterResetClaim() {
+        lastGoodUsage = nil
+        rateLimitedUntil = nil
     }
 
     /// Cache state belongs to the complete access + refresh credential pair. A login change therefore
