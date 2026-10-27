@@ -11,6 +11,8 @@ struct TeamsCharts: View {
     let providerName: (String) -> String
 
     @State private var selectedDay: Date?
+    /// Nil until the user picks one: then By Model follows the range's default bucket.
+    @State private var modelBucket: TeamModelsOverTimeChart.Bucket?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -30,10 +32,24 @@ struct TeamsCharts: View {
                     subtitle: "Team \(metricName.lowercased()) per day, split by provider. Hover a day for its numbers."
                 ) { dailyChart }
             }
+            if stats.daily.contains(where: { !($0.models ?? []).isEmpty || $0.otherModels != nil }) {
+                chartSection(
+                    "By Model",
+                    subtitle: "Team \(metricName.lowercased()) per day, week, or month, split by model. Hover a bar for its numbers."
+                ) {
+                    TeamModelsOverTimeChart(
+                        stats: stats, sort: sort,
+                        bucket: Binding(
+                            get: { modelBucket ?? TeamModelsOverTimeChart.defaultBucket(for: stats.range.name) },
+                            set: { modelBucket = $0 }
+                        )
+                    )
+                }
+            }
             if !stats.models.isEmpty {
                 chartSection(
                     "Top Models",
-                    subtitle: "The team's most used models. Color shows each model's provider."
+                    subtitle: "The team's most used models. Each provider's models share its color in different shades."
                 ) { modelsChart }
             }
         }
@@ -267,10 +283,11 @@ struct TeamsCharts: View {
     }
 
     private var modelsChart: some View {
-        applyProviderColors(
+        let colors = TeamModelPalette.colors(for: topModels.map { ($0.provider, $0.model) })
+        return applyProviderColors(
             Chart(topModels) { model in
                 BarMark(x: .value(metricName, model.totals.value(for: sort)), y: .value("Model", model.model), height: .fixed(14))
-                    .foregroundStyle(by: .value("Provider", providerName(model.provider)))
+                    .foregroundStyle(colors[model.id] ?? TotalSpendPalette.color(for: model.provider))
                     .cornerRadius(3)
                     .annotation(position: .trailing, alignment: .leading, spacing: 6) {
                         Text(TeamsFormat.value(model.totals, sort: sort))

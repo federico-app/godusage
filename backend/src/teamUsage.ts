@@ -44,6 +44,15 @@ export interface SharedModel {
   cost: number;
 }
 
+/** The team's usage of one model on one day: members and shared accounts together. */
+export interface ModelDay {
+  provider: string;
+  model: string;
+  day: string;
+  tokens: number;
+  cost: number;
+}
+
 export interface TeamDevice {
   user_id: string;
   id: string;
@@ -60,6 +69,8 @@ export interface TeamUsage {
   sharedDays: SharedDay[];
   /** Shared accounts' usage per model over the range. Empty unless models were asked for. */
   sharedModels: SharedModel[];
+  /** The whole team's usage per model and day. Empty unless models were asked for. */
+  modelDays: ModelDay[];
   /** Who shares each shared account, ordered by account, provider, user. */
   sharedMembers: { account_key: string; provider: string; user_id: string }[];
   /** The members' Macs. */
@@ -122,12 +133,14 @@ export async function teamUsage(db: Queryable, teamID: string, from: string, to:
 
   let models: MemberModel[] = [];
   let sharedModels: SharedModel[] = [];
+  let modelDays: ModelDay[] = [];
   if (modelRows) {
     const byModel = combine(modelRows as unknown as UsageRow[], sharedKeys, updatedAt, true);
     models = [...byModel.members.values()].map((value) => ({ user_id: value.user, provider: value.provider, model: value.model, tokens: value.tokens, cost: value.cost }));
     sharedModels = [...byModel.shared.values()].map((value) => ({ account_key: value.key, provider: value.provider, model: value.model, tokens: value.tokens, cost: value.cost }));
+    modelDays = [...byModel.days.values()].map((value) => ({ provider: value.provider, model: value.model, day: value.day, tokens: value.tokens, cost: value.cost }));
   }
-  return { days, models, sharedDays, sharedModels, sharedMembers, devices };
+  return { days, models, sharedDays, sharedModels, modelDays, sharedMembers, devices };
 }
 
 /**
@@ -163,11 +176,13 @@ interface Total {
 
 /**
  * Picks the winning account-scope row per day, then sums. With `byModel`, rows are per model and
- * the totals are per model over the whole range (not per day).
+ * the totals are per model over the whole range (not per day); `days` then also has the whole team's
+ * totals per model and day.
  */
 function combine(rows: UsageRow[], sharedKeys: Set<string>, updatedAt: Map<string, string>, byModel: boolean) {
   const members = new Map<string, Total>();
   const shared = new Map<string, Total>();
+  const days = new Map<string, Total>();
   // The winning account-scope row for each (user or shared account, provider, day[, model]).
   const winners = new Map<string, { row: UsageRow; updatedAt: string; shared: boolean }>();
   const model = (row: UsageRow) => (byModel ? row.model! : "");
@@ -175,6 +190,7 @@ function combine(rows: UsageRow[], sharedKeys: Set<string>, updatedAt: Map<strin
   for (const row of rows) {
     if (row.scope === "device") {
       addTo(members, [row.user_id, row.provider, byModel ? model(row) : row.day], row, { user: row.user_id, key: "", day: row.day, model: model(row) });
+      if (byModel) addTo(days, [row.provider, model(row), row.day], row, { user: "", key: "", day: row.day, model: model(row) });
       continue;
     }
     const isShared = row.account_key !== null && sharedKeys.has(row.account_key);
@@ -191,8 +207,9 @@ function combine(rows: UsageRow[], sharedKeys: Set<string>, updatedAt: Map<strin
     const bucket = byModel ? model(row) : row.day;
     if (isShared) addTo(shared, [row.account_key!, row.provider, bucket], row, { user: "", key: row.account_key!, day: row.day, model: model(row) });
     else addTo(members, [row.user_id, row.provider, bucket], row, { user: row.user_id, key: "", day: row.day, model: model(row) });
+    if (byModel) addTo(days, [row.provider, model(row), row.day], row, { user: "", key: "", day: row.day, model: model(row) });
   }
-  return { members, shared };
+  return { members, shared, days };
 }
 
 function newer(row: UsageRow, rowUpdatedAt: string, current: UsageRow, currentUpdatedAt: string, shared: boolean): boolean {

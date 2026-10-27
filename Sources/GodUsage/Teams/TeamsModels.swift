@@ -194,7 +194,20 @@ struct TeamStats: Codable, Hashable, Sendable {
         var members: [MemberTotals]
         /// Optional so an older backend's responses still decode.
         var providers: [ProviderTotals]?
+        /// The day's usage of the period's eight largest models, largest first. Nil from older servers.
+        var models: [DayModel]?
+        /// Every other model that day; nil when there is none.
+        var otherModels: UsageTotals?
         var id: String { day }
+    }
+
+    struct DayModel: Codable, Hashable, Sendable, Identifiable {
+        var model: String
+        var provider: String
+        var tokens: Int
+        var costUSD: Double
+        var id: String { "\(provider)/\(model)" }
+        var totals: UsageTotals { UsageTotals(tokens: tokens, costUSD: costUSD) }
     }
 
     var range: Range

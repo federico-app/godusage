@@ -171,6 +171,12 @@ describe("team stats", () => {
       { model: "auto", provider: "cursor", tokens: 50, costUSD: 5, members: [{ userID: owner.userID, tokens: 50, costUSD: 5 }] },
       { model: "opus", provider: "claude", tokens: 130, costUSD: 1.3, members: [{ userID: owner.userID, tokens: 130, costUSD: 1.3 }] },
     ]);
+    // By Model splits the day the same way: Macs summed, the account-wide row counted once.
+    expect(stats.daily[0].models).toEqual([
+      { model: "auto", provider: "cursor", tokens: 50, costUSD: 5 },
+      { model: "opus", provider: "claude", tokens: 130, costUSD: 1.3 },
+    ]);
+    expect(stats.daily[0].otherModels).toBeNull();
   });
 
   it("counts a shared account once for the team and for no member", async () => {
