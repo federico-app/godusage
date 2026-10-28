@@ -2,13 +2,15 @@ import AppKit
 import SwiftUI
 
 /// The selected team in the Teams pane: its members, its invite and leaderboard links, and
-/// leaving or deleting it. Owner-only controls appear only for owners. A team can have several
+/// renaming, leaving, or deleting it. Owner-only controls appear only for owners. A team can have several
 /// owners; the last one cannot leave.
 struct TeamDetailSection: View {
     let teams: TeamsStore
     let summary: TeamSummary
     @State private var confirmation: Confirmation?
     @State private var copiedURL: URL?
+    @State private var isRenaming = false
+    @State private var newName = ""
 
     private enum Confirmation: Identifiable {
         case leave
@@ -46,6 +48,12 @@ struct TeamDetailSection: View {
                 HStack {
                     Button("Open Leaderboards") { TeamsWindowLink.open() }
                     Spacer()
+                    if isOwner {
+                        Button("Rename…") {
+                            newName = summary.name
+                            isRenaming = true
+                        }
+                    }
                     if canLeave(detail) {
                         Button("Leave Team…", role: .destructive) { confirmation = .leave }
                     }
@@ -63,6 +71,17 @@ struct TeamDetailSection: View {
         }
         .task { await teams.loadTeam(summary.id) }
         .alert(item: $confirmation) { alert(for: $0) }
+        .alert("Team Name", isPresented: $isRenaming) {
+            TextField("Team name", text: $newName)
+            Button("Save") {
+                let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty, name != summary.name else { return }
+                Task { await teams.renameTeam(summary.id, to: name) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Every member sees the new name.")
+        }
     }
 
     @ViewBuilder

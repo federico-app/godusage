@@ -130,4 +130,28 @@ final class WidgetRegistryTests: XCTestCase {
         // WidgetDescriptor equality is id-only; compare the sample to prove the first one wins.
         XCTAssertEqual(registry.descriptor(id: "dup.m")?.sample.title, "First")
     }
+    /// Team plans and team views name the provider, never one local account: with two Claude
+    /// logins the bare card is "Claude — email (Org)" and a second card is `claude@…`.
+    func testTeamProvidersCollapseAccountCardsToTheFamily() {
+        let registry = WidgetRegistry(providers: [
+            Provider(id: "claude", displayName: "Claude — dev@example.com (Acme)", icon: .providerMark("c")),
+            Provider(id: "claude@ab12cd34", displayName: "Claude — me@example.com (Home)", icon: .providerMark("c")),
+            Provider(id: "cursor", displayName: "Cursor", icon: .providerMark("u")),
+        ], descriptors: [])
+
+        XCTAssertEqual(registry.teamProviders.map(\.id), ["claude", "cursor"])
+        XCTAssertEqual(registry.teamProviders.map(\.displayName), ["Claude", "Cursor"])
+        XCTAssertEqual(registry.teamProviderName("claude"), "Claude")
+    }
+
+    /// Scoped account cards can be the whole family, with no bare card.
+    func testTeamProvidersKeepAFamilyWithOnlyAccountCards() {
+        let registry = WidgetRegistry(providers: [
+            Provider(id: "codex@11111111", displayName: "Codex — a@example.com", icon: .providerMark("x")),
+            Provider(id: "codex@22222222", displayName: "Codex — b@example.com", icon: .providerMark("x")),
+        ], descriptors: [])
+
+        XCTAssertEqual(registry.teamProviders.map(\.id), ["codex"])
+        XCTAssertEqual(registry.teamProviders.map(\.displayName), ["Codex"])
+    }
 }

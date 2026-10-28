@@ -82,7 +82,7 @@ struct TeamPlansSection: View {
     }
 
     private func newPlan() -> TeamPlan {
-        let provider = container.registry.providers.first?.id ?? "claude"
+        let provider = container.registry.teamProviders.first?.id ?? "claude"
         return TeamPlan(
             provider: provider,
             name: providerName(provider),
@@ -116,7 +116,7 @@ struct TeamPlansSection: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Picker("Provider", selection: plan.provider) {
-                    ForEach(container.registry.providers, id: \.id) { provider in
+                    ForEach(container.registry.teamProviders, id: \.id) { provider in
                         Text(provider.displayName).tag(provider.id)
                     }
                 }
@@ -281,6 +281,6 @@ struct TeamPlansSection: View {
     }
 
     private func providerName(_ id: String) -> String {
-        container.registry.providers.first { $0.id == id }?.displayName ?? id.capitalized
+        container.registry.teamProviderName(id)
     }
 }
