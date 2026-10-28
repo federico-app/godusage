@@ -123,7 +123,7 @@ export async function teamStats(db: Queryable, teamID: string, query: StatsQuery
   const [memberRows, usage, previousUsage] = await Promise.all([
     db.query<{ id: string; display_name: string }>(
       `SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id
-       WHERE m.team_id = $1 ORDER BY m.joined_at, u.id`,
+       WHERE m.team_id = $1 AND m.counts_usage ORDER BY m.joined_at, u.id`,
       [teamID],
     ),
     teamUsage(db, teamID, from, to, { models: true }),

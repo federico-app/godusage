@@ -32,7 +32,7 @@ export async function teamDetections(db: Queryable, teamID: string): Promise<Det
   const rows = await db.query<{ user_id: string; display_name: string; provider: string; plan: string; detected_at: string; detected_on: string }>(
     `SELECT DISTINCT ON (d.user_id, d.provider) d.user_id, u.display_name, d.provider, d.plan, d.detected_at, d.detected_on
      FROM detected_plans d
-     JOIN team_members m ON m.user_id = d.user_id AND m.team_id = $1
+     JOIN team_members m ON m.user_id = d.user_id AND m.team_id = $1 AND m.counts_usage
      JOIN users u ON u.id = d.user_id
      ORDER BY d.user_id, d.provider, d.detected_at DESC, d.device_id`,
     [teamID],

@@ -10,10 +10,19 @@ import { viewerToday } from "./challenges";
 
 type Role = "owner" | "member";
 
-async function memberRole(db: Queryable, teamID: string, userID: string): Promise<Role> {
-  const row = await db.first<{ role: Role }>("SELECT role FROM team_members WHERE team_id = $1 AND user_id = $2", [teamID, userID]);
+interface Membership {
+  role: Role;
+  /** False for an owner who left themself out of the team's usage and plans. */
+  countsUsage: boolean;
+}
+
+async function membership(db: Queryable, teamID: string, userID: string): Promise<Membership> {
+  const row = await db.first<{ role: Role; counts_usage: boolean }>("SELECT role, counts_usage FROM team_members WHERE team_id = $1 AND user_id = $2", [
+    teamID,
+    userID,
+  ]);
   if (!row) throw notFound("Team not found.");
-  return row.role;
+  return { role: row.role, countsUsage: row.counts_usage };
 }
 
 async function loadPlans(db: Queryable, teamID: string): Promise<PlanRow[]> {
@@ -73,12 +82,13 @@ async function report(db: Queryable, teamID: string, today: string) {
 
 /**
  * The cached report is the same for every member: this marks the plans that cover the viewer, and
- * keeps the members' detected plans (and the mismatches they cause) for owners only.
+ * keeps the members' detected plans (and the mismatches they cause) for owners only. A plan never
+ * covers a viewer who doesn't count toward the team.
  */
-function forViewer(result: { plans: PlanReport[]; totals: object; detections: Detection[] }, userID: string, role: Role) {
-  const owner = role === "owner";
+function forViewer(result: { plans: PlanReport[]; totals: object; detections: Detection[] }, userID: string, viewer: Membership) {
+  const owner = viewer.role === "owner";
   return {
-    plans: result.plans.map((plan) => ({ ...plan, mismatches: owner ? plan.mismatches : [], includesYou: covers(plan, userID) })),
+    plans: result.plans.map((plan) => ({ ...plan, mismatches: owner ? plan.mismatches : [], includesYou: viewer.countsUsage && covers(plan, userID) })),
     totals: result.totals,
     detectedPlans: owner ? result.detections.map(({ userID: id, provider, plan, detectedAt, detectedOn }) => ({ userID: id, provider, plan, detectedAt, detectedOn })) : [],
     canEdit: owner,
@@ -93,9 +103,9 @@ function cachedReport(env: Pick<Env, "db" | "cache">, now: Date, teamID: string,
 /** GET /v1/teams/:teamID/plans?today= — the team's plans and their report, for any member. */
 export const getPlans: Handler = async ({ request, env, url, params, deps }) => {
   const user = await requireUser(request, env.db);
-  const role = await memberRole(env.db, params.teamID!, user.id);
+  const viewer = await membership(env.db, params.teamID!, user.id);
   const result = await cachedReport(env, deps.now(), params.teamID!, viewerToday(url, deps.now()));
-  return json(forViewer(result.value, user.id, role));
+  return json(forViewer(result.value, user.id, viewer));
 };
 
 /**
@@ -105,13 +115,15 @@ export const getPlans: Handler = async ({ request, env, url, params, deps }) => 
 export const putPlans: Handler = async ({ request, env, url, params, deps }) => {
   const user = await requireUser(request, env.db);
   const teamID = params.teamID!;
-  const role = await memberRole(env.db, teamID, user.id);
-  if (role !== "owner") throw forbidden("Only team owners can change plans.");
+  const viewer = await membership(env.db, teamID, user.id);
+  if (viewer.role !== "owner") throw forbidden("Only team owners can change plans.");
   const today = viewerToday(url, deps.now());
   const parsed = parsePlans(await readJSONObject(request), today);
-  const members = await env.db.query<{ user_id: string }>("SELECT user_id FROM team_members WHERE team_id = $1", [teamID]);
+  const members = await env.db.query<{ user_id: string }>("SELECT user_id FROM team_members WHERE team_id = $1 AND counts_usage", [teamID]);
   const memberIDs = new Set(members.map((row) => row.user_id));
-  if (parsed.some((plan) => plan.memberIDs?.some((id) => !memberIDs.has(id)))) throw badRequest("A plan covers someone who is not in the team.");
+  if (parsed.some((plan) => plan.memberIDs?.some((id) => !memberIDs.has(id)))) {
+    throw badRequest("A plan covers someone who is not in the team, or who doesn't count toward it.");
+  }
   const updatedAt = nowISO();
   await env.db.transaction(async (tx) => {
     // Fields an older app leaves out keep their stored values (see `keepUnsentFields`).
@@ -141,5 +153,5 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
   });
   await env.cache.forgetTeams([teamID], "plans|");
   const fresh = await report(env.db, teamID, today);
-  return json(forViewer(fresh, user.id, "owner"));
+  return json(forViewer(fresh, user.id, viewer));
 };

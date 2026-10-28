@@ -24,6 +24,11 @@ struct TeamMember: Codable, Hashable, Sendable, Identifiable {
     var displayName: String
     var role: TeamRole
     var joinedAt: String
+    /// False for an owner who left themself out of the team's usage and plans. Optional so an older
+    /// backend's responses still decode; missing means they count.
+    var countsUsage: Bool?
+
+    var counts: Bool { countsUsage ?? true }
 }
 
 struct TeamDetail: Codable, Hashable, Sendable, Identifiable {

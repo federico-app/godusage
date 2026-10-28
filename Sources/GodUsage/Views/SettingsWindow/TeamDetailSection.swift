@@ -94,6 +94,9 @@ struct TeamDetailSection: View {
                     Text("You").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 8)
+                if !member.counts {
+                    Text("Not Counted").font(.caption).foregroundStyle(.secondary)
+                }
                 if member.role == .owner {
                     Text("Owner").font(.caption).foregroundStyle(.secondary)
                 }
@@ -150,6 +153,18 @@ struct TeamDetailSection: View {
                 .disabled(teams.isBusy)
             }
             SettingsCaption("A read-only page anyone with its link can open, no sign-in needed.")
+
+            if let me = detail.members.first(where: { $0.id == teams.user?.id }) {
+                SettingsRow("Count My Usage") {
+                    Toggle("", isOn: Binding(
+                        get: { me.counts },
+                        set: { counts in Task { await teams.setCountsUsage(counts, in: detail.id) } }
+                    ))
+                    .settingsSwitchStyle()
+                    .disabled(teams.isBusy)
+                }
+                SettingsCaption("Turn off to run the team without being on its leaderboards, challenges, or plans.")
+            }
         }
     }
 

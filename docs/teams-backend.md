@@ -74,6 +74,7 @@ The ⚡ on boards (`src/momentum.ts`). Each upload adds how much the Mac's recen
 - Only owners can rotate the link (the old one stops working), rename the team, change roles, remove members, share or unshare the public board, edit plans, and delete the team.
 - Anyone can leave. A team always keeps at least one owner: the last owner can neither leave nor be made a member (409). When the account behind `owner_id` leaves or is made a member, `owner_id` moves to the earliest-joined remaining owner.
 - Deleting an account deletes the teams where it is the only owner. Teams with another owner stay.
+- **Not counted:** an owner can leave themself out of the team (`countsUsage: false` on their membership), to run a team they don't use. Their usage, momentum, and detected plans are then left out of everything computed for the team: stats, the web boards, challenges, champions, and plan reports. They keep every owner power and still see the boards. Their Macs keep uploading, so counting again brings their history back at once. Turning it off also takes them off every plan that lists them; if a plan covers only them, it is refused (409) until the owner changes that plan. Saved plans cannot cover a member who isn't counted (400), and `includesYou` is false for them. Only owners can be left out, and only by themselves; being made a member makes them count again. The team's member count still includes them.
 - Limits: 50 members per team, 20 teams per user.
 
 ## Rate limits
@@ -117,7 +118,7 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `GET`, `POST /v1/teams` | List my teams, or create one (`{ name }`, at most 60 characters). |
 | `GET`, `PATCH`, `DELETE /v1/teams/:id` | Team with members; owner can change `{ name?, publicBoard? }` or delete it. |
 | `POST /v1/teams/:id/invite` | Owner rotates the invite link. |
-| `PATCH /v1/teams/:id/members/:userID` | Owner sets `{ role: "owner" \| "member" }`. |
+| `PATCH /v1/teams/:id/members/:userID` | Owner sets `{ role?: "owner" \| "member", countsUsage?: boolean }`. `countsUsage` only for their own membership. Team members carry `countsUsage`. |
 | `DELETE /v1/teams/:id/members/:userID` | Leave (yourself) or remove a member (owner). |
 | `GET /v1/teams/:id/stats` | `?range=today\|7d\|30d\|365d\|mtd&sort=cost\|tokens&today=YYYY-MM-DD&include=today,mtd`. Leaderboard (with each member's previous-period rank, except for Year), provider totals, top 20 models, per-day totals by member, by provider, and by model (each day's `models` covers the period's 8 largest; `otherModels` sums the rest), today's `reactions` per member (counts, the viewer's own in `mine`, and who gave each in `from`; `day` is the UTC day; `week` repeats it for older apps), the last 12 months' `champions`, and `momentum` (see [Momentum](#momentum)). `include` adds the Today and Month to Date spend boards in `extra`, so the app needs one request instead of three. `computedAt` says when the stats were computed (see [Caching](#caching)). |
 | `PUT`, `DELETE /v1/teams/:id/members/:userID/reactions/:emoji` | Give or take back `fire`, `clap`, or `clown` for today (UTC). |
