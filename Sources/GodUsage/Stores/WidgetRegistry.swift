@@ -50,6 +50,24 @@ struct WidgetRegistry: Sendable {
         }
     }
 
+    /// Providers as a team sees them: one per family in registry order, under the family's stock
+    /// name. Teams key usage and plans by family (`claude`), so neither an account card
+    /// (`claude@ab12cd34`) nor a local account's "Claude — email (Org)" name may reach a team.
+    var teamProviders: [Provider] {
+        var seen: Set<String> = []
+        return providers.compactMap { provider in
+            let family = ProviderAccountID.family(of: provider.id)
+            guard seen.insert(family).inserted else { return nil }
+            return Provider(id: family, displayName: teamProviderName(family), icon: provider.icon, links: provider.links)
+        }
+    }
+
+    /// A provider family's name in team views: "Claude", never one local account's name.
+    func teamProviderName(_ family: String) -> String {
+        if ProviderAccountID.families.contains(family) { return family.capitalized }
+        return provider(id: family)?.displayName ?? family.capitalized
+    }
+
     func descriptor(id: String) -> WidgetDescriptor? { descriptorsByID[id] }
     func provider(id: String) -> Provider? { providersByID[id] }
     func descriptors(for providerID: String) -> [WidgetDescriptor] {
