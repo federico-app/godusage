@@ -94,7 +94,7 @@ export async function recordPulse(tx: Queryable, userID: string, deviceID: strin
 export async function teamMomentum(db: Queryable, teamID: string, now: Date): Promise<Record<string, Momentum>> {
   const hourAgo = new Date(now.getTime() - HOUR_MS).toISOString();
   const weekAgo = new Date(now.getTime() - KEEP_MS).toISOString();
-  const members = "JOIN team_members m ON m.user_id = p.user_id AND m.team_id = $1";
+  const members = "JOIN team_members m ON m.user_id = p.user_id AND m.team_id = $1 AND m.counts_usage";
   const [lastHour, typical] = await Promise.all([
     db.query<{ user_id: string; cost: number }>(
       `SELECT p.user_id, SUM(p.cost_usd) AS cost FROM spend_pulses p ${members} WHERE p.bucket >= $2 GROUP BY p.user_id`,

@@ -230,6 +230,21 @@ final class TeamsStoreTests: XCTestCase {
         XCTAssertNil(store.errorMessage)
     }
 
+    func testLeavingYourselfOutSendsYourOwnID() async {
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        let store = makeStore()
+        await store.setCountsUsage(false, in: "t1")
+        XCTAssertTrue(api.log.contains("setCountsUsage t1 u1 false"))
+        XCTAssertNotNil(store.details["t1"])
+    }
+
+    func testAMemberFromAnOlderBackendCounts() throws {
+        let json = #"{"id":"u1","displayName":"Fede","role":"owner","joinedAt":"2026-10-05T00:00:00Z"}"#
+        XCTAssertTrue(try JSONDecoder().decode(TeamMember.self, from: Data(json.utf8)).counts)
+        let out = #"{"id":"u1","displayName":"Fede","role":"owner","joinedAt":"2026-10-05T00:00:00Z","countsUsage":false}"#
+        XCTAssertFalse(try JSONDecoder().decode(TeamMember.self, from: Data(out.utf8)).counts)
+    }
+
     func testLeavingForgetsTheTeam() async {
         sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
         api.teamsResult = [TeamSummary(id: "t1", name: "Crew", role: .member, memberCount: 2)]
@@ -390,6 +405,11 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
 
     func setMemberRole(token: String, teamID: String, userID: String, role: TeamRole) async throws -> TeamDetail {
         log.append("setMemberRole \(teamID) \(userID) \(role.rawValue)")
+        return crew
+    }
+
+    func setCountsUsage(token: String, teamID: String, userID: String, counts: Bool) async throws -> TeamDetail {
+        log.append("setCountsUsage \(teamID) \(userID) \(counts)")
         return crew
     }
 

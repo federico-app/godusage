@@ -35,6 +35,8 @@ protocol TeamsAPI: Sendable {
     func rotateInvite(token: String, teamID: String) async throws -> TeamDetail
     func removeMember(token: String, teamID: String, userID: String) async throws
     func setMemberRole(token: String, teamID: String, userID: String, role: TeamRole) async throws -> TeamDetail
+    /// Whether the signed-in owner (`userID`) counts toward the team's usage and plans.
+    func setCountsUsage(token: String, teamID: String, userID: String, counts: Bool) async throws -> TeamDetail
     func invite(token: String, code: String) async throws -> InvitePreview
     func acceptInvite(token: String, code: String) async throws -> TeamDetail
     /// `include` (`today`, `monthToDate`) adds those spend boards to the response's `extra`.
@@ -154,6 +156,14 @@ struct TeamsAPIClient: TeamsAPI {
         struct Body: Encodable { var role: TeamRole }
         let response: TeamEnvelope = try await send(
             "PATCH", "/v1/teams/\(escaped(teamID))/members/\(escaped(userID))", token: token, body: Body(role: role)
+        )
+        return response.team
+    }
+
+    func setCountsUsage(token: String, teamID: String, userID: String, counts: Bool) async throws -> TeamDetail {
+        struct Body: Encodable { var countsUsage: Bool }
+        let response: TeamEnvelope = try await send(
+            "PATCH", "/v1/teams/\(escaped(teamID))/members/\(escaped(userID))", token: token, body: Body(countsUsage: counts)
         )
         return response.team
     }

@@ -94,7 +94,7 @@ interface UsageRow {
  * usage rows. `models` adds the per-model breakdown, which has several times more rows.
  */
 export async function teamUsage(db: Queryable, teamID: string, from: string, to: string, options: { models: boolean }): Promise<TeamUsage> {
-  const members = "JOIN team_members m ON m.user_id = t.user_id AND m.team_id = $1";
+  const members = "JOIN team_members m ON m.user_id = t.user_id AND m.team_id = $1 AND m.counts_usage";
   const [deviceRows, keyRows, dayRows, modelRows] = await Promise.all([
     db.query(`SELECT t.user_id, t.id, t.updated_at, t.app_version FROM devices t ${members}`, [teamID]),
     db.query(`SELECT t.user_id, t.account_key, t.provider FROM account_keys t ${members}`, [teamID]),

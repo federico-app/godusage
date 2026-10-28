@@ -13,7 +13,8 @@ struct TeamPlansSection: View {
 
     private var store: TeamPlansStore { container.teamPlans }
     private var saved: [TeamPlan] { store.report(teamID: teamID)?.plans.map(\.plan) ?? [] }
-    private var members: [TeamMember] { container.teams.details[teamID]?.members ?? [] }
+    /// Who a plan can cover: owners who don't count toward the team are left out.
+    private var members: [TeamMember] { container.teams.details[teamID]?.members.filter(\.counts) ?? [] }
     private var today: String { container.teams.localToday() }
 
     var body: some View {

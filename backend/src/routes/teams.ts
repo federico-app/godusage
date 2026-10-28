@@ -1,5 +1,5 @@
 import type { Handler, RouteContext } from "../context";
-import type { Queryable } from "../db";
+import type { Database, Queryable } from "../db";
 import { badRequest, conflict, forbidden, json, noContent, notFound, nowISO, randomToken, readJSONObject, requireName } from "../http";
 import { requireUser, type SessionUser } from "../session";
 import { forgetChampions } from "./social";
@@ -68,8 +68,8 @@ async function explainNoChange(db: Queryable, teamID: string, targetID: string, 
 const NOT_LAST_OWNER = `(role = 'member' OR (SELECT COUNT(*) FROM team_members o WHERE o.team_id = team_members.team_id AND o.role = 'owner') > 1)`;
 
 async function teamDetail(context: RouteContext, team: TeamRow, role: Role) {
-  const members = await context.env.db.query<{ id: string; display_name: string; role: Role; joined_at: string }>(
-    `SELECT u.id, u.display_name, m.role, m.joined_at FROM team_members m JOIN users u ON u.id = m.user_id
+  const members = await context.env.db.query<{ id: string; display_name: string; role: Role; joined_at: string; counts_usage: boolean }>(
+    `SELECT u.id, u.display_name, m.role, m.joined_at, m.counts_usage FROM team_members m JOIN users u ON u.id = m.user_id
      WHERE m.team_id = $1 ORDER BY m.role = 'owner' DESC, m.joined_at, u.id`,
     [team.id],
   );
@@ -87,6 +87,7 @@ async function teamDetail(context: RouteContext, team: TeamRow, role: Role) {
       displayName: member.display_name,
       role: member.role,
       joinedAt: member.joined_at,
+      countsUsage: member.counts_usage,
     })),
   };
 }
@@ -203,29 +204,67 @@ export const removeMember: Handler = async ({ request, env, params }) => {
 };
 
 /**
- * PATCH /v1/teams/:teamID/members/:userID { role: "owner" | "member" } — owners only. A team keeps at
- * least one owner.
+ * PATCH /v1/teams/:teamID/members/:userID { role?: "owner" | "member", countsUsage?: boolean } — owners
+ * only. A team keeps at least one owner. Making someone a member makes them count again.
+ * `countsUsage` is the caller's own: an owner can leave themself out of the team's usage and plans
+ * (see `setCountsUsage`).
  */
-export const setMemberRole: Handler = async (context) => {
+export const updateMember: Handler = async (context) => {
   const { request, env, params } = context;
   const user = await requireUser(request, env.db);
   const team = await requireOwner(env.db, params.teamID!, user);
   const body = await readJSONObject(request);
-  if (body.role !== "owner" && body.role !== "member") throw badRequest('role must be "owner" or "member".');
+  if (body.role === undefined && body.countsUsage === undefined) throw badRequest("Send role or countsUsage.");
+  if (body.role !== undefined && body.role !== "owner" && body.role !== "member") throw badRequest('role must be "owner" or "member".');
+  if (body.countsUsage !== undefined && typeof body.countsUsage !== "boolean") throw badRequest("countsUsage must be true or false.");
   const targetID = params.userID!;
+  if (body.countsUsage !== undefined && targetID !== user.id) throw forbidden("Owners can only choose whether they count themselves.");
 
-  const changed =
-    body.role === "owner"
-      ? await env.db.run("UPDATE team_members SET role = 'owner' WHERE team_id = $1 AND user_id = $2", [team.id, targetID])
-      : await env.db.run(`UPDATE team_members SET role = 'member' WHERE team_id = $1 AND user_id = $2 AND ${NOT_LAST_OWNER}`, [team.id, targetID]);
-  if (changed === 0) {
-    await explainNoChange(env.db, team.id, targetID, "A team needs at least one owner.");
+  if (body.countsUsage !== undefined) await setCountsUsage(env.db, team.id, user.id, body.countsUsage);
+  if (body.role !== undefined) {
+    const changed =
+      body.role === "owner"
+        ? await env.db.run("UPDATE team_members SET role = 'owner' WHERE team_id = $1 AND user_id = $2", [team.id, targetID])
+        : await env.db.run(`UPDATE team_members SET role = 'member', counts_usage = TRUE WHERE team_id = $1 AND user_id = $2 AND ${NOT_LAST_OWNER}`, [
+            team.id,
+            targetID,
+          ]);
+    if (changed === 0) {
+      await explainNoChange(env.db, team.id, targetID, "A team needs at least one owner.");
+    }
+    await keepCreatorAnOwner(env.db, team.id);
   }
-  await keepCreatorAnOwner(env.db, team.id);
+  // Boards, plans, and champions are all among counted members.
+  await forgetChampions(env, team.id);
   // The caller may have just made themself a member.
   const { team: updated, role } = await requireMembership(env.db, team.id, user);
   return json({ team: await teamDetail(context, updated, role) });
 };
+
+/**
+ * Leaving yourself out also takes you off the plans that list you. A plan that covers only you would
+ * cover nobody, so that is refused until the owner changes the plan.
+ */
+async function setCountsUsage(db: Database, teamID: string, userID: string, counts: boolean): Promise<void> {
+  if (counts) {
+    await db.run("UPDATE team_members SET counts_usage = TRUE WHERE team_id = $1 AND user_id = $2", [teamID, userID]);
+    return;
+  }
+  await db.transaction(async (tx) => {
+    const plans = await tx.query<{ id: string; name: string; member_ids: string }>(
+      "SELECT id, name, member_ids FROM team_plans WHERE team_id = $1 AND member_ids IS NOT NULL ORDER BY position",
+      [teamID],
+    );
+    for (const plan of plans) {
+      const ids = JSON.parse(plan.member_ids) as string[];
+      if (!ids.includes(userID)) continue;
+      const rest = ids.filter((id) => id !== userID);
+      if (rest.length === 0) throw conflict(`The plan "${plan.name}" covers only you. Pick who else it covers, or remove it, first.`);
+      await tx.run("UPDATE team_plans SET member_ids = $1 WHERE id = $2", [JSON.stringify(rest), plan.id]);
+    }
+    await tx.run("UPDATE team_members SET counts_usage = FALSE WHERE team_id = $1 AND user_id = $2", [teamID, userID]);
+  });
+}
 
 async function teamForInvite(db: Queryable, code: string): Promise<TeamRow> {
   const team = await db.first<TeamRow>("SELECT id, name, owner_id, invite_code, public_token, created_at FROM teams WHERE invite_code = $1", [code]);
