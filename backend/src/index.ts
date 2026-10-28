@@ -14,7 +14,7 @@ import {
   listTeams,
   removeMember,
   rotateInvite,
-  setMemberRole,
+  updateMember,
   updateTeam,
 } from "./routes/teams";
 import { deleteDevice, listDevices, putDeviceUsage } from "./routes/usage";
@@ -66,7 +66,7 @@ const ROUTES: Route[] = [
   route("PATCH", "/v1/teams/:teamID", updateTeam),
   route("DELETE", "/v1/teams/:teamID", deleteTeam),
   route("POST", "/v1/teams/:teamID/invite", rotateInvite),
-  route("PATCH", "/v1/teams/:teamID/members/:userID", setMemberRole),
+  route("PATCH", "/v1/teams/:teamID/members/:userID", updateMember),
   route("DELETE", "/v1/teams/:teamID/members/:userID", removeMember),
   route("GET", "/v1/teams/:teamID/stats", getTeamStats),
   route("PUT", "/v1/teams/:teamID/members/:userID/reactions/:emoji", addReaction),

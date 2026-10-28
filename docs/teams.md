@@ -21,6 +21,7 @@ Development builds (`com.montinovo.godusage.dev`) use a separate backend with se
 - **Create a team** under **Add a Team**. You are its owner.
 - **Invite people** by copying the team's **Invite Link** in **Your Teams**. Anyone with the link can join. Opening it shows the team name and an **Open in GodUsage** button. GodUsage then opens Settings → Teams and asks you to confirm. You can also paste a link into **Invite Link** under **Add a Team**.
 - **Owners** can make a **New Link** (the old one stops working; members stay), share a public leaderboard, edit plans, **Rename…** the team, and delete it. From the **⋯** menu next to a member, they can **Make Owner…**, **Make Member** (for another owner), or **Remove…**. A team can have several owners, all with the same powers.
+- **Count My Usage** (owners only, on by default): turn it off to run a team without being part of it. Your usage leaves its leaderboards, challenges, Hall of Fame, and plans, and plans can no longer cover you; you keep managing everything. The member list marks you **Not Counted**. A plan that covers only you must be changed first. Being made a member turns it back on.
 - **Anyone** can leave. The last owner cannot; they make someone else an owner first, or delete the team.
 
 A team holds up to 50 members, and you can be in up to 20 teams.

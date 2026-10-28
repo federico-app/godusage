@@ -120,7 +120,7 @@ export async function computeChampions(db: Queryable, teamID: string, today: str
   for (let i = 0; i < 12; i++) from = `${addDays(from, -1).slice(0, 7)}-01`;
 
   const [members, usage] = await Promise.all([
-    db.query<{ id: string; display_name: string }>("SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = $1", [teamID]),
+    db.query<{ id: string; display_name: string }>("SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = $1 AND m.counts_usage", [teamID]),
     teamUsage(db, teamID, from, to, { models: false }),
   ]);
   const names = new Map(members.map((m) => [m.id, m.display_name]));

@@ -54,7 +54,7 @@ export function viewerToday(url: URL, now: Date): string {
 
 export async function challengeStandings(db: Queryable, teamID: string, challenge: ChallengeRow): Promise<Standing[]> {
   const [members, usage] = await Promise.all([
-    db.query<{ id: string; display_name: string }>("SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = $1", [teamID]),
+    db.query<{ id: string; display_name: string }>("SELECT u.id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = $1 AND m.counts_usage", [teamID]),
     teamUsage(db, teamID, challenge.starts_on, challenge.ends_on, { models: true }),
   ]);
   const totals = new Map<string, { tokens: number; cost: number; models: Set<string> }>();
