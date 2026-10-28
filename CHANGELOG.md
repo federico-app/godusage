@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.2
+
+### New Features
+- feat(teams): owners can leave themselves out of a team's usage and plans ([#71](https://github.com/federico-app/godusage/pull/71)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.3.1...v1.3.2](https://github.com/federico-app/godusage/compare/v1.3.1...v1.3.2)
+
+- [aaa9bf4](https://github.com/federico-app/godusage/commit/aaa9bf495aa936aa8ad1b978139c1c1893ee5bf7) feat(teams): owners can leave themselves out of a team's usage and plans by @andreaAppload
+
 ## v1.3.1
 
 ### New Features
