@@ -237,7 +237,7 @@ struct TeamsLeaderboardView: View {
     }
 
     private func providerName(_ id: String) -> String {
-        container.registry.providers.first { $0.id == id }?.displayName ?? id.capitalized
+        container.registry.teamProviderName(id)
     }
 
     private func inviteBanner(_ invite: TeamsStore.PendingInvite) -> some View {
