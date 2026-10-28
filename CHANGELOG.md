@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.3.1
+
+### New Features
+- feat(teams): owners can rename a team from Settings → Teams ([#68](https://github.com/federico-app/godusage/pull/68)) by @andreaAppload
+
+### Bug Fixes
+- fix(teams): plans pick the provider, not a local account ([#68](https://github.com/federico-app/godusage/pull/68)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.3.0...v1.3.1](https://github.com/federico-app/godusage/compare/v1.3.0...v1.3.1)
+
+- [e9006d4](https://github.com/federico-app/godusage/commit/e9006d4cc16a69a8e6eef5e334ec3e0edae301a4) fix(teams): plans pick the provider, not a local account; rename teams by @andreaAppload
+
 ## v1.3.0
 
 ### New Features
