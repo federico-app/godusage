@@ -1,4 +1,5 @@
 import { badRequest, isRecord, requireName } from "./http";
+import { parseQuotaWindows, type QuotaWindowInput } from "./quota";
 
 export const USAGE_SCHEMA = "godusage.team-usage.v1";
 /** Uploads carry the app's 30-day window; a little slack covers time zones and clock skew. */
@@ -47,6 +48,11 @@ export interface UsageUpload {
    * send it: the stored detections are then left as they are.
    */
   detectedPlans: { provider: string; plan: string }[] | null;
+  /**
+   * How much of each account's quota windows this Mac saw used (see quota.ts). Null from apps that
+   * don't send them: the stored windows are then left as they are.
+   */
+  quotaWindows: QuotaWindowInput[] | null;
   /** The Mac's calendar day when it sent the upload; the UTC day when it didn't say. */
   localDay: string;
 }
@@ -77,6 +83,7 @@ const APP_VERSION_PATTERN = /^[0-9A-Za-z.+-]{1,32}$/;
 /**
  * Validates one device's upload (the system boundary for usage data) and flattens it into rows.
  * Shape: { schema, deviceName, appVersion?, windowStart?, partial?, localDay?, detectedPlans?: [{ provider, plan }],
+ *   quotaWindows?: [{ provider, account, endsAt, periodHours, percent, observedAt }],
  *   providers: [{ provider, scope, account?, days: [{ date, tokens, costUSD, models? }] }] }
  */
 export function parseUsageUpload(body: Record<string, unknown>, now: Date): UsageUpload {
@@ -174,7 +181,17 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
     }
     localDay = body.localDay;
   }
-  return { deviceName, appVersion, replaceFrom, partial, days, models, detectedPlans: parseDetectedPlans(body.detectedPlans), localDay };
+  return {
+    deviceName,
+    appVersion,
+    replaceFrom,
+    partial,
+    days,
+    models,
+    detectedPlans: parseDetectedPlans(body.detectedPlans),
+    quotaWindows: parseQuotaWindows(body.quotaWindows, now),
+    localDay,
+  };
 }
 
 function parseDetectedPlans(value: unknown): { provider: string; plan: string }[] | null {

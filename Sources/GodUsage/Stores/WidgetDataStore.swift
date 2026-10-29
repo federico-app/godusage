@@ -656,8 +656,11 @@ final class WidgetDataStore {
     /// sources (Cursor) included, for the Teams upload.
     func localTeamHistorySources() -> [TeamHistorySource] {
         registry.historyDescriptorsByProvider.compactMap { providerID, descriptor in
-            guard isProviderEnabled(providerID), let history = localSnapshots[providerID]?.usageHistory else { return nil }
-            return TeamHistorySource(cardID: providerID, scope: descriptor.scope, history: history, plan: localSnapshots[providerID]?.plan)
+            guard isProviderEnabled(providerID), let snapshot = localSnapshots[providerID], let history = snapshot.usageHistory else { return nil }
+            return TeamHistorySource(
+                cardID: providerID, scope: descriptor.scope, history: history, plan: snapshot.plan,
+                quota: TeamQuotaReading.make(cardID: providerID, snapshot: snapshot, accountKey: history.accountKey)
+            )
         }
     }
 

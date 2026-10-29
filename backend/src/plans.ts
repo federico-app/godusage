@@ -5,6 +5,7 @@ import {
   type PriceHistory, type Terms, type WireChange,
 } from "./planChanges";
 import { planMismatches, type Detection, type Mismatch } from "./planDetection";
+import { planQuota, teamQuotaWindows, UNDERUSED_PERCENT, type PlanQuota } from "./quota";
 import { daysBetween } from "./stats";
 import { teamUsage } from "./teamUsage";
 import { addDays } from "./usagePayload";
@@ -65,7 +66,12 @@ export interface PlanReport extends Terms {
   projectedValueUSD: number;
   /** Projected value per dollar the cycle costs, e.g. 9.2 means $9.20 of API value per $1. */
   projectedMultiple: number;
-  /** Projected to be worth less than it costs. */
+  /**
+   * How much of the plan's quota its covered accounts use in the cycle (see quota.ts). Null for
+   * providers GodUsage reads no quota for, or until a covered Mac reports one.
+   */
+  quota: PlanQuota | null;
+  /** On pace to use less than half its quota; without quota data, to be worth less than it costs. */
   underused: boolean;
   /** Covered members whose Mac detects another plan. Shown to owners only. */
   mismatches: Mismatch[];
@@ -176,13 +182,24 @@ export function currentCycle(renewalDay: number, today: string): Cycle {
  * the leaderboard (shared accounts once). A shared account counts when any member who shares it is
  * covered. Several plans of one provider split their common usage by what each costs that day. A
  * cycle with a price change costs each price for the days it applies (daily rate = monthly price /
- * the cycle's days), and its usage counts against the price in effect the day it was spent.
+ * the cycle's days), and its usage counts against the price in effect the day it was spent. Each
+ * plan's quota share counts its covered accounts' quota windows in the cycle (see `planQuota`).
  */
-export async function planReports(db: Queryable, teamID: string, plans: PlanRow[], today: string, detections: Detection[]): Promise<PlanReport[]> {
+export async function planReports(
+  db: Queryable,
+  teamID: string,
+  plans: PlanRow[],
+  today: string,
+  detections: Detection[],
+  now: Date,
+): Promise<PlanReport[]> {
   if (plans.length === 0) return [];
   const cycles = plans.map((plan) => currentCycle(plan.renewalDay, today));
   const earliest = cycles.reduce((min, cycle) => (cycle.from < min ? cycle.from : min), today);
-  const usage = await teamUsage(db, teamID, earliest, today, { models: false });
+  const [usage, quotaRows] = await Promise.all([
+    teamUsage(db, teamID, earliest, today, { models: false }),
+    teamQuotaWindows(db, teamID, earliest),
+  ]);
   const sharers = new Map<string, string[]>();
   for (const row of usage.sharedMembers) sharers.set(row.account_key, [...(sharers.get(row.account_key) ?? []), row.user_id]);
   const days = [
@@ -207,6 +224,7 @@ export async function planReports(db: Queryable, teamID: string, plans: PlanRow[
     const cycleCost = periods.reduce((sum, stretch) => sum + periodCost(stretch), 0);
     const projected = (value / cycle.daysElapsed) * cycle.daysTotal;
     const multiple = projected / cycleCost;
+    const quota = planQuota(quotaRows, { provider: plan.provider, covered: (user) => covers(plan, user), cycleFrom: cycle.from, cycleCostUSD: cycleCost }, now);
     return {
       id: plan.id,
       provider: plan.provider,
@@ -229,7 +247,8 @@ export async function planReports(db: Queryable, teamID: string, plans: PlanRow[
       valueUSD: round2(value),
       projectedValueUSD: round2(projected),
       projectedMultiple: Math.round(multiple * 100) / 100,
-      underused: multiple < 1,
+      quota,
+      underused: quota === null ? multiple < 1 : quota.usedPercent < UNDERUSED_PERCENT,
       mismatches: planMismatches(plan, (userID) => covers(plan, userID), cycle.from, detections),
     };
   });

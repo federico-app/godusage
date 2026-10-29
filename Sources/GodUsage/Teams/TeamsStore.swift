@@ -85,6 +85,7 @@ final class TeamsStore {
     @ObservationIgnored private let defaults: UserDefaults
     private static let overtakeSnapshotKey = "godusage.teams.overtakeSnapshot.v1"
     private static let menuBarRankKey = "godusage.teams.menuBarRank.v1"
+    private static let quotaLogKey = "godusage.teams.quotaLog.v1"
     /// The menu-bar strip group id for the team standing (not a provider).
     static let menuBarGroupID = "team"
 
@@ -389,11 +390,13 @@ final class TeamsStore {
             uploadError = "This Mac’s identity isn’t resolved yet, so its usage isn’t shared."
             return
         }
-        let upload = TeamUsageUpload.make(
-            sources: historySources(),
+        let sources = historySources()
+        var upload = TeamUsageUpload.make(
+            sources: sources,
             deviceName: deviceName,
             dayKeys: UsageHistoryWindow.dayKeys(through: now())
         )
+        upload.quotaWindows = recordQuota(sources.compactMap(\.quota), deviceID: deviceID)
         if !force, upload == lastUploaded, let lastUploadAt,
            now().timeIntervalSince(lastUploadAt) < minimumUploadInterval {
             return
@@ -416,6 +419,28 @@ final class TeamsStore {
             uploadError = error.localizedDescription
             AppLog.error(.teams, "teams usage upload failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Folds this pass's quota readings into the saved log and returns it as the upload sends it.
+    /// An account with no fingerprint of its own (Claude, Codex) is named by this Mac and its card.
+    private func recordQuota(_ readings: [TeamQuotaReading], deviceID: String) -> [TeamUsageUpload.QuotaWindow] {
+        var log = TeamQuotaLog()
+        if let data = defaults.data(forKey: Self.quotaLogKey) {
+            do {
+                log = try JSONDecoder().decode(TeamQuotaLog.self, from: data)
+            } catch {
+                AppLog.error(.teams, "couldn't read the saved quota log, starting a new one: \(error)")
+            }
+        }
+        log.record(readings, account: { reading in
+            reading.accountKey ?? TeamAccountKey.make(provider: reading.provider, accountID: "\(deviceID)|\(reading.cardID)")
+        }, now: now())
+        do {
+            defaults.set(try JSONEncoder().encode(log), forKey: Self.quotaLogKey)
+        } catch {
+            AppLog.error(.teams, "couldn't save the quota log: \(error)")
+        }
+        return log.wire
     }
 
     // MARK: - Team notifications

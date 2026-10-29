@@ -67,8 +67,20 @@ struct TeamDetectedPlan: Decodable, Hashable, Sendable {
     var detectedOn: String
 }
 
+/// How much of a plan's quota its covered accounts use in the cycle: the mean share of their quota
+/// windows (Claude and Codex weekly, Cursor's cycle). Per plan, never per member: one account can
+/// be shared.
+struct TeamPlanQuota: Decodable, Hashable, Sendable {
+    var usedPercent: Double
+    var accounts: Int
+    var windows: Int
+    /// Windows last read well before they reset, so their share is a lower bound.
+    var estimatedWindows: Int
+    var wastedUSD: Double
+}
+
 /// One plan in the Plans report: its cost against the covered members' usage of its provider at API
-/// prices, in the plan's current billing cycle. Computed by the server.
+/// prices, and the share of its quota they use, in the plan's current billing cycle. Computed by the server.
 struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
     struct Cycle: Decodable, Hashable, Sendable {
         var from: String
@@ -90,7 +102,11 @@ struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
     var valueUSD: Double
     var projectedValueUSD: Double
     var projectedMultiple: Double
+    /// Under half its quota on pace; without quota data, worth less than it costs.
     var underused: Bool
+    /// Nil for providers GodUsage reads no quota for, until a covered Mac reports one, and from
+    /// older servers.
+    var quota: TeamPlanQuota?
     // Optional: servers before plan changes don't send these.
     var changes: [TeamPlan.Change]?
     var detectedPlan: String?
@@ -116,6 +132,14 @@ struct TeamPlansReport: Decodable, Hashable, Sendable {
         var valueUSD: Double
         var projectedValueUSD: Double
         var cycleCostUSD: Double?
+        /// The quota share across the plans that have one, weighted by what each cycle costs.
+        var quota: Quota?
+    }
+
+    struct Quota: Decodable, Hashable, Sendable {
+        var usedPercent: Double
+        var cycleCostUSD: Double
+        var wastedUSD: Double
     }
 
     var plans: [TeamPlanReport]
