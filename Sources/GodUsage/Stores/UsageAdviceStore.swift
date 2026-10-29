@@ -134,7 +134,7 @@ final class UsageAdviceStore {
             UsageAdvisor.Plan(
                 id: plan.id, family: plan.provider,
                 providerName: registry.provider(id: plan.provider)?.displayName ?? plan.provider.capitalized,
-                name: plan.name, projectedMultiple: plan.projectedMultiple, underused: plan.underused,
+                name: plan.name, projectedMultiple: plan.projectedMultiple, quotaPercent: plan.quota?.usedPercent, underused: plan.underused,
                 daysLeft: plan.cycle.daysLeft + 1, cycleEnd: plan.cycle.to
             )
         }

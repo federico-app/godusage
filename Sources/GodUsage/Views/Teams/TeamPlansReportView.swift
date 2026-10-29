@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The Teams window's Plans tab: each subscription's cost against its covered members' usage of its
-/// provider at API prices in the plan's current billing cycle, the end-of-cycle projection, and the plans
-/// projected to be worth less than they cost.
+/// provider at API prices in the plan's current billing cycle, the end-of-cycle projection, the share
+/// of its quota they use, and the plans on pace to leave most of it unused.
 struct TeamPlansReportView: View {
     @Environment(AppContainer.self) private var container
     let teamID: String
@@ -19,7 +19,7 @@ struct TeamPlansReportView: View {
                     summary(report)
                     underused(report)
                     planList(report)
-                    Text("Value is the usage of each provider by the members a plan covers, in the plan's current cycle, priced at API rates. Plans of one provider that cover the same usage split it by cost.")
+                    Text("Value is the usage of each provider by the members a plan covers, in the plan's current cycle, priced at API rates. Plans of one provider that cover the same usage split it by cost. Quota used is the average share of the weekly limit (Claude, Codex) or the cycle's included usage (Cursor) the plan's accounts use, per account, since one account can be shared.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
@@ -64,6 +64,10 @@ struct TeamPlansReportView: View {
             stat(Formatters.currency(totals.valueUSD), "API value so far")
             stat(Formatters.currency(totals.projectedValueUSD), "on pace this cycle")
             stat(Self.multiple(multiple), "value per dollar", emphasis: multiple >= 1 ? Theme.positive : Theme.notice)
+            if let quota = totals.quota {
+                stat(Self.percent(quota.usedPercent), "quota used", emphasis: Self.quotaStyle(quota.usedPercent))
+                stat(Formatters.currency(quota.wastedUSD), "unused this cycle")
+            }
             Spacer()
         }
         .padding(.horizontal, 8)
@@ -84,8 +88,8 @@ struct TeamPlansReportView: View {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.notice)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(plans.count == 1 ? "1 Plan Is Underused" : "\(plans.count) Plans Are Underused").font(.callout.weight(.semibold))
-                    Text(plans.map { "\($0.name) (\(Self.multiple($0.projectedMultiple)))" }.joined(separator: ", ")
-                        + " — on pace to be worth less than \(plans.count == 1 ? "it costs" : "they cost") this cycle.")
+                    Text(plans.map { "\($0.name) (\(Self.underusedDetail($0)))" }.joined(separator: ", ")
+                        + " — on pace to leave most of \(plans.count == 1 ? "it" : "them") unused this cycle.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -136,6 +140,12 @@ struct TeamPlansReportView: View {
             }
             .font(.caption.monospacedDigit())
             .foregroundStyle(.secondary)
+            if let quota = plan.quota {
+                PlanQuotaBar(plan: plan, quota: quota)
+                Text(Self.quotaText(quota, provider: plan.provider))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
             if let covered = coverageText(plan) {
                 Text(covered).font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
@@ -171,6 +181,60 @@ struct TeamPlansReportView: View {
 
     static func multiple(_ value: Double) -> String {
         String(format: value >= 10 ? "%.0f×" : "%.1f×", value)
+    }
+
+    static func percent(_ value: Double) -> String {
+        "\(Int(value.rounded()))%"
+    }
+
+    static func quotaStyle(_ usedPercent: Double) -> AnyShapeStyle {
+        usedPercent < TeamPlansReportView.underusedPercent ? Theme.notice : Theme.positive
+    }
+
+    /// The server's underused line for plans with quota data (`UNDERUSED_PERCENT`).
+    static let underusedPercent = 50.0
+
+    /// Why a plan counts as underused: its quota share when there is one, else its value per dollar.
+    static func underusedDetail(_ plan: TeamPlanReport) -> String {
+        plan.quota.map { "\(percent($0.usedPercent)) of quota" } ?? multiple(plan.projectedMultiple)
+    }
+
+    static func quotaText(_ quota: TeamPlanQuota, provider: String) -> String {
+        var parts = [
+            "\(percent(quota.usedPercent)) of quota used",
+            "\(Formatters.currency(quota.wastedUSD)) unused",
+            quota.accounts == 1 ? "1 account" : "\(quota.accounts) accounts",
+        ]
+        if quota.estimatedWindows > 0 {
+            // Cursor's window is its billing cycle; Claude's and Codex's a week.
+            let unit = provider == "cursor" ? "cycle" : "week"
+            parts.append("\(quota.estimatedWindows) \(unit)\(quota.estimatedWindows == 1 ? "" : "s") estimated")
+        }
+        return parts.joined(separator: " · ")
+    }
+}
+
+/// The share of the plan's quota its accounts use, with a tick at the underused line.
+private struct PlanQuotaBar: View {
+    let plan: TeamPlanReport
+    let quota: TeamPlanQuota
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let color = TotalSpendPalette.color(for: plan.provider)
+            ZStack(alignment: .leading) {
+                Capsule().fill(.secondary.opacity(0.12))
+                Capsule().fill(color).frame(width: max(CGFloat(min(quota.usedPercent, 100) / 100) * width, 2))
+                Rectangle()
+                    .fill(Color.primary.opacity(0.7))
+                    .frame(width: 2, height: 8)
+                    .offset(x: CGFloat(TeamPlansReportView.underusedPercent / 100) * width - 1)
+            }
+        }
+        .frame(height: 4)
+        .accessibilityElement()
+        .accessibilityLabel("\(TeamPlansReportView.percent(quota.usedPercent)) of the plan's quota used")
     }
 }
 

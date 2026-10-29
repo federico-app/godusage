@@ -7,6 +7,8 @@ struct TeamHistorySource: Hashable, Sendable {
     var history: ProviderUsageHistory
     /// The plan the card detected (`ProviderSnapshot.plan`), e.g. "Max 20x".
     var plan: String? = nil
+    /// The card's limiting quota window, for the Plans report's quota share.
+    var quota: TeamQuotaReading? = nil
 }
 
 /// The body of `PUT /v1/devices/:id/usage`. Only totals leave the Mac: tokens and spend per day,
@@ -30,6 +32,16 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
     struct DetectedPlan: Encodable, Hashable, Sendable {
         var provider: String
         var plan: String
+    }
+
+    /// One account's quota window (see `TeamQuotaLog`). `account` is an anonymous fingerprint.
+    struct QuotaWindow: Encodable, Hashable, Sendable {
+        var provider: String
+        var account: String
+        var endsAt: String
+        var periodHours: Int
+        var percent: Double
+        var observedAt: String
     }
 
     struct Provider: Encodable, Hashable, Sendable {
@@ -57,7 +69,14 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
     /// The plan GodUsage detected per provider family, e.g. "Max 20x". The team's owners see it, to
     /// notice when the plan they pay for changed.
     var detectedPlans: [DetectedPlan] = []
+    /// How much of each account's quota windows this Mac saw used. Always sent whole: the server
+    /// replaces this Mac's windows with them.
+    var quotaWindows: [QuotaWindow] = []
     var providers: [Provider]
+
+    static func instant(_ date: Date) -> String {
+        date.formatted(.iso8601)
+    }
 
     /// Builds the upload from this Mac's cards. Account cards (`claude@ab12cd34`) fold into their
     /// family (`claude`): a leaderboard compares people per provider, not per login, and the
