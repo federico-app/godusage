@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.3
+
+### New Features
+- feat(teams): track how much of each plan's quota the team uses ([#75](https://github.com/federico-app/godusage/pull/75)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.3.2...v1.3.3](https://github.com/federico-app/godusage/compare/v1.3.2...v1.3.3)
+
+- [7cde82b](https://github.com/federico-app/godusage/commit/7cde82b4bfcbfe145ee710fac46d3e4e911bea84) feat(teams): track how much of each plan's quota the team uses by @andreaAppload
+
 ## v1.3.2
 
 ### New Features
