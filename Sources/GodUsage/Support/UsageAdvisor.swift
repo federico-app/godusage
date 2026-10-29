@@ -51,6 +51,8 @@ enum UsageAdvisor {
         let providerName: String
         let name: String
         let projectedMultiple: Double
+        /// The share of the plan's quota on pace to be used, when the report has one.
+        var quotaPercent: Double? = nil
         let underused: Bool
         /// Days until the plan renews, counting today (the Plans tab's "N days left").
         let daysLeft: Int
@@ -170,12 +172,13 @@ enum UsageAdvisor {
     private static func planUnderused(_ plan: Plan) -> UsageSuggestion? {
         guard plan.underused, plan.daysLeft <= planHorizonDays else { return nil }
         let days = plan.daysLeft == 1 ? "tomorrow" : "in \(plan.daysLeft) days"
-        let multiple = String(format: "%.1f×", plan.projectedMultiple)
+        let pace = plan.quotaPercent.map { "\(Int($0.rounded()))% of its quota" }
+            ?? String(format: "%.1f× its cost", plan.projectedMultiple)
         return UsageSuggestion(
             id: "plan:\(plan.id):\(plan.cycleEnd)",
             kind: .planUnderused, family: plan.family,
             title: "Use the Team's \(plan.providerName) Plan",
-            message: "\(plan.name) is on pace for \(multiple) its cost and renews \(days). Use \(plan.providerName) to get the team's money's worth.",
+            message: "\(plan.name) is on pace for \(pace) and renews \(days). Use \(plan.providerName) to get the team's money's worth.",
             deadline: nil
         )
     }

@@ -114,7 +114,7 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
   const user = await requireUser(request, env.db);
   const id = [user.id];
   // One transaction, so the document is one consistent snapshot.
-  const [account, sessions, linkedDevices, devices, pulses, days, models, detectedPlans, teams, given, received, challenges] = await env.db.transaction((tx) =>
+  const [account, sessions, linkedDevices, devices, pulses, days, models, detectedPlans, quotaWindows, teams, given, received, challenges] = await env.db.transaction((tx) =>
     Promise.all([
       tx.query("SELECT id, apple_sub, display_name, created_at FROM users WHERE id = $1", id),
       tx.query("SELECT COUNT(*) AS n FROM sessions WHERE user_id = $1", id),
@@ -124,6 +124,10 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
       tx.query("SELECT device_id, provider, day, scope, tokens, cost_usd FROM usage_days WHERE user_id = $1 ORDER BY day, provider", id),
       tx.query("SELECT device_id, provider, day, model, scope, tokens, cost_usd FROM usage_model_days WHERE user_id = $1 ORDER BY day, provider, model", id),
       tx.query("SELECT device_id, provider, plan, detected_at, detected_on FROM detected_plans WHERE user_id = $1 ORDER BY device_id, provider", id),
+      tx.query(
+        "SELECT device_id, provider, account_key, ends_at, period_hours, percent, observed_at FROM quota_windows WHERE user_id = $1 ORDER BY ends_at, provider, device_id",
+        id,
+      ),
       tx.query("SELECT t.id, t.name, m.role, m.joined_at FROM team_members m JOIN teams t ON t.id = m.team_id WHERE m.user_id = $1 ORDER BY t.name", id),
       tx.query("SELECT team_id, to_user, emoji, day, created_at FROM reactions WHERE from_user = $1 ORDER BY created_at", id),
       tx.query("SELECT team_id, from_user, emoji, day, created_at FROM reactions WHERE to_user = $1 ORDER BY created_at", id),
@@ -142,6 +146,7 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
     usageDays: days,
     usageModelDays: models,
     detectedPlans,
+    quotaWindows,
     teams,
     reactionsGiven: given,
     reactionsReceived: received,

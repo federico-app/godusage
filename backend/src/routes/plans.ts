@@ -55,9 +55,9 @@ async function loadPlans(db: Queryable, teamID: string): Promise<PlanRow[]> {
   }));
 }
 
-async function report(db: Queryable, teamID: string, today: string) {
+async function report(db: Queryable, teamID: string, today: string, now: Date) {
   const detections = await teamDetections(db, teamID);
-  const plans = await planReports(db, teamID, await loadPlans(db, teamID), today, detections);
+  const plans = await planReports(db, teamID, await loadPlans(db, teamID), today, detections, now);
   const totals = plans.reduce(
     (sum, plan) => ({
       monthlyCostUSD: sum.monthlyCostUSD + plan.monthlyCostUSD,
@@ -68,6 +68,17 @@ async function report(db: Queryable, teamID: string, today: string) {
     { monthlyCostUSD: 0, cycleCostUSD: 0, valueUSD: 0, projectedValueUSD: 0 },
   );
   const round = (value: number) => Math.round(value * 100) / 100;
+  // The quota share across the plans that have one, each weighted by what its cycle costs.
+  const metered = plans.filter((plan) => plan.quota !== null);
+  const meteredCost = metered.reduce((sum, plan) => sum + plan.cycleCostUSD, 0);
+  const quota =
+    metered.length === 0 || meteredCost === 0
+      ? null
+      : {
+          usedPercent: Math.round((metered.reduce((sum, plan) => sum + plan.quota!.usedPercent * plan.cycleCostUSD, 0) / meteredCost) * 10) / 10,
+          cycleCostUSD: round(meteredCost),
+          wastedUSD: round(metered.reduce((sum, plan) => sum + plan.quota!.wastedUSD, 0)),
+        };
   return {
     plans,
     totals: {
@@ -75,6 +86,7 @@ async function report(db: Queryable, teamID: string, today: string) {
       cycleCostUSD: round(totals.cycleCostUSD),
       valueUSD: round(totals.valueUSD),
       projectedValueUSD: round(totals.projectedValueUSD),
+      quota,
     },
     detections,
   };
@@ -97,7 +109,7 @@ function forViewer(result: { plans: PlanReport[]; totals: object; detections: De
 
 /** The plan report from the cache (see `teamCache.ts`), recomputed at most every 10 minutes. */
 function cachedReport(env: Pick<Env, "db" | "cache">, now: Date, teamID: string, today: string) {
-  return cachedTeamResult(env.cache, now, teamID, `plans|${today}`, 10 * 60_000, () => report(env.db, teamID, today));
+  return cachedTeamResult(env.cache, now, teamID, `plans|${today}`, 10 * 60_000, () => report(env.db, teamID, today, now));
 }
 
 /** GET /v1/teams/:teamID/plans?today= — the team's plans and their report, for any member. */
@@ -152,6 +164,6 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
     }
   });
   await env.cache.forgetTeams([teamID], "plans|");
-  const fresh = await report(env.db, teamID, today);
+  const fresh = await report(env.db, teamID, today, deps.now());
   return json(forViewer(fresh, user.id, viewer));
 };
