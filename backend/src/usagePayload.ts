@@ -17,6 +17,11 @@ export interface DayRow {
   scope: Scope;
   /** The account's anonymous fingerprint, for account-scope rows whose app sent one. */
   accountKey: string | null;
+  /**
+   * '' for a provider's folded accounts; an account's fingerprint when the Mac sent it on its own
+   * (`split`), because the member leaves it out of a team.
+   */
+  slot: string;
   tokens: number;
   costUSD: number | null;
 }
@@ -53,10 +58,23 @@ export interface UsageUpload {
    * don't send them: the stored windows are then left as they are.
    */
   quotaWindows: QuotaWindowInput[] | null;
+  /**
+   * Which split accounts this Mac leaves out of which team. Null from apps that don't send it: the
+   * stored exclusions are then left as they are.
+   */
+  excludedAccounts: AccountExclusion[] | null;
   /** The Mac's calendar day when it sent the upload; the UTC day when it didn't say. */
   localDay: string;
 }
 
+export interface AccountExclusion {
+  teamID: string;
+  provider: string;
+  accountKey: string;
+}
+
+const MAX_EXCLUSIONS = 400;
+const TEAM_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PROVIDER_PATTERN = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const ACCOUNT_KEY_PATTERN = /^[a-f0-9]{32,64}$/;
@@ -84,7 +102,11 @@ const APP_VERSION_PATTERN = /^[0-9A-Za-z.+-]{1,32}$/;
  * Validates one device's upload (the system boundary for usage data) and flattens it into rows.
  * Shape: { schema, deviceName, appVersion?, windowStart?, partial?, localDay?, detectedPlans?: [{ provider, plan }],
  *   quotaWindows?: [{ provider, account, endsAt, periodHours, percent, observedAt }],
- *   providers: [{ provider, scope, account?, days: [{ date, tokens, costUSD, models? }] }] }
+ *   excludedAccounts?: [{ team, provider, account }],
+ *   providers: [{ provider, scope, account?, split?, days: [{ date, tokens, costUSD, models? }] }] }
+ *
+ * A provider comes once with its folded accounts, plus once per `split` account: one account sent on
+ * its own (named by `account`) so a team it is left out of can drop it.
  */
 export function parseUsageUpload(body: Record<string, unknown>, now: Date): UsageUpload {
   if (body.schema !== USAGE_SCHEMA) throw badRequest(`schema must be "${USAGE_SCHEMA}". Update GodUsage.`);
@@ -122,18 +144,25 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
     if (!isRecord(entry)) throw badRequest("Each provider entry must be an object.");
     const provider = entry.provider;
     if (typeof provider !== "string" || !PROVIDER_PATTERN.test(provider)) throw badRequest("Invalid provider id.");
-    if (seenProviders.has(provider)) throw badRequest(`Duplicate provider ${provider}.`);
-    seenProviders.add(provider);
     if (entry.scope !== "device" && entry.scope !== "account") throw badRequest(`Invalid scope for ${provider}.`);
     const scope: Scope = entry.scope;
-    let accountKey: string | null = null;
+    if (entry.split !== undefined && typeof entry.split !== "boolean") throw badRequest(`split must be true or false (${provider}).`);
+    const split = entry.split === true;
+    let account: string | null = null;
     if (entry.account !== undefined && entry.account !== null) {
-      if (scope !== "account") throw badRequest(`account is only allowed on account-scope usage (${provider}).`);
+      if (scope !== "account" && !split) throw badRequest(`account is only allowed on account-scope or split usage (${provider}).`);
       if (typeof entry.account !== "string" || !ACCOUNT_KEY_PATTERN.test(entry.account)) {
         throw badRequest(`Invalid account for ${provider}.`);
       }
-      accountKey = entry.account;
+      account = entry.account;
     }
+    if (split && account === null) throw badRequest(`A split entry needs its account (${provider}).`);
+    const slot = split ? account! : "";
+    // Only account-scope fingerprints name an account across Macs (and find shared accounts).
+    const accountKey = scope === "account" ? account : null;
+    const entryKey = `${provider}\u0000${slot}`;
+    if (seenProviders.has(entryKey)) throw badRequest(split ? `Duplicate account for ${provider}.` : `Duplicate provider ${provider}.`);
+    seenProviders.add(entryKey);
     if (!Array.isArray(entry.days)) throw badRequest(`days must be an array for ${provider}.`);
     if (entry.days.length > UPLOAD_WINDOW_DAYS + 2) throw badRequest(`Too many days for ${provider}.`);
 
@@ -147,7 +176,7 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
       // Days outside the window are dropped, not rejected: the client's window can drift by a day.
       if (day < earliest || day > latest) continue;
 
-      days.push({ provider, day, scope, accountKey, tokens: parseTokens(dayEntry.tokens), costUSD: parseCost(dayEntry.costUSD) });
+      days.push({ provider, day, scope, accountKey, slot, tokens: parseTokens(dayEntry.tokens), costUSD: parseCost(dayEntry.costUSD) });
 
       const dayModels = dayEntry.models ?? [];
       if (!Array.isArray(dayModels)) throw badRequest(`models must be an array (${provider} ${day}).`);
@@ -164,6 +193,7 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
           day,
           scope,
           accountKey,
+          slot,
           model,
           tokens: parseTokens(modelEntry.tokens),
           costUSD: parseCost(modelEntry.costUSD),
@@ -190,6 +220,7 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
     models,
     detectedPlans: parseDetectedPlans(body.detectedPlans),
     quotaWindows: parseQuotaWindows(body.quotaWindows, now),
+    excludedAccounts: parseExcludedAccounts(body.excludedAccounts),
     localDay,
   };
 }
@@ -206,6 +237,24 @@ function parseDetectedPlans(value: unknown): { provider: string; plan: string }[
     if (seen.has(provider)) throw badRequest(`Duplicate detected plan for ${provider}.`);
     seen.add(provider);
     return { provider, plan: requireName(entry.plan, "plan", 60) };
+  });
+}
+
+function parseExcludedAccounts(value: unknown): AccountExclusion[] | null {
+  if (value === undefined) return null;
+  if (!Array.isArray(value)) throw badRequest("excludedAccounts must be an array.");
+  if (value.length > MAX_EXCLUSIONS) throw badRequest(`At most ${MAX_EXCLUSIONS} excluded accounts per upload.`);
+  const seen = new Set<string>();
+  return value.map((entry) => {
+    if (!isRecord(entry)) throw badRequest("Each excluded account must be an object.");
+    const { team, provider, account } = entry;
+    if (typeof team !== "string" || !TEAM_ID_PATTERN.test(team)) throw badRequest("Invalid team id in excludedAccounts.");
+    if (typeof provider !== "string" || !PROVIDER_PATTERN.test(provider)) throw badRequest("Invalid provider id in excludedAccounts.");
+    if (typeof account !== "string" || !ACCOUNT_KEY_PATTERN.test(account)) throw badRequest("Invalid account in excludedAccounts.");
+    const key = `${team}\u0000${account}`;
+    if (seen.has(key)) throw badRequest("Duplicate excluded account.");
+    seen.add(key);
+    return { teamID: team, provider, accountKey: account };
   });
 }
 

@@ -29,6 +29,8 @@ final class TeamsStore {
     private(set) var championsByTeam: [String: [TeamChampion]] = [:]
     /// Each team's members' spend in the last hour and ⚡ level, by user id, from the latest stats.
     private(set) var momentumByTeam: [String: [String: TeamMomentum]] = [:]
+    /// The cards this Mac leaves out of each team, by team id (see `TeamsStore+AccountSharing`).
+    var excludedCards: [String: Set<String>] = [:]
     /// Run after each successful upload, after the team notifications (challenge results).
     @ObservationIgnored var afterUploadHooks: [@MainActor () async -> Void] = []
 
@@ -67,7 +69,7 @@ final class TeamsStore {
     @ObservationIgnored private let api: any TeamsAPI
     @ObservationIgnored private let sessionStore: any TeamsSessionStoring
     @ObservationIgnored private let signInProvider: any AppleSignInProviding
-    @ObservationIgnored private let historySources: @MainActor () -> [TeamHistorySource]
+    @ObservationIgnored let historySources: @MainActor () -> [TeamHistorySource]
     @ObservationIgnored private let deviceID: @MainActor () -> String?
     @ObservationIgnored private let deviceName: String
     @ObservationIgnored private let now: @Sendable () -> Date
@@ -82,7 +84,7 @@ final class TeamsStore {
     @ObservationIgnored private var serverTakesPartialUploads = false
     @ObservationIgnored private let notificationSettings: @MainActor () -> (overtakes: Bool, weeklyRecap: Bool)
     @ObservationIgnored private let postNotification: @MainActor (_ id: String, _ title: String, _ subtitle: String, _ body: String) async -> Bool
-    @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored let defaults: UserDefaults
     private static let overtakeSnapshotKey = "godusage.teams.overtakeSnapshot.v1"
     private static let menuBarRankKey = "godusage.teams.menuBarRank.v1"
     private static let quotaLogKey = "godusage.teams.quotaLog.v1"
@@ -119,6 +121,7 @@ final class TeamsStore {
         self.postNotification = postNotification
         self.defaults = defaults
         self.showRankInMenuBar = defaults.bool(forKey: Self.menuBarRankKey)
+        self.excludedCards = Self.loadExcludedCards(from: defaults)
         self.api = api
         self.sessionStore = sessionStore
         self.signInProvider = signInProvider
@@ -394,7 +397,9 @@ final class TeamsStore {
         var upload = TeamUsageUpload.make(
             sources: sources,
             deviceName: deviceName,
-            dayKeys: UsageHistoryWindow.dayKeys(through: now())
+            dayKeys: UsageHistoryWindow.dayKeys(through: now()),
+            excludedCards: uploadExclusions(),
+            accountKey: { Self.accountKey(for: $0, deviceID: deviceID) }
         )
         upload.quotaWindows = recordQuota(sources.compactMap(\.quota), deviceID: deviceID)
         if !force, upload == lastUploaded, let lastUploadAt,
@@ -433,7 +438,7 @@ final class TeamsStore {
             }
         }
         log.record(readings, account: { reading in
-            reading.accountKey ?? TeamAccountKey.make(provider: reading.provider, accountID: "\(deviceID)|\(reading.cardID)")
+            reading.accountKey ?? TeamAccountKey.make(provider: reading.provider, accountID: Self.localAccountID(cardID: reading.cardID, deviceID: deviceID))
         }, now: now())
         do {
             defaults.set(try JSONEncoder().encode(log), forKey: Self.quotaLogKey)

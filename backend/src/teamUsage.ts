@@ -6,6 +6,8 @@
  *   newest device wins, per day.
  * - A fingerprint (`account_key`) two or more members uploaded is a shared account: it belongs to no
  *   one member and counts once for the team, the newest upload from any member winning, per day.
+ * - An account a member leaves out of the team (`account_exclusions`) is not read at all: its rows
+ *   (the Mac sent them apart, under the account's `slot`) and its fingerprint are dropped.
  *
  * The queries read raw rows of the period (from the (user_id, day) covering indexes), and the combining
  * happens here, where the rules above are easy to read and test.
@@ -84,6 +86,7 @@ interface UsageRow {
   day: string;
   scope: "device" | "account";
   account_key: string | null;
+  slot: string;
   tokens: number;
   cost_usd: number | null;
   model?: string;
@@ -95,24 +98,28 @@ interface UsageRow {
  */
 export async function teamUsage(db: Queryable, teamID: string, from: string, to: string, options: { models: boolean }): Promise<TeamUsage> {
   const members = "JOIN team_members m ON m.user_id = t.user_id AND m.team_id = $1 AND m.counts_usage";
-  const [deviceRows, keyRows, dayRows, modelRows] = await Promise.all([
+  const [deviceRows, keyRows, dayRows, modelRows, excluded] = await Promise.all([
     db.query(`SELECT t.user_id, t.id, t.updated_at, t.app_version FROM devices t ${members}`, [teamID]),
     db.query(`SELECT t.user_id, t.account_key, t.provider FROM account_keys t ${members}`, [teamID]),
     db.query(
-      `SELECT t.user_id, t.device_id, t.provider, t.day, t.scope, t.account_key, t.tokens, t.cost_usd FROM usage_days t ${members}
+      `SELECT t.user_id, t.device_id, t.provider, t.slot, t.day, t.scope, t.account_key, t.tokens, t.cost_usd FROM usage_days t ${members}
        WHERE t.day BETWEEN $2 AND $3`,
       [teamID, from, to],
     ),
     options.models
       ? db.query(
-          `SELECT t.user_id, t.device_id, t.provider, t.day, t.model, t.scope, t.account_key, t.tokens, t.cost_usd FROM usage_model_days t ${members}
+          `SELECT t.user_id, t.device_id, t.provider, t.slot, t.day, t.model, t.scope, t.account_key, t.tokens, t.cost_usd FROM usage_model_days t ${members}
            WHERE t.day BETWEEN $2 AND $3`,
           [teamID, from, to],
         )
       : null,
+    teamExclusions(db, teamID),
   ]);
   const devices = deviceRows as unknown as TeamDevice[];
-  const keys = keyRows as { user_id: string; account_key: string; provider: string }[];
+  const keys = (keyRows as { user_id: string; account_key: string; provider: string }[]).filter(
+    (row) => !excluded.has(exclusionKey(row.user_id, row.account_key)),
+  );
+  const included = (rows: UsageRow[]) => (excluded.size === 0 ? rows : rows.filter((row) => row.slot === "" || !excluded.has(exclusionKey(row.user_id, row.slot))));
 
   const usersByKey = new Map<string, Set<string>>();
   for (const row of keys) {
@@ -127,7 +134,7 @@ export async function teamUsage(db: Queryable, teamID: string, from: string, to:
     .sort((a, b) => compare(a.account_key, b.account_key) || compare(a.provider, b.provider) || compare(a.user_id, b.user_id));
 
   const updatedAt = new Map(devices.map((device) => [`${device.user_id}\u0000${device.id}`, device.updated_at]));
-  const combined = combine(dayRows as unknown as UsageRow[], sharedKeys, updatedAt, false);
+  const combined = combine(included(dayRows as unknown as UsageRow[]), sharedKeys, updatedAt, false);
   const days = [...combined.members.values()].map((value) => ({ user_id: value.user, provider: value.provider, day: value.day, tokens: value.tokens, cost: value.cost }));
   const sharedDays = [...combined.shared.values()].map((value) => ({ account_key: value.key, provider: value.provider, day: value.day, tokens: value.tokens, cost: value.cost }));
 
@@ -135,7 +142,7 @@ export async function teamUsage(db: Queryable, teamID: string, from: string, to:
   let sharedModels: SharedModel[] = [];
   let modelDays: ModelDay[] = [];
   if (modelRows) {
-    const byModel = combine(modelRows as unknown as UsageRow[], sharedKeys, updatedAt, true);
+    const byModel = combine(included(modelRows as unknown as UsageRow[]), sharedKeys, updatedAt, true);
     models = [...byModel.members.values()].map((value) => ({ user_id: value.user, provider: value.provider, model: value.model, tokens: value.tokens, cost: value.cost }));
     sharedModels = [...byModel.shared.values()].map((value) => ({ account_key: value.key, provider: value.provider, model: value.model, tokens: value.tokens, cost: value.cost }));
     modelDays = [...byModel.days.values()].map((value) => ({ provider: value.provider, model: value.model, day: value.day, tokens: value.tokens, cost: value.cost }));
@@ -152,7 +159,7 @@ export async function userUsage(db: Queryable, userID: string, from: string, to:
   const [deviceRows, dayRows] = await Promise.all([
     db.query("SELECT user_id, id, updated_at, app_version FROM devices WHERE user_id = $1", [userID]),
     db.query(
-      `SELECT user_id, device_id, provider, day, scope, account_key, tokens, cost_usd FROM usage_days
+      `SELECT user_id, device_id, provider, slot, day, scope, account_key, tokens, cost_usd FROM usage_days
        WHERE user_id = $1 AND day BETWEEN $2 AND $3`,
       [userID, from, to],
     ),
@@ -162,6 +169,19 @@ export async function userUsage(db: Queryable, userID: string, from: string, to:
   const combined = combine(dayRows as unknown as UsageRow[], new Set(), updatedAt, false);
   const days = [...combined.members.values()].map((value) => ({ user_id: value.user, provider: value.provider, day: value.day, tokens: value.tokens, cost: value.cost }));
   return { days, devices };
+}
+
+/** `user_id` + fingerprint keys of the accounts members leave out of the team (any of their Macs). */
+export async function teamExclusions(db: Queryable, teamID: string): Promise<Set<string>> {
+  const rows = await db.query<{ user_id: string; account_key: string }>(
+    "SELECT DISTINCT user_id, account_key FROM account_exclusions WHERE team_id = $1",
+    [teamID],
+  );
+  return new Set(rows.map((row) => exclusionKey(row.user_id, row.account_key)));
+}
+
+export function exclusionKey(userID: string, accountKey: string): string {
+  return `${userID}\u0000${accountKey}`;
 }
 
 interface Total {
@@ -196,7 +216,8 @@ function combine(rows: UsageRow[], sharedKeys: Set<string>, updatedAt: Map<strin
     const isShared = row.account_key !== null && sharedKeys.has(row.account_key);
     // Shared accounts: the newest upload from any member (then user id, device id). Otherwise per user.
     const owner = isShared ? `s\u0000${row.account_key}` : `u\u0000${row.user_id}`;
-    const slot = [owner, row.provider, row.day, model(row)].join("\u0000");
+    // A user's split account competes only with its own rows; a shared account is one slot already.
+    const slot = [owner, row.provider, isShared ? "" : row.slot, row.day, model(row)].join("\u0000");
     const rowUpdatedAt = updatedAt.get(`${row.user_id}\u0000${row.device_id}`) ?? "";
     const current = winners.get(slot);
     if (!current || newer(row, rowUpdatedAt, current.row, current.updatedAt, isShared)) {

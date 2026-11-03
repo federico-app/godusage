@@ -33,7 +33,7 @@ While you are signed in and in at least one team, this Mac uploads its own last 
 - daily tokens and spend per provider (Claude, Codex, Cursor, and the rest),
 - the same per model.
 
-Extra accounts of a provider are added into that provider; account ids never leave the Mac. Credentials, logs, prompts, and project names are never uploaded. Each Mac uploads only what it read itself. Disabled providers are left out.
+Extra accounts of a provider are added into that provider; account ids never leave the Mac. An account you leave out of a team (see [Accounts counted](#accounts-counted)) is sent on its own, under an anonymous fingerprint, so the server can drop it from that team. Credentials, logs, prompts, and project names are never uploaded. Each Mac uploads only what it read itself. Disabled providers are left out.
 
 The server keeps everything each Mac shared, so history grows beyond the app's 30-day window; each upload replaces only that Mac's last 30 days. After the first upload since launch, the Mac sends only the days that changed (usually just today), and the whole window again when a provider is turned off.
 
@@ -46,6 +46,12 @@ Your Macs are combined on the server. Local usage (Claude, Codex, Grok, and othe
 **Export My Data** (Settings → Teams) saves everything the service keeps about you as a JSON file. The service's [Terms](https://godusage-api.federico-c80.workers.dev/terms) and [Privacy Policy](https://godusage-api.federico-c80.workers.dev/privacy) are linked at sign-in.
 
 **Sign Out** removes this Mac's usage from your teams first, then ends the session. If removing it fails, you stay signed in and see the error. **Delete Account** removes your account, the usage all your Macs shared, and the teams you own.
+
+### Accounts Counted
+
+Settings → Teams lists, under the selected team, every account this Mac shares (each Claude or Codex login, Cursor, and the other providers). All of them count by default. Turn one off, like a personal plan next to the work one, to leave it out of that team only: its spend, tokens, and models leave the team's leaderboards, challenges, Hall of Fame, and ⚡, and its quota leaves the team's plans. Your other teams still count it. Teammates see only your smaller total, never the left-out account. The change uploads at once and shows on the team's boards right away.
+
+The choice is kept on this Mac, per team. If an account is on several Macs, turn it off on each one. It applies to the last 30 days, which every upload resends; older days stay as they were shared.
 
 ## Leaderboards
 

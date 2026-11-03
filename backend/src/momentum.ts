@@ -38,6 +38,8 @@ export interface PulseRow {
   day: string;
   scope: "device" | "account";
   accountKey: string | null;
+  /** '' for folded accounts, the fingerprint of an account sent on its own (see usagePayload.ts). */
+  slot: string;
   costUSD: number | null;
 }
 
@@ -45,7 +47,8 @@ export interface PulseRow {
  * Records how much this upload grew the device's recent days (yesterday and today, UTC, which covers
  * every time zone's today). Device-scope rows grow from the device's stored row; account-scope rows
  * (Cursor) from the largest any of the user's Macs stored, so two Macs reporting one account count
- * once. Shared accounts are left out, as on the boards. Call before the upload is stored, and only
+ * once. Shared accounts are left out, as on the boards. Growth is kept per slot, so a team an account
+ * is left out of never counts its spend. Call before the upload is stored, and only
  * for a device that uploaded before: a first upload would count a whole day as just spent.
  */
 export async function recordPulse(tx: Queryable, userID: string, deviceID: string, rows: PulseRow[], now: Date): Promise<void> {
@@ -54,12 +57,12 @@ export async function recordPulse(tx: Queryable, userID: string, deviceID: strin
   if (recent.length === 0) return;
 
   const [deviceRows, accountRows, sharedRows] = await Promise.all([
-    tx.query<{ provider: string; day: string; cost_usd: number | null }>(
-      "SELECT provider, day, cost_usd FROM usage_days WHERE user_id = $1 AND device_id = $2 AND day >= $3 AND scope = 'device'",
+    tx.query<{ provider: string; slot: string; day: string; cost_usd: number | null }>(
+      "SELECT provider, slot, day, cost_usd FROM usage_days WHERE user_id = $1 AND device_id = $2 AND day >= $3 AND scope = 'device'",
       [userID, deviceID, from],
     ),
-    tx.query<{ provider: string; day: string; cost: number | null }>(
-      "SELECT provider, day, MAX(cost_usd) AS cost FROM usage_days WHERE user_id = $1 AND day >= $2 AND scope = 'account' GROUP BY provider, day",
+    tx.query<{ provider: string; slot: string; day: string; cost: number | null }>(
+      "SELECT provider, slot, day, MAX(cost_usd) AS cost FROM usage_days WHERE user_id = $1 AND day >= $2 AND scope = 'account' GROUP BY provider, slot, day",
       [userID, from],
     ),
     tx.query<{ account_key: string }>(
@@ -68,24 +71,26 @@ export async function recordPulse(tx: Queryable, userID: string, deviceID: strin
       [[...new Set(recent.map((row) => row.accountKey).filter((key): key is string => key !== null))]],
     ),
   ]);
-  const key = (provider: string, day: string) => `${provider}\u0000${day}`;
-  const before = new Map(deviceRows.map((row) => [key(row.provider, row.day), row.cost_usd ?? 0]));
-  const accountBefore = new Map(accountRows.map((row) => [key(row.provider, row.day), row.cost ?? 0]));
+  const key = (provider: string, slot: string, day: string) => `${provider}\u0000${slot}\u0000${day}`;
+  const before = new Map(deviceRows.map((row) => [key(row.provider, row.slot, row.day), row.cost_usd ?? 0]));
+  const accountBefore = new Map(accountRows.map((row) => [key(row.provider, row.slot, row.day), row.cost ?? 0]));
   const shared = new Set(sharedRows.map((row) => row.account_key));
 
-  let grown = 0;
+  const grown = new Map<string, number>();
   for (const row of recent) {
     if (row.scope === "account" && row.accountKey !== null && shared.has(row.accountKey)) continue;
-    const previous = (row.scope === "device" ? before : accountBefore).get(key(row.provider, row.day)) ?? 0;
-    grown += Math.max(0, row.costUSD! - previous);
+    const previous = (row.scope === "device" ? before : accountBefore).get(key(row.provider, row.slot, row.day)) ?? 0;
+    const growth = Math.max(0, row.costUSD! - previous);
+    if (growth > 0) grown.set(row.slot, (grown.get(row.slot) ?? 0) + growth);
   }
-  if (grown <= 0) return;
+  if (grown.size === 0) return;
 
   const bucket = new Date(Math.floor(now.getTime() / BUCKET_MS) * BUCKET_MS).toISOString();
   await tx.run(
-    `INSERT INTO spend_pulses (user_id, device_id, bucket, cost_usd) VALUES ($1, $2, $3, $4)
-     ON CONFLICT (user_id, device_id, bucket) DO UPDATE SET cost_usd = spend_pulses.cost_usd + excluded.cost_usd`,
-    [userID, deviceID, bucket, grown],
+    `INSERT INTO spend_pulses (user_id, device_id, slot, bucket, cost_usd)
+     SELECT $1, $2, r.slot, $3, r.cost FROM jsonb_to_recordset($4::jsonb) AS r(slot text, cost double precision)
+     ON CONFLICT (user_id, device_id, slot, bucket) DO UPDATE SET cost_usd = spend_pulses.cost_usd + excluded.cost_usd`,
+    [userID, deviceID, bucket, JSON.stringify([...grown].map(([slot, cost]) => ({ slot, cost })))],
   );
   await tx.run("DELETE FROM spend_pulses WHERE user_id = $1 AND bucket < $2", [userID, new Date(now.getTime() - KEEP_MS).toISOString()]);
 }
@@ -94,7 +99,9 @@ export async function recordPulse(tx: Queryable, userID: string, deviceID: strin
 export async function teamMomentum(db: Queryable, teamID: string, now: Date): Promise<Record<string, Momentum>> {
   const hourAgo = new Date(now.getTime() - HOUR_MS).toISOString();
   const weekAgo = new Date(now.getTime() - KEEP_MS).toISOString();
-  const members = "JOIN team_members m ON m.user_id = p.user_id AND m.team_id = $1 AND m.counts_usage";
+  // Pulses of an account a member leaves out of the team don't count for it.
+  const members = `JOIN team_members m ON m.user_id = p.user_id AND m.team_id = $1 AND m.counts_usage
+    AND NOT EXISTS (SELECT 1 FROM account_exclusions x WHERE x.team_id = $1 AND x.user_id = p.user_id AND x.account_key = p.slot)`;
   const [lastHour, typical] = await Promise.all([
     db.query<{ user_id: string; cost: number }>(
       `SELECT p.user_id, SUM(p.cost_usd) AS cost FROM spend_pulses p ${members} WHERE p.bucket >= $2 GROUP BY p.user_id`,
