@@ -48,10 +48,24 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
         var provider: String
         /// `device` sums across a user's Macs; `account` (already account-wide, like Cursor) counts once.
         var scope: String
-        /// Account-scope only: the account's anonymous fingerprint, so the team counts an account
-        /// several members share once. Omitted when unknown.
+        /// The account's anonymous fingerprint: on account scope, so the team counts an account
+        /// several members share once (omitted when unknown); on a split entry, the account it is.
         var account: String?
+        /// Set on one account sent apart from its provider's other accounts, because the user leaves
+        /// it out of a team (see `ExcludedAccount`).
+        var split: Bool?
         var days: [Day]
+
+        /// Unique per upload: a provider comes once folded, plus once per split account.
+        var entryKey: String { split == true ? "\(provider)|\(account ?? "")" : provider }
+    }
+
+    /// One account this Mac leaves out of one team. The server drops that account's split usage, its
+    /// quota windows, and its ⚡ from the team. `account` matches the split entry's.
+    struct ExcludedAccount: Encodable, Hashable, Sendable {
+        var team: String
+        var provider: String
+        var account: String
     }
 
     var schema = Self.schema
@@ -72,6 +86,8 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
     /// How much of each account's quota windows this Mac saw used. Always sent whole: the server
     /// replaces this Mac's windows with them.
     var quotaWindows: [QuotaWindow] = []
+    /// Always sent whole: the server replaces this Mac's exclusions with them.
+    var excludedAccounts: [ExcludedAccount] = []
     var providers: [Provider]
 
     static func instant(_ date: Date) -> String {
@@ -81,26 +97,52 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
     /// Builds the upload from this Mac's cards. Account cards (`claude@ab12cd34`) fold into their
     /// family (`claude`): a leaderboard compares people per provider, not per login, and the
     /// account id must not leave the Mac. Days outside `dayKeys` are dropped.
+    ///
+    /// `excludedCards` maps a team id to the cards the user leaves out of it. Each card left out of
+    /// any team goes up on its own instead (`split`, named by `accountKey`), so the server can drop it
+    /// from those teams; the upload lists the exclusions in `excludedAccounts`.
     static func make(
         sources: [TeamHistorySource],
         deviceName: String,
         dayKeys: Set<String>,
-        appVersion: String = AppInfo.version
+        appVersion: String = AppInfo.version,
+        excludedCards: [String: Set<String>] = [:],
+        accountKey: (TeamHistorySource) -> String = { $0.history.accountKey ?? $0.cardID }
     ) -> TeamUsageUpload {
         struct DayAccumulator {
             var tokens = 0
             var cost: Double?
             var models: [String: (name: String, tokens: Int, cost: Double?)] = [:]
         }
-        var families: [String: (scope: UsageHistoryDescriptor.Scope, account: String?, days: [String: DayAccumulator])] = [:]
+        struct Entry {
+            var family: String
+            var scope: UsageHistoryDescriptor.Scope
+            var account: String?
+            var split: Bool
+            var days: [String: DayAccumulator] = [:]
+        }
+        let splitCards = excludedCards.values.reduce(into: Set<String>()) { $0.formUnion($1) }
+        var entries: [String: Entry] = [:]
+        var splitKeys: [String: String] = [:]
 
         for source in sources {
-            let family = String(source.cardID.split(separator: "@", maxSplits: 1).first ?? Substring(source.cardID))
-            var entry = families[family] ?? (source.scope, nil, [:])
-            // A family is account-wide if any of its cards is, so it is never summed across Macs.
-            if source.scope == .accountWide {
-                entry.scope = .accountWide
-                entry.account = entry.account ?? source.history.accountKey
+            let family = ProviderAccountID.family(of: source.cardID)
+            let isSplit = splitCards.contains(source.cardID)
+            let key: String
+            var entry: Entry
+            if isSplit {
+                let account = accountKey(source)
+                splitKeys[source.cardID] = account
+                key = "\(family)|\(account)"
+                entry = entries[key] ?? Entry(family: family, scope: source.scope, account: account, split: true)
+            } else {
+                key = family
+                entry = entries[key] ?? Entry(family: family, scope: source.scope, account: nil, split: false)
+                // A family is account-wide if any of its cards is, so it is never summed across Macs.
+                if source.scope == .accountWide {
+                    entry.scope = .accountWide
+                    entry.account = entry.account ?? source.history.accountKey
+                }
             }
 
             for day in source.history.series.daily where dayKeys.contains(day.date) {
@@ -121,11 +163,11 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
                 }
                 entry.days[day.date] = accumulator
             }
-            families[family] = entry
+            entries[key] = entry
         }
 
-        let providers = families.keys.sorted().compactMap { family -> Provider? in
-            guard let entry = families[family] else { return nil }
+        let providers = entries.keys.sorted().compactMap { key -> Provider? in
+            guard let entry = entries[key] else { return nil }
             let days = entry.days.keys.sorted().compactMap { date -> Day? in
                 guard let day = entry.days[date] else { return nil }
                 let models = day.models.values
@@ -136,14 +178,26 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
             }
             guard !days.isEmpty else { return nil }
             let isAccountWide = entry.scope == .accountWide
-            return Provider(provider: family, scope: isAccountWide ? "account" : "device", account: isAccountWide ? entry.account : nil, days: days)
+            return Provider(
+                provider: entry.family,
+                scope: isAccountWide ? "account" : "device",
+                account: isAccountWide || entry.split ? entry.account : nil,
+                split: entry.split ? true : nil,
+                days: days
+            )
         }
-        // A family's plan is its first card's (by id) that detected one; the plain card sorts first.
+        // A family's plan is its first card's (by id) that detected one, cards counted in every team
+        // first (the plan a team pays for); the plain card sorts first.
         var plans: [String: String] = [:]
-        for source in sources.sorted(by: { $0.cardID < $1.cardID }) {
-            let family = String(source.cardID.split(separator: "@", maxSplits: 1).first ?? Substring(source.cardID))
+        for source in sources.sorted(by: { (splitCards.contains($0.cardID) ? 1 : 0, $0.cardID) < (splitCards.contains($1.cardID) ? 1 : 0, $1.cardID) }) {
+            let family = ProviderAccountID.family(of: source.cardID)
             if plans[family] == nil, let plan = source.plan?.trimmingCharacters(in: .whitespacesAndNewlines), !plan.isEmpty {
                 plans[family] = String(plan.prefix(60))
+            }
+        }
+        let excluded = excludedCards.keys.sorted().flatMap { team in
+            (excludedCards[team] ?? []).sorted().compactMap { cardID in
+                splitKeys[cardID].map { ExcludedAccount(team: team, provider: ProviderAccountID.family(of: cardID), account: $0) }
             }
         }
         return TeamUsageUpload(
@@ -152,6 +206,7 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
             windowStart: dayKeys.min(),
             localDay: dayKeys.max(),
             detectedPlans: plans.keys.sorted().map { DetectedPlan(provider: $0, plan: plans[$0]!) },
+            excludedAccounts: Array(Set(excluded)).sorted { ($0.team, $0.account) < ($1.team, $1.account) },
             providers: providers
         )
     }
@@ -162,13 +217,13 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
     /// a provider-day in the window disappeared, or a provider changed scope or account.
     static func partial(from previous: TeamUsageUpload, to current: TeamUsageUpload) -> TeamUsageUpload? {
         let windowStart = current.windowStart ?? ""
-        let currentProviders = Dictionary(current.providers.map { ($0.provider, $0) }, uniquingKeysWith: { first, _ in first })
+        let currentProviders = Dictionary(current.providers.map { ($0.entryKey, $0) }, uniquingKeysWith: { first, _ in first })
         var previousDays: [String: [String: Day]] = [:]
         for old in previous.providers {
             let days = old.days.filter { $0.date >= windowStart }
-            previousDays[old.provider] = Dictionary(days.map { ($0.date, $0) }, uniquingKeysWith: { first, _ in first })
+            previousDays[old.entryKey] = Dictionary(days.map { ($0.date, $0) }, uniquingKeysWith: { first, _ in first })
             guard !days.isEmpty else { continue }
-            guard let new = currentProviders[old.provider], new.scope == old.scope, new.account == old.account else { return nil }
+            guard let new = currentProviders[old.entryKey], new.scope == old.scope, new.account == old.account else { return nil }
             let dates = Set(new.days.map(\.date))
             if days.contains(where: { !dates.contains($0.date) }) { return nil }
         }
@@ -176,7 +231,7 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
         upload.windowStart = nil
         upload.partial = true
         upload.providers = current.providers.compactMap { provider in
-            let old = previousDays[provider.provider] ?? [:]
+            let old = previousDays[provider.entryKey] ?? [:]
             var changed = provider
             changed.days = provider.days.filter { old[$0.date] != $0 }
             return changed.days.isEmpty ? nil : changed

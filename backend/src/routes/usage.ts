@@ -7,7 +7,7 @@ import { requireUser } from "../session";
 import type { Env } from "../context";
 import type { Queryable } from "../db";
 import { userTeamIDs } from "../teamCache";
-import { parseUsageUpload, type UsageUpload } from "../usagePayload";
+import { parseUsageUpload, type AccountExclusion, type UsageUpload } from "../usagePayload";
 
 const DEVICE_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
 
@@ -48,7 +48,7 @@ export async function storeDeviceUsage(env: Pick<Env, "db" | "cache">, userID: s
   const modelFrom = upload.partial ? (sentDays[0] ?? NONE) : dayFrom;
   const modelTo = upload.partial ? (sentDays[sentDays.length - 1] ?? NONE) : NONE;
   const dayRows = JSON.stringify(
-    upload.days.map((row) => ({ provider: row.provider, day: row.day, scope: row.scope, tokens: row.tokens, cost_usd: row.costUSD, account_key: row.accountKey })),
+    upload.days.map((row) => ({ provider: row.provider, day: row.day, scope: row.scope, tokens: row.tokens, cost_usd: row.costUSD, account_key: row.accountKey, slot: row.slot })),
   );
   const modelRows = JSON.stringify(
     upload.models.map((row) => ({
@@ -59,10 +59,11 @@ export async function storeDeviceUsage(env: Pick<Env, "db" | "cache">, userID: s
       tokens: row.tokens,
       cost_usd: row.costUSD,
       account_key: row.accountKey,
+      slot: row.slot,
     })),
   );
 
-  const { written, usageChanged, plansChanged } = await env.db.transaction(async (tx) => {
+  const { written, usageChanged, plansChanged, exclusionsChanged } = await env.db.transaction(async (tx) => {
     // Before anything is stored: how much the recent days grew. A device's first upload is skipped.
     const known = await tx.first("SELECT 1 AS known FROM devices WHERE user_id = $1 AND id = $2", [userID, deviceID]);
     if (known) await recordPulse(tx, userID, deviceID, upload.days, now);
@@ -74,31 +75,32 @@ export async function storeDeviceUsage(env: Pick<Env, "db" | "cache">, userID: s
     const usage = [
       await tx.run(
         `DELETE FROM usage_days u WHERE u.user_id = $1 AND u.device_id = $2 AND u.day >= $3
-         AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset($4::jsonb) AS r(provider text, day text) WHERE r.provider = u.provider AND r.day = u.day)`,
+         AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset($4::jsonb) AS r(provider text, slot text, day text) WHERE r.provider = u.provider AND r.slot = u.slot AND r.day = u.day)`,
         [userID, deviceID, dayFrom, dayRows],
       ),
       await tx.run(
         `DELETE FROM usage_model_days u WHERE u.user_id = $1 AND u.device_id = $2 AND u.day BETWEEN $3 AND $4
-         AND (NOT $5::boolean OR EXISTS (SELECT 1 FROM jsonb_to_recordset($6::jsonb) AS r(provider text, day text) WHERE r.provider = u.provider AND r.day = u.day))
-         AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset($7::jsonb) AS r(provider text, day text, model text)
-                         WHERE r.provider = u.provider AND r.day = u.day AND r.model = u.model)`,
+         AND (NOT $5::boolean OR EXISTS (SELECT 1 FROM jsonb_to_recordset($6::jsonb) AS r(provider text, slot text, day text)
+                                         WHERE r.provider = u.provider AND r.slot = u.slot AND r.day = u.day))
+         AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset($7::jsonb) AS r(provider text, slot text, day text, model text)
+                         WHERE r.provider = u.provider AND r.slot = u.slot AND r.day = u.day AND r.model = u.model)`,
         [userID, deviceID, modelFrom, modelTo, upload.partial, dayRows, modelRows],
       ),
       await tx.run(
-        `INSERT INTO usage_days (user_id, device_id, provider, day, scope, tokens, cost_usd, account_key)
-         SELECT $1, $2, r.provider, r.day, r.scope, r.tokens, r.cost_usd, r.account_key
-         FROM jsonb_to_recordset($3::jsonb) AS r(provider text, day text, scope text, tokens bigint, cost_usd double precision, account_key text)
-         ON CONFLICT (user_id, device_id, provider, day) DO UPDATE SET
+        `INSERT INTO usage_days (user_id, device_id, provider, slot, day, scope, tokens, cost_usd, account_key)
+         SELECT $1, $2, r.provider, r.slot, r.day, r.scope, r.tokens, r.cost_usd, r.account_key
+         FROM jsonb_to_recordset($3::jsonb) AS r(provider text, slot text, day text, scope text, tokens bigint, cost_usd double precision, account_key text)
+         ON CONFLICT (user_id, device_id, provider, slot, day) DO UPDATE SET
            scope = excluded.scope, tokens = excluded.tokens, cost_usd = excluded.cost_usd, account_key = excluded.account_key
          WHERE (usage_days.scope, usage_days.tokens, usage_days.cost_usd, usage_days.account_key)
            IS DISTINCT FROM (excluded.scope, excluded.tokens, excluded.cost_usd, excluded.account_key)`,
         [userID, deviceID, dayRows],
       ),
       await tx.run(
-        `INSERT INTO usage_model_days (user_id, device_id, provider, day, model, scope, tokens, cost_usd, account_key)
-         SELECT $1, $2, r.provider, r.day, r.model, r.scope, r.tokens, r.cost_usd, r.account_key
-         FROM jsonb_to_recordset($3::jsonb) AS r(provider text, day text, model text, scope text, tokens bigint, cost_usd double precision, account_key text)
-         ON CONFLICT (user_id, device_id, provider, day, model) DO UPDATE SET
+        `INSERT INTO usage_model_days (user_id, device_id, provider, slot, day, model, scope, tokens, cost_usd, account_key)
+         SELECT $1, $2, r.provider, r.slot, r.day, r.model, r.scope, r.tokens, r.cost_usd, r.account_key
+         FROM jsonb_to_recordset($3::jsonb) AS r(provider text, slot text, day text, model text, scope text, tokens bigint, cost_usd double precision, account_key text)
+         ON CONFLICT (user_id, device_id, provider, slot, day, model) DO UPDATE SET
            scope = excluded.scope, tokens = excluded.tokens, cost_usd = excluded.cost_usd, account_key = excluded.account_key
          WHERE (usage_model_days.scope, usage_model_days.tokens, usage_model_days.cost_usd, usage_model_days.account_key)
            IS DISTINCT FROM (excluded.scope, excluded.tokens, excluded.cost_usd, excluded.account_key)`,
@@ -108,14 +110,22 @@ export async function storeDeviceUsage(env: Pick<Env, "db" | "cache">, userID: s
     const keys = await syncAccountKeys(tx, userID, dayRows);
     const plans = upload.detectedPlans === null ? 0 : await storeDetectedPlans(tx, userID, deviceID, upload.detectedPlans, now, upload.localDay);
     const quota = upload.quotaWindows === null ? 0 : await storeQuotaWindows(tx, userID, deviceID, upload.quotaWindows);
+    const exclusions = upload.excludedAccounts === null ? 0 : await storeExclusions(tx, userID, deviceID, upload.excludedAccounts);
     const changed = usage.reduce((total, count) => total + count, 0);
-    return { written: device + changed + keys + plans + quota, usageChanged: changed > 0, plansChanged: plans + quota > 0 };
+    return {
+      written: device + changed + keys + plans + quota + exclusions,
+      usageChanged: changed > 0,
+      plansChanged: plans + quota > 0,
+      exclusionsChanged: exclusions > 0,
+    };
   });
-  if (usageChanged || plansChanged) {
+  if (usageChanged || plansChanged || exclusionsChanged) {
     const teamIDs = await userTeamIDs(env.db, userID);
-    if (usageChanged) await env.cache.bumpTeams(teamIDs);
+    // A member leaving an account out (or back in) is a setting, so it shows at once, like plans.
+    if (exclusionsChanged) await env.cache.forgetTeams(teamIDs);
+    else if (usageChanged) await env.cache.bumpTeams(teamIDs);
     // A new detected plan flags the owner's Plans report at once; new quota readings show there too.
-    if (plansChanged) await env.cache.forgetTeams(teamIDs, "plans|");
+    if (plansChanged && !exclusionsChanged) await env.cache.forgetTeams(teamIDs, "plans|");
   }
   return written;
 }
@@ -139,6 +149,30 @@ export async function syncAccountKeys(tx: Queryable, userID: string, dayRows: st
     [userID],
   );
   return added + removed;
+}
+
+/**
+ * Replaces this Mac's account exclusions with the upload's. Teams the user isn't in are skipped, so
+ * a stale team id never fails an upload. Returns the rows it changed.
+ */
+export async function storeExclusions(tx: Queryable, userID: string, deviceID: string, exclusions: AccountExclusion[]): Promise<number> {
+  const rows = JSON.stringify(exclusions.map((row) => ({ team_id: row.teamID, provider: row.provider, account_key: row.accountKey })));
+  const removed = await tx.run(
+    `DELETE FROM account_exclusions x WHERE x.user_id = $1 AND x.device_id = $2
+     AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset($3::jsonb) AS r(team_id text, provider text, account_key text)
+                     WHERE r.team_id = x.team_id AND r.provider = x.provider AND r.account_key = x.account_key)`,
+    [userID, deviceID, rows],
+  );
+  const added = await tx.run(
+    `INSERT INTO account_exclusions (user_id, device_id, team_id, provider, account_key)
+     SELECT $1, $2, r.team_id, r.provider, r.account_key
+     FROM jsonb_to_recordset($3::jsonb) AS r(team_id text, provider text, account_key text)
+     JOIN team_members m ON m.team_id = r.team_id AND m.user_id = $1
+     ON CONFLICT (user_id, device_id, team_id, account_key) DO UPDATE SET provider = excluded.provider
+     WHERE account_exclusions.provider IS DISTINCT FROM excluded.provider`,
+    [userID, deviceID, rows],
+  );
+  return removed + added;
 }
 
 /** DELETE /v1/devices/:deviceID — removes this Mac and its usage (the user stopped sharing on it). */
