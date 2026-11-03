@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.4.0
+
+### New Features
+- Leave an account out of a team: Settings → Teams lists this Mac's accounts under the selected team, and turning one off (like a personal plan next to the work one) drops its spend, ⚡, and plan quota from that team only ([#78](https://github.com/federico-app/godusage/pull/78)) by @andreaAppload
+
+### Chores
+- Build DEV releases on macos-26-intel runners ([#79](https://github.com/federico-app/godusage/pull/79)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.3.3...v1.4.0](https://github.com/federico-app/godusage/compare/v1.3.3...v1.4.0)
+
+- [80801c4](https://github.com/federico-app/godusage/commit/80801c4cd7aafddd455696d3237e95fd5a7b3f88) feat(teams): leave an account out of a team (#78) by @andreaAppload
+- [9e83397](https://github.com/federico-app/godusage/commit/9e83397df6a3678879e9d4b9cdedb2a74ccfe85a) ci: build DEV releases on macos-26-intel runners by @andreaAppload
+
 ## v1.3.3
 
 ### New Features
