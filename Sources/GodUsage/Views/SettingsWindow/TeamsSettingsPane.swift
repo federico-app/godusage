@@ -22,6 +22,7 @@ struct TeamsSettingsPane: View {
                 if let teamID = teams.selectedTeamID, let summary = teams.teams.first(where: { $0.id == teamID }) {
                     TeamDetailSection(teams: teams, summary: summary)
                         .id(teamID)
+                    TeamAccountsSection(teams: teams, summary: summary)
                     if summary.role == .owner {
                         TeamPlansSection(teamID: teamID)
                     }

@@ -127,12 +127,16 @@ export interface QuotaRow {
   observed_at: string;
 }
 
-/** The counted members' quota windows that reset after `from` (a calendar day). */
+/**
+ * The counted members' quota windows that reset after `from` (a calendar day), without the accounts
+ * a member leaves out of the team.
+ */
 export async function teamQuotaWindows(db: Queryable, teamID: string, from: string): Promise<QuotaRow[]> {
   return db.query<QuotaRow>(
     `SELECT q.user_id, q.provider, q.account_key, q.ends_at, q.period_hours, q.percent, q.observed_at
      FROM quota_windows q JOIN team_members m ON m.user_id = q.user_id AND m.team_id = $1 AND m.counts_usage
-     WHERE q.ends_at >= $2`,
+     WHERE q.ends_at >= $2
+     AND NOT EXISTS (SELECT 1 FROM account_exclusions x WHERE x.team_id = $1 AND x.user_id = q.user_id AND x.account_key = q.account_key)`,
     [teamID, from],
   );
 }
