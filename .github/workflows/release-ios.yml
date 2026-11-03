@@ -78,7 +78,7 @@ jobs:
   # and vice versa. iOS has no notarization; the App Store Connect upload is its equivalent.
   testflight:
     name: iOS TestFlight
-    runs-on: macos-26
+    runs-on: macos-26-intel
     needs: ios-gate
     if: needs.ios-gate.outputs.ship == 'true'
     env:
