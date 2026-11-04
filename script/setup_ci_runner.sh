@@ -47,7 +47,7 @@ digest="$(jq -r --arg name "$archive" '.assets[] | select(.name == $name) | .dig
 
 mkdir -p "$ROOT"
 if [[ ! -f "$ROOT/$archive" ]]; then
-  echo "Downloading runner $version…"
+  echo "Downloading runner ${version}..."
   curl -fsSL -o "$ROOT/$archive.part" "https://github.com/actions/runner/releases/download/v$version/$archive"
   if [[ -n "$digest" ]]; then
     actual="sha256:$(shasum -a 256 "$ROOT/$archive.part" | cut -d' ' -f1)"
