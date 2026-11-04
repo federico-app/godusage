@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.5.0
+
+### New Features
+- Plans: daily share of the weekly limit, 5-hour sessions, and forecasts paced on the team's working days (Mon–Fri by default). Quota windows are matched by account, so one account on several Macs counts once, and plans warn when an account can't be identified ([#82](https://github.com/federico-app/godusage/pull/82)) by @andreaAppload
+- Settings → Teams: a team picker and Members, Accounts, Plans, and You pages ([#83](https://github.com/federico-app/godusage/pull/83)) by @andreaAppload
+
+### Chores
+- CI: run every macOS job on self-hosted Apple silicon runners ([#84](https://github.com/federico-app/godusage/pull/84)) by @andreaAppload
+- CI: drop the .build cache from the DEV release ([#85](https://github.com/federico-app/godusage/pull/85)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.4.0...v1.5.0](https://github.com/federico-app/godusage/compare/v1.4.0...v1.5.0)
+
+- [eef69bf](https://github.com/federico-app/godusage/commit/eef69bfed07acfb779c27845b3fea43b217b02f0) feat(teams): daily quota, sessions, and working-day forecasts in Plans (#82) by @andreaAppload
+- [e762897](https://github.com/federico-app/godusage/commit/e76289751e5af1e62c6e842e442c159c89863213) CI: run every macOS job on self-hosted Apple silicon runners (#84) by @andreaAppload
+- [b5c0b12](https://github.com/federico-app/godusage/commit/b5c0b121e52b4b25d2fababa2aa998e6956e119d) Settings → Teams: team picker and pages (#83) by @andreaAppload
+- [5ea46b5](https://github.com/federico-app/godusage/commit/5ea46b5d320dc6dd6e17c028760e8b76477e17c8) ci: drop the .build cache from the DEV release (#85) by @andreaAppload
+
 ## v1.4.0
 
 ### New Features
