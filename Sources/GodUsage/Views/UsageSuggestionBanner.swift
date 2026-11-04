@@ -4,6 +4,7 @@ import SwiftUI
 /// right now (see `UsageAdvisor`). Closing it shows the next one, if any; a dismissed suggestion
 /// stays away until its situation changes.
 struct UsageSuggestionBanner: View {
+    @Environment(AppContainer.self) private var container
     let suggestion: UsageSuggestion
     let onDismiss: () -> Void
 
@@ -14,7 +15,8 @@ struct UsageSuggestionBanner: View {
             message: suggestion.message,
             tint: TotalSpendPalette.color(for: suggestion.family),
             buttonTitle: suggestion.kind == .planUnderused ? "Open Plans" : nil,
-            action: { TeamsWindowLink.open() },
+            // The underused plan belongs to the popover's team, so the window opens on it.
+            action: { TeamsWindowLink.open(teamID: container.teams.selectedTeamID) },
             onDismiss: onDismiss
         )
     }

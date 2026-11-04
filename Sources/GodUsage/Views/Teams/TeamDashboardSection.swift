@@ -272,7 +272,7 @@ struct TeamDashboardSection: View {
 
     /// Opens the Teams window: every range, charts, models, and the two-member comparison.
     private var advancedStatsRow: some View {
-        Button { TeamsWindowLink.open() } label: {
+        Button { TeamsWindowLink.open(teamID: container.teams.selectedTeamID) } label: {
             HStack(spacing: 8) {
                 Image(systemName: "chart.bar.xaxis")
                     .font(.system(size: 12, weight: .medium))

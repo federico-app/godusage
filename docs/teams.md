@@ -100,7 +100,7 @@ Every ranking except Year shows each member's movement since the period before: 
 
 Providers have the same color everywhere: the popover's Cost ring, the dashboard's Team section, the Teams window, and the web boards (Claude is terracotta, Codex green, Cursor black, or white in dark mode). Every chart also has a legend and value labels, so no number depends on color alone.
 
-The popover, the Teams window, and Settings share the selected team.
+The popover, the Teams window, and Settings → Teams each keep their own team. Switching team in the Teams window or in Settings leaves the popover and the menu bar on theirs. **Advanced Stats** and **Open Plans** open the Teams window on the popover's team, and **Open Leaderboards** on the team Settings shows. Until you pick one there, or when you leave it, the Teams window and Settings show the popover's team.
 
 Days are calendar days on each Mac. Refresh uploads this Mac's latest usage and reloads.
 

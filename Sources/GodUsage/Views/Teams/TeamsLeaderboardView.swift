@@ -7,6 +7,8 @@ struct TeamsLeaderboardView: View {
     @AppStorage("godusage.teams.window.range") private var range: StatsRange = .week
     @AppStorage("godusage.teams.window.sort") private var sort: StatsSort = .cost
     @AppStorage("godusage.teams.window.mode") private var mode: Mode = .leaderboard
+    /// The window's own team, independent of the popover's (see `TeamsStore.teamID(preferring:)`).
+    @AppStorage(TeamsWindowLink.teamStorageKey) private var storedTeamID = ""
     @Environment(\.colorScheme) private var colorScheme
     @State private var wrappedNotice: String?
 
@@ -74,8 +76,7 @@ struct TeamsLeaderboardView: View {
         var teamCount: Int
     }
 
-    /// Shared with the dashboard's Team section and the Teams settings pane.
-    private var currentTeamID: String? { container.teams.selectedTeamID }
+    private var currentTeamID: String? { container.teams.teamID(preferring: storedTeamID) }
 
     private func load() async {
         guard let teamID = currentTeamID else {
@@ -98,7 +99,7 @@ struct TeamsLeaderboardView: View {
 
     private var toolbar: some View {
         HStack(spacing: 12) {
-            Picker("Team", selection: Binding(get: { currentTeamID ?? "" }, set: { container.teams.selectedTeamID = $0 })) {
+            Picker("Team", selection: Binding(get: { currentTeamID ?? "" }, set: { storedTeamID = $0 })) {
                 ForEach(container.teams.teams) { team in
                     Text(team.name).tag(team.id)
                 }
