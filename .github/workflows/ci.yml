@@ -22,11 +22,16 @@ jobs:
     # built here reports minos 15.0. We do NOT add a macos-15 runner leg — back-deployment compiles
     # against the newest SDK, and a stock macos-15 runner ships Swift 6.1 without the macOS 26 SDK, so
     # it cannot build this package. Runtime verification on Sequoia is a manual smoke pass.
-    runs-on: macos-26-intel
+    runs-on: [self-hosted, macOS, ARM64, godusage]
+    # Self-hosted runner on a public repo: never run code from a fork's PR on it.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Select Xcode
+        run: echo "DEVELOPER_DIR=${GODUSAGE_XCODE:-/Applications/Xcode.app}/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Build
         run: swift build
@@ -41,11 +46,16 @@ jobs:
   # release-ios.yml. Unsigned simulator build only — signing and upload happen only at release time.
   ios:
     name: Build iOS App
-    runs-on: macos-26-intel
+    runs-on: [self-hosted, macOS, ARM64, godusage]
+    # Self-hosted runner on a public repo: never run code from a fork's PR on it.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Select Xcode
+        run: echo "DEVELOPER_DIR=${GODUSAGE_XCODE:-/Applications/Xcode.app}/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Build
         run: |
