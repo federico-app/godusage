@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-26-intel
+    runs-on: [self-hosted, macOS, ARM64, godusage]
     # actions: write lets this job dispatch deploy-update-feed.yml the moment the feed is published,
     # instead of waiting for the whole run (the iOS jobs below can keep it open for up to an hour).
     permissions:
@@ -56,7 +56,9 @@ jobs:
         # The app icon is committed prebuilt (see script/compile_icon.sh) because no actool on GitHub's
         # runners can compile its Liquid Glass `.icon` (Apple regression FB20183399), so the default
         # runner Xcode is fine for the build/sign/notarize steps.
-        run: sudo xcode-select -s /Applications/Xcode.app
+        # Self-hosted runner (see docs/ci-runner.md): no sudo, so pick Xcode per job. The runner's
+        # .env names it (GODUSAGE_XCODE); otherwise the default Xcode.
+        run: echo "DEVELOPER_DIR=${GODUSAGE_XCODE:-/Applications/Xcode.app}/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Resolve tag and version
         id: meta
@@ -105,6 +107,9 @@ jobs:
       - name: Import Developer ID certificate
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
         with:
+          # Self-hosted runners share one login keychain search list: a keychain per job keeps
+          # concurrent jobs from deleting each other's.
+          keychain: signing-${{ github.run_id }}-${{ github.job }}
           # Developer ID Application cert (.p12, base64) used to sign the app and DMG.
           p12-file-base64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}

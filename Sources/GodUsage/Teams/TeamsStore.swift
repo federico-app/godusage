@@ -401,7 +401,7 @@ final class TeamsStore {
             excludedCards: uploadExclusions(),
             accountKey: { Self.accountKey(for: $0, deviceID: deviceID) }
         )
-        upload.quotaWindows = recordQuota(sources.compactMap(\.quota), deviceID: deviceID)
+        upload.quotaWindows = recordQuota(sources.flatMap(\.quotas), deviceID: deviceID)
         if !force, upload == lastUploaded, let lastUploadAt,
            now().timeIntervalSince(lastUploadAt) < minimumUploadInterval {
             return
@@ -427,7 +427,7 @@ final class TeamsStore {
     }
 
     /// Folds this pass's quota readings into the saved log and returns it as the upload sends it.
-    /// An account with no fingerprint of its own (Claude, Codex) is named by this Mac and its card.
+    /// A login that names no account (see `TeamQuotaAccount`) is named by this Mac and its card.
     private func recordQuota(_ readings: [TeamQuotaReading], deviceID: String) -> [TeamUsageUpload.QuotaWindow] {
         var log = TeamQuotaLog()
         if let data = defaults.data(forKey: Self.quotaLogKey) {
@@ -437,8 +437,8 @@ final class TeamsStore {
                 AppLog.error(.teams, "couldn't read the saved quota log, starting a new one: \(error)")
             }
         }
-        log.record(readings, account: { reading in
-            reading.accountKey ?? TeamAccountKey.make(provider: reading.provider, accountID: Self.localAccountID(cardID: reading.cardID, deviceID: deviceID))
+        log.record(readings, perDeviceKey: { reading in
+            TeamAccountKey.make(provider: reading.provider, accountID: Self.localAccountID(cardID: reading.cardID, deviceID: deviceID))
         }, now: now())
         do {
             defaults.set(try JSONEncoder().encode(log), forKey: Self.quotaLogKey)

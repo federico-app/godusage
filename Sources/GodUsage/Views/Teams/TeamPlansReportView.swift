@@ -19,7 +19,7 @@ struct TeamPlansReportView: View {
                     summary(report)
                     underused(report)
                     planList(report)
-                    Text("Value is the usage of each provider by the members a plan covers, in the plan's current cycle, priced at API rates. Plans of one provider that cover the same usage split it by cost. Quota used is the average share of the weekly limit (Claude, Codex) or the cycle's included usage (Cursor) the plan's accounts use, per account, since one account can be shared.")
+                    Text("Value is the usage of each provider by the members a plan covers, in the plan's current cycle, priced at API rates. Plans of one provider that cover the same usage split it by cost. Quota used is the average share of the weekly limit (Claude, Codex) or the cycle's included usage (Cursor) the plan's accounts use, per account, since one account can be shared. Per Day is the share of the weekly limit used each day, averaged per account; the dashed line is the pace that uses exactly the week in the team's working days. Forecasts count only working days (\(workingDaysText(report))), so weekends set no pace. Each square is one 5-hour session in the cycle, darker the more of it was used; outlined ones hit the limit.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
@@ -47,7 +47,7 @@ struct TeamPlansReportView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             if canEdit {
-                Button("Add Plans…") { SettingsWindowLink.open(pane: .teams) }
+                Button("Add Plans…") { TeamsSettingsTab.open(.plans) }
             }
         }
         .frame(maxWidth: .infinity)
@@ -146,6 +146,15 @@ struct TeamPlansReportView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
+            if plan.daily != nil || plan.sessions != nil {
+                TeamPlanUsageDetails(plan: plan, today: container.teams.localToday())
+            }
+            if let count = plan.perDeviceAccounts, count > 0, plan.quota != nil || plan.daily != nil || plan.sessions != nil {
+                Label(Self.perDeviceText(count), systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(Theme.notice)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let covered = coverageText(plan) {
                 Text(covered).font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
@@ -160,6 +169,14 @@ struct TeamPlansReportView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    /// The team's working days, like "Mon–Fri" or "Mon, Tue, Sat".
+    private func workingDaysText(_ report: TeamPlansReport) -> String {
+        let days = report.workingDays ?? TeamPlansReport.defaultWorkingDays
+        if days == [1, 2, 3, 4, 5] { return "\(TeamPlansSection.weekdaySymbol(1))–\(TeamPlansSection.weekdaySymbol(5))" }
+        if days.count == 7 { return "every day" }
+        return days.map(TeamPlansSection.weekdaySymbol).joined(separator: ", ")
     }
 
     /// Who a plan with a member list covers; nothing for plans that cover everyone.
@@ -197,6 +214,13 @@ struct TeamPlansReportView: View {
     /// Why a plan counts as underused: its quota share when there is one, else its value per dollar.
     static func underusedDetail(_ plan: TeamPlanReport) -> String {
         plan.quota.map { "\(percent($0.usedPercent)) of quota" } ?? multiple(plan.projectedMultiple)
+    }
+
+    /// Why some of a plan's quota figures may be off: accounts named per Mac count once per Mac.
+    static func perDeviceText(_ count: Int) -> String {
+        let accounts = count == 1 ? "1 account couldn't be identified" : "\(count) accounts couldn't be identified"
+        return "\(accounts) (an older GodUsage, or no Claude Code or Codex sign-in on that Mac). "
+            + "If one is used on several Macs, it counts once per Mac, so quota, Per Day, and Sessions may be off."
     }
 
     static func quotaText(_ quota: TeamPlanQuota, provider: String) -> String {

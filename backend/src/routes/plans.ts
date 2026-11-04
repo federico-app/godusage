@@ -7,6 +7,7 @@ import type { Env } from "../context";
 import type { Queryable } from "../db";
 import { cachedTeamResult } from "../teamCache";
 import { viewerToday } from "./challenges";
+import { parseWorkingDays, storedWorkingDays, type WorkingDays } from "../workingDays";
 
 type Role = "owner" | "member";
 
@@ -55,9 +56,14 @@ async function loadPlans(db: Queryable, teamID: string): Promise<PlanRow[]> {
   }));
 }
 
+async function loadWorkingDays(db: Queryable, teamID: string): Promise<WorkingDays> {
+  const row = await db.first<{ working_days: string }>("SELECT working_days FROM teams WHERE id = $1", [teamID]);
+  return storedWorkingDays(row?.working_days ?? null);
+}
+
 async function report(db: Queryable, teamID: string, today: string, now: Date) {
-  const detections = await teamDetections(db, teamID);
-  const plans = await planReports(db, teamID, await loadPlans(db, teamID), today, detections, now);
+  const [detections, workingDays] = await Promise.all([teamDetections(db, teamID), loadWorkingDays(db, teamID)]);
+  const plans = await planReports(db, teamID, await loadPlans(db, teamID), today, detections, now, workingDays);
   const totals = plans.reduce(
     (sum, plan) => ({
       monthlyCostUSD: sum.monthlyCostUSD + plan.monthlyCostUSD,
@@ -89,6 +95,7 @@ async function report(db: Queryable, teamID: string, today: string, now: Date) {
       quota,
     },
     detections,
+    workingDays,
   };
 }
 
@@ -97,12 +104,13 @@ async function report(db: Queryable, teamID: string, today: string, now: Date) {
  * keeps the members' detected plans (and the mismatches they cause) for owners only. A plan never
  * covers a viewer who doesn't count toward the team.
  */
-function forViewer(result: { plans: PlanReport[]; totals: object; detections: Detection[] }, userID: string, viewer: Membership) {
+function forViewer(result: { plans: PlanReport[]; totals: object; detections: Detection[]; workingDays: WorkingDays }, userID: string, viewer: Membership) {
   const owner = viewer.role === "owner";
   return {
     plans: result.plans.map((plan) => ({ ...plan, mismatches: owner ? plan.mismatches : [], includesYou: viewer.countsUsage && covers(plan, userID) })),
     totals: result.totals,
     detectedPlans: owner ? result.detections.map(({ userID: id, provider, plan, detectedAt, detectedOn }) => ({ userID: id, provider, plan, detectedAt, detectedOn })) : [],
+    workingDays: result.workingDays,
     canEdit: owner,
   };
 }
@@ -121,8 +129,8 @@ export const getPlans: Handler = async ({ request, env, url, params, deps }) => 
 };
 
 /**
- * PUT /v1/teams/:teamID/plans?today= { plans: [...] } — replaces the list, price histories included.
- * Owner only.
+ * PUT /v1/teams/:teamID/plans?today= { plans: [...], workingDays? } — replaces the list, price
+ * histories included, and the working days when sent. Owner only.
  */
 export const putPlans: Handler = async ({ request, env, url, params, deps }) => {
   const user = await requireUser(request, env.db);
@@ -130,7 +138,9 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
   const viewer = await membership(env.db, teamID, user.id);
   if (viewer.role !== "owner") throw forbidden("Only team owners can change plans.");
   const today = viewerToday(url, deps.now());
-  const parsed = parsePlans(await readJSONObject(request), today);
+  const body = await readJSONObject(request);
+  const parsed = parsePlans(body, today);
+  const workingDays = parseWorkingDays(body.workingDays);
   const members = await env.db.query<{ user_id: string }>("SELECT user_id FROM team_members WHERE team_id = $1 AND counts_usage", [teamID]);
   const memberIDs = new Set(members.map((row) => row.user_id));
   if (parsed.some((plan) => plan.memberIDs?.some((id) => !memberIDs.has(id)))) {
@@ -140,6 +150,7 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
   await env.db.transaction(async (tx) => {
     // Fields an older app leaves out keep their stored values (see `keepUnsentFields`).
     const plans = keepUnsentFields(parsed, await loadPlans(tx, teamID), today);
+    if (workingDays !== null) await tx.run("UPDATE teams SET working_days = $1 WHERE id = $2", [JSON.stringify(workingDays), teamID]);
     // Changes go with their plans (ON DELETE CASCADE).
     await tx.run("DELETE FROM team_plans WHERE team_id = $1", [teamID]);
     for (const [position, plan] of plans.entries()) {

@@ -79,7 +79,7 @@ describe("plan changes", () => {
     const body = { plans: [{ ...base, name: "Max 5x", monthlyCostUSD: 100, changes: [change("2026-10-03", "Max 5x", 100)] }] };
     const plan = (await api("PUT", `/v1/teams/${team.id}/plans`, { token: owner.token, body })).body.plans[0];
     // $200 for 2 of 31 days plus $100 for 29 of 31 days.
-    expect(plan).toMatchObject({ name: "Max 5x", monthlyCostUSD: 100, cycleCostUSD: 106.45, valueUSD: 62, projectedValueUSD: 384.4, projectedMultiple: 3.61 });
+    expect(plan).toMatchObject({ name: "Max 5x", monthlyCostUSD: 100, cycleCostUSD: 106.45, valueUSD: 62, projectedValueUSD: 258.33, projectedMultiple: 2.43 });
     expect(plan.periods).toEqual([
       { name: "Max 20x", monthlyCostUSD: 200, from: "2026-10-01", to: "2026-10-02", costUSD: 12.9, valueUSD: 31 },
       { name: "Max 5x", monthlyCostUSD: 100, from: "2026-10-03", to: "2026-10-31", costUSD: 93.55, valueUSD: 31 },

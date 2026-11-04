@@ -7,8 +7,8 @@ struct TeamHistorySource: Hashable, Sendable {
     var history: ProviderUsageHistory
     /// The plan the card detected (`ProviderSnapshot.plan`), e.g. "Max 20x".
     var plan: String? = nil
-    /// The card's limiting quota window, for the Plans report's quota share.
-    var quota: TeamQuotaReading? = nil
+    /// The card's limiting quota window and its session, for the Plans report.
+    var quotas: [TeamQuotaReading] = []
 }
 
 /// The body of `PUT /v1/devices/:id/usage`. Only totals leave the Mac: tokens and spend per day,
@@ -37,11 +37,17 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
     /// One account's quota window (see `TeamQuotaLog`). `account` is an anonymous fingerprint.
     struct QuotaWindow: Encodable, Hashable, Sendable {
         var provider: String
+        /// `limit` or `session`.
+        var kind: String
         var account: String
         var endsAt: String
         var periodHours: Int
         var percent: Double
         var observedAt: String
+        /// The share seen at the end of each local day, for weekly limit windows. Omitted otherwise.
+        var days: [TeamQuotaLog.Day]?
+        /// True when the account is named per Mac; omitted otherwise.
+        var perDevice: Bool?
     }
 
     struct Provider: Encodable, Hashable, Sendable {

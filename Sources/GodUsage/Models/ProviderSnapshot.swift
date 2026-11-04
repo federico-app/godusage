@@ -50,6 +50,9 @@ struct ProviderSnapshot: Hashable, Sendable, Codable {
     /// True: login unusable. False: a successful refresh verified it. Nil: unverified, such as
     /// local-only history after a network failure, or a snapshot from an older app version.
     var loginRequired: Bool?
+    /// The fingerprint of the account behind the card's quota rows (see `TeamQuotaAccount`), so a
+    /// team counts one account read on several Macs once. Nil when unknown, and in older caches.
+    var quotaAccountKey: String?
 
     /// `warningAction` with its default applied — see the property.
     var resolvedWarningAction: WarningAction { warningAction ?? .refresh }

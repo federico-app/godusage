@@ -78,7 +78,7 @@ jobs:
   # and vice versa. iOS has no notarization; the App Store Connect upload is its equivalent.
   testflight:
     name: iOS TestFlight
-    runs-on: macos-26-intel
+    runs-on: [self-hosted, macOS, ARM64, godusage]
     needs: ios-gate
     if: needs.ios-gate.outputs.ship == 'true'
     env:
@@ -94,7 +94,9 @@ jobs:
           persist-credentials: false
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+        # Self-hosted runner (see docs/ci-runner.md): no sudo, so pick Xcode per job. The runner's
+        # .env names it (GODUSAGE_XCODE); otherwise the default Xcode.
+        run: echo "DEVELOPER_DIR=${GODUSAGE_XCODE:-/Applications/Xcode.app}/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Resolve version and build
         id: meta
@@ -135,6 +137,9 @@ jobs:
       - name: Import Apple Distribution certificate
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
         with:
+          # Self-hosted runners share one login keychain search list: a keychain per job keeps
+          # concurrent jobs from deleting each other's.
+          keychain: signing-${{ github.run_id }}-${{ github.job }}
           p12-file-base64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
 

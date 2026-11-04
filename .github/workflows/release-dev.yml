@@ -29,27 +29,22 @@ concurrency:
 # the run takes as long as the slower of the two.
 jobs:
   test:
-    runs-on: macos-26-intel
+    runs-on: [self-hosted, macOS, ARM64, godusage]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
-
-      - name: Restore the debug build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .build
-          key: spm-debug-${{ runner.os }}-${{ hashFiles('Package.resolved') }}-${{ github.sha }}
-          restore-keys: spm-debug-${{ runner.os }}-${{ hashFiles('Package.resolved') }}-
+        # Self-hosted runner (see docs/ci-runner.md): no sudo, so pick Xcode per job. The runner's
+        # .env names it (GODUSAGE_XCODE); otherwise the default Xcode.
+        run: echo "DEVELOPER_DIR=${GODUSAGE_XCODE:-/Applications/Xcode.app}/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Run tests
         run: swift test
 
   build:
-    runs-on: macos-26-intel
+    runs-on: [self-hosted, macOS, ARM64, godusage]
     outputs:
       version: ${{ steps.meta.outputs.version }}
       tag: ${{ steps.meta.outputs.tag }}
@@ -65,7 +60,9 @@ jobs:
           persist-credentials: true
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+        # Self-hosted runner (see docs/ci-runner.md): no sudo, so pick Xcode per job. The runner's
+        # .env names it (GODUSAGE_XCODE); otherwise the default Xcode.
+        run: echo "DEVELOPER_DIR=${GODUSAGE_XCODE:-/Applications/Xcode.app}/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Resolve version
         id: meta
@@ -106,18 +103,12 @@ jobs:
             fi
           done
 
-      # An incremental release build reuses what the last dev release compiled. The key changes with
-      # every commit, so each run saves its own build and the next one starts from it.
-      - name: Restore the release build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .build
-          key: spm-release-arm64-${{ runner.os }}-${{ hashFiles('Package.resolved') }}-${{ github.sha }}
-          restore-keys: spm-release-arm64-${{ runner.os }}-${{ hashFiles('Package.resolved') }}-
-
       - name: Import Developer ID certificate
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
         with:
+          # Self-hosted runners share one login keychain search list: a keychain per job keeps
+          # concurrent jobs from deleting each other's.
+          keychain: signing-${{ github.run_id }}-${{ github.job }}
           p12-file-base64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
 
@@ -249,7 +240,7 @@ jobs:
   ios-testflight:
     needs: ios-gate
     if: needs.ios-gate.outputs.ship == 'true'
-    runs-on: macos-26-intel
+    runs-on: [self-hosted, macOS, ARM64, godusage]
     env:
       APPLE_TEAM_ID: S6X72K86R8
       CHANNEL: dev
@@ -260,7 +251,9 @@ jobs:
           persist-credentials: false
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+        # Self-hosted runner (see docs/ci-runner.md): no sudo, so pick Xcode per job. The runner's
+        # .env names it (GODUSAGE_XCODE); otherwise the default Xcode.
+        run: echo "DEVELOPER_DIR=${GODUSAGE_XCODE:-/Applications/Xcode.app}/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Resolve version
         id: meta
@@ -275,6 +268,9 @@ jobs:
       - name: Import Apple Distribution certificate
         uses: apple-actions/import-codesign-certs@5142e029c445c10ffc7149d172e540235a065466 # v7.0.0
         with:
+          # Self-hosted runners share one login keychain search list: a keychain per job keeps
+          # concurrent jobs from deleting each other's.
+          keychain: signing-${{ github.run_id }}-${{ github.job }}
           p12-file-base64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
 
