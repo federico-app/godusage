@@ -29,7 +29,7 @@ Provider modules live under `Sources/GodUsage/Providers/<Name>/`.
 
 ## Releases
 
-Production releases ship from `.github/workflows/release.yml` with a Sparkle appcast on `update-feed`. Cut them with the release-swift skill. Every push to `develop` ships the dev channel (**GodUsage DEV**, `com.montinovo.godusage.dev`) from `.github/workflows/release-dev.yml` as a `dev-<build>` prerelease with its own `appcast-dev.xml`. `docs/releasing.md` covers both channels, the secrets, and one-time setup.
+Production releases ship from `.github/workflows/release.yml` with a Sparkle appcast on `update-feed`. Cut them with the release-swift skill. Every macOS job (CI and releases) runs on self-hosted Apple silicon runners; see `docs/ci-runner.md`. Every push to `develop` ships the dev channel (**GodUsage DEV**, `com.montinovo.godusage.dev`) from `.github/workflows/release-dev.yml` as a `dev-<build>` prerelease with its own `appcast-dev.xml`. `docs/releasing.md` covers both channels, the secrets, and one-time setup.
 
 - Versions are `0.7.x` and up. Never reuse a `0.6.x` number. Those belong to the Tauri edition (final release `v0.6.28`).
 - Never bump the version on your own. Propose a number and wait for the owner's explicit approval before tagging or releasing.
