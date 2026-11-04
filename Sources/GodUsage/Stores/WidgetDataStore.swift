@@ -659,7 +659,7 @@ final class WidgetDataStore {
             guard isProviderEnabled(providerID), let snapshot = localSnapshots[providerID], let history = snapshot.usageHistory else { return nil }
             return TeamHistorySource(
                 cardID: providerID, scope: descriptor.scope, history: history, plan: snapshot.plan,
-                quota: TeamQuotaReading.make(cardID: providerID, snapshot: snapshot, accountKey: history.accountKey)
+                quotas: TeamQuotaReading.readings(cardID: providerID, snapshot: snapshot, accountKey: history.accountKey ?? snapshot.quotaAccountKey)
             )
         }
     }

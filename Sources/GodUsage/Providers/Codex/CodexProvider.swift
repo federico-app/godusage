@@ -216,7 +216,9 @@ final class CodexProvider: ProviderRuntime {
             accountID: authState.auth.tokens?.accountID
         )
         let mapped = try CodexUsageMapper.mapUsageResponse(response, resetCredits: resetCredits, now: now())
-        return await localUsageSnapshot(mapped: mapped, warning: nil)
+        var snapshot = await localUsageSnapshot(mapped: mapped, warning: nil)
+        snapshot.quotaAccountKey = TeamQuotaAccount.codex(authState.auth.tokens)
+        return snapshot
     }
 
     /// Assembles the published snapshot from whatever live usage is available plus the always-local

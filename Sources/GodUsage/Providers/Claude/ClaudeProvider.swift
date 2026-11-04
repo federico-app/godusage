@@ -284,13 +284,16 @@ final class ClaudeProvider: ProviderRuntime {
             warningIsConnectPrompt = fallbackWarning.isConnectPrompt
             if mapped.lines.isEmpty { loginRequired = true }
         }
-        return await localUsageSnapshot(
+        var snapshot = await localUsageSnapshot(
             mapped: mapped,
             warning: warning,
             warningAction: warningAction,
             warningIsConnectPrompt: warningIsConnectPrompt,
             loginRequired: loginRequired
         )
+        // The state file's account, which a live fetch has checked the token against.
+        snapshot.quotaAccountKey = TeamQuotaAccount.claude(state.expectedAccount)
+        return snapshot
     }
 
     /// Fetch live usage with the token exactly as Claude stored it. An expired token gets ONE

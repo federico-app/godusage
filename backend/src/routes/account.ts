@@ -125,7 +125,7 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
       tx.query("SELECT device_id, provider, slot, day, model, scope, tokens, cost_usd FROM usage_model_days WHERE user_id = $1 ORDER BY day, provider, slot, model", id),
       tx.query("SELECT device_id, provider, plan, detected_at, detected_on FROM detected_plans WHERE user_id = $1 ORDER BY device_id, provider", id),
       tx.query(
-        "SELECT device_id, provider, account_key, ends_at, period_hours, percent, observed_at FROM quota_windows WHERE user_id = $1 ORDER BY ends_at, provider, device_id",
+        "SELECT device_id, provider, kind, account_key, ends_at, period_hours, percent, observed_at, days, per_device FROM quota_windows WHERE user_id = $1 ORDER BY ends_at, provider, kind, device_id",
         id,
       ),
       tx.query("SELECT device_id, team_id, provider, account_key FROM account_exclusions WHERE user_id = $1 ORDER BY device_id, team_id, account_key", id),

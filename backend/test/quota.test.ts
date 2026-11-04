@@ -30,7 +30,8 @@ describe("plan quota", () => {
   it("averages each covered account's windows in the cycle and prices what's left unused", async () => {
     const { owner, team, members } = await teamWith(["Bea"]);
     // Cycle Oct 1–31. The owner's account used 80% of the week that reset Oct 2 and is on pace
-    // for 60% of the open one (30% at its midpoint); Bea's used 20%. A September window is left out.
+    // for 100% of the open one (30% with 36 of its 120 working hours gone: Friday and Monday
+    // morning); Bea's used 20%. A September window is left out.
     expect((await send(owner.token, "device-aaaa-0001", [
       weekly(A, -24 * 10, 99),
       weekly(A, -24 * 3, 80),
@@ -38,10 +39,10 @@ describe("plan quota", () => {
     ])).status).toBe(200);
     await send(members[0]!.token, "device-bbbb-0002", [weekly(B, -24 * 3, 20)]);
     const report = await savePlans(owner.token, team.id, [{ provider: "claude", name: "Max", monthlyCostUSD: 200, renewalDay: 1 }]);
-    // Owner's account: (80 + 60) / 2 = 70; Bea's: 20; plan: 45%.
-    expect(report.plans[0].quota).toEqual({ usedPercent: 45, accounts: 2, windows: 3, estimatedWindows: 0, wastedUSD: 110 });
-    expect(report.plans[0].underused).toBe(true);
-    expect(report.totals.quota).toEqual({ usedPercent: 45, cycleCostUSD: 200, wastedUSD: 110 });
+    // Owner's account: (80 + 100) / 2 = 90; Bea's: 20; plan: 55%.
+    expect(report.plans[0].quota).toEqual({ usedPercent: 55, accounts: 2, windows: 3, estimatedWindows: 0, wastedUSD: 90 });
+    expect(report.plans[0].underused).toBe(false);
+    expect(report.totals.quota).toEqual({ usedPercent: 55, cycleCostUSD: 200, wastedUSD: 90 });
   });
 
   it("counts an account once however many members share it, and only for plans that cover one of them", async () => {
@@ -90,7 +91,10 @@ describe("plan quota", () => {
 
     const exported = (await api("GET", "/v1/me/export", { token: owner.token })).body;
     expect(exported.quotaWindows).toEqual([
-      { device_id: "device-aaaa-0001", provider: "claude", account_key: A, ends_at: "2026-10-04T12:00:00.000Z", period_hours: 168, percent: 90, observed_at: "2026-10-04T12:00:00.000Z" },
+      {
+        device_id: "device-aaaa-0001", provider: "claude", kind: "limit", account_key: A, ends_at: "2026-10-04T12:00:00.000Z",
+        period_hours: 168, percent: 90, observed_at: "2026-10-04T12:00:00.000Z", days: null, per_device: true,
+      },
     ]);
 
     expect((await api("DELETE", "/v1/devices/device-aaaa-0001", { token: owner.token })).status).toBe(204);
