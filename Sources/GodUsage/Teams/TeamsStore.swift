@@ -53,6 +53,12 @@ final class TeamsStore {
         }
     }
     private var storedSelectedTeamID: String? = UserDefaults.standard.string(forKey: TeamsStore.selectedTeamKey)
+    /// The Teams window and Settings → Teams keep their own team, so switching there leaves the
+    /// popover and the menu bar alone. `stored` wins while it is still one of the user's teams;
+    /// otherwise they start from the popover's team.
+    func teamID(preferring stored: String?) -> String? {
+        teams.contains { $0.id == stored } ? stored : selectedTeamID
+    }
     private static let selectedTeamKey = "godusage.teams.selectedTeam.v1"
 
     struct StatsKey: Hashable {

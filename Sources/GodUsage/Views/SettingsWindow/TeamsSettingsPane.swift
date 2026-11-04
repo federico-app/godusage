@@ -8,6 +8,8 @@ import SwiftUI
 struct TeamsSettingsPane: View {
     @Environment(AppContainer.self) private var container
     @AppStorage(TeamsSettingsTab.storageKey) private var tab: TeamsSettingsTab = .members
+    /// The pane's own team, independent of the popover's (see `TeamsStore.teamID(preferring:)`).
+    @AppStorage("godusage.settings.teamsTeam") private var storedTeamID = ""
     private let density = DensitySetting.compact
 
     var body: some View {
@@ -18,8 +20,9 @@ struct TeamsSettingsPane: View {
             }
             if teams.isSignedIn {
                 TeamsInviteCard(teams: teams)
-                TeamsSettingsHeader(teams: teams, tab: $tab)
-                let summary = teams.teams.first { $0.id == teams.selectedTeamID }
+                let teamID = teams.teamID(preferring: storedTeamID)
+                TeamsSettingsHeader(teams: teams, teamID: teamID, selectTeam: { storedTeamID = $0 }, tab: $tab)
+                let summary = teams.teams.first { $0.id == teamID }
                 switch TeamsSettingsTab.available(for: summary).contains(tab) ? tab : .you {
                 case .members:
                     if let summary { TeamDetailSection(teams: teams, summary: summary).id(summary.id) }

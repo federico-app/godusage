@@ -33,17 +33,19 @@ enum TeamsSettingsTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// The top of the signed-in Teams pane: which team the pane shows (and the popover and Teams window,
-/// which share the selection), New Team and Join Team, and the page picker.
+/// The top of the signed-in Teams pane: which team the pane shows (its own pick, apart from the
+/// popover's and the Teams window's), New Team and Join Team, and the page picker.
 struct TeamsSettingsHeader: View {
     let teams: TeamsStore
+    let teamID: String?
+    let selectTeam: (String) -> Void
     @Binding var tab: TeamsSettingsTab
     @State private var isCreating = false
     @State private var isJoining = false
     @State private var text = ""
     @State private var joinError: String?
 
-    private var selected: TeamSummary? { teams.teams.first { $0.id == teams.selectedTeamID } }
+    private var selected: TeamSummary? { teams.teams.first { $0.id == teamID } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -55,8 +57,8 @@ struct TeamsSettingsHeader: View {
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Picker("Team", selection: Binding(
-                        get: { teams.selectedTeamID ?? "" },
-                        set: { teams.selectedTeamID = $0 }
+                        get: { teamID ?? "" },
+                        set: { selectTeam($0) }
                     )) {
                         ForEach(teams.teams) { team in
                             Text(team.role == .owner ? "\(team.name) (Owner)" : team.name).tag(team.id)
@@ -97,7 +99,7 @@ struct TeamsSettingsHeader: View {
                 guard !name.isEmpty else { return }
                 Task {
                     if let team = await teams.createTeam(named: name) {
-                        teams.selectedTeamID = team.id
+                        selectTeam(team.id)
                         tab = .members
                     }
                 }

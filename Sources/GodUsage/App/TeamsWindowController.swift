@@ -7,8 +7,18 @@ import SwiftUI
 public enum TeamsWindowLink {
     static var openHandler: (@MainActor () -> Void)?
 
+    /// The Teams window's own team, apart from the popover's (see `TeamsStore.teamID(preferring:)`).
+    static let teamStorageKey = "godusage.teams.window.team"
+
     public static func open() {
         openHandler?()
+    }
+
+    /// Opens the window on `teamID`, for buttons that belong to one team (Advanced Stats, Open
+    /// Leaderboards, Open Plans). The gear menu and ⌘T keep the window's own pick.
+    static func open(teamID: String?, defaults: UserDefaults = .standard) {
+        if let teamID { defaults.set(teamID, forKey: teamStorageKey) }
+        open()
     }
 }
 
