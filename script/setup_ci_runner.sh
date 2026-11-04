@@ -14,8 +14,25 @@ TOKEN="${1:?usage: script/setup_ci_runner.sh <registration-token> [count]}"
 COUNT="${2:-2}"
 REPO_URL="https://github.com/federico-app/godusage"
 ROOT="${GODUSAGE_RUNNER_ROOT:-$HOME/actions-runners/godusage}"
-# The Xcode the jobs build with (DEVELOPER_DIR), matching what the GitHub-hosted runners used.
-XCODE="${GODUSAGE_XCODE:-/Applications/Xcode 26.6.app}"
+# The newest stable Xcode in /Applications (betas have a letter at the end of their build number,
+# like 27C5023a). The jobs build with it through DEVELOPER_DIR.
+latest_stable_xcode() {
+  local best="" best_version="" app version build
+  for app in /Applications/Xcode*.app; do
+    [[ -d "$app/Contents/Developer" ]] || continue
+    version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Contents/Info.plist" 2>/dev/null)" || continue
+    build="$(/usr/libexec/PlistBuddy -c 'Print ProductBuildVersion' "$app/Contents/version.plist" 2>/dev/null)" || continue
+    [[ "$build" =~ [a-z]$ ]] && continue
+    if [[ -z "$best" ]] || [[ "$(printf '%s\n%s\n' "$best_version" "$version" | sort -V | tail -1)" == "$version" ]]; then
+      best="$app"
+      best_version="$version"
+    fi
+  done
+  [[ -n "$best" ]] && printf '%s' "$best"
+}
+XCODE="${GODUSAGE_XCODE:-$(latest_stable_xcode)}"
+[[ -n "$XCODE" ]] || { echo "No stable Xcode in /Applications. Set GODUSAGE_XCODE." >&2; exit 1; }
+echo "Jobs will build with $XCODE."
 
 [[ "$(uname -m)" == "arm64" ]] || { echo "This script sets up Apple silicon runners only." >&2; exit 1; }
 [[ -d "$XCODE/Contents/Developer" ]] || { echo "No Xcode at $XCODE. Set GODUSAGE_XCODE to the Xcode to build with." >&2; exit 1; }

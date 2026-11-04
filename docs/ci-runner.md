@@ -10,7 +10,7 @@ The macOS jobs ask for `[self-hosted, macOS, ARM64, godusage]`, so they wait in 
 2. On the Mac, run `script/setup_ci_runner.sh <token>`. It downloads the latest runner (checking its checksum), registers two runners (`<host>-1`, `<host>-2`, so two jobs can run at once) under `~/actions-runners/godusage`, and installs each as a launchd agent that starts at login. `gh`, `jq`, and `node` must be installed.
 3. The first DMG build asks to let the runner control Finder (it lays out the DMG window). Allow it once.
 
-`GODUSAGE_XCODE` picks the Xcode the jobs build with (default `/Applications/Xcode 26.6.app`). The script writes it into each runner's `.env`, and each job sets `DEVELOPER_DIR` from it, since a runner can't `sudo xcode-select`. To change it later, edit `GODUSAGE_XCODE` in `~/actions-runners/godusage/runner-*/.env` and restart the runners (`./svc.sh stop && ./svc.sh start` in each folder).
+The jobs build with the newest stable Xcode in `/Applications` (betas are skipped), or the one `GODUSAGE_XCODE` names when you run the script. The script writes it into each runner's `.env`, and each job sets `DEVELOPER_DIR` from it, since a runner can't `sudo xcode-select`. After installing a newer Xcode, edit `GODUSAGE_XCODE` in `~/actions-runners/godusage/runner-*/.env` and restart the runners (`./svc.sh stop && ./svc.sh start` in each folder).
 
 ## Safety
 
