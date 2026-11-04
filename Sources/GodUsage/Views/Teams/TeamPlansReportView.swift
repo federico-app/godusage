@@ -47,7 +47,7 @@ struct TeamPlansReportView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             if canEdit {
-                Button("Add Plans…") { SettingsWindowLink.open(pane: .teams) }
+                Button("Add Plans…") { TeamsSettingsTab.open(.plans) }
             }
         }
         .frame(maxWidth: .infinity)
