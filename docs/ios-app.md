@@ -2,7 +2,7 @@
 
 GodUsageMobile (in `ios/`) is a read-only iPhone and iPad viewer for your Teams usage. It holds no provider credentials and reads everything from the GodUsage teams server.
 
-Link the phone once by QR code: on a Mac signed in to Teams, open **Settings → Teams → iPhone and iPad → Link iPhone or iPad…**, then tap **Scan Code** in the app (or scan the code with the Camera app, which opens GodUsage). See [Teams](teams.md#iphone-and-ipad).
+Link the phone once by QR code: on a Mac signed in to Teams, open **Settings → Teams → You → iPhone and iPad → Link iPhone or iPad…**, then tap **Scan Code** in the app (or scan the code with the Camera app, which opens GodUsage). See [Teams](teams.md#iphone-and-ipad).
 
 Once linked, the app shows:
 
