@@ -46,4 +46,5 @@ What each provider tracks, where its credentials come from, and what its errors 
 - [Debugging and logs](debugging.md): running a local build and streaming logs
 - [Logging](logging.md): the file log, log levels, subsystem tags, and what is never logged
 - [Releasing](releasing.md): the release pipeline and its one-time setup (maintainer only)
+- [CI runner](ci-runner.md): the self-hosted Mac runners every macOS job runs on (maintainer only)
 - [Teams backend](teams-backend.md): the server behind teams, invites, and leaderboards (Coolify, Postgres, Redis, and a proxy Worker), and how to set it up
