@@ -1,11 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// The Settings window's Teams pane, top to bottom: the account, the team list, the selected
-/// team's members and links, and the account actions. Leaderboards live in the popover's Team
-/// screen and the Teams window.
+/// The Settings window's Teams pane: a pending invitation, the team picker, and one page at a time
+/// (see `TeamsSettingsTab`): the selected team's members and links, which accounts count in it, its
+/// plans, and the user's own account. Leaderboards live in the popover's Team screen and the Teams
+/// window.
 struct TeamsSettingsPane: View {
     @Environment(AppContainer.self) private var container
+    @AppStorage(TeamsSettingsTab.storageKey) private var tab: TeamsSettingsTab = .members
     private let density = DensitySetting.compact
 
     var body: some View {
@@ -16,18 +18,20 @@ struct TeamsSettingsPane: View {
             }
             if teams.isSignedIn {
                 TeamsInviteCard(teams: teams)
-                TeamsAccountSection(teams: teams)
-                TeamsLinkedDevicesSection()
-                TeamsListSection(teams: teams)
-                if let teamID = teams.selectedTeamID, let summary = teams.teams.first(where: { $0.id == teamID }) {
-                    TeamDetailSection(teams: teams, summary: summary)
-                        .id(teamID)
-                    TeamAccountsSection(teams: teams, summary: summary)
-                    if summary.role == .owner {
-                        TeamPlansSection(teamID: teamID)
-                    }
+                TeamsSettingsHeader(teams: teams, tab: $tab)
+                let summary = teams.teams.first { $0.id == teams.selectedTeamID }
+                switch TeamsSettingsTab.available(for: summary).contains(tab) ? tab : .you {
+                case .members:
+                    if let summary { TeamDetailSection(teams: teams, summary: summary).id(summary.id) }
+                case .accounts:
+                    if let summary { TeamAccountsSection(teams: teams, summary: summary) }
+                case .plans:
+                    if let summary { TeamPlansSection(teamID: summary.id).id(summary.id) }
+                case .you:
+                    TeamsAccountSection(teams: teams)
+                    TeamsLinkedDevicesSection()
+                    TeamsAccountActionsSection(teams: teams)
                 }
-                TeamsAccountActionsSection(teams: teams)
             } else {
                 TeamsSignedOutSection(teams: teams)
             }
@@ -239,88 +243,6 @@ private struct DeviceIdentityNotice: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-    }
-}
-
-private struct TeamsListSection: View {
-    let teams: TeamsStore
-    @State private var isCreating = false
-    @State private var isJoining = false
-    @State private var text = ""
-    @State private var joinError: String?
-
-    var body: some View {
-        SettingsSection("Teams") {
-            ForEach(Array(teams.teams.enumerated()), id: \.element.id) { index, team in
-                if index > 0 { Divider() }
-                teamRow(team)
-            }
-            if !teams.teams.isEmpty { Divider() }
-            HStack {
-                Button("New Team…") { text = ""; isCreating = true }
-                Button("Join Team…") { text = ""; joinError = nil; isJoining = true }
-                Spacer()
-            }
-            .disabled(teams.isBusy)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            if let joinError {
-                SettingsInlineNotice(joinError)
-            }
-        }
-        .alert("New Team", isPresented: $isCreating) {
-            TextField("Team name", text: $text)
-            Button("Create") {
-                let name = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !name.isEmpty else { return }
-                Task {
-                    if let team = await teams.createTeam(named: name) { teams.selectedTeamID = team.id }
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("You'll be its owner and can invite people with a link.")
-        }
-        .alert("Join Team", isPresented: $isJoining) {
-            TextField("Invite link", text: $text)
-            Button("Join") {
-                let link = text
-                Task {
-                    joinError = await teams.receiveInvite(link) ? nil : "That isn't a GodUsage invite link."
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Paste the invite link a team member shared with you.")
-        }
-    }
-
-    private func teamRow(_ team: TeamSummary) -> some View {
-        let isSelected = team.id == teams.selectedTeamID
-        return Button {
-            teams.selectedTeamID = team.id
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                Text(team.name).lineLimit(1)
-                if team.role == .owner {
-                    Text("Owner")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
-                        .background(.secondary.opacity(0.12), in: Capsule())
-                }
-                Spacer(minLength: 8)
-                Text(team.memberCount == 1 ? "1 member" : "\(team.memberCount) members")
-                    .foregroundStyle(.secondary)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 12)
-        .padding(.vertical, DensitySetting.compact.controlRowPadding)
     }
 }
 

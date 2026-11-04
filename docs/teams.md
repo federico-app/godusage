@@ -6,11 +6,13 @@ Teams let you compare AI usage with friends. Create a team, share its invite lin
 
 Open **Settings → Teams** and choose **Sign In with Apple**. Apple's sign-in page opens in Safari, whatever your default browser is; if Safari is already signed in to your Apple ID, you only confirm. Safari then asks to open GodUsage, which finishes the sign-in. A sign-in left unfinished for 10 minutes, or replaced by a new one, is dropped. The first sign-in creates your account. Your display name starts as the name Apple shares (or "GodUsage User") and you can change it in the same pane. It is what teammates see. GodUsage never receives or stores your email.
 
+Once you're signed in, the pane shows one team at a time: pick it at the top (the same selection as the popover and the Teams window), next to **New Team…** and **Join Team…**. Below, the pages are **Members** (the team, its members, and its links), **Accounts** (which of this Mac's accounts count in it), **Plans** (owners only), and **You** (your name, this Mac's sharing, Show Rank in Menu Bar, iPhone and iPad, and the account actions). With no team yet, only **You** shows.
+
 The sign-in stays on this Mac until you sign out, delete the account, or it goes unused for 180 days. Each Mac signs in on its own. Signing in on another Mac with the same Apple ID uses the same account, so your Macs add up to one person on the leaderboard.
 
 ## iPhone and iPad
 
-The GodUsage iPhone app signs in to the same account by scanning a QR code from a Mac that is already signed in. Open **Settings → Teams → iPhone and iPad**, choose **Link iPhone or iPad…**, and scan the code with the app. A code works once and expires after three minutes; asking for a new one cancels the old one. The sheet closes on its own once the device links.
+The GodUsage iPhone app signs in to the same account by scanning a QR code from a Mac that is already signed in. Open **Settings → Teams → You → iPhone and iPad**, choose **Link iPhone or iPad…**, and scan the code with the app. A code works once and expires after three minutes; asking for a new one cancels the old one. The sheet closes on its own once the device links.
 
 The section lists every linked device by name. **Unlink…** signs that device out. A linked device stays signed in when the Mac signs out, until it is unlinked, signs itself out, the account is deleted, or it goes unused for 180 days. A linked device cannot show codes for other devices. DEV builds link only to the DEV iPhone app, and production builds only to the production app.
 
@@ -18,8 +20,8 @@ Development builds (`com.montinovo.godusage.dev`) use a separate backend with se
 
 ## Teams and invites
 
-- **Create a team** under **Add a Team**. You are its owner.
-- **Invite people** by copying the team's **Invite Link** in **Your Teams**. Anyone with the link can join. Opening it shows the team name and an **Open in GodUsage** button. GodUsage then opens Settings → Teams and asks you to confirm. You can also paste a link into **Invite Link** under **Add a Team**.
+- **Create a team** with **New Team…**. You are its owner.
+- **Invite people** by copying the team's **Invite Link** on its **Members** page. Anyone with the link can join. Opening it shows the team name and an **Open in GodUsage** button. GodUsage then opens Settings → Teams and asks you to confirm. You can also paste a link into **Join Team…**.
 - **Owners** can make a **New Link** (the old one stops working; members stay), share a public leaderboard, edit plans, **Rename…** the team, and delete it. From the **⋯** menu next to a member, they can **Make Owner…**, **Make Member** (for another owner), or **Remove…**. A team can have several owners, all with the same powers.
 - **Count My Usage** (owners only, on by default): turn it off to run a team without being part of it. Your usage leaves its leaderboards, challenges, Hall of Fame, and plans, and plans can no longer cover you; you keep managing everything. The member list marks you **Not Counted**. A plan that covers only you must be changed first. Being made a member turns it back on.
 - **Anyone** can leave. The last owner cannot; they make someone else an owner first, or delete the team.
@@ -43,13 +45,13 @@ Your Macs are combined on the server. Local usage (Claude, Codex, Grok, and othe
 
 **Shared accounts.** Cursor reports usage per account, not per person. When two or more members log into the same Cursor account, their usage is counted once: it is in the team total, the providers, By Day, and Top Models, but in no member's total. It shows as an unranked **Shared Cursor** row after the members, with who shares it, on the dashboard, in the Teams window, and on the web boards. To tell accounts apart, each Mac sends an anonymous fingerprint of its Cursor account (a one-way hash); the account id itself never leaves the Mac.
 
-**Export My Data** (Settings → Teams) saves everything the service keeps about you as a JSON file. The service's [Terms](https://godusage-api.federico-c80.workers.dev/terms) and [Privacy Policy](https://godusage-api.federico-c80.workers.dev/privacy) are linked at sign-in.
+**Export My Data** (Settings → Teams → You) saves everything the service keeps about you as a JSON file. The service's [Terms](https://godusage-api.federico-c80.workers.dev/terms) and [Privacy Policy](https://godusage-api.federico-c80.workers.dev/privacy) are linked at sign-in.
 
 **Sign Out** removes this Mac's usage from your teams first, then ends the session. If removing it fails, you stay signed in and see the error. **Delete Account** removes your account, the usage all your Macs shared, and the teams you own.
 
 ### Accounts Counted
 
-Settings → Teams lists, under the selected team, every account this Mac shares (each Claude or Codex login, Cursor, and the other providers). All of them count by default. Turn one off, like a personal plan next to the work one, to leave it out of that team only: its spend, tokens, and models leave the team's leaderboards, challenges, Hall of Fame, and ⚡, and its quota leaves the team's plans. Your other teams still count it. Teammates see only your smaller total, never the left-out account. The change uploads at once and shows on the team's boards right away.
+Settings → Teams → Accounts lists, for the selected team, every account this Mac shares (each Claude or Codex login, Cursor, and the other providers). All of them count by default. Turn one off, like a personal plan next to the work one, to leave it out of that team only: its spend, tokens, and models leave the team's leaderboards, challenges, Hall of Fame, and ⚡, and its quota leaves the team's plans. Your other teams still count it. Teammates see only your smaller total, never the left-out account. The change uploads at once and shows on the team's boards right away.
 
 The choice is kept on this Mac, per team. If an account is on several Macs, turn it off on each one. It applies to the last 30 days, which every upload resends; older days stay as they were shared.
 
@@ -94,7 +96,7 @@ Every ranking except Year shows each member's movement since the period before: 
 
 **Share Wrapped** (Teams window) copies an image of your standing in the team over the last 30 days or 12 months: your rank, spend, tokens, efficiency, top provider and model, and the team's top five.
 
-**Show Rank in Menu Bar** (Settings → Teams) adds your rank, your share of the team's spend, and your spend today in the selected team to the menu bar. See [Menu bar](menu-bar.md#team-rank).
+**Show Rank in Menu Bar** (Settings → Teams → You) adds your rank, your share of the team's spend, and your spend today in the selected team to the menu bar. See [Menu bar](menu-bar.md#team-rank).
 
 Providers have the same color everywhere: the popover's Cost ring, the dashboard's Team section, the Teams window, and the web boards (Claude is terracotta, Codex green, Cursor black, or white in dark mode). Every chart also has a legend and value labels, so no number depends on color alone.
 
