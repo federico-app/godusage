@@ -1,18 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { currentCycle } from "../src/plans";
+import { DEFAULT_WORKING_DAYS } from "../src/workingDays";
 import { api, teamWith, upload } from "./support";
 
 describe("plan cycles", () => {
   it("runs from the last renewal to the day before the next", () => {
-    expect(currentCycle(12, "2026-10-05")).toEqual({ from: "2026-09-12", to: "2026-10-11", daysElapsed: 24, daysTotal: 30, daysLeft: 6 });
-    expect(currentCycle(5, "2026-10-05")).toMatchObject({ from: "2026-10-05", to: "2026-11-04", daysElapsed: 1 });
-    expect(currentCycle(1, "2026-12-31")).toMatchObject({ from: "2026-12-01", to: "2026-12-31", daysLeft: 0 });
+    expect(currentCycle(12, "2026-10-05", DEFAULT_WORKING_DAYS)).toEqual({ from: "2026-09-12", to: "2026-10-11", daysElapsed: 24, daysTotal: 30, daysLeft: 6, workingDaysElapsed: 16, workingDaysLeft: 4 });
+    expect(currentCycle(5, "2026-10-05", DEFAULT_WORKING_DAYS)).toMatchObject({ from: "2026-10-05", to: "2026-11-04", daysElapsed: 1 });
+    expect(currentCycle(1, "2026-12-31", DEFAULT_WORKING_DAYS)).toMatchObject({ from: "2026-12-01", to: "2026-12-31", daysLeft: 0 });
   });
 
   it("renews on the last day of shorter months", () => {
-    expect(currentCycle(31, "2026-02-28")).toMatchObject({ from: "2026-02-28", to: "2026-03-30" });
-    expect(currentCycle(31, "2026-03-15")).toMatchObject({ from: "2026-02-28", to: "2026-03-30" });
-    expect(currentCycle(30, "2026-01-05")).toMatchObject({ from: "2025-12-30", to: "2026-01-29" });
+    expect(currentCycle(31, "2026-02-28", DEFAULT_WORKING_DAYS)).toMatchObject({ from: "2026-02-28", to: "2026-03-30" });
+    expect(currentCycle(31, "2026-03-15", DEFAULT_WORKING_DAYS)).toMatchObject({ from: "2026-02-28", to: "2026-03-30" });
+    expect(currentCycle(30, "2026-01-05", DEFAULT_WORKING_DAYS)).toMatchObject({ from: "2025-12-30", to: "2026-01-29" });
   });
 });
 
@@ -54,10 +55,12 @@ describe("team plans", () => {
     });
     const report = (await api("PUT", `/v1/teams/${team.id}/plans`, { token: owner.token, body: { plans } })).body;
     const [claude, cursor] = report.plans;
-    expect(claude).toMatchObject({ valueUSD: 50, projectedValueUSD: 310, projectedMultiple: 1.55, underused: false });
-    expect(claude.cycle).toMatchObject({ from: "2026-10-01", to: "2026-10-31", daysElapsed: 5, daysLeft: 26 });
-    expect(cursor).toMatchObject({ valueUSD: 10, projectedValueUSD: 62, projectedMultiple: 0.31, underused: true });
-    expect(report.totals).toEqual({ monthlyCostUSD: 400, cycleCostUSD: 400, valueUSD: 60, projectedValueUSD: 372, quota: null });
+    // The pace counts working days only: Monday's $10 over Oct 1, 2, and 5, for the 19 working days
+    // left. Saturday's $40 and Sunday's $10 count, but set no pace.
+    expect(claude).toMatchObject({ valueUSD: 50, projectedValueUSD: 113.33, projectedMultiple: 0.57, underused: true });
+    expect(claude.cycle).toMatchObject({ from: "2026-10-01", to: "2026-10-31", daysElapsed: 5, daysLeft: 26, workingDaysElapsed: 3, workingDaysLeft: 19 });
+    expect(cursor).toMatchObject({ valueUSD: 10, projectedValueUSD: 10, projectedMultiple: 0.05, underused: true });
+    expect(report.totals).toEqual({ monthlyCostUSD: 400, cycleCostUSD: 400, valueUSD: 60, projectedValueUSD: 123.33, quota: null });
   });
 
   it("splits a provider's value between its plans by cost", async () => {

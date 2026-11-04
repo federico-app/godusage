@@ -10,6 +10,7 @@ struct TeamPlansSection: View {
     @State private var drafts: [TeamPlan] = []
     @State private var loaded = false
     @State private var editing: TeamPlanChangeEditor.Draft?
+    @State private var workingDays = Set(TeamPlansReport.defaultWorkingDays)
 
     private var store: TeamPlansStore { container.teamPlans }
     private var saved: [TeamPlan] { store.report(teamID: teamID)?.plans.map(\.plan) ?? [] }
@@ -24,6 +25,7 @@ struct TeamPlansSection: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                workingDaysRow
                 if drafts.isEmpty, loaded {
                     Text("No plans yet.").font(.callout).foregroundStyle(.secondary)
                 }
@@ -52,6 +54,7 @@ struct TeamPlansSection: View {
             if container.teams.details[teamID] == nil { await container.teams.loadTeam(teamID) }
             await store.load(teamID: teamID)
             drafts = saved.map(prefillingLink)
+            workingDays = savedWorkingDays
             loaded = true
         }
         .sheet(item: $editing) { draft in
@@ -60,6 +63,50 @@ struct TeamPlansSection: View {
     }
 
     private var hasChanges: Bool { drafts != saved }
+
+    private var savedWorkingDays: Set<Int> {
+        Set(store.report(teamID: teamID)?.workingDays ?? TeamPlansReport.defaultWorkingDays)
+    }
+
+    // MARK: - Working days
+
+    /// The days the Plans tab's forecasts count. A change saves at once, with the saved plans.
+    private var workingDaysRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Text("Working Days")
+                Spacer()
+                ForEach(1...7, id: \.self) { day in
+                    Toggle(Self.weekdaySymbol(day), isOn: Binding(
+                        get: { workingDays.contains(day) },
+                        set: { isOn in setWorkingDay(day, isOn) }
+                    ))
+                    .toggleStyle(.button)
+                    .controlSize(.small)
+                    // At least one day stays a working day.
+                    .disabled(store.isSaving || workingDays == [day])
+                }
+            }
+            Text("Forecasts count only these days: usage on other days counts, but sets no pace.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func setWorkingDay(_ day: Int, _ isOn: Bool) {
+        if isOn { workingDays.insert(day) } else { workingDays.remove(day) }
+        let days = workingDays.sorted()
+        let clean = !hasChanges
+        Task {
+            if await store.save(teamID: teamID, plans: saved, workingDays: days), clean { drafts = saved }
+            workingDays = savedWorkingDays
+        }
+    }
+
+    /// The short name of an ISO weekday (1 = Monday) in the user's language.
+    static func weekdaySymbol(_ isoDay: Int) -> String {
+        Calendar.current.shortWeekdaySymbols[isoDay % 7]
+    }
 
     private var isValid: Bool {
         drafts.allSatisfy { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty && $0.monthlyCostUSD > 0 }

@@ -50,7 +50,7 @@ protocol TeamsAPI: Sendable {
     func deleteChallenge(token: String, teamID: String, challengeID: String) async throws
     func deleteDevice(token: String, deviceID: String) async throws
     func plans(token: String, teamID: String, today: String) async throws -> TeamPlansReport
-    func savePlans(token: String, teamID: String, plans: [TeamPlan], today: String) async throws -> TeamPlansReport
+    func savePlans(token: String, teamID: String, plans: [TeamPlan], workingDays: [Int]?, today: String) async throws -> TeamPlansReport
     /// A one-time code the iPhone app trades for a session of this account (shown as a QR code).
     func createPairingCode(token: String) async throws -> PairingCode
     func linkedDevices(token: String) async throws -> [LinkedDevice]
@@ -227,9 +227,14 @@ struct TeamsAPIClient: TeamsAPI {
         try await send("GET", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))", token: token)
     }
 
-    func savePlans(token: String, teamID: String, plans: [TeamPlan], today: String) async throws -> TeamPlansReport {
-        struct Body: Encodable { var plans: [TeamPlan] }
-        return try await send("PUT", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))", token: token, body: Body(plans: plans))
+    func savePlans(token: String, teamID: String, plans: [TeamPlan], workingDays: [Int]?, today: String) async throws -> TeamPlansReport {
+        /// `workingDays` is left out when nil, so the server keeps them.
+        struct Body: Encodable {
+            var plans: [TeamPlan]
+            var workingDays: [Int]?
+        }
+        let body = Body(plans: plans, workingDays: workingDays)
+        return try await send("PUT", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))", token: token, body: body)
     }
 
     func createPairingCode(token: String) async throws -> PairingCode {

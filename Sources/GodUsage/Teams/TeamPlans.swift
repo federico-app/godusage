@@ -79,6 +79,36 @@ struct TeamPlanQuota: Decodable, Hashable, Sendable {
     var wastedUSD: Double
 }
 
+/// How much of the weekly limit a plan's accounts use per day, over the last seven days.
+struct TeamPlanDaily: Decodable, Hashable, Sendable {
+    struct Day: Decodable, Hashable, Sendable {
+        var day: String
+        /// The mean share of the weekly limit the accounts read that day used. Nil without data.
+        var percent: Double?
+        var working: Bool
+        /// Part of the share was spread over days no Mac read the window.
+        var estimated: Bool
+    }
+
+    /// Today (not over yet) last.
+    var days: [Day]
+    /// The mean share per finished working day of the chart. Nil until one has data.
+    var averagePercent: Double?
+    /// The share per working day that uses exactly the whole week.
+    var pacePercent: Double
+    var accounts: Int
+}
+
+/// How a plan's accounts use their 5-hour sessions in the cycle.
+struct TeamPlanSessions: Decodable, Hashable, Sendable {
+    var sessions: Int
+    var limitHits: Int
+    var averagePeakPercent: Double
+    /// Each session's peak, oldest first (the latest ones).
+    var peaks: [Double]
+    var accounts: Int
+}
+
 /// One plan in the Plans report: its cost against the covered members' usage of its provider at API
 /// prices, and the share of its quota they use, in the plan's current billing cycle. Computed by the server.
 struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
@@ -88,6 +118,9 @@ struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
         var daysElapsed: Int
         var daysTotal: Int
         var daysLeft: Int
+        // Optional: older servers don't send them.
+        var workingDaysElapsed: Int?
+        var workingDaysLeft: Int?
     }
 
     var id: String
@@ -107,6 +140,13 @@ struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
     /// Nil for providers GodUsage reads no quota for, until a covered Mac reports one, and from
     /// older servers.
     var quota: TeamPlanQuota?
+    /// Nil until a covered Mac reports daily readings of a weekly window, and from older servers.
+    var daily: TeamPlanDaily?
+    /// Nil until a covered Mac reports a session, and from older servers.
+    var sessions: TeamPlanSessions?
+    /// Covered accounts a Mac could only name per Mac: one used on several Macs counts more than
+    /// once, so the quota figures may be off. Nil from older servers.
+    var perDeviceAccounts: Int?
     // Optional: servers before plan changes don't send these.
     var changes: [TeamPlan.Change]?
     var detectedPlan: String?
@@ -147,6 +187,10 @@ struct TeamPlansReport: Decodable, Hashable, Sendable {
     var canEdit: Bool
     /// The members' latest detected plans, for the owner's Detected Plan picker. Owners only.
     var detectedPlans: [TeamDetectedPlan]?
+    /// The team's working days (ISO weekdays, 1 = Monday), which pace the forecasts. Nil from older servers.
+    var workingDays: [Int]?
+
+    static let defaultWorkingDays = [1, 2, 3, 4, 5]
 }
 
 /// The team's plans and their report, per team. The owner edits the list in Settings → Teams; every
@@ -230,14 +274,16 @@ final class TeamPlansStore {
         await load(teamID: teamID)
     }
 
-    /// Replaces the team's plans. Returns whether the server accepted them.
+    /// Replaces the team's plans, and its working days when given. Returns whether the server accepted them.
     @discardableResult
-    func save(teamID: String, plans: [TeamPlan]) async -> Bool {
+    func save(teamID: String, plans: [TeamPlan], workingDays: [Int]? = nil) async -> Bool {
         guard let token = teams.sessionToken else { return false }
         isSaving = true
         defer { isSaving = false }
         do {
-            reportsByTeam[teamID] = try await api.savePlans(token: token, teamID: teamID, plans: plans, today: teams.localToday())
+            reportsByTeam[teamID] = try await api.savePlans(
+                token: token, teamID: teamID, plans: plans, workingDays: workingDays, today: teams.localToday()
+            )
             errorMessage = nil
             return true
         } catch {

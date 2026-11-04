@@ -101,7 +101,7 @@ const APP_VERSION_PATTERN = /^[0-9A-Za-z.+-]{1,32}$/;
 /**
  * Validates one device's upload (the system boundary for usage data) and flattens it into rows.
  * Shape: { schema, deviceName, appVersion?, windowStart?, partial?, localDay?, detectedPlans?: [{ provider, plan }],
- *   quotaWindows?: [{ provider, account, endsAt, periodHours, percent, observedAt }],
+ *   quotaWindows?: [{ provider, kind?, account, endsAt, periodHours, percent, observedAt, days?, perDevice? }],
  *   excludedAccounts?: [{ team, provider, account }],
  *   providers: [{ provider, scope, account?, split?, days: [{ date, tokens, costUSD, models? }] }] }
  *

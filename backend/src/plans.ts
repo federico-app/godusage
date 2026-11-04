@@ -6,9 +6,11 @@ import {
 } from "./planChanges";
 import { planMismatches, type Detection, type Mismatch } from "./planDetection";
 import { planQuota, teamQuotaWindows, UNDERUSED_PERCENT, type PlanQuota } from "./quota";
+import { perDeviceAccounts, planDaily, planSessions, type PlanDaily, type PlanSessions } from "./quotaDaily";
 import { daysBetween } from "./stats";
 import { teamUsage } from "./teamUsage";
 import { addDays } from "./usagePayload";
+import { isWorkingDay, workingDaysBetween, type WorkingDays } from "./workingDays";
 
 export const MAX_PLANS = 30;
 const PROVIDER_PATTERN = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -36,6 +38,10 @@ export interface Cycle {
   daysElapsed: number;
   daysTotal: number;
   daysLeft: number;
+  /** The team's working days from `from` to today, today included. */
+  workingDaysElapsed: number;
+  /** The team's working days after today, to `to`. */
+  workingDaysLeft: number;
 }
 
 /** One stretch of the cycle at one price, with its share of the cycle's cost and value. */
@@ -62,7 +68,7 @@ export interface PlanReport extends Terms {
   periods: ReportPeriod[];
   /** The covered members' usage of this provider in the cycle so far, at API prices. */
   valueUSD: number;
-  /** `valueUSD` stretched over the whole cycle at the current pace. */
+  /** `valueUSD` plus the rest of the cycle's working days at the pace of the ones so far. */
   projectedValueUSD: number;
   /** Projected value per dollar the cycle costs, e.g. 9.2 means $9.20 of API value per $1. */
   projectedMultiple: number;
@@ -71,6 +77,15 @@ export interface PlanReport extends Terms {
    * providers GodUsage reads no quota for, or until a covered Mac reports one.
    */
   quota: PlanQuota | null;
+  /** The share of the weekly limit the covered accounts use per day (see quotaDaily.ts). */
+  daily: PlanDaily | null;
+  /** The covered accounts' 5-hour sessions in the cycle (see quotaDaily.ts). */
+  sessions: PlanSessions | null;
+  /**
+   * Covered accounts behind `quota`, `daily`, or `sessions` named per Mac: one of them used on several
+   * Macs counts more than once, so the app warns that the figures may be off.
+   */
+  perDeviceAccounts: number;
   /** On pace to use less than half its quota; without quota data, to be worth less than it costs. */
   underused: boolean;
   /** Covered members whose Mac detects another plan. Shown to owners only. */
@@ -163,7 +178,7 @@ function renewalIn(year: number, month: number, day: number): string {
 }
 
 /** The billing cycle that contains `today`. */
-export function currentCycle(renewalDay: number, today: string): Cycle {
+export function currentCycle(renewalDay: number, today: string, workingDays: WorkingDays): Cycle {
   const year = Number(today.slice(0, 4));
   const month = Number(today.slice(5, 7)) - 1;
   const thisMonth = renewalIn(year, month, renewalDay);
@@ -174,7 +189,11 @@ export function currentCycle(renewalDay: number, today: string): Cycle {
   const to = addDays(next, -1);
   const daysTotal = daysBetween(from, next);
   const daysElapsed = daysBetween(from, today) + 1;
-  return { from, to, daysElapsed, daysTotal, daysLeft: daysTotal - daysElapsed };
+  return {
+    from, to, daysElapsed, daysTotal, daysLeft: daysTotal - daysElapsed,
+    workingDaysElapsed: workingDaysBetween(from, today, workingDays),
+    workingDaysLeft: workingDaysBetween(addDays(today, 1), to, workingDays),
+  };
 }
 
 /**
@@ -184,6 +203,8 @@ export function currentCycle(renewalDay: number, today: string): Cycle {
  * cycle with a price change costs each price for the days it applies (daily rate = monthly price /
  * the cycle's days), and its usage counts against the price in effect the day it was spent. Each
  * plan's quota share counts its covered accounts' quota windows in the cycle (see `planQuota`).
+ * Forecasts count only the team's working days: the projection adds the rest of the cycle's working
+ * days at the value per working day so far, and usage on other days counts but sets no pace.
  */
 export async function planReports(
   db: Queryable,
@@ -192,10 +213,12 @@ export async function planReports(
   today: string,
   detections: Detection[],
   now: Date,
+  workingDays: WorkingDays,
 ): Promise<PlanReport[]> {
   if (plans.length === 0) return [];
-  const cycles = plans.map((plan) => currentCycle(plan.renewalDay, today));
-  const earliest = cycles.reduce((min, cycle) => (cycle.from < min ? cycle.from : min), today);
+  const cycles = plans.map((plan) => currentCycle(plan.renewalDay, today, workingDays));
+  // The daily chart looks back a week, which can reach before every cycle.
+  const earliest = cycles.reduce((min, cycle) => (cycle.from < min ? cycle.from : min), addDays(today, -7));
   const [usage, quotaRows] = await Promise.all([
     teamUsage(db, teamID, earliest, today, { models: false }),
     teamQuotaWindows(db, teamID, earliest),
@@ -211,20 +234,24 @@ export async function planReports(
     const cycle = cycles[index]!;
     const periods = cyclePeriods(plan, cycle.from, cycle.to);
     const values = periods.map(() => 0);
+    let workingValue = 0;
     for (const row of days) {
       if (row.provider !== plan.provider || row.day < cycle.from || row.day > today || !row.users.some((user) => covers(plan, user))) continue;
       // Split the day's usage between the plans of the provider that cover it, by that day's prices.
       const sharing = plans.filter((other) => other.provider === plan.provider && row.users.some((user) => covers(other, user)));
       const cost = sharing.reduce((total, other) => total + termsOn(other, row.day).monthlyCostUSD, 0);
       const period = periods.findIndex((stretch) => row.day >= stretch.from && row.day <= stretch.to);
-      values[period] = values[period]! + (row.cost * termsOn(plan, row.day).monthlyCostUSD) / cost;
+      const share = (row.cost * termsOn(plan, row.day).monthlyCostUSD) / cost;
+      values[period] = values[period]! + share;
+      if (isWorkingDay(row.day, workingDays)) workingValue += share;
     }
     const value = values.reduce((sum, amount) => sum + amount, 0);
     const periodCost = (stretch: { monthlyCostUSD: number; days: number }) => (stretch.monthlyCostUSD * stretch.days) / cycle.daysTotal;
     const cycleCost = periods.reduce((sum, stretch) => sum + periodCost(stretch), 0);
-    const projected = (value / cycle.daysElapsed) * cycle.daysTotal;
+    const projected = cycle.workingDaysElapsed === 0 ? value : value + (workingValue / cycle.workingDaysElapsed) * cycle.workingDaysLeft;
     const multiple = projected / cycleCost;
-    const quota = planQuota(quotaRows, { provider: plan.provider, covered: (user) => covers(plan, user), cycleFrom: cycle.from, cycleCostUSD: cycleCost }, now);
+    const covered = (user: string) => covers(plan, user);
+    const quota = planQuota(quotaRows, { provider: plan.provider, covered, cycleFrom: cycle.from, cycleCostUSD: cycleCost }, now, workingDays);
     return {
       id: plan.id,
       provider: plan.provider,
@@ -248,6 +275,9 @@ export async function planReports(
       projectedValueUSD: round2(projected),
       projectedMultiple: Math.round(multiple * 100) / 100,
       quota,
+      daily: planDaily(quotaRows, { provider: plan.provider, covered }, today, workingDays),
+      sessions: planSessions(quotaRows, { provider: plan.provider, covered, cycleFrom: cycle.from }),
+      perDeviceAccounts: perDeviceAccounts(quotaRows, { provider: plan.provider, covered }, cycle.from < addDays(today, -7) ? cycle.from : addDays(today, -7)),
       underused: quota === null ? multiple < 1 : quota.usedPercent < UNDERUSED_PERCENT,
       mismatches: planMismatches(plan, (userID) => covers(plan, userID), cycle.from, detections),
     };
