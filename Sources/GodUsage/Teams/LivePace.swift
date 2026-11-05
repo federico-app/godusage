@@ -100,6 +100,44 @@ struct LivePace: Equatable {
             && a.futureDays.map(\.day) == b.futureDays.map(\.day) && a.futureDays.map(\.budget) == b.futureDays.map(\.budget)
     }
 
+    enum Tone: Equatable {
+        /// Orange: ahead of pace now and heading over today's budget, or already over it.
+        case hot
+        /// Green: behind pace now and heading well under today's budget.
+        case cool
+        case neutral
+    }
+
+    /// The figure's color. The minutes say where today's use stands now, the state where the current
+    /// pace leads by the end of the day; the figure is colored only when both agree. Ahead now but
+    /// slowing down (or behind but speeding up) stays neutral, so "+9 min" is never green.
+    var tone: Tone {
+        let minutes = ahead ?? 0
+        let clear = abs(minutes) >= Self.onPaceMargin
+        switch state {
+        case .overBudget: return .hot
+        case .ahead: return clear && minutes > 0 ? .hot : .neutral
+        case .behind: return clear && minutes < 0 ? .cool : .neutral
+        default: return .neutral
+        }
+    }
+
+    /// Within this much working time of where today's use should be, the figure reads "On Pace".
+    static let onPaceMargin: TimeInterval = 5 * 60
+
+    /// "9 min ahead of pace." or "1h 05m behind pace.", with a turn when the pace points the other way.
+    private var standing: String {
+        let minutes = ahead ?? 0
+        if abs(minutes) < Self.onPaceMargin { return "On pace so far." }
+        let duration = LivePaceFormat.duration(minutes)
+        switch (minutes > 0, state) {
+        case (true, .behind), (true, .onPace): return "\(duration) ahead of pace, but slowing down."
+        case (false, .ahead): return "\(duration) behind pace, but speeding up."
+        case (true, _): return "\(duration) ahead of pace."
+        case (false, _): return "\(duration) behind pace."
+        }
+    }
+
     /// The last working day before the reset: what today leaves is lost, not moved.
     var isLastDay: Bool { futureDays.isEmpty }
     /// What today leaves of its budget at the current pace.
@@ -214,12 +252,12 @@ extension LivePace {
         let allowed = allowedRate.map { LivePaceFormat.rate($0) } ?? ""
         switch alert {
         case .slowDown:
-            var body = "\(LivePaceFormat.duration(ahead ?? 0)) ahead of pace."
+            var body = standing
             if let runsOutAt { body += " At this rate today’s budget runs out at \(LivePaceFormat.time(runsOutAt))." }
             body += " Stay under \(allowed) to last until \(endTime)."
             return ("Slow Down on \(plan)", body)
         case .roomToSpare:
-            var body = "\(LivePaceFormat.duration(ahead ?? 0)) behind pace. Up to \(allowed) still fits until \(endTime)."
+            var body = "\(standing) Up to \(allowed) still fits until \(endTime)."
             if isLastDay {
                 let reset = resetsAt.map { " at the reset \(LivePaceFormat.weekdayTime($0))" } ?? " at the reset"
                 body += " At this rate \(LivePaceFormat.percent(projectedUnused)) of your weekly limit is lost\(reset)."
@@ -243,7 +281,7 @@ enum LivePaceFormat {
 
     /// "+44 min" ahead, "−1h 05m" behind, "On Pace" within five minutes.
     static func signedDuration(_ seconds: TimeInterval) -> String {
-        if abs(seconds) < 5 * 60 { return "On Pace" }
+        if abs(seconds) < LivePace.onPaceMargin { return "On Pace" }
         return (seconds > 0 ? "+" : "−") + duration(seconds)
     }
 
