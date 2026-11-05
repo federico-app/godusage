@@ -7,6 +7,8 @@ struct TeamsLeaderboardView: View {
     @AppStorage("godusage.teams.window.range") private var range: StatsRange = .week
     @AppStorage("godusage.teams.window.sort") private var sort: StatsSort = .cost
     @AppStorage("godusage.teams.window.mode") private var mode: Mode = .leaderboard
+    /// Compare: two members, or two plans' weeks (from this team or another of yours).
+    @AppStorage("godusage.teams.window.compareMode") private var compareMode: CompareMode = .members
     /// The window's own team, independent of the popover's (see `TeamsStore.teamID(preferring:)`).
     @AppStorage(TeamsWindowLink.teamStorageKey) private var storedTeamID = ""
     @Environment(\.colorScheme) private var colorScheme
@@ -25,6 +27,18 @@ struct TeamsLeaderboardView: View {
             }
         }
     }
+    enum CompareMode: String, CaseIterable {
+        case members
+        case planWeeks
+
+        var label: String {
+            switch self {
+            case .members: "Members"
+            case .planWeeks: "Plan Weeks"
+            }
+        }
+    }
+
     @State private var stats: TeamStats?
     @State private var loadError: String?
     @State private var isLoading = false
@@ -188,7 +202,18 @@ struct TeamsLeaderboardView: View {
                         TeamsCharts(stats: stats, sort: sort, providerName: providerName)
                         if let teamID = currentTeamID { HallOfFameSection(teamID: teamID) }
                     case .compare:
-                        TeamCompareView(stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName)
+                        Picker("Compare", selection: $compareMode) {
+                            ForEach(CompareMode.allCases, id: \.self) { Text($0.label).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .fixedSize()
+                        switch compareMode {
+                        case .members:
+                            TeamCompareView(stats: stats, sort: sort, currentUserID: container.teams.user?.id, providerName: providerName)
+                        case .planWeeks:
+                            TeamPlanWeeksCompareView(initialTeamID: currentTeamID)
+                        }
                     case .plans:
                         EmptyView()
                     }

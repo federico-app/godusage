@@ -95,6 +95,8 @@ Every ranking except Year shows each member's movement since the period before: 
 
 **Compare** (Teams window) puts two members side by side: totals, rank, efficiency, each provider as mirrored bars, their top models, and their days as a solid and a dashed line. It starts with you and the next member; pick anyone from either name.
 
+**Compare → Plan Weeks** puts two weekly windows of Claude or Codex plans side by side, from the same team or from two teams you're in (blue and orange, each with its team, plan, and week). It shows each day's share of the weekly limit by position in the window (each window starts at its own reset, so the days are named on each side), and a table with the weekly limit used, whether it was reached, the busiest day, sessions at the limit, average session peak, and accounts. A line under it says which used more of its limit, notes a week still running, and warns when the two plans differ, since the shares are then of different limits. With one team, the right side starts on the week before.
+
 **Share Wrapped** (Teams window) copies an image of your standing in the team over the last 30 days or 12 months: your rank, spend, tokens, efficiency, top provider and model, and the team's top five.
 
 **Show Rank in Menu Bar** (Settings → Teams → You) adds your rank, your share of the team's spend, and your spend today in the selected team to the menu bar. See [Menu bar](menu-bar.md#team-rank).
