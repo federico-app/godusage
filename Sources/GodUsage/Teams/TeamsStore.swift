@@ -456,9 +456,22 @@ final class TeamsStore {
 
     // MARK: - Team notifications
 
+    @ObservationIgnored private var eventsCheck: Task<Void, Never>?
+
     /// Overtake alerts and the weekly recap. Runs after each upload, so after a refresh that changed
-    /// usage or at least every 15 minutes, and only while one of the two is turned on.
+    /// usage or at least every 15 minutes, and only while one of the two is turned on. Checks run one
+    /// at a time: two at once would read the same baseline and send the same alert twice.
     func checkTeamEvents() async {
+        let previous = eventsCheck
+        let check = Task { @MainActor in
+            await previous?.value
+            await runTeamEventsCheck()
+        }
+        eventsCheck = check
+        await check.value
+    }
+
+    private func runTeamEventsCheck() async {
         let settings = notificationSettings()
         guard let me = user?.id, !teams.isEmpty else { return }
         if showRankInMenuBar, let teamID = selectedTeamID {
