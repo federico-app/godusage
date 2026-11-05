@@ -144,6 +144,8 @@ struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
     var daily: TeamPlanDaily?
     /// Nil until a covered Mac reports a session, and from older servers.
     var sessions: TeamPlanSessions?
+    /// Nil until a covered account has an open weekly window, and from older servers.
+    var budget: TeamPlanBudget?
     /// Covered accounts a Mac could only name per Mac: one used on several Macs counts more than
     /// once, so the quota figures may be off. Nil from older servers.
     var perDeviceAccounts: Int?
@@ -199,6 +201,9 @@ struct TeamPlansReport: Decodable, Hashable, Sendable {
 @Observable
 final class TeamPlansStore {
     private(set) var reportsByTeam: [String: TeamPlansReport] = [:]
+    /// Loaded when a plan's Weekly History is first opened, and again with each report load.
+    private(set) var historyByTeam: [String: TeamPlanHistory] = [:]
+    private(set) var historyErrorByTeam: [String: String] = [:]
     private(set) var errorMessage: String?
     private(set) var isSaving = false
 
@@ -263,6 +268,22 @@ final class TeamPlansStore {
         } catch {
             AppLog.warn(.teams, "loading team plans failed: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
+        }
+        if historyByTeam[teamID] != nil { await loadHistory(teamID: teamID) }
+    }
+
+    func history(teamID: String) -> TeamPlanHistory? { historyByTeam[teamID] }
+    func historyError(teamID: String) -> String? { historyErrorByTeam[teamID] }
+
+    /// The team's plans' last `weeks` weeks, for their Weekly History.
+    func loadHistory(teamID: String, weeks: Int = TeamPlanHistory.defaultWeeks) async {
+        guard let token = teams.sessionToken else { return }
+        do {
+            historyByTeam[teamID] = try await api.planHistory(token: token, teamID: teamID, today: teams.localToday(), weeks: weeks)
+            historyErrorByTeam[teamID] = nil
+        } catch {
+            AppLog.error(.teams, "loading team plan history failed: \(error.localizedDescription)")
+            historyErrorByTeam[teamID] = error.localizedDescription
         }
     }
 

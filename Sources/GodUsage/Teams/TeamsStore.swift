@@ -53,6 +53,12 @@ final class TeamsStore {
         }
     }
     private var storedSelectedTeamID: String? = UserDefaults.standard.string(forKey: TeamsStore.selectedTeamKey)
+    /// The Teams window and Settings → Teams keep their own team, so switching there leaves the
+    /// popover and the menu bar alone. `stored` wins while it is still one of the user's teams;
+    /// otherwise they start from the popover's team.
+    func teamID(preferring stored: String?) -> String? {
+        teams.contains { $0.id == stored } ? stored : selectedTeamID
+    }
     private static let selectedTeamKey = "godusage.teams.selectedTeam.v1"
 
     struct StatsKey: Hashable {
@@ -450,9 +456,22 @@ final class TeamsStore {
 
     // MARK: - Team notifications
 
+    @ObservationIgnored private var eventsCheck: Task<Void, Never>?
+
     /// Overtake alerts and the weekly recap. Runs after each upload, so after a refresh that changed
-    /// usage or at least every 15 minutes, and only while one of the two is turned on.
+    /// usage or at least every 15 minutes, and only while one of the two is turned on. Checks run one
+    /// at a time: two at once would read the same baseline and send the same alert twice.
     func checkTeamEvents() async {
+        let previous = eventsCheck
+        let check = Task { @MainActor in
+            await previous?.value
+            await runTeamEventsCheck()
+        }
+        eventsCheck = check
+        await check.value
+    }
+
+    private func runTeamEventsCheck() async {
         let settings = notificationSettings()
         guard let me = user?.id, !teams.isEmpty else { return }
         if showRankInMenuBar, let teamID = selectedTeamID {

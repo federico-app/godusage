@@ -320,6 +320,29 @@ final class TeamsStoreTests: XCTestCase {
         XCTAssertEqual(posted.count, 1, "an unchanged standing does not alert again")
     }
 
+    func testTwoChecksAtOnceAlertOnce() async {
+        let defaults = UserDefaults(suiteName: "TeamsStoreTests-\(UUID().uuidString)")!
+        var posted: [String] = []
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        api.teamsResult = [TeamSummary(id: "t1", name: "Crew", role: .member, memberCount: 2)]
+        let store = TeamsStore(
+            api: api, sessionStore: sessions, signInProvider: signIn, historySources: { [] }, deviceID: { "device-0001" },
+            deviceName: "Mac", uploadDebounce: .zero,
+            notificationSettings: { (true, false) },
+            postNotification: { _, title, _, _ in posted.append(title); return true },
+            defaults: defaults
+        )
+        await store.refresh()
+        api.statsResult = board([("u1", "Fede", 1, 9), ("ada", "Ada", 2, 5)])
+        await store.checkTeamEvents()
+
+        api.statsResult = board([("ada", "Ada", 1, 12), ("u1", "Fede", 2, 9)])
+        async let first: Void = store.checkTeamEvents()
+        async let second: Void = store.checkTeamEvents()
+        _ = await (first, second)
+        XCTAssertEqual(posted, ["Ada Passed You"])
+    }
+
     private func waitUntil(_ condition: @escaping @MainActor () -> Bool) async throws {
         for _ in 0..<100 where !condition() {
             try await Task.sleep(for: .milliseconds(10))
@@ -461,6 +484,13 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
     func savePlans(token: String, teamID: String, plans: [TeamPlan], workingDays: [Int]?, today: String) async throws -> TeamPlansReport {
         log.append("savePlans \(plans.map(\.name).joined(separator: ","))")
         return plansResult
+    }
+    var historyResult = TeamPlanHistory(plans: [])
+    var historyError: Error?
+    func planHistory(token: String, teamID: String, today: String, weeks: Int) async throws -> TeamPlanHistory {
+        log.append("planHistory \(teamID) \(weeks)")
+        if let historyError { throw historyError }
+        return historyResult
     }
 
     var pairingCodes: [PairingCode] = []

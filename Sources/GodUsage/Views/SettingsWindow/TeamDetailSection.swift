@@ -46,7 +46,7 @@ struct TeamDetailSection: View {
                 links(detail)
                 Divider()
                 HStack {
-                    Button("Open Leaderboards") { TeamsWindowLink.open() }
+                    Button("Open Leaderboards") { TeamsWindowLink.open(teamID: summary.id) }
                     Spacer()
                     if isOwner {
                         Button("Rename…") {

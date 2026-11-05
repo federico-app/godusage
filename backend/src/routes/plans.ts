@@ -1,6 +1,10 @@
 import type { Handler } from "../context";
 import { badRequest, forbidden, json, notFound, nowISO, readJSONObject } from "../http";
 import { covers, keepUnsentFields, parsePlans, planReports, type PlanReport, type PlanRow } from "../plans";
+import { termsOn } from "../planChanges";
+import { teamQuotaWindows } from "../quota";
+import { DEFAULT_HISTORY_WEEKS, MAX_HISTORY_WEEKS, planHistory } from "../quotaHistory";
+import { addDays } from "../usagePayload";
 import { teamDetections, type Detection } from "../planDetection";
 import { requireUser } from "../session";
 import type { Env } from "../context";
@@ -126,6 +130,38 @@ export const getPlans: Handler = async ({ request, env, url, params, deps }) => 
   const viewer = await membership(env.db, params.teamID!, user.id);
   const result = await cachedReport(env, deps.now(), params.teamID!, viewerToday(url, deps.now()));
   return json(forViewer(result.value, user.id, viewer));
+};
+
+/**
+ * The plans' last `weeks` weekly windows of quota use (see quotaHistory.ts), the same for every member.
+ * Plan ids change on every save, so each plan also carries its provider and current name.
+ */
+async function history(db: Queryable, teamID: string, today: string, now: Date, weeks: number) {
+  const [plans, workingDays] = await Promise.all([loadPlans(db, teamID), loadWorkingDays(db, teamID)]);
+  // The open window plus `weeks` - 1 before it, with a week to spare for windows cut short by a reset.
+  const rows = plans.length === 0 ? [] : await teamQuotaWindows(db, teamID, addDays(today, -7 * weeks));
+  return {
+    plans: plans.map((plan) => ({
+      id: plan.id,
+      provider: plan.provider,
+      name: termsOn(plan, today).name,
+      weeks: planHistory(rows, { provider: plan.provider, covered: (userID) => covers(plan, userID) }, today, now, weeks, workingDays),
+    })),
+    workingDays,
+  };
+}
+
+/** GET /v1/teams/:teamID/plans/history?today=&weeks= — the plans' weekly history, for any member. */
+export const getPlanHistory: Handler = async ({ request, env, url, params, deps }) => {
+  const user = await requireUser(request, env.db);
+  await membership(env.db, params.teamID!, user.id);
+  const requested = url.searchParams.get("weeks");
+  const weeks = requested === null ? DEFAULT_HISTORY_WEEKS : Number(requested);
+  if (!Number.isInteger(weeks) || weeks < 1 || weeks > MAX_HISTORY_WEEKS) throw badRequest(`weeks must be a whole number from 1 to ${MAX_HISTORY_WEEKS}.`);
+  const now = deps.now();
+  const today = viewerToday(url, now);
+  const result = await cachedTeamResult(env.cache, now, params.teamID!, `plans|history|${today}|${weeks}`, 10 * 60_000, () => history(env.db, params.teamID!, today, now, weeks));
+  return json(result.value);
 };
 
 /**
