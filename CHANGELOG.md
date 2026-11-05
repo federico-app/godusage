@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.7.1
+
+### New Features
+- Cost card: a **7 Days** period (today and the six days before) beside Today, Yesterday, and 30 Days. It drives the ring, the legend, the share screenshot, and the dashboard's Team ranking ([#106](https://github.com/federico-app/godusage/pull/106)) by @andreaAppload
+- Live Pace: hover the minutes ahead or behind to see what they mean, with where today's use is and where it should be now ([#106](https://github.com/federico-app/godusage/pull/106)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.7.0...v1.7.1](https://github.com/federico-app/godusage/compare/v1.7.0...v1.7.1)
+
+- [1d241e9](https://github.com/federico-app/godusage/commit/1d241e99c6d0879fc0d9f1734a8f5d54b7881f1b) feat(dashboard): 7 Days period in the Cost card, and a tooltip on Live Pace minutes (#106) by @andreaAppload
+
 ## v1.7.0
 
 ### New Features
