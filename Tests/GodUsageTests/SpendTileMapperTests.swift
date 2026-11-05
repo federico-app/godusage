@@ -60,6 +60,31 @@ final class SpendTileMapperTests: XCTestCase {
                         MetricValue(number: 12_000, kind: .count, label: "tokens")])
     }
 
+    func testLastSevenDaysCountsTodayAndTheSixDaysBefore() {
+        // June 19 is the eighth day back from June 26: it counts in 30 Days, not in 7 Days.
+        var lines: [MetricLine] = []
+        SpendTileMapper.appendTokenUsage(
+            DailyUsageSeries(daily: [
+                DailyUsageEntry(date: "2026-06-19", totalTokens: 1_000, costUSD: 1),
+                DailyUsageEntry(date: "2026-06-21", totalTokens: 2_000, costUSD: 2),
+                DailyUsageEntry(date: "2026-06-26", totalTokens: 4_000, costUSD: 4),
+            ]),
+            to: &lines, now: day(2026, 6, 26), estimated: false
+        )
+
+        XCTAssertEqual(values(lines, "Last 7 Days"),
+                       [MetricValue(number: 6, kind: .dollars, estimated: false),
+                        MetricValue(number: 6_000, kind: .count, label: "tokens")])
+        XCTAssertEqual(values(lines, "Last 30 Days")?.first?.number, 7)
+    }
+
+    func testAnIdleWeekGetsNoSevenDayLine() {
+        var lines: [MetricLine] = []
+        SpendTileMapper.appendTokenUsage(series([("2026-06-10", 5_000)]), to: &lines, now: day(2026, 6, 26), estimated: false)
+        XCTAssertNil(line(lines, "Last 7 Days"))
+        XCTAssertNotNil(line(lines, "Last 30 Days"))
+    }
+
     func testSingleModelPeriodStillGetsModelBreakdown() throws {
         var lines: [MetricLine] = []
         SpendTileMapper.appendTokenUsage(
