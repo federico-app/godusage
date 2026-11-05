@@ -9,6 +9,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main, develop]
+  # Manual runs also build the iOS app, which is paused on pushes and PRs (see the ios job).
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -41,13 +43,13 @@ jobs:
       - name: Test TestFlight gate paths
         run: node --test script/lib/testflight_paths.test.mjs
 
-  # Compile check for the iOS companion app so a PR can't silently break the TestFlight job in
-  # release-ios.yml. Unsigned simulator build only — signing and upload happen only at release time.
+  # Compile check for the iOS companion app. Unsigned simulator build only — signing and upload
+  # happen only at release time. The iOS app is paused: it builds only on a manual run (Actions →
+  # CI → Run workflow). On pushes and PRs the job is skipped, which still satisfies branch protection.
   ios:
     name: Build iOS App
     runs-on: [self-hosted, macOS, ARM64, godusage]
-    # Self-hosted runner on a public repo: never run code from a fork's PR on it.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

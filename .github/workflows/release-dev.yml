@@ -200,9 +200,11 @@ jobs:
           fi
 
   # GodUsage DEV for iPhone (com.montinovo.godusage.mobile.dev) goes to TestFlight's internal
-  # testers when a push changes the iOS app, beside the Mac DEV build and independent of it.
-  # Internal testers need no Beta App Review; the group's automatic distribution hands them the build.
+  # testers, beside the Mac DEV build and independent of it. Internal testers need no Beta App
+  # Review; the group's automatic distribution hands them the build. The iOS app is paused: pushes
+  # skip it, and only a manual run (Actions → Release Dev → Run workflow) ships it.
   ios-gate:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       ship: ${{ steps.gate.outputs.ship }}

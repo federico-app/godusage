@@ -3,7 +3,7 @@
 Releases are automated and come in two channels:
 
 - **Production.** When you push a stable tag such as `v0.7.1` on `main`, the pipeline tests, builds, signs, notarizes, and publishes a new version with its SHA-256 checksum. Prerelease suffixes are rejected.
-- **Dev.** Every push to `develop` publishes **GodUsage DEV** as a GitHub prerelease. See [Dev channel](#dev-channel). The macOS pipeline is [.github/workflows/release.yml](../.github/workflows/release.yml), which calls the [iOS TestFlight pipeline](../.github/workflows/release-ios.yml) in parallel. The step-by-step is in the `release-swift` skill.
+- **Dev.** Every push to `develop` publishes **GodUsage DEV** as a GitHub prerelease. See [Dev channel](#dev-channel). The macOS pipeline is [.github/workflows/release.yml](../.github/workflows/release.yml). The [iOS TestFlight pipeline](../.github/workflows/release-ios.yml) is paused: tag pushes skip it, and it runs only by hand (see [iOS app paused](#ios-app-paused)). The step-by-step is in the `release-swift` skill.
 
 **The DMG.** `script/build_dmg.sh` (called by `script/release.sh`) makes a drag-to-install window: the app on the left, an Applications link on the right, and an arrow between them on a background from `assets/dmg/`. Finder lays the window out through AppleScript, so the build needs a GUI session (the self-hosted runners run in the logged-in session; see [CI runner](ci-runner.md)); if Finder does not save the layout, the build fails. To change the background, edit and run `swift script/render_dmg_background.swift`, and keep the icon positions in `build_dmg.sh` in step with it.
 
@@ -50,9 +50,19 @@ CI (`ci.yml`) runs on pull requests and on pushes to `main`, not on pushes to `d
 
 Merge `develop` into `main` and tag it to ship production.
 
+### iOS app paused
+
+The iOS app is paused in every pipeline. Nothing builds, tests, or ships it on its own:
+
+- **CI**: the **Build iOS App** job is skipped on pushes and PRs (a skipped job still satisfies branch protection). Run **CI** by hand (Actions → CI → Run workflow) to build it.
+- **Production**: a `v*` tag skips the iOS TestFlight pipeline. Run **Release** by hand with the tag and `force_ios` on, or run **iOS TestFlight** on its own with a tag.
+- **DEV**: a push to `develop` skips GodUsage DEV for iPhone. Run **Release Dev** by hand to ship it.
+
+To resume, remove the `workflow_dispatch` conditions from those jobs (`ci.yml`, `release.yml`, `release-dev.yml`).
+
 ### iOS DEV channel
 
-The same workflow uploads **GodUsage DEV** for iPhone (`com.montinovo.godusage.mobile.dev`) to TestFlight when a push changes `ios/`, `script/release_ios.sh`, or the workflow (a manual run always uploads). It runs `script/release_ios.sh` with `CHANNEL=dev`, which archives the **Dev** configuration (dev teams server). The version is the newest stable one (TestFlight takes plain numbers only) and the build is the commit count. Only internal testers get it, so there is no Beta App Review. It runs beside the Mac DEV build, and a failure of one does not stop the other.
+While the iOS app is [paused](#ios-app-paused), only a manual run uploads it. Otherwise the same workflow uploads **GodUsage DEV** for iPhone (`com.montinovo.godusage.mobile.dev`) to TestFlight when a push changes `ios/`, `script/release_ios.sh`, or the workflow (a manual run always uploads). It runs `script/release_ios.sh` with `CHANNEL=dev`, which archives the **Dev** configuration (dev teams server). The version is the newest stable one (TestFlight takes plain numbers only) and the build is the commit count. Only internal testers get it, so there is no Beta App Review. It runs beside the Mac DEV build, and a failure of one does not stop the other.
 
 Until the `APPLE_IOS_DEV_APP_STORE_PROFILE` secret is set, the job is skipped with a warning. One-time setup:
 

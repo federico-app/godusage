@@ -378,8 +378,12 @@ jobs:
   # Keep the TestFlight pipeline in a dedicated reusable workflow. Besides making its ownership
   # clear, this gives the iOS gate an exact workflow path to track: unrelated Mac release and
   # update-feed edits in this file no longer cause a TestFlight upload.
+  #
+  # The iOS app is paused: tag pushes skip it. To ship it, run this workflow by hand with the tag and
+  # `force_ios` on, or run release-ios.yml on its own.
   ios:
     name: iOS TestFlight Pipeline
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.force_ios == 'true'
     uses: ./.github/workflows/release-ios.yml
     with:
       tag: ${{ github.event.inputs.tag || github.ref_name }}
