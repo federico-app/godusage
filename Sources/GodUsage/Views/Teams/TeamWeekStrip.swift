@@ -48,19 +48,19 @@ struct TeamWeekStrip: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Circle().fill(color).frame(width: 7, height: 7)
-                Text(plan.name).font(.caption.weight(.semibold)).lineLimit(1)
+                Text(plan.name).font(.caption.weight(.semibold)).lineLimit(1).layoutPriority(1)
                 if budget.accounts > 1 {
                     Text("\(budget.accounts) accounts")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(Color.accentColor)
                 }
                 Spacer(minLength: 4)
-                Text("\(Self.percent(budget.todayPercent)) today")
-                    .font(.caption.monospacedDigit().weight(.semibold))
+                (Text(Self.percent(budget.todayPercent))
+                    .fontWeight(.semibold)
                     .foregroundStyle(overBudget ? Theme.notice : AnyShapeStyle(.primary))
-                Text("· budget \(Self.percent(budget.affordablePercent))")
+                    + Text(" of \(Self.percent(budget.affordablePercent)) today").foregroundStyle(.secondary))
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             bars
             if showsNote {
@@ -132,8 +132,7 @@ struct TeamWeekStrip: View {
         if isOverBudget(budget) {
             return "\(Self.percent(budget.todayPercent - budget.affordablePercent)) over today's budget · resets \(reset)"
         }
-        let days = budget.workingDaysLeft == 1 ? "today" : "\(budget.workingDaysLeft) working days"
-        return "\(Self.percent(budget.affordablePercent - budget.todayPercent)) more today stays on budget · \(Self.percent(budget.leftPercent)) left for \(days) · resets \(reset)"
+        return "\(Self.percent(budget.affordablePercent - budget.todayPercent)) more today on budget · \(Self.percent(budget.leftPercent)) left · resets \(reset)"
     }
 
     static func percent(_ value: Double) -> String {
