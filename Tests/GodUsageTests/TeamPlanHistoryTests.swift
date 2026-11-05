@@ -54,4 +54,16 @@ final class TeamPlanHistoryTests: XCTestCase {
         XCTAssertNotNil(store.historyError(teamID: "t1"))
         XCTAssertNotNil(store.history(teamID: "t1"), "a failed reload keeps the weeks already shown")
     }
+
+    func testShowsWeeksFromTheFirstOneWithData() {
+        func week(_ from: String, _ total: Double?) -> TeamPlanHistory.Week {
+            TeamPlanHistory.Week(from: from, days: [], totalPercent: total, estimated: false, accounts: 1, sessions: nil)
+        }
+        let weeks = [week("2026-10-19", nil), week("2026-10-26", 40), week("2026-11-02", nil)]
+        XCTAssertEqual(TeamPlanWeeklyHistory.fromFirstRead(weeks).map(\.from), ["2026-10-26", "2026-11-02"])
+        XCTAssertEqual(TeamPlanWeeklyHistory.fromFirstRead([week("2026-10-26", nil), week("2026-11-02", nil)]).map(\.from), ["2026-11-02"])
+        XCTAssertEqual(TeamPlanWeeklyHistory.number(19.5), "19.5")
+        XCTAssertEqual(TeamPlanWeeklyHistory.number(45.5), "45.5")
+        XCTAssertEqual(TeamPlanWeeklyHistory.number(100), "100")
+    }
 }

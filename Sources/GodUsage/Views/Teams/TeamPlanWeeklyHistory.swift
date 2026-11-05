@@ -38,7 +38,7 @@ struct TeamPlanWeeklyHistory: View {
 
     @ViewBuilder
     private var content: some View {
-        if let weeks = container.teamPlans.history(teamID: teamID)?.weeks(for: plan) {
+        if let weeks = container.teamPlans.history(teamID: teamID)?.weeks(for: plan).map(Self.fromFirstRead) {
             if weeks.allSatisfy({ $0.totalPercent == nil && $0.sessions == nil }) {
                 Text("No week read yet. Each Mac records the share it sees at the end of each day.")
                     .font(.caption)
@@ -154,8 +154,16 @@ struct TeamPlanWeeklyHistory: View {
         .foregroundStyle(.secondary)
     }
 
+    /// The weeks from the first one with data on (empty weeks before it are just history not kept
+    /// yet), always keeping the current one.
+    static func fromFirstRead(_ weeks: [TeamPlanHistory.Week]) -> [TeamPlanHistory.Week] {
+        guard let first = weeks.firstIndex(where: { $0.totalPercent != nil || $0.sessions != nil }) else { return Array(weeks.suffix(1)) }
+        return Array(weeks[first...])
+    }
+
+    /// One decimal, like Per Day; whole numbers without it.
     static func number(_ value: Double) -> String {
-        value.rounded() == value || value >= 10 ? String(format: "%.0f", value) : String(format: "%.1f", value)
+        value.rounded() == value ? String(format: "%.0f", value) : String(format: "%.1f", value)
     }
 
     private static func weekday(_ day: String) -> String {
