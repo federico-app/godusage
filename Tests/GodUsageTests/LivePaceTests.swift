@@ -44,6 +44,22 @@ final class LivePaceTests: XCTestCase {
         XCTAssertEqual(LivePace(pace: slow, now: at("11:30")).state, .onPace)
     }
 
+    func testTheFigureIsColoredOnlyWhenWhereYouAreAndWhereYouAreHeadingAgree() {
+        // 11:30: 12% used against 10% expected (+48 min), and 4%/h heads over: orange.
+        XCTAssertEqual(LivePace(pace: pace(used: 12, rate: 4), now: at("11:30")).tone, .hot)
+        // Same +48 min, but slowed to 0.2%/h, heading to 12.8% (64%): no green for a plus.
+        let slowing = LivePace(pace: pace(used: 12, rate: 0.2), now: at("11:30"))
+        XCTAssertEqual(slowing.state, .behind)
+        XCTAssertEqual(slowing.tone, .neutral)
+        XCTAssertTrue(slowing.alertMessage(.roomToSpare, plan: "Max", resetsAt: nil, nextDays: "Fri").body.hasPrefix("48 min ahead of pace, but slowing down."))
+        // Behind (−) and heading under: green.
+        XCTAssertEqual(LivePace(pace: pace(used: 7, rate: 1), now: at("12:30")).tone, .cool)
+        // Behind now but speeding up over the budget: no orange for a minus.
+        let speeding = LivePace(pace: pace(used: 6, rate: 6), now: at("11:30"))
+        XCTAssertEqual(speeding.state, .ahead)
+        XCTAssertEqual(speeding.tone, .neutral)
+    }
+
     func testTheFirstWorkingHourIsTooEarlyToJudge() {
         let live = LivePace(pace: pace(used: 5, rate: nil), now: at("07:30"))
         XCTAssertEqual(live.state, .warmingUp)

@@ -5,6 +5,7 @@ import Foundation
 enum TotalSpendPeriod: String, CaseIterable, Identifiable, Sendable {
     case today = "Today"
     case yesterday = "Yesterday"
+    case last7 = "Last 7 Days"
     case last30 = "Last 30 Days"
 
     var id: String { rawValue }
@@ -13,13 +14,25 @@ enum TotalSpendPeriod: String, CaseIterable, Identifiable, Sendable {
     /// but kept as its own accessor so the two meanings can diverge without a hunt).
     var lineLabel: String { rawValue }
 
-    /// Compact segment title for the period switcher — "Last 30 Days" doesn't fit three-across
+    /// Compact segment title for the period switcher — "Last 30 Days" doesn't fit four-across
     /// in the 320pt popover without shrinking every segment.
     var shortLabel: String {
         switch self {
         case .today: "Today"
         case .yesterday: "Yesterday"
+        case .last7: "7 Days"
         case .last30: "30 Days"
+        }
+    }
+
+    /// The narrowest segment title, for when four equal segments would cut a title off: the switcher
+    /// then sizes each segment to its text and names the period in full beside the card's title.
+    var tinyLabel: String {
+        switch self {
+        case .today: "Today"
+        case .yesterday: "Yesterday"
+        case .last7: "7d"
+        case .last30: "30d"
         }
     }
 }

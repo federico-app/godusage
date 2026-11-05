@@ -19,6 +19,8 @@ struct TotalSpendCard: View {
     @AppStorage("godusage.totalSpend.period") private var periodRawValue = TotalSpendPeriod.today.rawValue
     /// The selected metric (Cost / Cost/MTok / Tokens) survives the same way.
     @AppStorage("godusage.totalSpend.metric") private var metricRawValue = TotalSpendMetric.cost.rawValue
+    /// The switcher fell back to segments sized to their short titles, so the header names the period.
+    @State private var usesCompactPicker = false
     private let density = DensitySetting.compact
 
     private var period: TotalSpendPeriod {
@@ -72,6 +74,12 @@ struct TotalSpendCard: View {
                 .imageScale(.small)
                 .foregroundStyle(.secondary)
                 .hoverTooltip(infoTooltip)
+            if usesCompactPicker {
+                Text(period.rawValue)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
             DevBuildBadge()
                 .padding(.leading, 3)
             Spacer(minLength: 8)
@@ -162,31 +170,62 @@ struct TotalSpendCard: View {
     /// controls), replacing the stock `.segmented` picker whose legacy rounded-rect chrome clashes
     /// with the Tahoe look. The selected segment is a Liquid Glass capsule (frosted material on
     /// macOS 15) that slides between segments via `matchedGeometryEffect`.
+    ///
+    /// Four equal segments when every title fits whole; otherwise each segment is as wide as its
+    /// short title ("7d", "30d") and the header names the period in full.
     private var periodPicker: some View {
-        HStack(spacing: 2) {
-            ForEach(TotalSpendPeriod.allCases) { candidate in
-                periodSegment(candidate)
-            }
+        ViewThatFits(in: .horizontal) {
+            segments(equal: true)
+                .frame(minWidth: Self.equalPickerWidth)
+            segments(equal: false)
+                .onAppear { usesCompactPicker = true }
+                .onDisappear { usesCompactPicker = false }
         }
-        .padding(3)
-        .background(.quinary, in: Capsule())
         .frame(maxWidth: .infinity)
     }
 
-    private func periodSegment(_ candidate: TotalSpendPeriod) -> some View {
+    private static let segmentFontSize: CGFloat = 11
+    private static let equalSegmentPadding: CGFloat = 4
+    private static let segmentSpacing: CGFloat = 2
+    private static let pickerInset: CGFloat = 3
+
+    /// The narrowest width at which four equal segments show every title whole (bold, as when selected).
+    private static let equalPickerWidth: CGFloat = {
+        let font = NSFont.systemFont(ofSize: segmentFontSize, weight: .semibold)
+        let widest = TotalSpendPeriod.allCases
+            .map { ceil(($0.shortLabel as NSString).size(withAttributes: [.font: font]).width) }
+            .max() ?? 0
+        let count = CGFloat(TotalSpendPeriod.allCases.count)
+        return count * (widest + 2 * equalSegmentPadding) + (count - 1) * segmentSpacing + 2 * pickerInset
+    }()
+
+    private func segments(equal: Bool) -> some View {
+        HStack(spacing: Self.segmentSpacing) {
+            ForEach(TotalSpendPeriod.allCases) { candidate in
+                periodSegment(candidate, equal: equal)
+            }
+        }
+        .padding(Self.pickerInset)
+        .background(.quinary, in: Capsule())
+    }
+
+    private func periodSegment(_ candidate: TotalSpendPeriod, equal: Bool) -> some View {
         let isSelected = candidate == period
         return Button {
             periodRawValue = candidate.rawValue
         } label: {
-            Text(candidate.shortLabel)
-                .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
+            Text(equal ? candidate.shortLabel : candidate.tinyLabel)
+                .font(.system(size: Self.segmentFontSize, weight: isSelected ? .semibold : .medium))
                 .foregroundStyle(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
-                .padding(.horizontal, 12)
+                .lineLimit(1)
+                .padding(.horizontal, equal ? Self.equalSegmentPadding : 8)
                 .padding(.vertical, 4)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: equal ? .infinity : nil)
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(candidate.rawValue)
+        .hoverTooltip(equal || candidate.tinyLabel == candidate.rawValue ? nil : candidate.rawValue)
         .background {
             if isSelected {
                 Capsule()

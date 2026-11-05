@@ -45,9 +45,7 @@ struct TeamLivePaceStrip: View {
     /// The one number per plan: minutes ahead (orange) or behind (green), how far over, or the day's status.
     private var figure: some View {
         let (text, style): (String, AnyShapeStyle) = switch live.state {
-        case .ahead: (LivePaceFormat.signedDuration(live.ahead ?? 0), Theme.notice)
-        case .behind: (LivePaceFormat.signedDuration(live.ahead ?? 0), Theme.positive)
-        case .onPace, .warmingUp: (LivePaceFormat.signedDuration(live.ahead ?? 0), AnyShapeStyle(.primary))
+        case .ahead, .behind, .onPace, .warmingUp: (LivePaceFormat.signedDuration(live.ahead ?? 0), toneStyle)
         case .overBudget: ("+" + LivePaceFormat.percent(live.used - live.budget), Theme.notice)
         case .notStarted: ("Starts \(live.start.map(LivePaceFormat.time) ?? "")", AnyShapeStyle(.secondary))
         case .dayDone: ("Day Done", AnyShapeStyle(.secondary))
@@ -58,6 +56,48 @@ struct TeamLivePaceStrip: View {
             .font(big ? .system(size: 14, weight: .bold).monospacedDigit() : .caption.weight(.semibold))
             .foregroundStyle(style)
             .fixedSize()
+            .hoverTooltip(figureTooltip)
+    }
+
+    private var toneStyle: AnyShapeStyle {
+        switch live.tone {
+        case .hot: Theme.notice
+        case .cool: Theme.positive
+        case .neutral: AnyShapeStyle(.primary)
+        }
+    }
+
+    /// What the figure means, in words: the minutes are working time against the pace that uses
+    /// exactly today's budget by the end of the working day.
+    private var figureTooltip: String {
+        let end = live.end.map { " until \(LivePaceFormat.time($0))" } ?? ""
+        let even = "An even pace spreads today’s budget (\(LivePaceFormat.percent(live.budget))) over the working hours\(end)."
+        let duration = LivePaceFormat.duration(live.ahead ?? 0)
+        switch live.state {
+        case .ahead, .onPace, .behind, .warmingUp:
+            let ahead = live.ahead ?? 0
+            var text = abs(ahead) < 5 * 60
+                ? "You’re right on pace."
+                : ahead > 0
+                    ? "You’re \(duration) ahead of pace: you’ve already used what an even pace would reach only in \(duration) more of working time."
+                    : "You’re \(duration) behind pace: an even pace would have reached your use \(duration) of working time ago, so you have room to spare."
+            text += " \(even) Now \(LivePaceFormat.percent(live.used)), expected \(LivePaceFormat.percent(live.expected))."
+            if live.state == .warmingUp { text += " It’s too early in the day to color it." }
+            if ahead >= LivePace.onPaceMargin, [.behind, .onPace].contains(live.state) {
+                text += " At the current pace, though, you’ll end the day at \(LivePaceFormat.percent(live.projected)), under the budget."
+            } else if ahead <= -LivePace.onPaceMargin, live.state == .ahead {
+                text += " At the current pace, though, you’ll end the day at \(LivePaceFormat.percent(live.projected)), over the budget."
+            }
+            return text
+        case .overBudget:
+            return "Today’s budget is used up: \(LivePaceFormat.percent(live.used - live.budget)) over. The working days until the reset get less."
+        case .notStarted:
+            return "Your working day hasn’t started yet. Today’s budget is \(LivePaceFormat.percent(live.budget))."
+        case .dayDone:
+            return "Your working day is over. What today left, or took over its budget, moves to the working days until the reset."
+        case .dayOff:
+            return "No working hours today: the weekly limit is spread over the working days until the reset."
+        }
     }
 
     private var nextDays: String { LivePaceFormat.days(live.futureDays.map(\.day)) }

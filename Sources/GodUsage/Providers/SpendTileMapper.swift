@@ -52,6 +52,9 @@ enum SpendTileMapper {
                                       )))
         }
 
+        appendLastSevenDays(usage, to: &lines, now: now, estimated: estimated, unknownModelsByDay: unknownModelsByDay,
+                            modelUsage: modelUsage, modelSourceNote: modelSourceNote)
+
         let totalTokens = usage.daily.reduce(0) { $0 + $1.totalTokens }
         let costSamples = usage.daily.compactMap(\.costUSD)
         let totalCost = costSamples.isEmpty ? nil : costSamples.reduce(0, +)
@@ -68,6 +71,35 @@ enum SpendTileMapper {
                                     sourceNote: modelSourceNote
                                  )))
         }
+    }
+
+    /// The Last 7 Days line: today and the six days before it, for the Cost card's 7 Days period. No
+    /// provider card shows it; like the other periods, a week with no usage gets no line ("No data").
+    private static func appendLastSevenDays(
+        _ usage: DailyUsageSeries,
+        to lines: inout [MetricLine],
+        now: Date,
+        estimated: Bool,
+        unknownModelsByDay: [String: Set<String>],
+        modelUsage: ModelUsageSeries?,
+        modelSourceNote: String?
+    ) {
+        let calendar = Calendar.current
+        let keys = Set((0..<7).compactMap { offset in
+            calendar.date(byAdding: .day, value: -offset, to: calendar.startOfDay(for: now)).map(dayKey(from:))
+        })
+        let week = usage.daily.filter { dayKey(fromUsageDate: $0.date).map(keys.contains) ?? false }
+        let tokens = week.reduce(0) { $0 + $1.totalTokens }
+        let costs = week.compactMap(\.costUSD)
+        let cost = costs.isEmpty ? nil : costs.reduce(0, +)
+        guard tokens > 0 || (cost ?? 0) > 0 else { return }
+        let unknown = keys.reduce(into: Set<String>()) { $0.formUnion(unknownModelsByDay[$1] ?? []) }
+        lines.append(.values(label: "Last 7 Days",
+                             values: spendValues(tokens: tokens, costUSD: cost, estimated: estimated),
+                             unknownModels: sortedModels(unknown),
+                             modelBreakdown: modelBreakdown(
+                                modelUsage, days: keys, totalTokens: tokens, totalCostUSD: cost, sourceNote: modelSourceNote
+                             )))
     }
 
     /// A period with any real usage: tokens used, dollars priced, or both. A zero-token, zero-cost day
