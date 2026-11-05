@@ -7,6 +7,7 @@ import {
 import { planMismatches, type Detection, type Mismatch } from "./planDetection";
 import { planQuota, teamQuotaWindows, UNDERUSED_PERCENT, type PlanQuota } from "./quota";
 import { perDeviceAccounts, planDaily, planSessions, type PlanDaily, type PlanSessions } from "./quotaDaily";
+import { planBudget, type PlanBudget } from "./quotaHistory";
 import { daysBetween } from "./stats";
 import { teamUsage } from "./teamUsage";
 import { addDays } from "./usagePayload";
@@ -81,6 +82,8 @@ export interface PlanReport extends Terms {
   daily: PlanDaily | null;
   /** The covered accounts' 5-hour sessions in the cycle (see quotaDaily.ts). */
   sessions: PlanSessions | null;
+  /** What today can use of the open weekly limit and keep the week on pace (see quotaHistory.ts). */
+  budget: PlanBudget | null;
   /**
    * Covered accounts behind `quota`, `daily`, or `sessions` named per Mac: one of them used on several
    * Macs counts more than once, so the app warns that the figures may be off.
@@ -277,6 +280,7 @@ export async function planReports(
       quota,
       daily: planDaily(quotaRows, { provider: plan.provider, covered }, today, workingDays),
       sessions: planSessions(quotaRows, { provider: plan.provider, covered, cycleFrom: cycle.from }),
+      budget: planBudget(quotaRows, { provider: plan.provider, covered }, today, now, workingDays),
       perDeviceAccounts: perDeviceAccounts(quotaRows, { provider: plan.provider, covered }, cycle.from < addDays(today, -7) ? cycle.from : addDays(today, -7)),
       underused: quota === null ? multiple < 1 : quota.usedPercent < UNDERUSED_PERCENT,
       mismatches: planMismatches(plan, (userID) => covers(plan, userID), cycle.from, detections),

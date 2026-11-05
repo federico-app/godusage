@@ -44,23 +44,25 @@ export interface PlanSessions {
   accounts: number;
 }
 
-interface Plan {
+export interface Plan {
   provider: string;
   covered: (userID: string) => boolean;
 }
 
-const round1 = (value: number) => Math.round(value * 10) / 10;
+export const round1 = (value: number) => Math.round(value * 10) / 10;
 const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
 
+/** Per covered account and day: the share of the weekly limit used, and whether part of it was spread. */
+export type AccountDailyUse = Map<string, Map<string, { percent: number; estimated: boolean }>>;
+
 /**
- * The daily share of the weekly limit the plan's covered accounts use, from the share each Mac saw
- * used at the end of each day. A day's use is the growth since the window's previous reading; when
- * the Macs skipped days, the growth is spread evenly over them (estimated). A window that the Macs
- * first read on the day it started or the day after counts from 0; otherwise its first reading only
- * sets the baseline. A window reported by several Macs counts once, at the highest share each day.
- * Null when no covered account reported a weekly window with daily readings.
+ * The daily share of the weekly limit each covered account used, from the share each Mac saw used at
+ * the end of each day. A day's use is the growth since the window's previous reading; when the Macs
+ * skipped days, the growth is spread evenly over them (estimated). A window that the Macs first read
+ * on the day it started or the day after counts from 0; otherwise its first reading only sets the
+ * baseline. A window reported by several Macs counts once, at the highest share each day.
  */
-export function planDaily(rows: QuotaRow[], plan: Plan, today: string, workingDays: WorkingDays): PlanDaily | null {
+export function accountDailyUse(rows: QuotaRow[], plan: Plan): AccountDailyUse {
   const windows = new Map<string, { account: string; startDay: string; covered: boolean; days: Map<string, number> }>();
   for (const row of rows) {
     if (row.provider !== plan.provider || row.kind !== "limit" || row.period_hours !== WEEK_HOURS || !row.days?.length) continue;
@@ -72,8 +74,7 @@ export function planDaily(rows: QuotaRow[], plan: Plan, today: string, workingDa
     windows.set(key, window);
   }
 
-  // Per account and day: the share used, and whether part of it was spread over unread days.
-  const used = new Map<string, Map<string, { percent: number; estimated: boolean }>>();
+  const used: AccountDailyUse = new Map();
   const add = (account: string, day: string, percent: number, estimated: boolean) => {
     const days = used.get(account) ?? new Map<string, { percent: number; estimated: boolean }>();
     const entry = days.get(day) ?? { percent: 0, estimated: false };
@@ -95,20 +96,36 @@ export function planDaily(rows: QuotaRow[], plan: Plan, today: string, workingDa
       previous = { day, percent: Math.max(percent, previous?.percent ?? 0) };
     }
   }
+  return used;
+}
 
+/** One day's share over the accounts read that day (their mean), or null when none was. */
+export function dayShare(used: AccountDailyUse, day: string): { percent: number | null; estimated: boolean; accounts: string[] } {
+  const shares: number[] = [];
+  const accounts: string[] = [];
+  let estimated = false;
+  for (const [account, accountDays] of used) {
+    const entry = accountDays.get(day);
+    if (!entry) continue;
+    shares.push(entry.percent);
+    accounts.push(account);
+    estimated = estimated || entry.estimated;
+  }
+  return { percent: shares.length === 0 ? null : round1(mean(shares)), estimated, accounts };
+}
+
+/**
+ * The daily share of the weekly limit the plan's covered accounts use over the last seven days (see
+ * `accountDailyUse`). Null when no covered account reported a weekly window with daily readings.
+ */
+export function planDaily(rows: QuotaRow[], plan: Plan, today: string, workingDays: WorkingDays): PlanDaily | null {
+  const used = accountDailyUse(rows, plan);
   const chart = Array.from({ length: CHART_DAYS }, (_, index) => addDays(today, index - CHART_DAYS + 1));
   const readAccounts = new Set<string>();
   const days = chart.map((day) => {
-    const shares: number[] = [];
-    let estimated = false;
-    for (const [account, accountDays] of used) {
-      const entry = accountDays.get(day);
-      if (!entry) continue;
-      shares.push(entry.percent);
-      estimated = estimated || entry.estimated;
-      readAccounts.add(account);
-    }
-    return { day, percent: shares.length === 0 ? null : round1(mean(shares)), working: isWorkingDay(day, workingDays), estimated };
+    const share = dayShare(used, day);
+    for (const account of share.accounts) readAccounts.add(account);
+    return { day, percent: share.percent, working: isWorkingDay(day, workingDays), estimated: share.estimated };
   });
   if (readAccounts.size === 0) return null;
   const finished = days.filter((entry) => entry.day !== today && entry.working && entry.percent !== null).map((entry) => entry.percent!);
@@ -140,10 +157,15 @@ export function perDeviceAccounts(rows: QuotaRow[], plan: Plan, from: string): n
 }
 
 export function planSessions(rows: QuotaRow[], plan: Plan & { cycleFrom: string }): PlanSessions | null {
-  const from = Date.parse(`${plan.cycleFrom}T00:00:00Z`);
+  return sessionsBetween(rows, plan, Date.parse(`${plan.cycleFrom}T00:00:00Z`), Number.POSITIVE_INFINITY);
+}
+
+/** The covered accounts' 5-hour sessions that end from `from` to before `to` (epoch ms), as in `planSessions`. */
+export function sessionsBetween(rows: QuotaRow[], plan: Plan, from: number, to: number): PlanSessions | null {
   const byWindow = new Map<string, { account: string; endsAt: string; peak: number; covered: boolean }>();
   for (const row of rows) {
-    if (row.provider !== plan.provider || row.kind !== "session" || Date.parse(row.ends_at) < from) continue;
+    const endsAt = Date.parse(row.ends_at);
+    if (row.provider !== plan.provider || row.kind !== "session" || endsAt < from || endsAt >= to) continue;
     const key = `${row.account_key}|${row.ends_at}`;
     const session = byWindow.get(key) ?? { account: row.account_key, endsAt: row.ends_at, peak: 0, covered: false };
     session.peak = Math.max(session.peak, Math.min(row.percent, 100));
