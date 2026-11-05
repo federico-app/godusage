@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.5.0
+
+### New Features
+- Plans: daily share of the weekly limit, 5-hour sessions, and forecasts paced on the team's working days (Mon–Fri by default). Quota windows are matched by account, so one account on several Macs counts once, and plans warn when an account can't be identified ([#82](https://github.com/federico-app/godusage/pull/82)) by @andreaAppload
+- Settings → Teams: a team picker and Members, Accounts, Plans, and You pages ([#83](https://github.com/federico-app/godusage/pull/83)) by @andreaAppload
+
+### Chores
+- CI: run every macOS job on self-hosted Apple silicon runners ([#84](https://github.com/federico-app/godusage/pull/84)) by @andreaAppload
+- CI: drop the .build cache from the DEV release ([#85](https://github.com/federico-app/godusage/pull/85)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.4.0...v1.5.0](https://github.com/federico-app/godusage/compare/v1.4.0...v1.5.0)
+
+- [eef69bf](https://github.com/federico-app/godusage/commit/eef69bfed07acfb779c27845b3fea43b217b02f0) feat(teams): daily quota, sessions, and working-day forecasts in Plans (#82) by @andreaAppload
+- [e762897](https://github.com/federico-app/godusage/commit/e76289751e5af1e62c6e842e442c159c89863213) CI: run every macOS job on self-hosted Apple silicon runners (#84) by @andreaAppload
+- [b5c0b12](https://github.com/federico-app/godusage/commit/b5c0b121e52b4b25d2fababa2aa998e6956e119d) Settings → Teams: team picker and pages (#83) by @andreaAppload
+- [5ea46b5](https://github.com/federico-app/godusage/commit/5ea46b5d320dc6dd6e17c028760e8b76477e17c8) ci: drop the .build cache from the DEV release (#85) by @andreaAppload
+
+## v1.4.0
+
+### New Features
+- Leave an account out of a team: Settings → Teams lists this Mac's accounts under the selected team, and turning one off (like a personal plan next to the work one) drops its spend, ⚡, and plan quota from that team only ([#78](https://github.com/federico-app/godusage/pull/78)) by @andreaAppload
+
+### Chores
+- Build DEV releases on macos-26-intel runners ([#79](https://github.com/federico-app/godusage/pull/79)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.3.3...v1.4.0](https://github.com/federico-app/godusage/compare/v1.3.3...v1.4.0)
+
+- [80801c4](https://github.com/federico-app/godusage/commit/80801c4cd7aafddd455696d3237e95fd5a7b3f88) feat(teams): leave an account out of a team (#78) by @andreaAppload
+- [9e83397](https://github.com/federico-app/godusage/commit/9e83397df6a3678879e9d4b9cdedb2a74ccfe85a) ci: build DEV releases on macos-26-intel runners by @andreaAppload
+
 ## v1.3.3
 
 ### New Features
