@@ -3,7 +3,7 @@ import Foundation
 /// Rebuilds a snapshot's history rows (Today, Yesterday, Last 30 Days, Usage Trend) from its
 /// normalized daily history.
 enum UsageHistorySnapshotRenderer {
-    private static let historyLabels: Set<String> = ["Today", "Yesterday", "Last 30 Days", "Usage Trend"]
+    private static let historyLabels: Set<String> = ["Today", "Yesterday", "Last 7 Days", "Last 30 Days", "Usage Trend"]
 
     static func render(
         local snapshot: ProviderSnapshot,

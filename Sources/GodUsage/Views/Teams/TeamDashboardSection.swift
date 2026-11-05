@@ -6,7 +6,7 @@ import SwiftUI
 struct TeamDashboardSection: View {
     @Environment(AppContainer.self) private var container
 
-    /// The Total Spend card's period switcher drives this section too (Today, Yesterday, 30 Days).
+    /// The Total Spend card's period switcher drives this section too (Today, Yesterday, 7 Days, 30 Days).
     @AppStorage("godusage.totalSpend.period") private var totalSpendPeriod = TotalSpendPeriod.today.rawValue
     /// The Total Spend card's metric menu drives this section too (Cost, Cost/MTok, Tokens).
     @AppStorage("godusage.totalSpend.metric") private var totalSpendMetric = TotalSpendMetric.cost.rawValue
@@ -31,7 +31,13 @@ struct TeamDashboardSection: View {
 
     private var period: TotalSpendPeriod { TotalSpendPeriod(rawValue: totalSpendPeriod) ?? .today }
     /// Yesterday is the server's one-day range ending yesterday.
-    private var range: StatsRange { period == .last30 ? .month : .today }
+    private var range: StatsRange {
+        switch period {
+        case .today, .yesterday: .today
+        case .last7: .week
+        case .last30: .month
+        }
+    }
     private var endingOn: String? {
         guard period == .yesterday, let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date()) else { return nil }
         return DailyUsageAccumulator.dayKey(from: yesterday, calendar: .current)

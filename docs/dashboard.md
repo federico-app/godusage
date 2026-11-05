@@ -40,7 +40,7 @@ Ties go to the soonest deadline. Quotas and credits are this Mac's own; only the
 
 ## Total Spend
 
-When any enabled provider tracks daily spend (Claude, Codex, Cursor, Grok, Muse, OpenCode, or Sakana Fugu), a Total Spend card sits above the provider cards. The title is a pull-down menu for **Cost**, **Cost/MTok**, or **Tokens**. Cost is the default, and the choice persists across restarts. A capsule switcher flips the period between **Today**, **Yesterday**, and **30 Days**. The ring, center total, and ranked legend follow the selected metric:
+When any enabled provider tracks daily spend (Claude, Codex, Cursor, Grok, Muse, OpenCode, or Sakana Fugu), a Total Spend card sits above the provider cards. The title is a pull-down menu for **Cost**, **Cost/MTok**, or **Tokens**. Cost is the default, and the choice persists across restarts. A capsule switcher flips the period between **Today**, **Yesterday**, **7 Days** (today and the six days before it), and **30 Days**. When the four titles don't fit whole in equal segments, each segment shrinks to a short title (**7d**, **30d**, with the full name on hover) and the period's full name shows next to the card's title. The ring, center total, and ranked legend follow the selected metric:
 
 - **Cost**: each segment is that provider's share of combined dollars, biggest first.
 - **Cost/MTok**: each segment is sized by that provider's dollars per million tokens. The center is the blended rate across providers that have both spend and tokens. The legend lists each provider's own rate.
