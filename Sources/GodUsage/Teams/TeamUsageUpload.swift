@@ -201,9 +201,20 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
                 plans[family] = String(plan.prefix(60))
             }
         }
+        // A card's quota windows can be named by its account id (`TeamQuotaAccount`) rather than the
+        // key its usage goes up under, so a card left out of a team lists both: otherwise its quota
+        // would still count toward that team's plans.
+        var quotaKeys: [String: Set<String>] = [:]
+        for source in sources where splitCards.contains(source.cardID) {
+            quotaKeys[source.cardID, default: []].formUnion(source.quotas.compactMap(\.accountKey))
+        }
         let excluded = excludedCards.keys.sorted().flatMap { team in
-            (excludedCards[team] ?? []).sorted().compactMap { cardID in
-                splitKeys[cardID].map { ExcludedAccount(team: team, provider: ProviderAccountID.family(of: cardID), account: $0) }
+            (excludedCards[team] ?? []).sorted().flatMap { cardID -> [ExcludedAccount] in
+                guard let key = splitKeys[cardID] else { return [] }
+                let provider = ProviderAccountID.family(of: cardID)
+                return ([key] + (quotaKeys[cardID] ?? []).subtracting([key]).sorted()).map {
+                    ExcludedAccount(team: team, provider: provider, account: $0)
+                }
             }
         }
         return TeamUsageUpload(
