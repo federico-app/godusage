@@ -144,6 +144,8 @@ struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
     var daily: TeamPlanDaily?
     /// Nil until a covered Mac reports a session, and from older servers.
     var sessions: TeamPlanSessions?
+    /// Nil until a covered account has an open weekly window, and from older servers.
+    var budget: TeamPlanBudget?
     /// Covered accounts a Mac could only name per Mac: one used on several Macs counts more than
     /// once, so the quota figures may be off. Nil from older servers.
     var perDeviceAccounts: Int?

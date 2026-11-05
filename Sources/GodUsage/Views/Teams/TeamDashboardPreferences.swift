@@ -6,6 +6,7 @@ enum TeamDashboardPreferences {
     static let membersShownKey = "godusage.teams.dashboard.membersShown"
     static let showProjectionKey = "godusage.teams.dashboard.showProjection"
     static let showChallengesKey = "godusage.teams.dashboard.showChallenges"
+    static let showWeekStripKey = "godusage.teams.dashboard.showWeekStrip"
 }
 
 /// How many members the dashboard ranking shows before the caret. The rest unfold on click.
@@ -39,6 +40,7 @@ struct CustomizeTeamCard: View {
     @AppStorage(TeamDashboardPreferences.membersShownKey) private var membersShown = TeamMembersShown.default.rawValue
     @AppStorage(TeamDashboardPreferences.showProjectionKey) private var showProjection = true
     @AppStorage(TeamDashboardPreferences.showChallengesKey) private var showChallenges = true
+    @AppStorage(TeamDashboardPreferences.showWeekStripKey) private var showWeekStrip = true
 
     private let density = DensitySetting.compact
 
@@ -76,6 +78,10 @@ struct CustomizeTeamCard: View {
                 Divider().padding(.leading, 12)
                 row("Challenges") {
                     Toggle("", isOn: $showChallenges).settingsSwitchStyle()
+                }
+                Divider().padding(.leading, 12)
+                row("Weekly Limit Budget") {
+                    Toggle("", isOn: $showWeekStrip).settingsSwitchStyle()
                 }
             }
         }
