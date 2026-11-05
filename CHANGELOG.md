@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.6.0
+
+### New Features
+- Teams: the backend keeps each plan's weekly limit and 5-hour session readings for 13 months instead of about a month, so past weeks can be compared ([#89](https://github.com/federico-app/godusage/pull/89)) by @andreaAppload
+- Plans: today's budget for each plan's weekly limit (what's left, spread over the working days until the reset) and a weekly history API ([#91](https://github.com/federico-app/godusage/pull/91)) by @andreaAppload
+- Plans: Weekly History under each Claude or Codex plan, one row per weekly window (reset to reset) with each day's share of the limit, the window's share, and its sessions ([#92](https://github.com/federico-app/godusage/pull/92)) by @andreaAppload
+- Dashboard: This Week's Limit strip in the Team section, with today's use against today's budget and the days left until the reset; Customize → Team → Weekly Limit Budget turns it off ([#93](https://github.com/federico-app/godusage/pull/93)) by @andreaAppload
+- Compare → Plan Weeks: two plan weeks side by side, from one team or two of yours ([#94](https://github.com/federico-app/godusage/pull/94)) by @andreaAppload
+
+### Bug Fixes
+- Teams window and Settings → Teams keep their own team, separate from the popover's ([#88](https://github.com/federico-app/godusage/pull/88)) by @andreaAppload
+- An overtake alert could arrive twice when two checks ran at once ([#92](https://github.com/federico-app/godusage/pull/92)) by @andreaAppload
+
+### Chores
+- Test: date the account-sharing upload test today ([#90](https://github.com/federico-app/godusage/pull/90)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.5.0...v1.6.0](https://github.com/federico-app/godusage/compare/v1.5.0...v1.6.0)
+
+- [02792f0](https://github.com/federico-app/godusage/commit/02792f079ff3e49e060061a5afca25ec78cefa29) fix(teams): keep the Teams window and Settings team separate from the popover's (#88) by @andreaAppload
+- [18f7349](https://github.com/federico-app/godusage/commit/18f73498b38d66d10906e02dc5f775d82304755a) test(teams): date the account-sharing upload test today (#90) by @andreaAppload
+- [10947f7](https://github.com/federico-app/godusage/commit/10947f7a12299976a7564a33db048508d9914408) feat(teams): keep quota windows as history for 13 months (#89) by @andreaAppload
+- [e2126be](https://github.com/federico-app/godusage/commit/e2126be217ed95aed85811321a4753898ed027bc) feat(teams): weekly quota history and today's budget for each plan (#91) by @andreaAppload
+- [d2f680e](https://github.com/federico-app/godusage/commit/d2f680e70f4559c18b5fcc92e9153a52a6e0285f) Teams: Weekly History by plan window under each plan (#92) by @andreaAppload
+- [f0e6c6e](https://github.com/federico-app/godusage/commit/f0e6c6e958723e855ea72a9ba258c0fa069dcb69) Teams: This Week's Limit strip in the dashboard (#93) by @andreaAppload
+- [26ac3d3](https://github.com/federico-app/godusage/commit/26ac3d337f5e2fd0c8663d79fc401d2136ede1c0) feat(teams): compare two plan weeks, from one team or two, in Compare (#94) by @andreaAppload
+
 ## v1.5.0
 
 ### New Features
