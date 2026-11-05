@@ -3,8 +3,22 @@ name: iOS TestFlight
 # Called by release.yml in parallel with the macOS release. Keeping the complete TestFlight
 # pipeline here gives testflight_gate.mjs a precise workflow path to track: changes to this file
 # can require an end-to-end validation shipment, while unrelated macOS release edits cannot.
+#
+# The iOS app is paused, so release.yml only calls this on a manual run with force_ios. It can also
+# be run on its own (Actions → iOS TestFlight → Run workflow) for an existing tag.
 on:
   workflow_call:
+    inputs:
+      tag:
+        description: "Stable release tag to build (for example, v0.8.9)"
+        required: true
+        type: string
+      force_ios:
+        description: "Ship even when the gate would skip"
+        required: false
+        type: boolean
+        default: false
+  workflow_dispatch:
     inputs:
       tag:
         description: "Stable release tag to build (for example, v0.8.9)"
