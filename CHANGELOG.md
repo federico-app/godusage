@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.7.0
+
+### New Features
+- Live Pace in This Week's Limit: each plan shows how many minutes you're ahead of or behind today's pace, a tick in today's bar where you should be now, and when the budget runs out at the current pace. Going over today's budget immediately lowers the following working days. Details holds the pace that lasts until the end of the day, the working hours, and a chart of the day. When one plan is running hot, another provider's plan with room says "use this now". Turn it off in Customize → Team → Live Pace ([#104](https://github.com/federico-app/godusage/pull/104)) by @andreaAppload
+- Working Hours in Settings → Teams → Members: each member's working days, hours, and break, in their Mac's time zone (it follows you when you work abroad). Members set their own, owners anyone's. Today's budget is spread over working hours, and a shared account uses everyone's hours combined ([#104](https://github.com/federico-app/godusage/pull/104)) by @andreaAppload
+- Pace Alerts: Slow Down when today's budget would run out before your working day ends, Room to Spare when much of it would go unused (more eagerly on the last day before the reset, when it's lost). Only during your working hours, at most once a day per plan ([#104](https://github.com/federico-app/godusage/pull/104)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.6.2...v1.7.0](https://github.com/federico-app/godusage/compare/v1.6.2...v1.7.0)
+
+- [8f51346](https://github.com/federico-app/godusage/commit/8f513465c15974511cea9eb293176c2bc71107cd) feat(teams): Live Pace for This Week's Limit, with per-member working hours and time zones (#104) by @andreaAppload
+
 ## v1.6.2
 
 ### New Features

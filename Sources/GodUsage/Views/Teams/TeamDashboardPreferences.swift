@@ -7,6 +7,7 @@ enum TeamDashboardPreferences {
     static let showProjectionKey = "godusage.teams.dashboard.showProjection"
     static let showChallengesKey = "godusage.teams.dashboard.showChallenges"
     static let showWeekStripKey = "godusage.teams.dashboard.showWeekStrip"
+    static let showLivePaceKey = "godusage.teams.dashboard.showLivePace"
 }
 
 /// How many members the dashboard ranking shows before the caret. The rest unfold on click.
@@ -41,6 +42,7 @@ struct CustomizeTeamCard: View {
     @AppStorage(TeamDashboardPreferences.showProjectionKey) private var showProjection = true
     @AppStorage(TeamDashboardPreferences.showChallengesKey) private var showChallenges = true
     @AppStorage(TeamDashboardPreferences.showWeekStripKey) private var showWeekStrip = true
+    @AppStorage(TeamDashboardPreferences.showLivePaceKey) private var showLivePace = true
 
     private let density = DensitySetting.compact
 
@@ -83,19 +85,25 @@ struct CustomizeTeamCard: View {
                 row("Weekly Limit Budget") {
                     Toggle("", isOn: $showWeekStrip).settingsSwitchStyle()
                 }
+                if showWeekStrip {
+                    Divider().padding(.leading, 40)
+                    row("Live Pace", indent: 56) {
+                        Toggle("", isOn: $showLivePace).settingsSwitchStyle()
+                    }
+                }
             }
         }
         .cardSurface()
         .animation(Motion.spring, value: showSection)
     }
 
-    private func row<Trailing: View>(_ title: String, @ViewBuilder trailing: () -> Trailing) -> some View {
+    private func row<Trailing: View>(_ title: String, indent: CGFloat = 40, @ViewBuilder trailing: () -> Trailing) -> some View {
         HStack(spacing: 10) {
             Text(title)
             Spacer(minLength: 8)
             trailing()
         }
-        .padding(.leading, 40)
+        .padding(.leading, indent)
         .padding(.trailing, 12)
         .padding(.vertical, density.controlRowPadding)
     }

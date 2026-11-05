@@ -3,8 +3,12 @@ import SwiftUI
 /// In the dashboard's Team section, above the ranking: for each plan with an open weekly limit, its
 /// week so far, one bar per day, with today's use against what today can afford (what's left of the
 /// week spread over the working days until the reset) and the days left drawn at that budget. Plans
-/// from your other teams (see `YourTeamPlans`) name their team.
+/// from your other teams (see `YourTeamPlans`) name their team. With Live Pace on (Customize → Team),
+/// plans the server sends a pace for show it instead (see `TeamLivePaceStrip`).
 struct TeamWeekStripCard: View {
+    @Environment(AppContainer.self) private var container
+    @AppStorage(TeamDashboardPreferences.showLivePaceKey) private var showLivePace = true
+
     let plans: [TeamPlanEntry]
     /// The team a row names; nil for the selected team's own plans.
     let teamName: (String) -> String?
@@ -17,15 +21,27 @@ struct TeamWeekStripCard: View {
     var body: some View {
         let rows = budgeted
         if !rows.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("This Week's Limit")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                ForEach(rows, id: \.0.id) { entry, budget in
-                    // Three plans or more drop the line under each strip to stay short.
-                    TeamWeekStrip(
-                        plan: entry.plan, budget: budget, today: today, showsNote: rows.count < 3, teamName: teamName(entry.teamID)
-                    )
+            // Live Pace moves with the clock, so the card redraws every minute.
+            TimelineView(.periodic(from: .now, by: 60)) { context in
+                let paces = showLivePace ? livePaces(rows.map(\.0), now: context.date) : [:]
+                let roomFor = Self.useThisNow(rows.map(\.0), paces: paces)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("This Week's Limit")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    ForEach(rows, id: \.0.id) { entry, budget in
+                        if let live = paces[entry.id], let pace = budget.pace {
+                            TeamLivePaceStrip(
+                                plan: entry.plan, budget: budget, pace: pace, live: live, useThisNow: roomFor.contains(entry.id),
+                                today: today, teamName: teamName(entry.teamID)
+                            )
+                        } else {
+                            // Three plans or more drop the line under each strip to stay short.
+                            TeamWeekStrip(
+                                plan: entry.plan, budget: budget, today: today, showsNote: rows.count < 3, teamName: teamName(entry.teamID)
+                            )
+                        }
+                    }
                 }
             }
             .padding(.horizontal, 12)
@@ -33,6 +49,28 @@ struct TeamWeekStripCard: View {
             .cardSurface()
         }
     }
+
+    private func livePaces(_ entries: [TeamPlanEntry], now: Date) -> [String: LivePace] {
+        var paces: [String: LivePace] = [:]
+        for entry in entries {
+            if let live = container.teamPlans.livePace(entry, now: now) { paces[entry.id] = live }
+        }
+        return paces
+    }
+
+    /// Plans with room while another provider's plan runs hot (over today's budget or well ahead of
+    /// pace): their row says "use this now". Room means on pace or behind, with at least
+    /// `roomForOthers` points of today's budget left.
+    static func useThisNow(_ entries: [TeamPlanEntry], paces: [String: LivePace]) -> Set<String> {
+        let hot = Set(entries.filter { [.ahead, .overBudget].contains(paces[$0.id]?.state) }.map(\.plan.provider))
+        guard !hot.isEmpty else { return [] }
+        return Set(entries.filter { entry in
+            guard let live = paces[entry.id], !hot.contains(entry.plan.provider) else { return false }
+            return [.onPace, .behind].contains(live.state) && live.budget - live.used >= roomForOthers
+        }.map(\.id))
+    }
+
+    static let roomForOthers = 5.0
 }
 
 struct TeamWeekStrip: View {

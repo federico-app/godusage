@@ -8,6 +8,7 @@ import { planMismatches, type Detection, type Mismatch } from "./planDetection";
 import { planQuota, teamQuotaWindows, UNDERUSED_PERCENT, type PlanQuota } from "./quota";
 import { perDeviceAccounts, planDaily, planSessions, type PlanDaily, type PlanSessions } from "./quotaDaily";
 import { planBudget, type PlanBudget } from "./quotaHistory";
+import { planPace, type PaceContext, type PlanPace } from "./livePace";
 import { daysBetween } from "./stats";
 import { teamUsage } from "./teamUsage";
 import { addDays } from "./usagePayload";
@@ -82,8 +83,11 @@ export interface PlanReport extends Terms {
   daily: PlanDaily | null;
   /** The covered accounts' 5-hour sessions in the cycle (see quotaDaily.ts). */
   sessions: PlanSessions | null;
-  /** What today can use of the open weekly limit and keep the week on pace (see quotaHistory.ts). */
-  budget: PlanBudget | null;
+  /**
+   * What today can use of the open weekly limit and keep the week on pace (see quotaHistory.ts), with
+   * Live Pace's working-hours budget when the request named a time zone (see livePace.ts).
+   */
+  budget: (PlanBudget & { pace: PlanPace | null }) | null;
   /**
    * Covered accounts behind `quota`, `daily`, or `sessions` named per Mac: one of them used on several
    * Macs counts more than once, so the app warns that the figures may be off.
@@ -217,6 +221,7 @@ export async function planReports(
   detections: Detection[],
   now: Date,
   workingDays: WorkingDays,
+  pace: PaceContext | null = null,
 ): Promise<PlanReport[]> {
   if (plans.length === 0) return [];
   const cycles = plans.map((plan) => currentCycle(plan.renewalDay, today, workingDays));
@@ -280,12 +285,17 @@ export async function planReports(
       quota,
       daily: planDaily(quotaRows, { provider: plan.provider, covered }, today, workingDays),
       sessions: planSessions(quotaRows, { provider: plan.provider, covered, cycleFrom: cycle.from }),
-      budget: planBudget(quotaRows, { provider: plan.provider, covered }, today, now, workingDays),
+      budget: withPace(planBudget(quotaRows, { provider: plan.provider, covered }, today, now, workingDays), () =>
+        pace === null ? null : planPace(quotaRows, { provider: plan.provider, covered }, today, now, pace)),
       perDeviceAccounts: perDeviceAccounts(quotaRows, { provider: plan.provider, covered }, cycle.from < addDays(today, -7) ? cycle.from : addDays(today, -7)),
       underused: quota === null ? multiple < 1 : quota.usedPercent < UNDERUSED_PERCENT,
       mismatches: planMismatches(plan, (userID) => covers(plan, userID), cycle.from, detections),
     };
   });
+}
+
+function withPace(budget: PlanBudget | null, pace: () => PlanPace | null): (PlanBudget & { pace: PlanPace | null }) | null {
+  return budget === null ? null : { ...budget, pace: pace() };
 }
 
 function round2(value: number): number {

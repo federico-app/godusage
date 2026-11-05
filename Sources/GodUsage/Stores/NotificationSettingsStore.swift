@@ -22,6 +22,33 @@ final class NotificationSettingsStore {
     private static let teamReactionsKey = "godusage.notifications.teamReactions"
     private static let teamPlanChangesKey = "godusage.notifications.teamPlanChanges"
     private static let usageSuggestionsKey = "godusage.notifications.usageSuggestions"
+    private static let paceAlertsKey = "godusage.notifications.paceAlerts"
+    private static let paceSlowDownKey = "godusage.notifications.paceAlerts.slowDown"
+    private static let paceRoomToSpareKey = "godusage.notifications.paceAlerts.roomToSpare"
+
+    /// Live Pace alerts on your team plans' weekly limit, within your working hours.
+    var paceAlerts: Bool {
+        didSet { defaults.set(paceAlerts, forKey: Self.paceAlertsKey) }
+    }
+
+    /// At this pace, today's budget runs out before the end of your working day.
+    var paceSlowDown: Bool {
+        didSet { defaults.set(paceSlowDown, forKey: Self.paceSlowDownKey) }
+    }
+
+    /// At this pace, much of today's budget goes unused.
+    var paceRoomToSpare: Bool {
+        didSet { defaults.set(paceRoomToSpare, forKey: Self.paceRoomToSpareKey) }
+    }
+
+    /// Whether a Live Pace alert of this kind may go out.
+    func allows(_ alert: LivePace.Alert) -> Bool {
+        guard paceAlerts else { return false }
+        return switch alert {
+        case .slowDown: paceSlowDown
+        case .roomToSpare: paceRoomToSpare
+        }
+    }
 
     /// Notify once when a new usage suggestion tops the dashboard banner.
     var usageSuggestions: Bool {
@@ -87,6 +114,9 @@ final class NotificationSettingsStore {
         self.teamReactions = defaults.bool(forKey: Self.teamReactionsKey, default: true)
         self.teamPlanChanges = defaults.bool(forKey: Self.teamPlanChangesKey, default: true)
         self.usageSuggestions = defaults.bool(forKey: Self.usageSuggestionsKey, default: true)
+        self.paceAlerts = defaults.bool(forKey: Self.paceAlertsKey, default: true)
+        self.paceSlowDown = defaults.bool(forKey: Self.paceSlowDownKey, default: true)
+        self.paceRoomToSpare = defaults.bool(forKey: Self.paceRoomToSpareKey, default: true)
     }
 
     /// The per-milestone toggles as the pure logic consumes them.
@@ -104,5 +134,6 @@ final class NotificationSettingsStore {
     var anyEnabled: Bool {
         underTenPercent || healthyToClose || closeToRunningOut || resetExpiryReminders || teamOvertakes || teamWeeklyRecap
             || teamChallenges || teamReactions || teamPlanChanges || usageSuggestions
+            || paceAlerts && (paceSlowDown || paceRoomToSpare)
     }
 }

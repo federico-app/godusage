@@ -55,8 +55,8 @@ extension TeamPlansStore {
     }
 
     /// Keeps every team's plans fresh enough for your weekly limit, at most one load per team every
-    /// `backgroundMaxAge`.
-    func loadIfStale(teamIDs: [String], now: Date = Date()) async {
-        for teamID in teamIDs { await loadIfStale(teamID: teamID, now: now) }
+    /// `maxAge` (`backgroundMaxAge`, or `livePaceMaxAge` with Live Pace on).
+    func loadIfStale(teamIDs: [String], now: Date = Date(), maxAge: TimeInterval = backgroundMaxAge) async {
+        for teamID in teamIDs { await loadIfStale(teamID: teamID, now: now, maxAge: maxAge) }
     }
 }
