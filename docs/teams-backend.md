@@ -181,7 +181,7 @@ Weekly history (`GET /v1/teams/:id/plans/history?today=&weeks=` for members; `we
 
 Account-scope entries may add `"account": "<64 hex characters>"`. On device scope it is allowed only with `"split": true`.
 
-An entry with `"split": true` is one account sent apart from the provider's other accounts; it needs `account`. A provider can appear once without `split` and once per split account; a repeated provider or account is rejected. `excludedAccounts` (optional, at most 400) is `[{ team, provider, account }]`: the split accounts this Mac leaves out of each team. The server replaces the Mac's stored exclusions (`account_exclusions`) with the list, skipping teams the user isn't in; an upload without the key (older apps) leaves them alone. Removing the Mac or the team removes them, and **Export My Data** includes them.
+An entry with `"split": true` is one account sent apart from the provider's other accounts; it needs `account`. A provider can appear once without `split` and once per split account; a repeated provider or account is rejected. `excludedAccounts` (optional, at most 400) is `[{ team, provider, account }]`: the split accounts this Mac leaves out of each team. When the account's quota windows are named by its account id (a different key from its usage), the Mac lists that key too, so its windows leave the team's plans as well. The server replaces the Mac's stored exclusions (`account_exclusions`) with the list, skipping teams the user isn't in; an upload without the key (older apps) leaves them alone. Removing the Mac or the team removes them, and **Export My Data** includes them.
 
 `appVersion` is optional (letters, digits, `.`, `+`, `-`, at most 32 characters); the Mac it came from keeps it until its next upload.
 

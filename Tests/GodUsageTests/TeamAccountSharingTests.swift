@@ -78,6 +78,19 @@ final class TeamAccountSharingTests: XCTestCase {
         XCTAssertEqual(json["excludedAccounts"] as? [[String: String]], [["team": "t", "provider": "claude", "account": "abc"]])
     }
 
+    func testAnAccountLeftOutAlsoLeavesItsQuotaWindowsOut() {
+        var personal = source("claude@ab12cd34", cost: 30)
+        personal.quotas = [
+            TeamQuotaReading(provider: "claude", cardID: "claude@ab12cd34", accountKey: "quota-key", endsAt: Date(), periodHours: 168, percent: 40, observedAt: Date()),
+        ]
+        let upload = TeamUsageUpload.make(
+            sources: [source("claude", cost: 11), personal], deviceName: "MacBook", dayKeys: window,
+            excludedCards: ["t": ["claude@ab12cd34"]], accountKey: { _ in "usage-key" }
+        )
+        XCTAssertEqual(upload.excludedAccounts.map(\.account), ["quota-key", "usage-key"])
+        XCTAssertEqual(Set(upload.excludedAccounts.map(\.team)), ["t"])
+    }
+
     func testAClaudeAccountKeyMatchesItsQuotaWindowsKey() {
         let key = TeamsStore.accountKey(for: source("claude@ab12cd34", cost: 1), deviceID: "device-0001")
         XCTAssertEqual(key, TeamAccountKey.make(provider: "claude", accountID: "device-0001|claude@ab12cd34"))
