@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Feeds `UsageAdvisor` from this Mac's quotas and reset credits and the selected team's plans,
+/// Feeds `UsageAdvisor` from this Mac's quotas and reset credits and the plans that cover you in your teams,
 /// remembers which suggestions the user dismissed, and posts the optional notification.
 @MainActor
 @Observable
@@ -59,11 +59,11 @@ final class UsageAdviceStore {
         defaults.set(dismissedIDs, forKey: Self.dismissedKey)
     }
 
-    /// Called after each refresh pass: keeps the team's plans fresh enough for the advice, and
+    /// Called after each refresh pass: keeps your teams' plans fresh enough for the advice, and
     /// notifies about the top suggestion once per situation when the setting is on.
     func evaluate(now: Date = Date()) async {
-        if teams.isSignedIn, let teamID = teams.selectedTeamID {
-            await plans.loadIfStale(teamID: teamID, now: now)
+        if teams.isSignedIn {
+            await plans.loadIfStale(teamIDs: teams.teams.map(\.id), now: now)
         }
         guard settings.usageSuggestions, let top = suggestions(now: now).first,
               !notifiedIDs.contains(top.id) else { return }
@@ -124,23 +124,24 @@ final class UsageAdviceStore {
         }
     }
 
-    /// The selected team's plans that cover you, for providers this Mac uses: advice to use a plan
-    /// you are not on, or a provider you don't have, helps nobody.
+    /// The plans that cover you in any of your teams, once per subscription, for providers this Mac
+    /// uses: advice to use a plan you are not on, or a provider you don't have, helps nobody.
     private func teamPlans() -> [UsageAdvisor.Plan] {
-        guard teams.isSignedIn, let teamID = teams.selectedTeamID,
-              let report = plans.report(teamID: teamID) else { return [] }
+        guard teams.isSignedIn else { return [] }
         let families = Set(enabledDescriptors().map { ProviderAccountID.family(of: $0.providerID) })
-        return Self.plansForYou(report, families: families).map { plan in
-            UsageAdvisor.Plan(
+        let yours = plans.yourPlans(selectedTeamID: teams.selectedTeamID, teamIDs: teams.teams.map(\.id))
+        return Self.plansForYou(yours, families: families).map { entry in
+            let plan = entry.plan
+            return UsageAdvisor.Plan(
                 id: plan.id, family: plan.provider,
                 providerName: registry.provider(id: plan.provider)?.displayName ?? plan.provider.capitalized,
                 name: plan.name, projectedMultiple: plan.projectedMultiple, quotaPercent: plan.quota?.usedPercent, underused: plan.underused,
-                daysLeft: plan.cycle.daysLeft + 1, cycleEnd: plan.cycle.to
+                daysLeft: plan.cycle.daysLeft + 1, cycleEnd: plan.cycle.to, teamID: entry.teamID
             )
         }
     }
 
-    static func plansForYou(_ report: TeamPlansReport, families: Set<String>) -> [TeamPlanReport] {
-        report.plans.filter { $0.includesYou && families.contains($0.provider) }
+    static func plansForYou(_ plans: [TeamPlanEntry], families: Set<String>) -> [TeamPlanEntry] {
+        plans.filter { $0.plan.includesYou && families.contains($0.plan.provider) }
     }
 }

@@ -2,14 +2,16 @@ import SwiftUI
 
 /// In the dashboard's Team section, above the ranking: for each plan with an open weekly limit, its
 /// week so far, one bar per day, with today's use against what today can afford (what's left of the
-/// week spread over the working days until the reset) and the days left drawn at that budget.
+/// week spread over the working days until the reset) and the days left drawn at that budget. Plans
+/// from your other teams (see `YourTeamPlans`) name their team.
 struct TeamWeekStripCard: View {
-    let plans: [TeamPlanReport]
-    let providerName: (String) -> String
+    let plans: [TeamPlanEntry]
+    /// The team a row names; nil for the selected team's own plans.
+    let teamName: (String) -> String?
     let today: String
 
-    private var budgeted: [(TeamPlanReport, TeamPlanBudget)] {
-        plans.compactMap { plan in plan.budget.map { (plan, $0) } }
+    private var budgeted: [(TeamPlanEntry, TeamPlanBudget)] {
+        plans.compactMap { entry in entry.plan.budget.map { (entry, $0) } }
     }
 
     var body: some View {
@@ -19,9 +21,11 @@ struct TeamWeekStripCard: View {
                 Text("This Week's Limit")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
-                ForEach(rows, id: \.0.id) { plan, budget in
+                ForEach(rows, id: \.0.id) { entry, budget in
                     // Three plans or more drop the line under each strip to stay short.
-                    TeamWeekStrip(plan: plan, budget: budget, today: today, showsNote: rows.count < 3)
+                    TeamWeekStrip(
+                        plan: entry.plan, budget: budget, today: today, showsNote: rows.count < 3, teamName: teamName(entry.teamID)
+                    )
                 }
             }
             .padding(.horizontal, 12)
@@ -36,6 +40,8 @@ struct TeamWeekStrip: View {
     let budget: TeamPlanBudget
     let today: String
     let showsNote: Bool
+    /// Set for a plan from another of your teams.
+    var teamName: String?
 
     private static let height: CGFloat = 40
     private var color: Color { TotalSpendPalette.color(for: plan.provider) }
@@ -46,22 +52,7 @@ struct TeamWeekStrip: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Circle().fill(color).frame(width: 7, height: 7)
-                Text(plan.name).font(.caption.weight(.semibold)).lineLimit(1).layoutPriority(1)
-                if budget.accounts > 1 {
-                    Text("\(budget.accounts) accounts")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
-                }
-                Spacer(minLength: 4)
-                (Text(Self.percent(budget.todayPercent))
-                    .fontWeight(.semibold)
-                    .foregroundStyle(overBudget ? Theme.notice : AnyShapeStyle(.primary))
-                    + Text(" of \(Self.percent(budget.affordablePercent)) today").foregroundStyle(.secondary))
-                    .font(.caption.monospacedDigit())
-                    .lineLimit(1)
-            }
+            header
             bars
             if showsNote {
                 Text(Self.note(budget)).font(.caption2).foregroundStyle(overBudget ? Theme.notice : AnyShapeStyle(.secondary))
@@ -71,6 +62,49 @@ struct TeamWeekStrip: View {
     }
 
     private var overBudget: Bool { Self.isOverBudget(budget) }
+
+    /// Nothing in the header is ever cut off: on one line when it fits, else the figure moves under
+    /// the name (which may wrap), still right-aligned.
+    private var header: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                title.fixedSize()
+                Spacer(minLength: 4)
+                figure
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                title.fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Spacer(minLength: 0)
+                    figure
+                }
+            }
+        }
+    }
+
+    /// The dot, the plan's name, its team when it's from another of yours, and how many accounts it mixes.
+    private var title: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            (Text(plan.name).font(.caption.weight(.semibold))
+                + Text(teamName.map { "  \($0)" } ?? "").font(.caption2).foregroundStyle(.secondary))
+            if budget.accounts > 1 {
+                Text("\(budget.accounts) accounts")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .fixedSize()
+            }
+        }
+    }
+
+    private var figure: some View {
+        (Text(Self.percent(budget.todayPercent))
+            .fontWeight(.semibold)
+            .foregroundStyle(overBudget ? Theme.notice : AnyShapeStyle(.primary))
+            + Text(" of \(Self.percent(budget.affordablePercent)) today").foregroundStyle(.secondary))
+            .font(.caption.monospacedDigit())
+            .fixedSize()
+    }
 
     static func isOverBudget(_ budget: TeamPlanBudget) -> Bool { budget.todayPercent > budget.affordablePercent }
 
