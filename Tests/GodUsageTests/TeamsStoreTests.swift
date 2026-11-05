@@ -462,6 +462,13 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
         log.append("savePlans \(plans.map(\.name).joined(separator: ","))")
         return plansResult
     }
+    var historyResult = TeamPlanHistory(plans: [])
+    var historyError: Error?
+    func planHistory(token: String, teamID: String, today: String, weeks: Int) async throws -> TeamPlanHistory {
+        log.append("planHistory \(teamID) \(weeks)")
+        if let historyError { throw historyError }
+        return historyResult
+    }
 
     var pairingCodes: [PairingCode] = []
     var linkedDevicesResults: [[LinkedDevice]] = []

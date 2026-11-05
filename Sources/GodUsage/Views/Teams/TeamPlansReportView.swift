@@ -148,6 +148,7 @@ struct TeamPlansReportView: View {
             }
             if plan.daily != nil || plan.sessions != nil {
                 TeamPlanUsageDetails(plan: plan, today: container.teams.localToday())
+                TeamPlanWeeklyHistory(teamID: teamID, plan: plan, today: container.teams.localToday())
             }
             if let count = plan.perDeviceAccounts, count > 0, plan.quota != nil || plan.daily != nil || plan.sessions != nil {
                 Label(Self.perDeviceText(count), systemImage: "exclamationmark.triangle.fill")

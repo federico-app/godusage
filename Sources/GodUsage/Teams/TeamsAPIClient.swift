@@ -51,6 +51,8 @@ protocol TeamsAPI: Sendable {
     func deleteDevice(token: String, deviceID: String) async throws
     func plans(token: String, teamID: String, today: String) async throws -> TeamPlansReport
     func savePlans(token: String, teamID: String, plans: [TeamPlan], workingDays: [Int]?, today: String) async throws -> TeamPlansReport
+    /// The plans' last `weeks` calendar weeks of quota use.
+    func planHistory(token: String, teamID: String, today: String, weeks: Int) async throws -> TeamPlanHistory
     /// A one-time code the iPhone app trades for a session of this account (shown as a QR code).
     func createPairingCode(token: String) async throws -> PairingCode
     func linkedDevices(token: String) async throws -> [LinkedDevice]
@@ -235,6 +237,10 @@ struct TeamsAPIClient: TeamsAPI {
         }
         let body = Body(plans: plans, workingDays: workingDays)
         return try await send("PUT", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))", token: token, body: body)
+    }
+
+    func planHistory(token: String, teamID: String, today: String, weeks: Int) async throws -> TeamPlanHistory {
+        try await send("GET", "/v1/teams/\(escaped(teamID))/plans/history?today=\(escaped(today))&weeks=\(weeks)", token: token)
     }
 
     func createPairingCode(token: String) async throws -> PairingCode {
