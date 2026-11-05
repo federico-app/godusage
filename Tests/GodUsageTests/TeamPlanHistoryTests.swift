@@ -4,10 +4,11 @@ import XCTest
 @MainActor
 final class TeamPlanHistoryTests: XCTestCase {
     private let json = """
-    {"plans":[{"id":"p-new","provider":"claude","name":"Claude Max","weeks":[{"from":"2026-11-02","days":[
-      {"day":"2026-11-02","percent":null,"working":true,"estimated":false,"accounts":0},
-      {"day":"2026-11-03","percent":19.5,"working":true,"estimated":true,"accounts":1}],
-      "totalPercent":19.5,"estimated":true,"accounts":1,"sessions":{"sessions":8,"limitHits":0,"averagePeakPercent":39}}]}],
+    {"plans":[{"id":"p-new","provider":"claude","name":"Claude Max","weeks":[{"from":"2026-11-03","to":"2026-11-09",
+      "startsAt":"2026-11-03T03:00:00.000Z","endsAt":"2026-11-10T03:00:00.000Z","open":true,"percent":45.5,"days":[
+      {"day":"2026-11-03","percent":null,"working":true,"estimated":false,"accounts":0},
+      {"day":"2026-11-04","percent":19.5,"working":true,"estimated":true,"accounts":1}],
+      "estimated":true,"accounts":1,"sessions":{"sessions":8,"limitHits":0,"averagePeakPercent":39}}]}],
      "workingDays":[1,2,3,4,5]}
     """
 
@@ -23,6 +24,8 @@ final class TeamPlanHistoryTests: XCTestCase {
         let history = try JSONDecoder().decode(TeamPlanHistory.self, from: Data(json.utf8))
         let week = try XCTUnwrap(history.weeks(for: plan(id: "p-new"))?.first)
         XCTAssertEqual(week.days.map(\.percent), [nil, 19.5])
+        XCTAssertEqual(week.percent, 45.5)
+        XCTAssertTrue(week.open)
         XCTAssertEqual(week.sessions?.averagePeakPercent, 39)
         // Ids change on every save: a report from before the save still finds its plan.
         XCTAssertNotNil(history.weeks(for: plan(id: "p-old")))
@@ -55,15 +58,8 @@ final class TeamPlanHistoryTests: XCTestCase {
         XCTAssertNotNil(store.history(teamID: "t1"), "a failed reload keeps the weeks already shown")
     }
 
-    func testShowsWeeksFromTheFirstOneWithData() {
-        func week(_ from: String, _ total: Double?) -> TeamPlanHistory.Week {
-            TeamPlanHistory.Week(from: from, days: [], totalPercent: total, estimated: false, accounts: 1, sessions: nil)
-        }
-        let weeks = [week("2026-10-19", nil), week("2026-10-26", 40), week("2026-11-02", nil)]
-        XCTAssertEqual(TeamPlanWeeklyHistory.fromFirstRead(weeks).map(\.from), ["2026-10-26", "2026-11-02"])
-        XCTAssertEqual(TeamPlanWeeklyHistory.fromFirstRead([week("2026-10-26", nil), week("2026-11-02", nil)]).map(\.from), ["2026-11-02"])
+    func testFormatsSharesWithOneDecimalLikePerDay() {
         XCTAssertEqual(TeamPlanWeeklyHistory.number(19.5), "19.5")
-        XCTAssertEqual(TeamPlanWeeklyHistory.number(45.5), "45.5")
         XCTAssertEqual(TeamPlanWeeklyHistory.number(100), "100")
     }
 }

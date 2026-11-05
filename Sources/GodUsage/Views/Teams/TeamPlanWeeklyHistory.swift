@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Under a plan in the Plans tab, collapsed until opened: its last weeks, one row each, with the share
-/// of the weekly limit used each day (darker the more), the week's total, and its 5-hour sessions.
+/// Under a plan in the Plans tab, collapsed until opened: its last weekly windows (reset to reset), one
+/// row each, with the share of the weekly limit used each day (darker the more), the window's share,
+/// and its 5-hour sessions.
 struct TeamPlanWeeklyHistory: View {
     @Environment(AppContainer.self) private var container
     let teamID: String
@@ -38,9 +39,9 @@ struct TeamPlanWeeklyHistory: View {
 
     @ViewBuilder
     private var content: some View {
-        if let weeks = container.teamPlans.history(teamID: teamID)?.weeks(for: plan).map(Self.fromFirstRead) {
-            if weeks.allSatisfy({ $0.totalPercent == nil && $0.sessions == nil }) {
-                Text("No week read yet. Each Mac records the share it sees at the end of each day.")
+        if let weeks = container.teamPlans.history(teamID: teamID)?.weeks(for: plan) {
+            if weeks.isEmpty {
+                Text("No week read yet. Each Mac records the share it sees of the weekly limit.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -54,22 +55,33 @@ struct TeamPlanWeeklyHistory: View {
         }
     }
 
+    /// Columns are the days of the window, named after the newest one's; a week that a reset moved
+    /// names its own days in its cells.
     private func table(_ weeks: [TeamPlanHistory.Week]) -> some View {
-        Grid(alignment: .leading, horizontalSpacing: 4, verticalSpacing: 4) {
+        let columns = weeks.map(\.days.count).max() ?? 7
+        let header = weeks.first.map { $0.days.map { Self.weekday($0.day) } } ?? []
+        return Grid(alignment: .leading, horizontalSpacing: 4, verticalSpacing: 4) {
             GridRow {
                 Text("Week")
-                ForEach(weeks.first?.days ?? [], id: \.day) { day in
-                    Text(Self.weekday(day.day)).frame(maxWidth: .infinity)
+                ForEach(0..<columns, id: \.self) { index in
+                    Text(index < header.count ? header[index] : "").frame(maxWidth: .infinity)
                 }
-                Text("Total").gridColumnAlignment(.trailing)
+                Text("Used").gridColumnAlignment(.trailing)
                 Text("Sessions").gridColumnAlignment(.trailing)
             }
             .font(.caption2.weight(.semibold))
             .foregroundStyle(.secondary)
-            ForEach(weeks, id: \.from) { week in
+            ForEach(weeks, id: \.endsAt) { week in
+                let shifted = week.days.map { Self.weekday($0.day) } != Array(header.prefix(week.days.count))
                 GridRow {
                     weekLabel(week)
-                    ForEach(week.days, id: \.day) { day in cell(day) }
+                    ForEach(0..<columns, id: \.self) { index in
+                        if index < week.days.count {
+                            cell(week.days[index], showsWeekday: shifted)
+                        } else {
+                            Color.clear.frame(maxWidth: .infinity, minHeight: 26)
+                        }
+                    }
                     total(week)
                     sessions(week)
                 }
@@ -79,17 +91,19 @@ struct TeamPlanWeeklyHistory: View {
 
     private func weekLabel(_ week: TeamPlanHistory.Week) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(Self.weekName(week.from)).font(.caption.weight(.semibold))
-            Text(week.accounts > 1 ? "\(Self.shortDate(week.from)) · \(week.accounts) accounts" : Self.shortDate(week.from))
-                .font(.caption2)
-                .foregroundStyle(week.accounts > 1 ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+            Text("\(Self.shortDate(week.from)) – \(Self.shortDate(week.to))").font(.caption.weight(.semibold))
+            if week.accounts > 1 {
+                Text("\(week.accounts) accounts").font(.caption2).foregroundStyle(Color.accentColor)
+            } else if week.open {
+                Text("this week").font(.caption2).foregroundStyle(.secondary)
+            }
         }
-        .frame(minWidth: 84, alignment: .leading)
+        .frame(minWidth: 96, alignment: .leading)
     }
 
-    private func cell(_ day: TeamPlanHistory.Day) -> some View {
+    private func cell(_ day: TeamPlanHistory.Day, showsWeekday: Bool) -> some View {
         let shape = RoundedRectangle(cornerRadius: 4)
-        return ZStack {
+        return ZStack(alignment: showsWeekday ? .topLeading : .center) {
             if let percent = day.percent {
                 shape.fill(color.opacity(day.estimated ? 0.25 : 0.12 + 0.88 * min(percent / (pace * 1.5), 1)))
                 if day.estimated { shape.strokeBorder(color, style: StrokeStyle(lineWidth: 1, dash: [3, 2])) }
@@ -104,6 +118,9 @@ struct TeamPlanWeeklyHistory: View {
                 shape.strokeBorder(Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
                 Text("·").foregroundStyle(.secondary)
             }
+            if showsWeekday {
+                Text(Self.weekday(day.day)).font(.system(size: 8)).foregroundStyle(.secondary).padding(2)
+            }
         }
         .font(.caption2.monospacedDigit().weight(.medium))
         .frame(maxWidth: .infinity, minHeight: 26)
@@ -112,13 +129,12 @@ struct TeamPlanWeeklyHistory: View {
     }
 
     private func total(_ week: TeamPlanHistory.Week) -> some View {
-        let reached = (week.totalPercent ?? 0) >= 100
-        let isCurrent = week.days.contains { $0.day == today }
+        let reached = week.percent >= 100
         return VStack(alignment: .trailing, spacing: 0) {
-            Text(week.totalPercent.map { (week.estimated ? "~" : "") + Self.number($0) + "%" } ?? "—")
+            Text((week.estimated ? "~" : "") + Self.number(week.percent) + "%")
                 .font(.caption.monospacedDigit().weight(.semibold))
                 .foregroundStyle(reached ? Theme.notice : AnyShapeStyle(.primary))
-            if reached || isCurrent {
+            if reached || week.open {
                 Text(reached ? "limit reached" : "so far").font(.caption2).foregroundStyle(.secondary)
             }
         }
@@ -148,17 +164,10 @@ struct TeamPlanWeeklyHistory: View {
             Label { Text("· no reading") } icon: {
                 RoundedRectangle(cornerRadius: 2).strokeBorder(Color.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [2, 1])).frame(width: 10, height: 10)
             }
-            Text("100% = the weekly limit")
+            Text("Used: the window's share of the weekly limit")
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
-    }
-
-    /// The weeks from the first one with data on (empty weeks before it are just history not kept
-    /// yet), always keeping the current one.
-    static func fromFirstRead(_ weeks: [TeamPlanHistory.Week]) -> [TeamPlanHistory.Week] {
-        guard let first = weeks.firstIndex(where: { $0.totalPercent != nil || $0.sessions != nil }) else { return Array(weeks.suffix(1)) }
-        return Array(weeks[first...])
     }
 
     /// One decimal, like Per Day; whole numbers without it.
@@ -176,9 +185,4 @@ struct TeamPlanWeeklyHistory: View {
         return date.formatted(.dateTime.day().month(.abbreviated))
     }
 
-    /// "W45", the ISO week of its Monday.
-    private static func weekName(_ monday: String) -> String {
-        guard let date = TeamsFormat.date(monday) else { return monday }
-        return "W\(Calendar(identifier: .iso8601).component(.weekOfYear, from: date))"
-    }
 }

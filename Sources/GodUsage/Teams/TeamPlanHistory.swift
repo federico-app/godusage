@@ -1,26 +1,31 @@
 import Foundation
 
-/// Each plan's calendar weeks of its weekly limit: the share used each day, the week's total, and its
-/// 5-hour sessions. Computed by the server from the quota windows it keeps for 13 months.
+/// Each plan's weekly windows, reset to reset: the share of the weekly limit used in each and on each
+/// of its days, and its 5-hour sessions. Computed by the server from the quota windows it keeps for 13 months.
 struct TeamPlanHistory: Decodable, Hashable, Sendable {
     struct Plan: Decodable, Hashable, Sendable {
         /// Plan ids change on every save, so a plan is also matched by provider and name.
         var id: String
         var provider: String
         var name: String
-        /// Oldest first, today's week last.
+        /// Oldest first, the open week last.
         var weeks: [Week]
     }
 
+    /// One of the plan's weekly windows, from reset to reset.
     struct Week: Decodable, Hashable, Sendable {
-        /// The Monday.
+        /// The window's first and last calendar days.
         var from: String
-        /// Monday to Sunday.
-        var days: [Day]
-        /// The sum of the days' shares. Nil when no day has data.
-        var totalPercent: Double?
+        var to: String
+        var startsAt: String
+        var endsAt: String
+        /// Still running.
+        var open: Bool
+        /// The share of the weekly limit used in the window, the mean over its accounts.
+        var percent: Double
         var estimated: Bool
         var accounts: Int
+        var days: [Day]
         var sessions: Sessions?
     }
 
