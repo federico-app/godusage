@@ -62,4 +62,16 @@ final class TeamPlanHistoryTests: XCTestCase {
         XCTAssertEqual(TeamPlanWeeklyHistory.number(19.5), "19.5")
         XCTAssertEqual(TeamPlanWeeklyHistory.number(100), "100")
     }
+
+    func testBudgetNoteSaysWhatTodayCanStillUseOrHowFarOverItIs() throws {
+        let json = """
+        {"todayPercent":4,"affordablePercent":20.3,"leftPercent":61,"workingDaysLeft":3,"resetsAt":"2026-11-10T03:00:00.000Z",
+         "accounts":1,"days":[{"day":"2026-11-03","percent":19.5,"working":true,"estimated":true}]}
+        """
+        var budget = try JSONDecoder().decode(TeamPlanBudget.self, from: Data(json.utf8))
+        XCTAssertTrue(TeamWeekStrip.note(budget).hasPrefix("16.3% more today stays on budget · 61.0% left for 3 working days · resets "))
+        budget.todayPercent = 25
+        XCTAssertTrue(TeamWeekStrip.isOverBudget(budget))
+        XCTAssertTrue(TeamWeekStrip.note(budget).hasPrefix("4.7% over today's budget · resets "))
+    }
 }

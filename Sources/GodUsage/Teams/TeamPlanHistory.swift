@@ -53,3 +53,28 @@ struct TeamPlanHistory: Decodable, Hashable, Sendable {
 
     static let defaultWeeks = 12
 }
+
+/// How much of the open weekly limit today can use and keep the week on pace: what was left at the
+/// start of today, spread over today and the working days until the reset. Computed by the server.
+struct TeamPlanBudget: Decodable, Hashable, Sendable {
+    struct Day: Decodable, Hashable, Sendable {
+        var day: String
+        /// Nil without data and after today.
+        var percent: Double?
+        var working: Bool
+        var estimated: Bool
+    }
+
+    /// The share of the weekly limit used today.
+    var todayPercent: Double
+    /// What today can use and keep the week on pace.
+    var affordablePercent: Double
+    /// The share left at the start of today.
+    var leftPercent: Double
+    /// Today and the working days after it until the reset.
+    var workingDaysLeft: Int
+    var resetsAt: String
+    var accounts: Int
+    /// The open week, day by day.
+    var days: [Day]
+}

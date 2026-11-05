@@ -15,6 +15,7 @@ struct TeamDashboardSection: View {
     @AppStorage(TeamDashboardPreferences.membersShownKey) private var membersShown = TeamMembersShown.default.rawValue
     @AppStorage(TeamDashboardPreferences.showProjectionKey) private var showProjection = true
     @AppStorage(TeamDashboardPreferences.showChallengesKey) private var showChallenges = true
+    @AppStorage(TeamDashboardPreferences.showWeekStripKey) private var showWeekStrip = true
     @State private var expandedMemberID: String?
     /// The caret under the first members unfolds the rest of the ranking.
     @State private var showsAllMembers = false
@@ -91,6 +92,8 @@ struct TeamDashboardSection: View {
             await teams.loadStats(teamID: teamID, range: .monthToDate, sort: .cost)
         }
         await container.teamsSocial.loadChallenges(teamID: teamID)
+        // Today's budget moves with use; the server recomputes the report at most every 10 minutes.
+        if showWeekStrip { await container.teamPlans.load(teamID: teamID) }
     }
 
     @ViewBuilder
@@ -99,6 +102,9 @@ struct TeamDashboardSection: View {
         controls
         if let stats {
             summary(stats)
+            if showWeekStrip, let teamID = teams.selectedTeamID, let report = container.teamPlans.report(teamID: teamID) {
+                TeamWeekStripCard(plans: report.plans, providerName: providerName, today: teams.localToday())
+            }
             ranking(stats)
             if showChallenges { challengesCard }
         } else if let error = teams.statsError {
