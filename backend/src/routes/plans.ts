@@ -1,8 +1,11 @@
 import type { Handler } from "../context";
 import { badRequest, forbidden, json, notFound, nowISO, readJSONObject } from "../http";
+import type { PlanPace } from "../livePace";
 import { covers, keepUnsentFields, parsePlans, planReports, type PlanReport, type PlanRow } from "../plans";
 import { termsOn } from "../planChanges";
-import { teamQuotaWindows } from "../quota";
+import { teamQuotaReadings, teamQuotaWindows } from "../quota";
+import { dayBounds, unionHours } from "../livePace";
+import { loadMemberHours, parseTimeZone } from "../schedules";
 import { DEFAULT_HISTORY_WEEKS, MAX_HISTORY_WEEKS, planHistory } from "../quotaHistory";
 import { addDays } from "../usagePayload";
 import { teamDetections, type Detection } from "../planDetection";
@@ -65,9 +68,38 @@ async function loadWorkingDays(db: Queryable, teamID: string): Promise<WorkingDa
   return storedWorkingDays(row?.working_days ?? null);
 }
 
-async function report(db: Queryable, teamID: string, today: string, now: Date) {
-  const [detections, workingDays] = await Promise.all([teamDetections(db, teamID), loadWorkingDays(db, teamID)]);
-  const plans = await planReports(db, teamID, await loadPlans(db, teamID), today, detections, now, workingDays);
+/** Readings this old still tell the pace of the last working hour (see livePace.ts). */
+const READINGS_LOOKBACK_MS = 36 * 3_600_000;
+
+async function report(db: Queryable, teamID: string, today: string, now: Date, timeZone: string | null = null) {
+  const [detections, workingDays, members] = await Promise.all([
+    teamDetections(db, teamID),
+    loadWorkingDays(db, teamID),
+    db.query<{ user_id: string; display_name: string }>(
+      "SELECT m.user_id, u.display_name FROM team_members m JOIN users u ON u.id = m.user_id WHERE m.team_id = $1",
+      [teamID],
+    ),
+  ]);
+  // Live Pace needs the viewer's time zone; apps from before it send none and get no pace.
+  const pace = timeZone === null
+    ? null
+    : {
+        timeZone,
+        teamDays: workingDays,
+        readings: await teamQuotaReadings(db, teamID, new Date(now.getTime() - READINGS_LOOKBACK_MS).toISOString()),
+        hours: await loadMemberHours(db, members.map((member) => member.user_id)),
+      };
+  const plans = await planReports(db, teamID, await loadPlans(db, teamID), today, detections, now, workingDays, pace);
+  // Each member's working hours today, in the viewer's day, for the viewer's own (see `forViewer`).
+  const day = timeZone === null ? null : dayBounds(today, timeZone);
+  const hoursToday: Record<string, { from: string; to: string }[]> = {};
+  if (pace !== null && day !== null) {
+    for (const member of members) {
+      hoursToday[member.user_id] = unionHours([member.user_id], pace, day.from, day.to)
+        .map((interval) => ({ from: new Date(interval.from).toISOString(), to: new Date(interval.to).toISOString() }));
+    }
+  }
+  const names = Object.fromEntries(members.map((member) => [member.user_id, member.display_name]));
   const totals = plans.reduce(
     (sum, plan) => ({
       monthlyCostUSD: sum.monthlyCostUSD + plan.monthlyCostUSD,
@@ -100,6 +132,8 @@ async function report(db: Queryable, teamID: string, today: string, now: Date) {
     },
     detections,
     workingDays,
+    hoursToday,
+    names,
   };
 }
 
@@ -108,10 +142,23 @@ async function report(db: Queryable, teamID: string, today: string, now: Date) {
  * keeps the members' detected plans (and the mismatches they cause) for owners only. A plan never
  * covers a viewer who doesn't count toward the team.
  */
-function forViewer(result: { plans: PlanReport[]; totals: object; detections: Detection[]; workingDays: WorkingDays }, userID: string, viewer: Membership) {
+function forViewer(
+  result: {
+    plans: PlanReport[]; totals: object; detections: Detection[]; workingDays: WorkingDays;
+    hoursToday: Record<string, { from: string; to: string }[]>; names: Record<string, string>;
+  },
+  userID: string,
+  viewer: Membership,
+) {
   const owner = viewer.role === "owner";
   return {
-    plans: result.plans.map((plan) => ({ ...plan, mismatches: owner ? plan.mismatches : [], includesYou: viewer.countsUsage && covers(plan, userID) })),
+    plans: result.plans.map((plan) => ({
+      ...plan,
+      budget: plan.budget === null ? null : { ...plan.budget, pace: withSharers(plan.budget.pace, userID, result.names) },
+      mismatches: owner ? plan.mismatches : [],
+      includesYou: viewer.countsUsage && covers(plan, userID),
+    })),
+    yourHours: result.hoursToday[userID] ?? null,
     totals: result.totals,
     detectedPlans: owner ? result.detections.map(({ userID: id, provider, plan, detectedAt, detectedOn }) => ({ userID: id, provider, plan, detectedAt, detectedOn })) : [],
     workingDays: result.workingDays,
@@ -119,16 +166,26 @@ function forViewer(result: { plans: PlanReport[]; totals: object; detections: De
   };
 }
 
-/** The plan report from the cache (see `teamCache.ts`), recomputed at most every 10 minutes. */
-function cachedReport(env: Pick<Env, "db" | "cache">, now: Date, teamID: string, today: string) {
-  return cachedTeamResult(env.cache, now, teamID, `plans|${today}`, 10 * 60_000, () => report(env.db, teamID, today, now));
+/** The other people whose working hours a plan's pace counts, by name, in place of their ids. */
+function withSharers(pace: PlanPace | null, userID: string, names: Record<string, string>) {
+  if (pace === null) return null;
+  const { people, ...rest } = pace;
+  return { ...rest, sharedWith: people.filter((id) => id !== userID).map((id) => names[id] ?? "Someone") };
 }
 
-/** GET /v1/teams/:teamID/plans?today= — the team's plans and their report, for any member. */
+/**
+ * The plan report from the cache (see `teamCache.ts`), recomputed at most every 10 minutes and after
+ * every new quota reading. Live Pace depends on the viewer's time zone, so each one has its own entry.
+ */
+function cachedReport(env: Pick<Env, "db" | "cache">, now: Date, teamID: string, today: string, timeZone: string | null) {
+  return cachedTeamResult(env.cache, now, teamID, `plans|${today}|${timeZone ?? ""}`, 10 * 60_000, () => report(env.db, teamID, today, now, timeZone));
+}
+
+/** GET /v1/teams/:teamID/plans?today=&tz= — the team's plans and their report, for any member. */
 export const getPlans: Handler = async ({ request, env, url, params, deps }) => {
   const user = await requireUser(request, env.db);
   const viewer = await membership(env.db, params.teamID!, user.id);
-  const result = await cachedReport(env, deps.now(), params.teamID!, viewerToday(url, deps.now()));
+  const result = await cachedReport(env, deps.now(), params.teamID!, viewerToday(url, deps.now()), parseTimeZone(url.searchParams.get("tz")));
   return json(forViewer(result.value, user.id, viewer));
 };
 
@@ -211,6 +268,6 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
     }
   });
   await env.cache.forgetTeams([teamID], "plans|");
-  const fresh = await report(env.db, teamID, today, deps.now());
+  const fresh = await report(env.db, teamID, today, deps.now(), parseTimeZone(url.searchParams.get("tz")));
   return json(forViewer(fresh, user.id, viewer));
 };

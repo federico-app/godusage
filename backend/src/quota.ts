@@ -179,7 +179,54 @@ export async function storeQuotaWindows(
        IS DISTINCT FROM (excluded.period_hours, excluded.percent, excluded.observed_at, excluded.days, excluded.per_device)`,
     [userID, deviceID, rows],
   );
+  await storeReadings(tx, userID, deviceID, windows, now);
   return removed + upserted;
+}
+
+/** Readings of open weekly windows are kept this long, for Live Pace's pace of the last working hour. */
+const READINGS_MS = 36 * HOUR_MS;
+const WEEK_HOURS = 168;
+
+/**
+ * Adds this upload's readings of open weekly windows to the Mac's recent ones and drops those older
+ * than `READINGS_MS`. They don't count as changes: a new reading already changes its window's row.
+ */
+async function storeReadings(tx: Queryable, userID: string, deviceID: string, windows: QuotaWindowInput[], now: Date): Promise<void> {
+  const since = new Date(now.getTime() - READINGS_MS).toISOString();
+  const readings = windows
+    .filter((window) => window.kind === "limit" && window.periodHours === WEEK_HOURS && Date.parse(window.endsAt) > now.getTime() && window.observedAt >= since)
+    .map((window) => ({ provider: window.provider, account_key: window.accountKey, ends_at: window.endsAt, observed_at: window.observedAt, percent: window.percent }));
+  await tx.run("DELETE FROM quota_readings WHERE user_id = $1 AND device_id = $2 AND observed_at < $3", [userID, deviceID, since]);
+  if (readings.length === 0) return;
+  await tx.run(
+    `INSERT INTO quota_readings (user_id, device_id, provider, account_key, ends_at, observed_at, percent)
+     SELECT $1, $2, r.provider, r.account_key, r.ends_at, r.observed_at, r.percent
+     FROM jsonb_to_recordset($3::jsonb) AS r(provider text, account_key text, ends_at text, observed_at text, percent double precision)
+     ON CONFLICT DO NOTHING`,
+    [userID, deviceID, JSON.stringify(readings)],
+  );
+}
+
+/** One Mac's reading of an account's open weekly window. */
+export interface QuotaReading {
+  user_id: string;
+  provider: string;
+  account_key: string;
+  ends_at: string;
+  observed_at: string;
+  percent: number;
+}
+
+/** The counted members' readings since `since` (ISO 8601), without the accounts a member leaves out of the team. */
+export async function teamQuotaReadings(db: Queryable, teamID: string, since: string): Promise<QuotaReading[]> {
+  return db.query<QuotaReading>(
+    `SELECT q.user_id, q.provider, q.account_key, q.ends_at, q.observed_at, q.percent
+     FROM quota_readings q JOIN team_members m ON m.user_id = q.user_id AND m.team_id = $1 AND m.counts_usage
+     WHERE q.observed_at >= $2
+     AND NOT EXISTS (SELECT 1 FROM account_exclusions x WHERE x.team_id = $1 AND x.user_id = q.user_id AND x.account_key = q.account_key)
+     ORDER BY q.observed_at`,
+    [teamID, since],
+  );
 }
 
 export interface QuotaRow {

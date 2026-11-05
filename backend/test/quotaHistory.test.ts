@@ -48,6 +48,8 @@ describe("plan budget and weekly history", () => {
       affordablePercent: 22,
       leftPercent: 88,
       workingDaysLeft: 4,
+      // No time zone in the request: an app from before Live Pace.
+      pace: null,
       resetsAt: "2026-10-09T00:00:00.000Z",
       accounts: 1,
       days: [

@@ -25,7 +25,10 @@ struct TeamsSettingsPane: View {
                 let summary = teams.teams.first { $0.id == teamID }
                 switch TeamsSettingsTab.available(for: summary).contains(tab) ? tab : .you {
                 case .members:
-                    if let summary { TeamDetailSection(teams: teams, summary: summary).id(summary.id) }
+                    if let summary {
+                        TeamDetailSection(teams: teams, summary: summary).id(summary.id)
+                        TeamWorkingHoursSection(teamID: summary.id).id(summary.id)
+                    }
                 case .accounts:
                     if let summary { TeamAccountsSection(teams: teams, summary: summary) }
                 case .plans:
