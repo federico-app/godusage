@@ -53,6 +53,8 @@ protocol TeamsAPI: Sendable {
     func savePlans(token: String, teamID: String, plans: [TeamPlan], workingDays: [Int]?, today: String) async throws -> TeamPlansReport
     /// The plans' last `weeks` calendar weeks of quota use.
     func planHistory(token: String, teamID: String, today: String, weeks: Int) async throws -> TeamPlanHistory
+    func schedules(token: String, teamID: String) async throws -> TeamSchedules
+    func saveSchedule(token: String, teamID: String, userID: String, schedule: TeamSchedule?) async throws
     /// A one-time code the iPhone app trades for a session of this account (shown as a QR code).
     func createPairingCode(token: String) async throws -> PairingCode
     func linkedDevices(token: String) async throws -> [LinkedDevice]
@@ -225,8 +227,11 @@ struct TeamsAPIClient: TeamsAPI {
         }
     }
 
+    /// Live Pace needs your time zone: today runs midnight to midnight in it.
+    private var timeZoneQuery: String { "&tz=\(escaped(TimeZone.current.identifier))" }
+
     func plans(token: String, teamID: String, today: String) async throws -> TeamPlansReport {
-        try await send("GET", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))", token: token)
+        try await send("GET", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))\(timeZoneQuery)", token: token)
     }
 
     func savePlans(token: String, teamID: String, plans: [TeamPlan], workingDays: [Int]?, today: String) async throws -> TeamPlansReport {
@@ -236,7 +241,26 @@ struct TeamsAPIClient: TeamsAPI {
             var workingDays: [Int]?
         }
         let body = Body(plans: plans, workingDays: workingDays)
-        return try await send("PUT", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))", token: token, body: body)
+        return try await send("PUT", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))\(timeZoneQuery)", token: token, body: body)
+    }
+
+    func schedules(token: String, teamID: String) async throws -> TeamSchedules {
+        try await send("GET", "/v1/teams/\(escaped(teamID))/schedules", token: token)
+    }
+
+    func saveSchedule(token: String, teamID: String, userID: String, schedule: TeamSchedule?) async throws {
+        /// Null resets the member to the team default, so it is always sent.
+        struct Body: Encodable {
+            var schedule: TeamSchedule?
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(schedule, forKey: .schedule)
+            }
+            enum CodingKeys: String, CodingKey { case schedule }
+        }
+        try await sendEmpty(
+            "PUT", "/v1/teams/\(escaped(teamID))/members/\(escaped(userID))/schedule", token: token, body: Body(schedule: schedule)
+        )
     }
 
     func planHistory(token: String, teamID: String, today: String, weeks: Int) async throws -> TeamPlanHistory {

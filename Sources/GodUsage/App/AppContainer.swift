@@ -178,6 +178,7 @@ final class AppContainer {
         let teamPlans = TeamPlansStore(
             teams: teams,
             changeAlertsEnabled: { notificationSettings.teamPlanChanges },
+            paceAlertAllowed: { notificationSettings.allows($0) },
             postNotification: { id, title, subtitle, body in
                 await AppNotifications.shared.post(idPrefix: id, title: title, subtitle: subtitle, body: body)
             }

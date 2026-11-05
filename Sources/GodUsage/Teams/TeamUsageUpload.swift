@@ -86,6 +86,8 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
     var partial: Bool?
     /// This Mac's calendar day, so the server dates a newly detected plan by the member's day.
     var localDay: String?
+    /// This Mac's time zone: your working hours for Live Pace are in it, wherever you are.
+    var timeZone: String? = TimeZone.current.identifier
     /// The plan GodUsage detected per provider family, e.g. "Max 20x". The team's owners see it, to
     /// notice when the plan they pay for changed.
     var detectedPlans: [DetectedPlan] = []

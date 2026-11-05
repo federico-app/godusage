@@ -58,7 +58,7 @@ export interface PlanBudget {
   days: { day: string; percent: number | null; working: boolean; estimated: boolean }[];
 }
 
-interface Window {
+export interface Window {
   account: string;
   startsAt: number;
   endsAt: number;
@@ -71,7 +71,7 @@ interface Window {
  * The covered accounts' weekly windows, merged across Macs (the highest share), each account's in
  * order. A window that a claimed reset cut short starts where the account's previous one ended.
  */
-function coveredWindows(rows: QuotaRow[], plan: Plan): Map<string, Window[]> {
+export function coveredWindows(rows: QuotaRow[], plan: Plan): Map<string, Window[]> {
   const byKey = new Map<string, Window & { covered: boolean }>();
   for (const row of rows) {
     if (row.provider !== plan.provider || row.kind !== "limit" || row.period_hours !== WEEK_HOURS) continue;
@@ -170,6 +170,19 @@ export function planHistory(rows: QuotaRow[], plan: Plan, today: string, now: Da
 }
 
 /**
+ * An open window's use today and the share left at the start of today: 100 minus the last reading
+ * before today; without one, a window that started today or yesterday counts from 0 and an older one
+ * from its current share.
+ */
+export function todayUse(window: Window, today: string): { today: number; left: number } {
+  const startDay = new Date(window.startsAt).toISOString().slice(0, 10);
+  const current = Math.max(window.percent, window.days.get(today) ?? 0);
+  const earlier = [...window.days.entries()].filter(([day]) => day < today).map(([, percent]) => percent);
+  const before = earlier.length > 0 ? Math.max(...earlier) : daysBetween(startDay, today) <= 1 ? 0 : current;
+  return { today: Math.max(0, current - before), left: Math.max(0, 100 - before) };
+}
+
+/**
  * Today's budget for the plan: for each covered account with an open weekly window, the share left at
  * the start of today (100 minus the last reading before today; without one, a window that started
  * today or yesterday counts from 0 and an older one from its current share) over today and the working
@@ -190,12 +203,8 @@ export function planBudget(rows: QuotaRow[], plan: Plan, today: string, now: Dat
     return count;
   };
   const budgets = open.map((window) => {
-    const startDay = new Date(window.startsAt).toISOString().slice(0, 10);
-    const current = Math.max(window.percent, window.days.get(today) ?? 0);
-    const earlier = [...window.days.entries()].filter(([day]) => day < today).map(([, percent]) => percent);
-    const before = earlier.length > 0 ? Math.max(...earlier) : daysBetween(startDay, today) <= 1 ? 0 : current;
-    const left = Math.max(0, 100 - before);
-    return { today: Math.max(0, current - before), left, affordable: left / workingLeft(window) };
+    const { today: used, left } = todayUse(window, today);
+    return { today: used, left, affordable: left / workingLeft(window) };
   });
   const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
   const soonest = open.reduce((first, window) => (window.endsAt < first.endsAt ? window : first));

@@ -32,7 +32,8 @@ enum Theme {
 
     /// Inline notice/alert tint (refresh warning triangle, pin-limit notice, settings errors) — the
     /// system orange at full strength, matching the meter fills.
-    static let notice = AnyShapeStyle(Color(nsColor: .systemOrange))
+    static let notice = AnyShapeStyle(noticeColor)
+    static let noticeColor = Color(nsColor: .systemOrange)
 
     /// Inline success tint (the "screenshot copied to clipboard" confirmation) — the system green at
     /// full strength, the positive counterpart to `notice`'s orange.

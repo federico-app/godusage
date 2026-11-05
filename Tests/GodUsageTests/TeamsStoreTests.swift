@@ -485,6 +485,11 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
         log.append("savePlans \(plans.map(\.name).joined(separator: ","))")
         return plansResult
     }
+    var schedulesResult = TeamSchedules(defaultSchedule: .standard, canEditOthers: true, members: [])
+    func schedules(token: String, teamID: String) async throws -> TeamSchedules { schedulesResult }
+    func saveSchedule(token: String, teamID: String, userID: String, schedule: TeamSchedule?) async throws {
+        log.append("saveSchedule \(userID) \(schedule.map { "\($0.start)-\($0.end)" } ?? "default")")
+    }
     var historyResult = TeamPlanHistory(plans: [])
     var historyError: Error?
     func planHistory(token: String, teamID: String, today: String, weeks: Int) async throws -> TeamPlanHistory {

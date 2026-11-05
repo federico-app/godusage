@@ -16,6 +16,7 @@ struct TeamDashboardSection: View {
     @AppStorage(TeamDashboardPreferences.showProjectionKey) private var showProjection = true
     @AppStorage(TeamDashboardPreferences.showChallengesKey) private var showChallenges = true
     @AppStorage(TeamDashboardPreferences.showWeekStripKey) private var showWeekStrip = true
+    @AppStorage(TeamDashboardPreferences.showLivePaceKey) private var showLivePace = true
     @State private var expandedMemberID: String?
     /// The caret under the first members unfolds the rest of the ranking.
     @State private var showsAllMembers = false
@@ -92,11 +93,15 @@ struct TeamDashboardSection: View {
             await teams.loadStats(teamID: teamID, range: .monthToDate, sort: .cost)
         }
         await container.teamsSocial.loadChallenges(teamID: teamID)
-        // Today's budget moves with use; the server recomputes the report at most every 10 minutes.
-        // Your plans in your other teams join the strip; those reload at the background pace.
+        // Today's budget moves with use; the server recomputes the report after every new quota
+        // reading. Your plans in your other teams join the strip; those reload at the background pace,
+        // or every few minutes with Live Pace on.
         if showWeekStrip {
             await container.teamPlans.load(teamID: teamID)
-            await container.teamPlans.loadIfStale(teamIDs: teams.teams.map(\.id).filter { $0 != teamID })
+            await container.teamPlans.loadIfStale(
+                teamIDs: teams.teams.map(\.id).filter { $0 != teamID },
+                maxAge: showLivePace ? TeamPlansStore.livePaceMaxAge : TeamPlansStore.backgroundMaxAge
+            )
         }
     }
 

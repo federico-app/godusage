@@ -191,6 +191,8 @@ struct TeamPlansReport: Decodable, Hashable, Sendable {
     var detectedPlans: [TeamDetectedPlan]?
     /// The team's working days (ISO weekdays, 1 = Monday), which pace the forecasts. Nil from older servers.
     var workingDays: [Int]?
+    /// Your working hours today, for Live Pace's alerts. Nil from older servers.
+    var yourHours: [TeamPlanPace.Span]?
 
     static let defaultWorkingDays = [1, 2, 3, 4, 5]
 }
@@ -206,27 +208,37 @@ final class TeamPlansStore {
     private(set) var historyErrorByTeam: [String: String] = [:]
     private(set) var errorMessage: String?
     private(set) var isSaving = false
+    /// Every member's working hours, per team, for Settings → Teams → Members (see TeamSchedules.swift).
+    var schedulesByTeam: [String: TeamSchedules] = [:]
+    var scheduleError: String?
+    /// Each plan's last Live Pace state today, so its color doesn't flicker at a threshold (see TeamPlansStore+LivePace).
+    var paceMemory: [String: PaceMemory] = [:]
 
-    @ObservationIgnored private let teams: TeamsStore
-    @ObservationIgnored private let api: any TeamsAPI
+    @ObservationIgnored let teams: TeamsStore
+    @ObservationIgnored let api: any TeamsAPI
+    @ObservationIgnored let paceAlertAllowed: @MainActor (LivePace.Alert) -> Bool
+    @ObservationIgnored var lastPaceReload: Date?
     @ObservationIgnored private let changeAlertsEnabled: @MainActor () -> Bool
-    @ObservationIgnored private let postNotification: @MainActor (_ id: String, _ title: String, _ subtitle: String, _ body: String) async -> Bool
-    @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored let postNotification: @MainActor (_ id: String, _ title: String, _ subtitle: String, _ body: String) async -> Bool
+    @ObservationIgnored let defaults: UserDefaults
     private static let notifiedMismatchesKey = "godusage.teams.notifiedPlanMismatches.v1"
 
     init(
         teams: TeamsStore,
         api: any TeamsAPI = TeamsAPIClient(),
         changeAlertsEnabled: @escaping @MainActor () -> Bool = { false },
+        paceAlertAllowed: @escaping @MainActor (LivePace.Alert) -> Bool = { _ in false },
         postNotification: @escaping @MainActor (String, String, String, String) async -> Bool = { _, _, _, _ in false },
         defaults: UserDefaults = .standard
     ) {
         self.teams = teams
         self.api = api
         self.changeAlertsEnabled = changeAlertsEnabled
+        self.paceAlertAllowed = paceAlertAllowed
         self.postNotification = postNotification
         self.defaults = defaults
         teams.afterUploadHooks.append { [weak self] in await self?.checkPlanMismatches() }
+        teams.afterUploadHooks.append { [weak self] in await self?.reloadForLivePace() }
     }
 
     /// Tells an owner once about each new mismatch on a team they own: a covered member's Mac detects
@@ -253,7 +265,7 @@ final class TeamPlansStore {
         defaults.set(Array(notified), forKey: Self.notifiedMismatchesKey)
     }
 
-    @ObservationIgnored private var loadedAt: [String: Date] = [:]
+    @ObservationIgnored var loadedAt: [String: Date] = [:]
     /// Background loads for the dashboard's suggestions; the Plans tab always loads on open.
     static let backgroundMaxAge: TimeInterval = 30 * 60
 
@@ -265,6 +277,7 @@ final class TeamPlansStore {
             reportsByTeam[teamID] = try await api.plans(token: token, teamID: teamID, today: teams.localToday())
             loadedAt[teamID] = Date()
             errorMessage = nil
+            await refreshPaces()
         } catch {
             AppLog.warn(.teams, "loading team plans failed: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
@@ -289,8 +302,8 @@ final class TeamPlansStore {
 
     /// Loads unless a report younger than `backgroundMaxAge` is already here. A failed load counts
     /// as an attempt too, so a down backend is retried at the same pace rather than every pass.
-    func loadIfStale(teamID: String, now: Date = Date()) async {
-        if let last = loadedAt[teamID], now.timeIntervalSince(last) < Self.backgroundMaxAge { return }
+    func loadIfStale(teamID: String, now: Date = Date(), maxAge: TimeInterval = backgroundMaxAge) async {
+        if let last = loadedAt[teamID], now.timeIntervalSince(last) < maxAge { return }
         loadedAt[teamID] = now
         await load(teamID: teamID)
     }

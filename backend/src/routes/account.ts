@@ -114,9 +114,9 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
   const user = await requireUser(request, env.db);
   const id = [user.id];
   // One transaction, so the document is one consistent snapshot.
-  const [account, sessions, linkedDevices, devices, pulses, days, models, detectedPlans, quotaWindows, exclusions, teams, given, received, challenges] = await env.db.transaction((tx) =>
+  const [account, sessions, linkedDevices, devices, pulses, days, models, detectedPlans, quotaWindows, exclusions, teams, given, received, challenges, schedule, readings] = await env.db.transaction((tx) =>
     Promise.all([
-      tx.query("SELECT id, apple_sub, display_name, created_at FROM users WHERE id = $1", id),
+      tx.query("SELECT id, apple_sub, display_name, created_at, time_zone FROM users WHERE id = $1", id),
       tx.query("SELECT COUNT(*) AS n FROM sessions WHERE user_id = $1", id),
       tx.query("SELECT paired_device AS name, created_at FROM sessions WHERE user_id = $1 AND paired_device IS NOT NULL ORDER BY created_at", id),
       tx.query("SELECT id, name, updated_at FROM devices WHERE user_id = $1 ORDER BY updated_at DESC", id),
@@ -133,13 +133,17 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
       tx.query("SELECT team_id, to_user, emoji, day, created_at FROM reactions WHERE from_user = $1 ORDER BY created_at", id),
       tx.query("SELECT team_id, from_user, emoji, day, created_at FROM reactions WHERE to_user = $1 ORDER BY created_at", id),
       tx.query("SELECT id, team_id, kind, starts_on, ends_on, created_at FROM challenges WHERE created_by = $1 ORDER BY created_at", id),
+      tx.query("SELECT days, start_minute, end_minute, break_start_minute, break_end_minute, updated_at FROM work_schedules WHERE user_id = $1", id),
+      tx.query("SELECT device_id, provider, account_key, ends_at, observed_at, percent FROM quota_readings WHERE user_id = $1 ORDER BY observed_at", id),
     ]),
   );
-  const row = account[0] as { id: string; apple_sub: string; display_name: string; created_at: string };
+  const row = account[0] as { id: string; apple_sub: string; display_name: string; created_at: string; time_zone: string | null };
   const body = {
     schema: "godusage.export.v1",
     exportedAt: deps.now().toISOString(),
-    account: { id: row.id, appleUserID: row.apple_sub, displayName: row.display_name, createdAt: row.created_at },
+    account: { id: row.id, appleUserID: row.apple_sub, displayName: row.display_name, createdAt: row.created_at, timeZone: row.time_zone },
+    workingHours: schedule[0] ?? null,
+    quotaReadings: readings,
     activeSessions: (sessions[0] as { n: number }).n,
     linkedDevices,
     devices,

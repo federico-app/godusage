@@ -76,6 +76,18 @@ struct NotificationsSettingsPane: View {
                 SettingsCaption("Tells you when a teammate gives you 🔥, 👏, or 🤡.")
                 teamToggle("Team Plan Changes", isOn: $notifications.teamPlanChanges)
                 SettingsCaption("For team owners: tells you when a member’s Mac detects a different plan than the one the team pays for.")
+                teamToggle("Pace Alerts", isOn: $notifications.paceAlerts)
+                SettingsCaption("Live Pace on your team plans’ weekly limit, only during your working hours and at most once a day per plan for each kind.")
+                if notifications.paceAlerts {
+                    teamToggle("Slow Down", isOn: $notifications.paceSlowDown)
+                        .padding(.leading, 16)
+                    SettingsCaption("At this pace, today’s budget runs out at least 30 minutes before your working day ends.")
+                        .padding(.leading, 16)
+                    teamToggle("Room to Spare", isOn: $notifications.paceRoomToSpare)
+                        .padding(.leading, 16)
+                    SettingsCaption("From the middle of your working day: at this pace, 30% or more of today’s budget goes unused (15% on the last working day before the reset, when it’s lost).")
+                        .padding(.leading, 16)
+                }
                 if needsAttention {
                     actionRow
                 }

@@ -1,5 +1,6 @@
 import { badRequest, isRecord, requireName } from "./http";
 import { parseQuotaWindows, type QuotaWindowInput } from "./quota";
+import { parseTimeZone } from "./schedules";
 
 export const USAGE_SCHEMA = "godusage.team-usage.v1";
 /** Uploads carry the app's 30-day window; a little slack covers time zones and clock skew. */
@@ -58,6 +59,8 @@ export interface UsageUpload {
    * don't send them: the stored windows are then left as they are.
    */
   quotaWindows: QuotaWindowInput[] | null;
+  /** The Mac's IANA time zone, for Live Pace's working hours (see schedules.ts). Null when not sent or unknown. */
+  timeZone: string | null;
   /**
    * Which split accounts this Mac leaves out of which team. Null from apps that don't send it: the
    * stored exclusions are then left as they are.
@@ -100,7 +103,7 @@ const APP_VERSION_PATTERN = /^[0-9A-Za-z.+-]{1,32}$/;
 
 /**
  * Validates one device's upload (the system boundary for usage data) and flattens it into rows.
- * Shape: { schema, deviceName, appVersion?, windowStart?, partial?, localDay?, detectedPlans?: [{ provider, plan }],
+ * Shape: { schema, deviceName, appVersion?, timeZone?, windowStart?, partial?, localDay?, detectedPlans?: [{ provider, plan }],
  *   quotaWindows?: [{ provider, kind?, account, endsAt, periodHours, percent, observedAt, days?, perDevice? }],
  *   excludedAccounts?: [{ team, provider, account }],
  *   providers: [{ provider, scope, account?, split?, days: [{ date, tokens, costUSD, models? }] }] }
@@ -220,6 +223,7 @@ export function parseUsageUpload(body: Record<string, unknown>, now: Date): Usag
     models,
     detectedPlans: parseDetectedPlans(body.detectedPlans),
     quotaWindows: parseQuotaWindows(body.quotaWindows, now),
+    timeZone: parseTimeZone(body.timeZone),
     excludedAccounts: parseExcludedAccounts(body.excludedAccounts),
     localDay,
   };

@@ -21,6 +21,7 @@ import { deleteDevice, listDevices, putDeviceUsage } from "./routes/usage";
 import { createChallenge, deleteChallenge, listChallenges } from "./routes/challenges";
 import { addReaction, removeReaction } from "./routes/social";
 import { getPlanHistory, getPlans, putPlans } from "./routes/plans";
+import { getSchedules, putSchedule } from "./routes/schedules";
 import { getMyUsage } from "./routes/myUsage";
 import { createPairingCode, exchangePairingCode, listLinkedDevices, unlinkDevice } from "./routes/pairing";
 import { browserSignOut, memberBoardPage, memberBoardSignIn } from "./routes/webBoard";
@@ -77,6 +78,8 @@ const ROUTES: Route[] = [
   route("GET", "/v1/teams/:teamID/plans", getPlans),
   route("GET", "/v1/teams/:teamID/plans/history", getPlanHistory),
   route("PUT", "/v1/teams/:teamID/plans", putPlans),
+  route("GET", "/v1/teams/:teamID/schedules", getSchedules),
+  route("PUT", "/v1/teams/:teamID/members/:userID/schedule", putSchedule),
   route("GET", "/v1/invites/:code", getInvite),
   route("POST", "/v1/invites/:code/accept", acceptInvite),
   route("GET", "/v1/devices", listDevices),

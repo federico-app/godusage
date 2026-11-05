@@ -77,4 +77,7 @@ struct TeamPlanBudget: Decodable, Hashable, Sendable {
     var accounts: Int
     /// The open week, day by day.
     var days: [Day]
+    /// Today's budget over working hours, for Live Pace. Nil from servers before it, and on days the
+    /// server can't tell (no time zone sent).
+    var pace: TeamPlanPace?
 }

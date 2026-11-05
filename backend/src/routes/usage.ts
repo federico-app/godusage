@@ -110,12 +110,16 @@ export async function storeDeviceUsage(env: Pick<Env, "db" | "cache">, userID: s
     const keys = await syncAccountKeys(tx, userID, dayRows);
     const plans = upload.detectedPlans === null ? 0 : await storeDetectedPlans(tx, userID, deviceID, upload.detectedPlans, now, upload.localDay);
     const quota = upload.quotaWindows === null ? 0 : await storeQuotaWindows(tx, userID, deviceID, upload.quotaWindows, now);
+    // The working hours of Live Pace are in the member's time zone, so a new one moves their pace at once.
+    const zone = upload.timeZone === null
+      ? 0
+      : await tx.run("UPDATE users SET time_zone = $2 WHERE id = $1 AND time_zone IS DISTINCT FROM $2", [userID, upload.timeZone]);
     const exclusions = upload.excludedAccounts === null ? 0 : await storeExclusions(tx, userID, deviceID, upload.excludedAccounts);
     const changed = usage.reduce((total, count) => total + count, 0);
     return {
-      written: device + changed + keys + plans + quota + exclusions,
+      written: device + changed + keys + plans + quota + zone + exclusions,
       usageChanged: changed > 0,
-      plansChanged: plans + quota > 0,
+      plansChanged: plans + quota + zone > 0,
       exclusionsChanged: exclusions > 0,
     };
   });
