@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.6.2
+
+### New Features
+- Dashboard: This Week's Limit and usage suggestions follow the plans that cover you in every team you're in, so you can pick a team to see everyone's ranking and still see your own weekly limit; a plan from another team shows that team's name ([#102](https://github.com/federico-app/godusage/pull/102)) by @andreaAppload
+
+### Bug Fixes
+- This Week's Limit: the plan header no longer cuts off the "X% of Y% today" figure; it moves to a second line when it doesn't fit ([#102](https://github.com/federico-app/godusage/pull/102)) by @andreaAppload
+
+### Chores
+- CI: the iOS app is paused in every pipeline and can be run by hand ([#101](https://github.com/federico-app/godusage/pull/101)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.6.1...v1.6.2](https://github.com/federico-app/godusage/compare/v1.6.1...v1.6.2)
+
+- [a8aa273](https://github.com/federico-app/godusage/commit/a8aa27325c0c0895083426331c6936b0d70540c2) feat(teams): This Week's Limit and plan suggestions follow your plans in every team (#102) by @andreaAppload
+- [3db105a](https://github.com/federico-app/godusage/commit/3db105a7bae2df4adb57e98fc85edf2536958078) ci: pause the iOS app in every pipeline, runnable by hand (#101) by @andreaAppload
+
 ## v1.6.1
 
 ### Bug Fixes
