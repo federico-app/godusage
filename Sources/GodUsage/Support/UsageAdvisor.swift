@@ -19,6 +19,8 @@ struct UsageSuggestion: Equatable, Identifiable, Sendable {
     let message: String
     /// When the opportunity ends; ties within a kind go to the soonest.
     let deadline: Date?
+    /// The team whose plan the advice is about, for Open Plans.
+    var teamID: String? = nil
 }
 
 /// Turns this Mac's quotas, its reset credits, and the team's plans into suggestions, most urgent
@@ -57,6 +59,8 @@ enum UsageAdvisor {
         /// Days until the plan renews, counting today (the Plans tab's "N days left").
         let daysLeft: Int
         let cycleEnd: String
+        /// The team that set up the plan.
+        var teamID: String? = nil
     }
 
     /// A window is worth spending when at least this share is still projected to be left at reset…
@@ -179,7 +183,8 @@ enum UsageAdvisor {
             kind: .planUnderused, family: plan.family,
             title: "Use the Team's \(plan.providerName) Plan",
             message: "\(plan.name) is on pace for \(pace) and renews \(days). Use \(plan.providerName) to get the team's money's worth.",
-            deadline: nil
+            deadline: nil,
+            teamID: plan.teamID
         )
     }
 

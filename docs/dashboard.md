@@ -33,10 +33,10 @@ A banner at the top of the dashboard (under any update, first-run, or setup card
 - **A reset expires soon**: a reset credit expires within 48 hours. Use that provider freely and claim it if you hit the limit.
 - **Use it before it resets**: a Weekly (or Cursor's Total Usage) resets within the last 30% of its window, about 2 days of a week, with at least 30% projected to go unused at the current pace.
 - **Switch providers**: a Weekly is used up or projected to run out before it resets, and another provider has at least 30% of its own left. Without such a provider, nothing shows; the red bar already tells the story.
-- **Use the team's plan**: a plan of the selected team is flagged underused in the [Plans](teams.md#leaderboards) report and renews within 7 days. Only for plans that cover you, and providers enabled on this Mac. **Open Plans** opens the Teams window.
+- **Use the team's plan**: a plan that covers you, in any of your teams, is flagged underused in the [Plans](teams.md#leaderboards) report and renews within 7 days. Only for providers enabled on this Mac; a subscription set up as a plan in two teams counts once (see [This Week's Limit](teams.md#leaderboards)). **Open Plans** opens the Teams window on that plan's team.
 - **Lean on a provider**: a card has 2 or more reset credits, so its limits stretch further.
 
-Ties go to the soonest deadline. Quotas and credits are this Mac's own; only the plans are team-wide. GodUsage reloads the selected team's plans at most every 30 minutes for this. Turn on **Usage Suggestions** in [Notifications settings](settings.md#notifications) to also get a notification once for each new suggestion that tops the banner.
+Ties go to the soonest deadline. Quotas and credits are this Mac's own; only the plans are team-wide. GodUsage reloads each of your teams' plans at most every 30 minutes for this. Turn on **Usage Suggestions** in [Notifications settings](settings.md#notifications) to also get a notification once for each new suggestion that tops the banner.
 
 ## Total Spend
 
