@@ -109,7 +109,7 @@ export async function storeDeviceUsage(env: Pick<Env, "db" | "cache">, userID: s
     ];
     const keys = await syncAccountKeys(tx, userID, dayRows);
     const plans = upload.detectedPlans === null ? 0 : await storeDetectedPlans(tx, userID, deviceID, upload.detectedPlans, now, upload.localDay);
-    const quota = upload.quotaWindows === null ? 0 : await storeQuotaWindows(tx, userID, deviceID, upload.quotaWindows);
+    const quota = upload.quotaWindows === null ? 0 : await storeQuotaWindows(tx, userID, deviceID, upload.quotaWindows, now);
     const exclusions = upload.excludedAccounts === null ? 0 : await storeExclusions(tx, userID, deviceID, upload.excludedAccounts);
     const changed = usage.reduce((total, count) => total + count, 0);
     return {
