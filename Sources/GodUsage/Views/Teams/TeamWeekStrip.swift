@@ -132,7 +132,7 @@ struct TeamWeekStrip: View {
         if isOverBudget(budget) {
             return "\(Self.percent(budget.todayPercent - budget.affordablePercent)) over today's budget · resets \(reset)"
         }
-        return "\(Self.percent(budget.affordablePercent - budget.todayPercent)) more today on budget · \(Self.percent(budget.leftPercent)) left · resets \(reset)"
+        return "\(Self.percent(budget.affordablePercent - budget.todayPercent)) more today on budget · resets \(reset)"
     }
 
     static func percent(_ value: Double) -> String {

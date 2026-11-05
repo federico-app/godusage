@@ -69,7 +69,7 @@ final class TeamPlanHistoryTests: XCTestCase {
          "accounts":1,"days":[{"day":"2026-11-03","percent":19.5,"working":true,"estimated":true}]}
         """
         var budget = try JSONDecoder().decode(TeamPlanBudget.self, from: Data(json.utf8))
-        XCTAssertTrue(TeamWeekStrip.note(budget).hasPrefix("16.3% more today on budget · 61.0% left · resets "))
+        XCTAssertTrue(TeamWeekStrip.note(budget).hasPrefix("16.3% more today on budget · resets "))
         budget.todayPercent = 25
         XCTAssertTrue(TeamWeekStrip.isOverBudget(budget))
         XCTAssertTrue(TeamWeekStrip.note(budget).hasPrefix("4.7% over today's budget · resets "))
