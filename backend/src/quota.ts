@@ -13,6 +13,15 @@ const DAY_MS = 24 * HOUR_MS;
 /** Windows that reset longer ago than this, or further ahead, are not taken. */
 const PAST_DAYS = 45;
 const FUTURE_DAYS = 40;
+/**
+ * A Mac keeps its limit windows 40 days and its sessions 32 (see TeamQuotaLog), so a window it stops
+ * sending within these days was renamed or reset early, and goes. Older ones it only aged out of its
+ * log: they stay as the plan's history, a day short of the Mac's horizon so a clock off by hours
+ * can't drop one.
+ */
+const OWNED_DAYS = { limit: 39, session: 31 } as const;
+/** How long a window that ended stays as history: 13 months, to compare a month with a year before. */
+const HISTORY_DAYS = 395;
 /** An open window is projected only once this share of it has passed; earlier the pace is noise. */
 const MIN_PROJECTION_SHARE = 0.2;
 /** A window last read more than this before its reset counts as estimated: its share is a lower bound. */
@@ -127,8 +136,15 @@ function parseDays(value: unknown): QuotaDay[] {
   return days;
 }
 
-/** Replaces the Mac's quota windows with the upload's, writing only rows that changed. Returns how many. */
-export async function storeQuotaWindows(tx: Queryable, userID: string, deviceID: string, windows: QuotaWindowInput[]): Promise<number> {
+/**
+ * Replaces the Mac's recent quota windows with the upload's, writing only rows that changed, and keeps
+ * the ones it aged out of its log as history (see `OWNED_DAYS`) until `HISTORY_DAYS`. Returns how many
+ * rows changed.
+ */
+export async function storeQuotaWindows(
+  tx: Queryable, userID: string, deviceID: string, windows: QuotaWindowInput[], now: Date,
+): Promise<number> {
+  const since = (days: number) => new Date(now.getTime() - days * DAY_MS).toISOString();
   const rows = JSON.stringify(
     windows.map((window) => ({
       provider: window.provider,
@@ -144,9 +160,11 @@ export async function storeQuotaWindows(tx: Queryable, userID: string, deviceID:
   );
   const removed = await tx.run(
     `DELETE FROM quota_windows q WHERE q.user_id = $1 AND q.device_id = $2
-     AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset($3::jsonb) AS r(provider text, kind text, account_key text, ends_at text)
-                     WHERE r.provider = q.provider AND r.kind = q.kind AND r.account_key = q.account_key AND r.ends_at = q.ends_at)`,
-    [userID, deviceID, rows],
+     AND (q.ends_at < $4
+          OR (q.ends_at >= CASE q.kind WHEN 'session' THEN $5 ELSE $6 END
+              AND NOT EXISTS (SELECT 1 FROM jsonb_to_recordset($3::jsonb) AS r(provider text, kind text, account_key text, ends_at text)
+                              WHERE r.provider = q.provider AND r.kind = q.kind AND r.account_key = q.account_key AND r.ends_at = q.ends_at)))`,
+    [userID, deviceID, rows, since(HISTORY_DAYS), since(OWNED_DAYS.session), since(OWNED_DAYS.limit)],
   );
   const upserted = await tx.run(
     `INSERT INTO quota_windows (user_id, device_id, provider, kind, account_key, ends_at, period_hours, percent, observed_at, days, per_device)
