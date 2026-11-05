@@ -74,4 +74,35 @@ final class TeamPlanHistoryTests: XCTestCase {
         XCTAssertTrue(TeamWeekStrip.isOverBudget(budget))
         XCTAssertTrue(TeamWeekStrip.note(budget).hasPrefix("4.7% over today's budget · resets "))
     }
+
+    private func week(_ percent: Double, days: [Double?], open: Bool = false, hits: Int = 0) -> TeamPlanHistory.Week {
+        TeamPlanHistory.Week(
+            from: "2026-10-27", to: "2026-11-02", startsAt: "", endsAt: "2026-11-03T03:00:00.000Z", open: open, percent: percent,
+            estimated: false, accounts: 1,
+            days: days.enumerated().map { index, value in
+                TeamPlanHistory.Day(day: "2026-10-\(27 + index)", percent: value, working: true, estimated: false, accounts: 1)
+            },
+            sessions: .init(sessions: 14, limitHits: hits, averagePeakPercent: 71)
+        )
+    }
+
+    func testComparesTwoWeeksSideBySide() {
+        let a = week(100, days: [22, 25, 18], hits: 2)
+        let b = week(52, days: [10, nil, 15])
+        let rows = TeamPlanWeeksCompareView.rows(a, b)
+        XCTAssertEqual(rows.first, .init(label: "Weekly limit used", left: "100%", right: "52%"))
+        XCTAssertEqual(rows[1], .init(label: "Limit reached", left: "Yes", right: "No"))
+        XCTAssertTrue(rows[2].left.hasSuffix(" · 25%"))
+        XCTAssertTrue(rows[2].right.hasSuffix(" · 15%"))
+        XCTAssertEqual(rows[3], .init(label: "Sessions at the limit", left: "2 of 14", right: "0 of 14"))
+
+        XCTAssertEqual(
+            TeamPlanWeeksCompareView.summary(a, b, aName: "DEV AppLoad", bName: "Studio", samePlan: false),
+            "DEV AppLoad used 48 points more of its weekly limit than Studio. The plans differ, so the shares are of different limits."
+        )
+        XCTAssertEqual(
+            TeamPlanWeeksCompareView.summary(b, week(60, days: [], open: true), aName: "Crew", bName: "Crew", samePlan: true),
+            "The second week used 8 points more of the weekly limit. One of the weeks is still running."
+        )
+    }
 }
