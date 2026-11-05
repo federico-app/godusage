@@ -101,6 +101,27 @@ describe("plan quota", () => {
     expect((await savePlans(owner.token, team.id, plans)).plans[0].quota).toBeNull();
   });
 
+  it("keeps windows a Mac aged out of its log as history, drops recent ones it stops sending, and forgets history after 13 months", async () => {
+    const { owner } = await teamWith([]);
+    const DAY = 24 * HOUR;
+    const session = (hoursFromNow: number) => ({ ...weekly(A, hoursFromNow, 40), kind: "session", periodHours: 5 });
+    await send(owner.token, "device-aaaa-0001", [weekly(A, -42 * 24, 80), weekly(B, -10 * 24, 70), session(-33 * 24)]);
+    await send(owner.token, "device-aaaa-0001", []);
+    const stored = async () =>
+      ((await api("GET", "/v1/me/export", { token: owner.token })).body.quotaWindows as { account_key: string; kind: string }[])
+        .map((row) => `${row.kind}:${row.account_key[0]}`)
+        .sort();
+    // The 10-day-old window is one the Mac still keeps, so leaving it out means it's gone.
+    expect(await stored()).toEqual(["limit:a", "session:a"]);
+
+    // Thirteen months on (the session renewed along the way), the history is gone too.
+    for (const days of [170, 340, 400]) {
+      const later = new Date(NOW.getTime() + days * DAY);
+      await api("PUT", "/v1/devices/device-aaaa-0001/usage", { token: owner.token, body: { ...upload([]), quotaWindows: [] }, now: later });
+    }
+    expect(await stored()).toEqual([]);
+  });
+
   it.each([
     ["not an array", { provider: "claude" }],
     ["bad account", [{ ...weekly(A, -24, 50), account: "nope" }]],
