@@ -15,8 +15,8 @@ struct UsageSuggestionBanner: View {
             message: suggestion.message,
             tint: TotalSpendPalette.color(for: suggestion.family),
             buttonTitle: suggestion.kind == .planUnderused ? "Open Plans" : nil,
-            // The underused plan belongs to the popover's team, so the window opens on it.
-            action: { TeamsWindowLink.open(teamID: container.teams.selectedTeamID) },
+            // The window opens on the team that set up the underused plan.
+            action: { TeamsWindowLink.open(teamID: suggestion.teamID ?? container.teams.selectedTeamID) },
             onDismiss: onDismiss
         )
     }

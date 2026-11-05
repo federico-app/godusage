@@ -93,7 +93,11 @@ struct TeamDashboardSection: View {
         }
         await container.teamsSocial.loadChallenges(teamID: teamID)
         // Today's budget moves with use; the server recomputes the report at most every 10 minutes.
-        if showWeekStrip { await container.teamPlans.load(teamID: teamID) }
+        // Your plans in your other teams join the strip; those reload at the background pace.
+        if showWeekStrip {
+            await container.teamPlans.load(teamID: teamID)
+            await container.teamPlans.loadIfStale(teamIDs: teams.teams.map(\.id).filter { $0 != teamID })
+        }
     }
 
     @ViewBuilder
@@ -102,8 +106,8 @@ struct TeamDashboardSection: View {
         controls
         if let stats {
             summary(stats)
-            if showWeekStrip, let teamID = teams.selectedTeamID, let report = container.teamPlans.report(teamID: teamID) {
-                TeamWeekStripCard(plans: report.plans, providerName: providerName, today: teams.localToday())
+            if showWeekStrip {
+                TeamWeekStripCard(plans: weekStripPlans, teamName: otherTeamName, today: teams.localToday())
             }
             ranking(stats)
             if showChallenges { challengesCard }
@@ -182,6 +186,18 @@ struct TeamDashboardSection: View {
         } else {
             Text(currentTeamName).font(.headline).lineLimit(1)
         }
+    }
+
+    /// The selected team's plans, plus the plans that cover you in your other teams.
+    private var weekStripPlans: [TeamPlanEntry] {
+        let teams = container.teams
+        return container.teamPlans.yourPlans(selectedTeamID: teams.selectedTeamID, teamIDs: teams.teams.map(\.id))
+    }
+
+    private func otherTeamName(_ teamID: String) -> String? {
+        let teams = container.teams
+        guard teamID != teams.selectedTeamID else { return nil }
+        return teams.teams.first { $0.id == teamID }?.name
     }
 
     private var currentTeamName: String {

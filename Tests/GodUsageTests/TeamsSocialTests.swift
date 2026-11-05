@@ -206,7 +206,7 @@ final class TeamPlansTests: XCTestCase {
          "totals":{"monthlyCostUSD":120,"valueUSD":3,"projectedValueUSD":18},"canEdit":false}
         """
         let report = try JSONDecoder().decode(TeamPlansReport.self, from: Data(body.utf8))
-        XCTAssertEqual(UsageAdviceStore.plansForYou(report, families: ["cursor"]).map(\.id), ["mine"])
+        XCTAssertEqual(UsageAdviceStore.plansForYou(report.plans.map { TeamPlanEntry(teamID: "t1", plan: $0) }, families: ["cursor"]).map(\.plan.id), ["mine"])
     }
 
     func testDecodesTheServerReport() throws {
