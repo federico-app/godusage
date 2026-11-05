@@ -3,13 +3,15 @@ import XCTest
 
 /// Leaving an account out of a team: the upload sends it on its own with the teams it is left out of.
 final class TeamAccountSharingTests: XCTestCase {
-    private let window: Set<String> = ["2026-10-05"]
+    /// Today, so the store's own upload (the last 30 days from now) keeps it.
+    private let day = DailyUsageAccumulator.dayKey(from: Date())
+    private var window: Set<String> { [day] }
 
     private func source(_ cardID: String, cost: Double, plan: String? = nil) -> TeamHistorySource {
         TeamHistorySource(
             cardID: cardID,
             scope: .machineLocal,
-            history: ProviderUsageHistory(series: DailyUsageSeries(daily: [DailyUsageEntry(date: "2026-10-05", totalTokens: Int(cost), costUSD: cost)])),
+            history: ProviderUsageHistory(series: DailyUsageSeries(daily: [DailyUsageEntry(date: day, totalTokens: Int(cost), costUSD: cost)])),
             plan: plan
         )
     }
