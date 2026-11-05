@@ -25,7 +25,7 @@ const HISTORY_DAYS = 395;
 /** An open window is projected only once this share of it has passed; earlier the pace is noise. */
 const MIN_PROJECTION_SHARE = 0.2;
 /** A window last read more than this before its reset counts as estimated: its share is a lower bound. */
-const ESTIMATE_GAP_MS = 6 * HOUR_MS;
+export const ESTIMATE_GAP_MS = 6 * HOUR_MS;
 /** A plan whose quota is on pace to be used less than this share (percent) is underused. */
 export const UNDERUSED_PERCENT = 50;
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { windowDays } from "../src/quotaHistory";
 import { api, NOW, signIn, teamWith, upload } from "./support";
 
 const A = "a".repeat(64);
@@ -61,7 +62,7 @@ describe("plan budget and weekly history", () => {
     });
   });
 
-  it("returns each plan's calendar weeks with their days and sessions, for members only", async () => {
+  it("returns each plan's weekly windows, reset to reset, with their days and sessions, for members only", async () => {
     const { owner, team } = await setUp();
     const response = await api("GET", `/v1/teams/${team.id}/plans/history?weeks=2&today=2026-10-05`, { token: owner.token });
     expect(response.status).toBe(200);
@@ -69,19 +70,50 @@ describe("plan budget and weekly history", () => {
     expect(plan).toMatchObject({ provider: "claude", name: "Max" });
     const [last, current] = plan.weeks;
     expect(last).toMatchObject({
-      from: "2026-09-28",
-      // The older week was first read four days in: Tuesday is its baseline, Thursday's growth spreads.
-      totalPercent: 42,
+      // Friday 00:00 to Friday 00:00 UTC: Friday to Thursday.
+      from: "2026-09-25",
+      to: "2026-10-01",
+      endsAt: "2026-10-02T00:00:00.000Z",
+      open: false,
+      // The window's own share, not a sum of days: it was first read four days in.
+      percent: 80,
       estimated: true,
       accounts: 1,
-      sessions: { sessions: 1, limitHits: 1, averagePeakPercent: 100 },
+      sessions: null,
     });
-    expect(last.days.map((day: { percent: number | null }) => day.percent)).toEqual([null, null, 15, 15, 10, 2, 0]);
-    expect(current).toMatchObject({ from: "2026-10-05", totalPercent: 18, estimated: false, sessions: { sessions: 1, limitHits: 0 } });
-    expect(current.days.map((day: { percent: number | null }) => day.percent)).toEqual([18, null, null, null, null, null, null]);
+    expect(last.days.map((day: { percent: number | null }) => day.percent)).toEqual([null, null, null, null, null, 15, 15]);
+    expect(current).toMatchObject({
+      from: "2026-10-02", to: "2026-10-08", open: true, percent: 30, estimated: false,
+      sessions: { sessions: 2, limitHits: 1, averagePeakPercent: 70 },
+    });
+    expect(current.days.map((day: { percent: number | null }) => day.percent)).toEqual([10, 2, 0, 18, null, null, null]);
 
     expect((await api("GET", `/v1/teams/${team.id}/plans/history?weeks=57`, { token: owner.token })).status).toBe(400);
     const stranger = await signIn("Stranger");
     expect((await api("GET", `/v1/teams/${team.id}/plans/history`, { token: stranger.token })).status).toBe(404);
+  });
+
+  it("frames a plan of two accounts on the one that resets first, averaging their window shares", async () => {
+    const { owner, team } = await teamWith([]);
+    const B = "b".repeat(64);
+    await api("PUT", "/v1/devices/device-aaaa-0001/usage", {
+      token: owner.token,
+      body: {
+        ...upload([]),
+        quotaWindows: [
+          weekly(A, "2026-10-09T00:00:00Z", [["2026-10-02", 10], ["2026-10-05", 40]]),
+          weekly(B, "2026-10-10T21:00:00Z", [["2026-10-04", 5], ["2026-10-05", 20]]),
+        ],
+      },
+    });
+    await api("PUT", `/v1/teams/${team.id}/plans`, { token: owner.token, body: { plans: [plan] } });
+    const weeks = (await api("GET", `/v1/teams/${team.id}/plans/history?weeks=1&today=2026-10-05`, { token: owner.token })).body.plans[0].weeks;
+    expect(weeks).toHaveLength(1);
+    expect(weeks[0]).toMatchObject({ from: "2026-10-02", to: "2026-10-08", open: true, percent: 30, accounts: 2 });
+  });
+
+  it("counts a window's first day when it starts before noon UTC and its last when it ends after", () => {
+    expect(windowDays(Date.parse("2026-11-03T03:00:00Z"), Date.parse("2026-11-10T03:00:00Z"))).toEqual({ from: "2026-11-03", to: "2026-11-09" });
+    expect(windowDays(Date.parse("2026-10-31T21:00:00Z"), Date.parse("2026-11-07T21:00:00Z"))).toEqual({ from: "2026-11-01", to: "2026-11-07" });
   });
 });

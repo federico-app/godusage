@@ -3,7 +3,7 @@ import { badRequest, forbidden, json, notFound, nowISO, readJSONObject } from ".
 import { covers, keepUnsentFields, parsePlans, planReports, type PlanReport, type PlanRow } from "../plans";
 import { termsOn } from "../planChanges";
 import { teamQuotaWindows } from "../quota";
-import { DEFAULT_HISTORY_WEEKS, MAX_HISTORY_WEEKS, mondayOf, planHistory } from "../quotaHistory";
+import { DEFAULT_HISTORY_WEEKS, MAX_HISTORY_WEEKS, planHistory } from "../quotaHistory";
 import { addDays } from "../usagePayload";
 import { teamDetections, type Detection } from "../planDetection";
 import { requireUser } from "../session";
@@ -133,19 +133,19 @@ export const getPlans: Handler = async ({ request, env, url, params, deps }) => 
 };
 
 /**
- * The plans' last `weeks` calendar weeks of quota use (see quotaHistory.ts), the same for every member.
+ * The plans' last `weeks` weekly windows of quota use (see quotaHistory.ts), the same for every member.
  * Plan ids change on every save, so each plan also carries its provider and current name.
  */
-async function history(db: Queryable, teamID: string, today: string, weeks: number) {
+async function history(db: Queryable, teamID: string, today: string, now: Date, weeks: number) {
   const [plans, workingDays] = await Promise.all([loadPlans(db, teamID), loadWorkingDays(db, teamID)]);
-  // A week's first days can come from a window that reset before it, a week earlier at most.
-  const rows = plans.length === 0 ? [] : await teamQuotaWindows(db, teamID, addDays(mondayOf(today), -7 * weeks));
+  // The open window plus `weeks` - 1 before it, with a week to spare for windows cut short by a reset.
+  const rows = plans.length === 0 ? [] : await teamQuotaWindows(db, teamID, addDays(today, -7 * weeks));
   return {
     plans: plans.map((plan) => ({
       id: plan.id,
       provider: plan.provider,
       name: termsOn(plan, today).name,
-      weeks: planHistory(rows, { provider: plan.provider, covered: (userID) => covers(plan, userID) }, today, weeks, workingDays),
+      weeks: planHistory(rows, { provider: plan.provider, covered: (userID) => covers(plan, userID) }, today, now, weeks, workingDays),
     })),
     workingDays,
   };
@@ -160,7 +160,7 @@ export const getPlanHistory: Handler = async ({ request, env, url, params, deps 
   if (!Number.isInteger(weeks) || weeks < 1 || weeks > MAX_HISTORY_WEEKS) throw badRequest(`weeks must be a whole number from 1 to ${MAX_HISTORY_WEEKS}.`);
   const now = deps.now();
   const today = viewerToday(url, now);
-  const result = await cachedTeamResult(env.cache, now, params.teamID!, `plans|history|${today}|${weeks}`, 10 * 60_000, () => history(env.db, params.teamID!, today, weeks));
+  const result = await cachedTeamResult(env.cache, now, params.teamID!, `plans|history|${today}|${weeks}`, 10 * 60_000, () => history(env.db, params.teamID!, today, now, weeks));
   return json(result.value);
 };
 
