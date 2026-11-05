@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.6.1
+
+### Bug Fixes
+- An account left out of a team (like a personal Claude plan) no longer counts in that team's plan quota, Per Day, Weekly History, or budget ([#98](https://github.com/federico-app/godusage/pull/98)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.6.0...v1.6.1](https://github.com/federico-app/godusage/compare/v1.6.0...v1.6.1)
+
+- [a08892e](https://github.com/federico-app/godusage/commit/a08892e317635ee8680c0c1037c71749f03d1d76) fix(teams): an account left out of a team leaves its plan quota too (#98) by @andreaAppload
+
 ## v1.6.0
 
 ### New Features
