@@ -35,7 +35,7 @@ struct TeamLivePaceStrip: View {
                 + Text(teamName.map { "  \($0)" } ?? "").font(.caption2).foregroundStyle(.secondary))
                 .lineLimit(1)
             if budget.accounts > 1 {
-                Text("\(budget.accounts) accounts").font(.caption2.weight(.semibold)).foregroundStyle(Color.accentColor).fixedSize()
+                TeamPlanAccountsButton(budget: budget)
             }
             Spacer(minLength: 4)
             figure

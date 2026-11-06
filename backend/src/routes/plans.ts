@@ -6,7 +6,7 @@ import { termsOn } from "../planChanges";
 import { teamQuotaReadings, teamQuotaWindows } from "../quota";
 import { dayBounds, unionHours } from "../livePace";
 import { loadMemberHours, parseTimeZone } from "../schedules";
-import { DEFAULT_HISTORY_WEEKS, MAX_HISTORY_WEEKS, planHistory } from "../quotaHistory";
+import { DEFAULT_HISTORY_WEEKS, MAX_HISTORY_WEEKS, planHistory, type AccountWeek } from "../quotaHistory";
 import { addDays } from "../usagePayload";
 import { teamDetections, type Detection } from "../planDetection";
 import { requireUser } from "../session";
@@ -154,7 +154,11 @@ function forViewer(
   return {
     plans: result.plans.map((plan) => ({
       ...plan,
-      budget: plan.budget === null ? null : { ...plan.budget, pace: withSharers(plan.budget.pace, userID, result.names) },
+      budget: plan.budget === null ? null : {
+        ...plan.budget,
+        perAccount: withAccountNames(plan.budget.perAccount, userID, result.names),
+        pace: withSharers(plan.budget.pace, userID, result.names),
+      },
       mismatches: owner ? plan.mismatches : [],
       includesYou: viewer.countsUsage && covers(plan, userID),
     })),
@@ -173,12 +177,24 @@ function withSharers(pace: PlanPace | null, userID: string, names: Record<string
   return { ...rest, sharedWith: people.filter((id) => id !== userID).map((id) => names[id] ?? "Someone") };
 }
 
+/** Who reads each of a plan's accounts, by name in place of their ids: "You" first, then the others. */
+function withAccountNames(accounts: AccountWeek[], userID: string, names: Record<string, string>) {
+  return accounts.map(({ people, ...rest }) => ({
+    ...rest,
+    people: [
+      ...(people.includes(userID) ? ["You"] : []),
+      ...people.filter((id) => id !== userID).map((id) => names[id] ?? "Someone").sort((a, b) => a.localeCompare(b)),
+    ],
+  }));
+}
+
 /**
  * The plan report from the cache (see `teamCache.ts`), recomputed at most every 10 minutes and after
  * every new quota reading. Live Pace depends on the viewer's time zone, so each one has its own entry.
  */
 function cachedReport(env: Pick<Env, "db" | "cache">, now: Date, teamID: string, today: string, timeZone: string | null) {
-  return cachedTeamResult(env.cache, now, teamID, `plans|${today}|${timeZone ?? ""}`, 10 * 60_000, () => report(env.db, teamID, today, now, timeZone));
+  // The key names the report's shape: a report cached before `perAccount` must not be served.
+  return cachedTeamResult(env.cache, now, teamID, `plans|v2|${today}|${timeZone ?? ""}`, 10 * 60_000, () => report(env.db, teamID, today, now, timeZone));
 }
 
 /** GET /v1/teams/:teamID/plans?today=&tz= — the team's plans and their report, for any member. */

@@ -75,6 +75,26 @@ final class TeamPlanHistoryTests: XCTestCase {
         XCTAssertTrue(TeamWeekStrip.note(budget).hasPrefix("4.7% over today's budget · resets "))
     }
 
+    func testListsWhoReadsEachAccountOfTheWeek() throws {
+        let json = """
+        {"todayPercent":4,"affordablePercent":20,"leftPercent":61,"workingDaysLeft":3,"resetsAt":"2026-11-10T03:00:00.000Z","accounts":2,
+         "perAccount":[{"people":["You","Matteo Scoccia"],"percent":42,"todayPercent":6,"resetsAt":"2026-11-10T03:00:00.000Z","perDevice":false},
+                       {"people":["Maria Vitali"],"percent":10,"todayPercent":2,"resetsAt":"2026-11-11T09:00:00.000Z","perDevice":true}],
+         "days":[]}
+        """
+        let budget = try JSONDecoder().decode(TeamPlanBudget.self, from: Data(json.utf8))
+        let accounts = try XCTUnwrap(budget.perAccount)
+        XCTAssertEqual(accounts.map(\.people), [["You", "Matteo Scoccia"], ["Maria Vitali"]])
+        XCTAssertTrue(accounts[1].perDevice)
+        XCTAssertEqual(TeamPlanAccountsButton.readBy(["You", "Matteo Scoccia"]), "You and Matteo Scoccia")
+        XCTAssertEqual(TeamPlanAccountsButton.readBy(["A", "B", "C"]), "A, B and C")
+        XCTAssertTrue(TeamPlanAccountsButton.usage(accounts[0]).hasPrefix("42.0% of the week · 6.0% today · resets "))
+
+        // Servers before the list send none: the label stays plain text.
+        let old = try JSONDecoder().decode(TeamPlanBudget.self, from: Data(json.replacingOccurrences(of: "\"perAccount\"", with: "\"ignored\"").utf8))
+        XCTAssertNil(old.perAccount)
+    }
+
     private func week(_ percent: Double, days: [Double?], open: Bool = false, hits: Int = 0) -> TeamPlanHistory.Week {
         TeamPlanHistory.Week(
             from: "2026-10-27", to: "2026-11-02", startsAt: "", endsAt: "2026-11-03T03:00:00.000Z", open: open, percent: percent,
