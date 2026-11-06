@@ -52,7 +52,7 @@ describe("plan budget and weekly history", () => {
       pace: null,
       resetsAt: "2026-10-09T00:00:00.000Z",
       accounts: 1,
-      perAccount: [{ people: ["You"], percent: 30, todayPercent: 18, resetsAt: "2026-10-09T00:00:00.000Z", perDevice: false }],
+      perAccount: [{ people: ["You"], percent: 30, todayPercent: 18, resetsAt: "2026-10-09T00:00:00.000Z", perDevice: false, account: A }],
       days: [
         { day: "2026-10-02", percent: 10, working: true, estimated: false },
         { day: "2026-10-03", percent: 2, working: false, estimated: false },
@@ -142,12 +142,14 @@ describe("plan budget and weekly history", () => {
     const budget = (await api("PUT", `/v1/teams/${team.id}/plans`, { token: owner.token, body: { plans: [covered] } })).body.plans[0].budget;
     expect(budget.accounts).toBe(2);
     expect(budget.perAccount).toEqual([
-      { people: ["You", "Matteo"], percent: 40, todayPercent: 30, resetsAt: "2026-10-09T00:00:00.000Z", perDevice: false },
-      { people: ["Matteo"], percent: 20, todayPercent: 15, resetsAt: "2026-10-10T21:00:00.000Z", perDevice: true },
+      { people: ["You", "Matteo"], percent: 40, todayPercent: 30, resetsAt: "2026-10-09T00:00:00.000Z", perDevice: false, account: A },
+      { people: ["Matteo"], percent: 20, todayPercent: 15, resetsAt: "2026-10-10T21:00:00.000Z", perDevice: true, account: B },
     ]);
 
     const asMatteo = (await api("GET", `/v1/teams/${team.id}/plans?today=2026-10-05`, { token: members[0]!.token })).body.plans[0].budget;
     expect(asMatteo.perAccount.map((account: { people: string[] }) => account.people)).toEqual([["You", "Owner"], ["You"]]);
+    // Account keys are for owners, who hide accounts by them.
+    expect(asMatteo.perAccount.some((account: object) => "account" in account)).toBe(false);
   });
 
   it("counts a window's first day when it starts before noon UTC and its last when it ends after", () => {

@@ -51,6 +51,8 @@ protocol TeamsAPI: Sendable {
     func deleteDevice(token: String, deviceID: String) async throws
     func plans(token: String, teamID: String, today: String) async throws -> TeamPlansReport
     func savePlans(token: String, teamID: String, plans: [TeamPlan], workingDays: [Int]?, today: String) async throws -> TeamPlansReport
+    /// Hides one account from a plan's quota figures, or shows it again. Owners only.
+    func setPlanAccountHidden(token: String, teamID: String, planID: String, account: String, hidden: Bool, today: String) async throws -> TeamPlansReport
     /// The plans' last `weeks` calendar weeks of quota use.
     func planHistory(token: String, teamID: String, today: String, weeks: Int) async throws -> TeamPlanHistory
     func schedules(token: String, teamID: String) async throws -> TeamSchedules
@@ -242,6 +244,15 @@ struct TeamsAPIClient: TeamsAPI {
         }
         let body = Body(plans: plans, workingDays: workingDays)
         return try await send("PUT", "/v1/teams/\(escaped(teamID))/plans?today=\(escaped(today))\(timeZoneQuery)", token: token, body: body)
+    }
+
+    func setPlanAccountHidden(token: String, teamID: String, planID: String, account: String, hidden: Bool, today: String) async throws -> TeamPlansReport {
+        struct Body: Encodable {
+            var account: String
+            var hidden: Bool
+        }
+        let path = "/v1/teams/\(escaped(teamID))/plans/\(escaped(planID))/hidden-accounts?today=\(escaped(today))\(timeZoneQuery)"
+        return try await send("PUT", path, token: token, body: Body(account: account, hidden: hidden))
     }
 
     func schedules(token: String, teamID: String) async throws -> TeamSchedules {

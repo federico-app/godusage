@@ -4,6 +4,7 @@ import SwiftUI
 /// as the plan's figure, the week's strip with a tick where today should be now, and Details with
 /// the pace that fits the rest of the day, the working hours, and the day chart.
 struct TeamLivePaceStrip: View {
+    let teamID: String
     let plan: TeamPlanReport
     let budget: TeamPlanBudget
     let pace: TeamPlanPace
@@ -34,8 +35,8 @@ struct TeamLivePaceStrip: View {
             (Text(plan.name).font(.caption.weight(.semibold))
                 + Text(teamName.map { "  \($0)" } ?? "").font(.caption2).foregroundStyle(.secondary))
                 .lineLimit(1)
-            if budget.accounts > 1 {
-                TeamPlanAccountsButton(budget: budget)
+            if TeamPlanAccountsButton.isShown(budget: budget, plan: plan) {
+                TeamPlanAccountsButton(teamID: teamID, plan: plan, budget: budget)
             }
             Spacer(minLength: 4)
             figure

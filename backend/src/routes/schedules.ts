@@ -6,25 +6,27 @@ import { userTeamIDs } from "../teamCache";
 import { storedWorkingDays } from "../workingDays";
 
 /**
- * GET /v1/teams/:teamID/schedules — every member's working hours (the team default for those who
- * never set theirs) and their Mac's time zone, for any member.
+ * GET /v1/teams/:teamID/schedules — every counted member's working hours (the team default for those
+ * who never set theirs) and their Mac's time zone, for any member. Members whose usage doesn't count
+ * (viewers) are left out: their hours pace nothing.
  */
 export const getSchedules: Handler = async ({ request, env, params }) => {
   const user = await requireUser(request, env.db);
   const teamID = params.teamID!;
-  const members = await env.db.query<{ user_id: string; display_name: string; role: string; working_days: string }>(
-    `SELECT m.user_id, u.display_name, m.role, t.working_days FROM team_members m
+  const members = await env.db.query<{ user_id: string; display_name: string; role: string; counts_usage: boolean; working_days: string }>(
+    `SELECT m.user_id, u.display_name, m.role, m.counts_usage, t.working_days FROM team_members m
      JOIN users u ON u.id = m.user_id JOIN teams t ON t.id = m.team_id WHERE m.team_id = $1 ORDER BY u.display_name, m.user_id`,
     [teamID],
   );
   const me = members.find((member) => member.user_id === user.id);
   if (!me) throw notFound("Team not found.");
-  const hours = await loadMemberHours(env.db, members.map((member) => member.user_id));
-  const teamDays = storedWorkingDays(members[0]!.working_days);
+  const counted = members.filter((member) => member.counts_usage);
+  const hours = await loadMemberHours(env.db, counted.map((member) => member.user_id));
+  const teamDays = storedWorkingDays(me.working_days);
   return json({
     defaultSchedule: defaultSchedule(teamDays),
     canEditOthers: me.role === "owner",
-    members: members.map((member) => {
+    members: counted.map((member) => {
       const stored = hours.get(member.user_id);
       return {
         userID: member.user_id,

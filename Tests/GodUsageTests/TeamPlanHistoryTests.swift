@@ -95,6 +95,40 @@ final class TeamPlanHistoryTests: XCTestCase {
         XCTAssertNil(old.perAccount)
     }
 
+    func testOwnersHideAnAccountFromAPlanAndSavingKeepsIt() async throws {
+        let json = """
+        {"todayPercent":4,"affordablePercent":20,"leftPercent":61,"workingDaysLeft":3,"resetsAt":"2026-11-10T03:00:00.000Z","accounts":1,
+         "perAccount":[{"people":["You"],"percent":42,"todayPercent":6,"resetsAt":"2026-11-10T03:00:00.000Z","perDevice":false,"account":"aaa"}],
+         "days":[]}
+        """
+        let budget = try JSONDecoder().decode(TeamPlanBudget.self, from: Data(json.utf8))
+        XCTAssertEqual(budget.perAccount?.first?.account, "aaa")
+        var report = plan(id: "p1")
+        XCTAssertFalse(TeamPlanAccountsButton.isShown(budget: budget, plan: report))
+        report.hiddenAccounts = ["bbb"]
+        XCTAssertTrue(TeamPlanAccountsButton.isShown(budget: budget, plan: report), "one account left still lists the hidden one")
+        XCTAssertEqual(TeamPlanAccountsButton.label(accounts: 1, hidden: 1), "1 account · 1 hidden")
+        XCTAssertEqual(TeamPlanAccountsButton.label(accounts: 2, hidden: 0), "2 accounts")
+
+        // Saving the list leaves them out, so the server keeps them (an editor opened before a hide can't undo it).
+        let encoded = try JSONSerialization.jsonObject(with: JSONEncoder().encode(report.plan)) as? [String: Any]
+        XCTAssertNil(encoded?["hiddenAccounts"])
+
+        let api = FakeTeamsAPI()
+        let sessions = InMemoryTeamsSessionStore()
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "TeamPlanHistoryTests-\(UUID().uuidString)"))
+        let teams = TeamsStore(
+            api: api, sessionStore: sessions, signInProvider: FakeAppleSignIn(), historySources: { [] },
+            deviceID: { "device-0001" }, deviceName: "Mac", uploadDebounce: .zero, defaults: defaults
+        )
+        let store = TeamPlansStore(teams: teams, api: api, defaults: defaults)
+        let saved = await store.setAccountHidden(teamID: "t1", planID: "p1", account: "bbb", hidden: true)
+        XCTAssertTrue(saved)
+        XCTAssertTrue(api.log.contains("setPlanAccountHidden p1 bbb true"))
+        XCTAssertNotNil(store.report(teamID: "t1"))
+    }
+
     private func week(_ percent: Double, days: [Double?], open: Bool = false, hits: Int = 0) -> TeamPlanHistory.Week {
         TeamPlanHistory.Week(
             from: "2026-10-27", to: "2026-11-02", startsAt: "", endsAt: "2026-11-03T03:00:00.000Z", open: open, percent: percent,

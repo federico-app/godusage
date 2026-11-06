@@ -2,7 +2,8 @@ import SwiftUI
 
 /// Settings → Teams → Members: each member's working days and hours, which Live Pace spreads today's
 /// weekly-limit budget over. A member edits their own hours; owners edit anyone's. Hours belong to the
-/// person (shared across their teams) and run in their own Mac's time zone.
+/// person (shared across their teams) and run in their own Mac's time zone. Members whose usage doesn't
+/// count (viewers) aren't listed: the server leaves them out, and the list reloads when that changes.
 struct TeamWorkingHoursSection: View {
     @Environment(AppContainer.self) private var container
     let teamID: String
@@ -12,6 +13,10 @@ struct TeamWorkingHoursSection: View {
     private var store: TeamPlansStore { container.teamPlans }
     private var schedules: TeamSchedules? { store.schedules(teamID: teamID) }
     private var myID: String? { container.teams.user?.id }
+    /// Who counts in the team, so making someone a viewer (or counting them again) reloads the list.
+    private var countedIDs: [String] {
+        container.teams.details[teamID]?.members.filter(\.counts).map(\.id) ?? []
+    }
 
     var body: some View {
         SettingsSection("Working Hours") {
@@ -34,7 +39,7 @@ struct TeamWorkingHoursSection: View {
             )
             .padding(.top, 4)
         }
-        .task(id: teamID) { await store.loadSchedules(teamID: teamID) }
+        .task(id: countedIDs) { await store.loadSchedules(teamID: teamID) }
         .sheet(item: $editing) { draft in
             TeamWorkingHoursEditor(draft: draft) { userID, schedule in
                 await store.saveSchedule(teamID: teamID, userID: userID, schedule: schedule)

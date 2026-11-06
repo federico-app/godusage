@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.7.3
+
+### New Features
+- This Week's Limit: owners can **Hide** an account from a plan in **N accounts**, like a member's own login beside the shared one. It leaves the plan's weekly limit, Live Pace, Per Day, Sessions, and Weekly History, and stops setting the week, while its usage still counts. Hidden accounts are listed under **Hidden From This Plan**, with **Show** to bring them back ([#112](https://github.com/federico-app/godusage/pull/112)) by @andreaAppload
+
+### Bug Fixes
+- Settings → Teams → Working Hours no longer lists viewers, since their hours pace no plan; the list updates as soon as someone is made a viewer or counted again ([#113](https://github.com/federico-app/godusage/pull/113)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.7.2...v1.7.3](https://github.com/federico-app/godusage/compare/v1.7.2...v1.7.3)
+
+- [ab25351](https://github.com/federico-app/godusage/commit/ab253514cf820a862413a5600dd3a51f50a9152f) feat(teams): owners can hide an account from a plan (#112) by @andreaAppload
+- [92efadb](https://github.com/federico-app/godusage/commit/92efadb36ec186cb8edf55e30b1d193608136fda) fix(teams): leave viewers out of Working Hours (#113) by @andreaAppload
+
 ## v1.7.2
 
 ### New Features
