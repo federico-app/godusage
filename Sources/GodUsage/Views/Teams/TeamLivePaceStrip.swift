@@ -20,6 +20,7 @@ struct TeamLivePaceStrip: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            TeamWeekStrip.teamLine(teamName)
             header
             subline
             bars
@@ -32,8 +33,7 @@ struct TeamLivePaceStrip: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
             Circle().fill(color).frame(width: 7, height: 7)
-            (Text(plan.name).font(.caption.weight(.semibold))
-                + Text(teamName.map { "  \($0)" } ?? "").font(.caption2).foregroundStyle(.secondary))
+            Text(plan.name).font(.caption.weight(.semibold))
                 .lineLimit(1)
             if TeamPlanAccountsButton.isShown(budget: budget, plan: plan) {
                 TeamPlanAccountsButton(teamID: teamID, plan: plan, budget: budget)
