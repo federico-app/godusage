@@ -54,8 +54,23 @@ export interface PlanBudget {
   workingDaysLeft: number;
   resetsAt: string;
   accounts: number;
+  /** Each account with an open week, soonest reset first (see `AccountWeek`). */
+  perAccount: AccountWeek[];
   /** The soonest-resetting open week, day by day; days after today have no percent. */
   days: { day: string; percent: number | null; working: boolean; estimated: boolean }[];
+}
+
+/** One account in the plan's open week: who reads it, how much of its week it used, when it resets. */
+export interface AccountWeek {
+  /** The covered members whose Macs read this account's open week, by user id (the route names them). */
+  people: string[];
+  /** The share of its weekly limit used so far. */
+  percent: number;
+  /** The share of its weekly limit used today. */
+  todayPercent: number;
+  resetsAt: string;
+  /** A Mac names it per Mac (no account id), so it may be the same login as another account here. */
+  perDevice: boolean;
 }
 
 export interface Window {
@@ -215,6 +230,22 @@ export function planBudget(rows: QuotaRow[], plan: Plan, today: string, now: Dat
     const share = day > today ? { percent: null, estimated: false } : dayShare(used, day);
     days.push({ day, percent: share.percent, working: isWorkingDay(day, workingDays), estimated: share.estimated });
   }
+  const perAccount = open
+    .map((window, index): AccountWeek & { endsAt: number } => {
+      const reads = rows.filter((row) =>
+        row.provider === plan.provider && row.kind === "limit" && row.period_hours === WEEK_HOURS
+        && row.account_key === window.account && Date.parse(row.ends_at) === window.endsAt && plan.covered(row.user_id));
+      return {
+        people: [...new Set(reads.map((row) => row.user_id))].sort(),
+        percent: round1(window.percent),
+        todayPercent: round1(budgets[index]!.today),
+        resetsAt: new Date(window.endsAt).toISOString(),
+        perDevice: reads.some((row) => row.per_device),
+        endsAt: window.endsAt,
+      };
+    })
+    .sort((a, b) => a.endsAt - b.endsAt || b.percent - a.percent)
+    .map(({ endsAt: _endsAt, ...account }) => account);
   return {
     todayPercent: round1(mean(budgets.map((budget) => budget.today))),
     affordablePercent: round1(mean(budgets.map((budget) => budget.affordable))),
@@ -222,6 +253,7 @@ export function planBudget(rows: QuotaRow[], plan: Plan, today: string, now: Dat
     workingDaysLeft: workingLeft(soonest),
     resetsAt: new Date(soonest.endsAt).toISOString(),
     accounts: open.length,
+    perAccount,
     days,
   };
 }

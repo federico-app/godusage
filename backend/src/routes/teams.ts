@@ -206,8 +206,8 @@ export const removeMember: Handler = async ({ request, env, params }) => {
 /**
  * PATCH /v1/teams/:teamID/members/:userID { role?: "owner" | "member", countsUsage?: boolean } — owners
  * only. A team keeps at least one owner. Making someone a member makes them count again.
- * `countsUsage` is the caller's own: an owner can leave themself out of the team's usage and plans
- * (see `setCountsUsage`).
+ * `countsUsage` leaves a member (a viewer) or the owner themself out of the team's usage, accounts, and
+ * plans (see `setCountsUsage`). Only owners set it, so a viewer can't count themself back in.
  */
 export const updateMember: Handler = async (context) => {
   const { request, env, params } = context;
@@ -218,9 +218,8 @@ export const updateMember: Handler = async (context) => {
   if (body.role !== undefined && body.role !== "owner" && body.role !== "member") throw badRequest('role must be "owner" or "member".');
   if (body.countsUsage !== undefined && typeof body.countsUsage !== "boolean") throw badRequest("countsUsage must be true or false.");
   const targetID = params.userID!;
-  if (body.countsUsage !== undefined && targetID !== user.id) throw forbidden("Owners can only choose whether they count themselves.");
 
-  if (body.countsUsage !== undefined) await setCountsUsage(env.db, team.id, user.id, body.countsUsage);
+  if (body.countsUsage !== undefined) await setCountsUsage(env.db, team.id, targetID, body.countsUsage, targetID === user.id);
   if (body.role !== undefined) {
     const changed =
       body.role === "owner"
@@ -242,14 +241,17 @@ export const updateMember: Handler = async (context) => {
 };
 
 /**
- * Leaving yourself out also takes you off the plans that list you. A plan that covers only you would
+ * Leaving someone out also takes them off the plans that list them. A plan that covers only them would
  * cover nobody, so that is refused until the owner changes the plan.
  */
-async function setCountsUsage(db: Database, teamID: string, userID: string, counts: boolean): Promise<void> {
+async function setCountsUsage(db: Database, teamID: string, userID: string, counts: boolean, yourself: boolean): Promise<void> {
   if (counts) {
-    await db.run("UPDATE team_members SET counts_usage = TRUE WHERE team_id = $1 AND user_id = $2", [teamID, userID]);
+    const changed = await db.run("UPDATE team_members SET counts_usage = TRUE WHERE team_id = $1 AND user_id = $2", [teamID, userID]);
+    if (changed === 0) throw notFound("Member not found.");
     return;
   }
+  const member = await db.first("SELECT 1 AS found FROM team_members WHERE team_id = $1 AND user_id = $2", [teamID, userID]);
+  if (!member) throw notFound("Member not found.");
   await db.transaction(async (tx) => {
     const plans = await tx.query<{ id: string; name: string; member_ids: string }>(
       "SELECT id, name, member_ids FROM team_plans WHERE team_id = $1 AND member_ids IS NOT NULL ORDER BY position",
@@ -259,7 +261,10 @@ async function setCountsUsage(db: Database, teamID: string, userID: string, coun
       const ids = JSON.parse(plan.member_ids) as string[];
       if (!ids.includes(userID)) continue;
       const rest = ids.filter((id) => id !== userID);
-      if (rest.length === 0) throw conflict(`The plan "${plan.name}" covers only you. Pick who else it covers, or remove it, first.`);
+      if (rest.length === 0) {
+        const whom = yourself ? "you" : "this member";
+        throw conflict(`The plan "${plan.name}" covers only ${whom}. Pick who else it covers, or remove it, first.`);
+      }
       await tx.run("UPDATE team_plans SET member_ids = $1 WHERE id = $2", [JSON.stringify(rest), plan.id]);
     }
     await tx.run("UPDATE team_members SET counts_usage = FALSE WHERE team_id = $1 AND user_id = $2", [teamID, userID]);

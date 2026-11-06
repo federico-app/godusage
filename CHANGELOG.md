@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.7.2
+
+### New Features
+- This Week's Limit: click **N accounts** next to a plan to see each account of the week: who uses it, how much of its week and of today it used, and when it resets. An account a Mac can only name per Mac is flagged, since it may be the same login as another ([#109](https://github.com/federico-app/godusage/pull/109)) by @andreaAppload
+- Teams: owners can make a member a **viewer** from the member's **…** menu. A viewer still sees the team, but their usage and accounts leave its leaderboards, challenges, Hall of Fame, and plans until an owner counts them again ([#110](https://github.com/federico-app/godusage/pull/110)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.7.1...v1.7.2](https://github.com/federico-app/godusage/compare/v1.7.1...v1.7.2)
+
+- [b46a24b](https://github.com/federico-app/godusage/commit/b46a24bdd12dd39477ea95a57e198cc3d7a6fae7) feat(teams): list who reads each account of a plan's week (#109) by @andreaAppload
+- [46ceaad](https://github.com/federico-app/godusage/commit/46ceaad7fd534b33c3b96c97b154d4e5913265bc) feat(teams): owners can make a member a viewer (#110) by @andreaAppload
+
 ## v1.7.1
 
 ### New Features
