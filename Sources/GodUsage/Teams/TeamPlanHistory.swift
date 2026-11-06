@@ -74,6 +74,8 @@ struct TeamPlanBudget: Decodable, Hashable, Sendable {
         var resetsAt: String
         /// A Mac names it per Mac, so it may be the same login as another account here.
         var perDevice: Bool
+        /// The account's key, which an owner hides it from the plan by. Owners only; nil from older servers.
+        var account: String?
     }
 
     /// The share of the weekly limit used today.

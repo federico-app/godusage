@@ -20,7 +20,7 @@ import {
 import { deleteDevice, listDevices, putDeviceUsage } from "./routes/usage";
 import { createChallenge, deleteChallenge, listChallenges } from "./routes/challenges";
 import { addReaction, removeReaction } from "./routes/social";
-import { getPlanHistory, getPlans, putPlans } from "./routes/plans";
+import { getPlanHistory, getPlans, putPlans, putHiddenAccount } from "./routes/plans";
 import { getSchedules, putSchedule } from "./routes/schedules";
 import { getMyUsage } from "./routes/myUsage";
 import { createPairingCode, exchangePairingCode, listLinkedDevices, unlinkDevice } from "./routes/pairing";
@@ -78,6 +78,7 @@ const ROUTES: Route[] = [
   route("GET", "/v1/teams/:teamID/plans", getPlans),
   route("GET", "/v1/teams/:teamID/plans/history", getPlanHistory),
   route("PUT", "/v1/teams/:teamID/plans", putPlans),
+  route("PUT", "/v1/teams/:teamID/plans/:planID/hidden-accounts", putHiddenAccount),
   route("GET", "/v1/teams/:teamID/schedules", getSchedules),
   route("PUT", "/v1/teams/:teamID/members/:userID/schedule", putSchedule),
   route("GET", "/v1/invites/:code", getInvite),
