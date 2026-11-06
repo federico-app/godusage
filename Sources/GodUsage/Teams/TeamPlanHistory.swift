@@ -65,6 +65,17 @@ struct TeamPlanBudget: Decodable, Hashable, Sendable {
         var estimated: Bool
     }
 
+    /// One account in the open week, from the server's names: who reads it ("You" first), how much
+    /// of its week it used, and when it resets.
+    struct AccountWeek: Decodable, Hashable, Sendable {
+        var people: [String]
+        var percent: Double
+        var todayPercent: Double
+        var resetsAt: String
+        /// A Mac names it per Mac, so it may be the same login as another account here.
+        var perDevice: Bool
+    }
+
     /// The share of the weekly limit used today.
     var todayPercent: Double
     /// What today can use and keep the week on pace.
@@ -75,6 +86,8 @@ struct TeamPlanBudget: Decodable, Hashable, Sendable {
     var workingDaysLeft: Int
     var resetsAt: String
     var accounts: Int
+    /// Each account with an open week, soonest reset first. Nil from servers before it.
+    var perAccount: [AccountWeek]?
     /// The open week, day by day.
     var days: [Day]
     /// Today's budget over working hours, for Live Pace. Nil from servers before it, and on days the

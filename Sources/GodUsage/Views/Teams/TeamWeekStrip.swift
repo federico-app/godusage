@@ -127,10 +127,7 @@ struct TeamWeekStrip: View {
             (Text(plan.name).font(.caption.weight(.semibold))
                 + Text(teamName.map { "  \($0)" } ?? "").font(.caption2).foregroundStyle(.secondary))
             if budget.accounts > 1 {
-                Text("\(budget.accounts) accounts")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
-                    .fixedSize()
+                TeamPlanAccountsButton(budget: budget)
             }
         }
     }
