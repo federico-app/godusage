@@ -494,6 +494,10 @@ final class FakeTeamsAPI: TeamsAPI, @unchecked Sendable {
         log.append("savePlans \(plans.map(\.name).joined(separator: ","))")
         return plansResult
     }
+    func setPlanAccountHidden(token: String, teamID: String, planID: String, account: String, hidden: Bool, today: String) async throws -> TeamPlansReport {
+        log.append("setPlanAccountHidden \(planID) \(account) \(hidden)")
+        return plansResult
+    }
     var schedulesResult = TeamSchedules(defaultSchedule: .standard, canEditOthers: true, members: [])
     func schedules(token: String, teamID: String) async throws -> TeamSchedules { schedulesResult }
     func saveSchedule(token: String, teamID: String, userID: String, schedule: TeamSchedule?) async throws {

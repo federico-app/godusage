@@ -7,7 +7,7 @@ import {
 import { planMismatches, type Detection, type Mismatch } from "./planDetection";
 import { planQuota, teamQuotaWindows, UNDERUSED_PERCENT, type PlanQuota } from "./quota";
 import { perDeviceAccounts, planDaily, planSessions, type PlanDaily, type PlanSessions } from "./quotaDaily";
-import { planBudget, type PlanBudget } from "./quotaHistory";
+import { planBudget, type AccountWeek, type PlanBudget } from "./quotaHistory";
 import { planPace, type PaceContext, type PlanPace } from "./livePace";
 import { daysBetween } from "./stats";
 import { teamUsage } from "./teamUsage";
@@ -26,7 +26,14 @@ export interface PlanInput extends PriceHistory {
   detectedPlan: string | null;
   /** Detected labels the owner chose not to be told about for this plan. */
   ignoredPlans: string[];
+  /**
+   * Account keys the owner hid from this plan (say, a member's own login beside the shared one). They
+   * stay out of its quota figures; usage still counts. See `withoutHidden`.
+   */
+  hiddenAccounts: string[];
 }
+
+export const MAX_HIDDEN_ACCOUNTS = 50;
 
 export interface PlanRow extends PlanInput {
   id: string;
@@ -61,6 +68,7 @@ export interface PlanReport extends Terms {
   memberIDs: string[] | null;
   detectedPlan: string | null;
   ignoredPlans: string[];
+  hiddenAccounts: string[];
   /** Every price change, past and future, with the terms each replaces. */
   changes: WireChange[];
   cycle: Cycle;
@@ -88,6 +96,8 @@ export interface PlanReport extends Terms {
    * Live Pace's working-hours budget when the request named a time zone (see livePace.ts).
    */
   budget: (PlanBudget & { pace: PlanPace | null }) | null;
+  /** The hidden accounts that have an open week, as `budget.perAccount` lists the others. Owners only. */
+  hiddenPerAccount: AccountWeek[];
   /**
    * Covered accounts behind `quota`, `daily`, or `sessions` named per Mac: one of them used on several
    * Macs counts more than once, so the app warns that the figures may be off.
@@ -119,8 +129,11 @@ export function parsePlans(body: Record<string, unknown>, today: string): Parsed
       ...(entry.changes === undefined ? { base: current, changes: [] } : parsePriceHistory(current, entry.changes, today)),
       detectedPlan: parseDetectedPlan(entry.detectedPlan),
       ignoredPlans: parseIgnoredPlans(entry.ignoredPlans),
+      hiddenAccounts: parseHiddenAccounts(entry.hiddenAccounts),
       current,
-      sent: { changes: "changes" in entry, detectedPlan: "detectedPlan" in entry, ignoredPlans: "ignoredPlans" in entry },
+      sent: {
+        changes: "changes" in entry, detectedPlan: "detectedPlan" in entry, ignoredPlans: "ignoredPlans" in entry, hiddenAccounts: "hiddenAccounts" in entry,
+      },
     };
   });
 }
@@ -128,7 +141,28 @@ export function parsePlans(body: Record<string, unknown>, today: string): Parsed
 /** A plan as the owner sent it, and which of the fields older apps don't know about it carried. */
 export interface ParsedPlan extends PlanInput {
   current: Terms;
-  sent: { changes: boolean; detectedPlan: boolean; ignoredPlans: boolean };
+  sent: { changes: boolean; detectedPlan: boolean; ignoredPlans: boolean; hiddenAccounts: boolean };
+}
+
+/** An account key as quota windows name it. */
+export function parseAccountKey(value: unknown): string {
+  if (typeof value !== "string" || value.length === 0 || value.length > 128) throw badRequest("account must be an account key.");
+  return value;
+}
+
+/** Missing or null hides nothing; otherwise distinct account keys. */
+function parseHiddenAccounts(value: unknown): string[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) throw badRequest("hiddenAccounts must be a list of account keys.");
+  if (value.length > MAX_HIDDEN_ACCOUNTS) throw badRequest(`At most ${MAX_HIDDEN_ACCOUNTS} hidden accounts per plan.`);
+  return [...new Set(value.map(parseAccountKey))];
+}
+
+/** The quota rows that count for `plan`: its provider's rows without the accounts it hides. */
+export function withoutHidden<Row extends { provider: string; account_key: string }>(rows: Row[], plan: { provider: string; hiddenAccounts: string[] }): Row[] {
+  if (plan.hiddenAccounts.length === 0) return rows;
+  const hidden = new Set(plan.hiddenAccounts);
+  return rows.filter((row) => row.provider !== plan.provider || !hidden.has(row.account_key));
 }
 
 /**
@@ -151,7 +185,7 @@ export function keepUnsentFields(parsed: ParsedPlan[], stored: PlanRow[], today:
   };
   return parsed.map((plan, position) => {
     const { current, sent, ...input } = plan;
-    if (sent.changes && sent.detectedPlan && sent.ignoredPlans) return input;
+    if (sent.changes && sent.detectedPlan && sent.ignoredPlans && sent.hiddenAccounts) return input;
     const old = match(plan, position);
     if (!old) return input;
     return {
@@ -159,6 +193,7 @@ export function keepUnsentFields(parsed: ParsedPlan[], stored: PlanRow[], today:
       ...(sent.changes ? {} : withCurrentTerms(old, current, today)),
       detectedPlan: sent.detectedPlan ? input.detectedPlan : old.detectedPlan,
       ignoredPlans: sent.ignoredPlans ? input.ignoredPlans : old.ignoredPlans,
+      hiddenAccounts: sent.hiddenAccounts ? input.hiddenAccounts : old.hiddenAccounts,
     };
   });
 }
@@ -259,7 +294,10 @@ export async function planReports(
     const projected = cycle.workingDaysElapsed === 0 ? value : value + (workingValue / cycle.workingDaysElapsed) * cycle.workingDaysLeft;
     const multiple = projected / cycleCost;
     const covered = (user: string) => covers(plan, user);
-    const quota = planQuota(quotaRows, { provider: plan.provider, covered, cycleFrom: cycle.from, cycleCostUSD: cycleCost }, now, workingDays);
+    // Usage above counts every account; the quota figures leave out the ones the owner hid.
+    const rows = withoutHidden(quotaRows, plan);
+    const hiddenRows = plan.hiddenAccounts.length === 0 ? [] : quotaRows.filter((row) => row.provider === plan.provider && plan.hiddenAccounts.includes(row.account_key));
+    const quota = planQuota(rows, { provider: plan.provider, covered, cycleFrom: cycle.from, cycleCostUSD: cycleCost }, now, workingDays);
     return {
       id: plan.id,
       provider: plan.provider,
@@ -268,6 +306,7 @@ export async function planReports(
       memberIDs: plan.memberIDs,
       detectedPlan: plan.detectedPlan,
       ignoredPlans: plan.ignoredPlans,
+      hiddenAccounts: plan.hiddenAccounts,
       changes: wireChanges(plan),
       cycle,
       cycleCostUSD: round2(cycleCost),
@@ -283,11 +322,12 @@ export async function planReports(
       projectedValueUSD: round2(projected),
       projectedMultiple: Math.round(multiple * 100) / 100,
       quota,
-      daily: planDaily(quotaRows, { provider: plan.provider, covered }, today, workingDays),
-      sessions: planSessions(quotaRows, { provider: plan.provider, covered, cycleFrom: cycle.from }),
-      budget: withPace(planBudget(quotaRows, { provider: plan.provider, covered }, today, now, workingDays), () =>
-        pace === null ? null : planPace(quotaRows, { provider: plan.provider, covered }, today, now, pace)),
-      perDeviceAccounts: perDeviceAccounts(quotaRows, { provider: plan.provider, covered }, cycle.from < addDays(today, -7) ? cycle.from : addDays(today, -7)),
+      daily: planDaily(rows, { provider: plan.provider, covered }, today, workingDays),
+      sessions: planSessions(rows, { provider: plan.provider, covered, cycleFrom: cycle.from }),
+      budget: withPace(planBudget(rows, { provider: plan.provider, covered }, today, now, workingDays), () =>
+        pace === null ? null : planPace(rows, { provider: plan.provider, covered }, today, now, pace)),
+      hiddenPerAccount: planBudget(hiddenRows, { provider: plan.provider, covered }, today, now, workingDays)?.perAccount ?? [],
+      perDeviceAccounts: perDeviceAccounts(rows, { provider: plan.provider, covered }, cycle.from < addDays(today, -7) ? cycle.from : addDays(today, -7)),
       underused: quota === null ? multiple < 1 : quota.usedPercent < UNDERUSED_PERCENT,
       mismatches: planMismatches(plan, (userID) => covers(plan, userID), cycle.from, detections),
     };

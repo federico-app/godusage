@@ -71,6 +71,8 @@ export interface AccountWeek {
   resetsAt: string;
   /** A Mac names it per Mac (no account id), so it may be the same login as another account here. */
   perDevice: boolean;
+  /** The account's key, for an owner to hide it from the plan. The route sends it to owners only. */
+  account: string;
 }
 
 export interface Window {
@@ -241,6 +243,7 @@ export function planBudget(rows: QuotaRow[], plan: Plan, today: string, now: Dat
         todayPercent: round1(budgets[index]!.today),
         resetsAt: new Date(window.endsAt).toISOString(),
         perDevice: reads.some((row) => row.per_device),
+        account: window.account,
         endsAt: window.endsAt,
       };
     })

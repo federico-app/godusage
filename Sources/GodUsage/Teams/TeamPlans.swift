@@ -34,7 +34,9 @@ struct TeamPlan: Codable, Hashable, Sendable, Identifiable {
     }
 
     /// `detectedPlan` goes out as an explicit null when unlinked: the server keeps a stored link when
-    /// the field is missing (saves from apps before plan changes).
+    /// the field is missing (saves from apps before plan changes). Hidden accounts never go out: the
+    /// server keeps them, and only `TeamPlansStore.setAccountHidden` changes them, so a save from an
+    /// editor opened before a hide can't undo it.
     func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(provider, forKey: .provider)
@@ -153,6 +155,10 @@ struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
     var changes: [TeamPlan.Change]?
     var detectedPlan: String?
     var ignoredPlans: [String]?
+    /// Accounts the owner hid from this plan. Owners only; nil from older servers.
+    var hiddenAccounts: [String]?
+    /// The hidden accounts with an open week, listed like `budget.perAccount`. Owners only.
+    var hiddenPerAccount: [TeamPlanBudget.AccountWeek]?
     /// What the cycle costs, each price prorated by the days it applies.
     var cycleCostUSD: Double?
     /// Covered members whose Mac detects another plan. Empty for members who don't own the team.
@@ -322,6 +328,28 @@ final class TeamPlansStore {
             return true
         } catch {
             AppLog.warn(.teams, "saving team plans failed: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    /// Hides an account from a plan's quota figures (its weekly limit, Live Pace, Per Day, Sessions,
+    /// Weekly History), or shows it again. Its usage still counts. Owners only. Returns whether the
+    /// server accepted it.
+    @discardableResult
+    func setAccountHidden(teamID: String, planID: String, account: String, hidden: Bool) async -> Bool {
+        guard let token = teams.sessionToken else { return false }
+        do {
+            reportsByTeam[teamID] = try await api.setPlanAccountHidden(
+                token: token, teamID: teamID, planID: planID, account: account, hidden: hidden, today: teams.localToday()
+            )
+            errorMessage = nil
+            await refreshPaces()
+            return true
+        } catch {
+            AppLog.error(.teams, "\(hidden ? "hiding" : "showing") a plan account failed: \(error.localizedDescription)")
+            // A save of the list may have renamed the plan's id: the fresh report lets the next try land.
+            await load(teamID: teamID)
             errorMessage = error.localizedDescription
             return false
         }
