@@ -316,6 +316,11 @@ jobs:
           if [[ -n "$APPLE_NOTARY_KEY_ID" ]]; then
             rm -f "$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
           fi
+          # peaceiris/actions-gh-pages clones the publish branch into $HOME/actions_github_pages_<ts>
+          # (with the job token in .git/config) and never removes it; on this self-hosted runner the
+          # clones pile up in the home directory. Safe to wipe them all: this job is the only
+          # self-hosted gh-pages publisher and the update-feed-publish group serializes it.
+          rm -rf "$HOME"/actions_github_pages_*
 
   # Point the Homebrew cask (federico-app/homebrew-tap, Casks/godusage.rb) at the DMG the release
   # job just published, so `brew install --cask federico-app/tap/godusage` installs it. A separate
