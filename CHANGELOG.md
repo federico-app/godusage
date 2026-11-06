@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.7.4
+
+### New Features
+- Teams: working hours are now per team. Someone who works weekdays for one team and weekends for another sets each apart, and Live Pace in each team uses only that team's hours. Existing hours are copied to every team you're in; leaving a team drops your hours there ([#116](https://github.com/federico-app/godusage/pull/116)) by @andreaAppload
+
+### Bug Fixes
+- This Week's Limit: a plan from another of your teams shows its team on its own line above the plan, so the name is no longer cut off next to the account count ([#115](https://github.com/federico-app/godusage/pull/115)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.7.3...v1.7.4](https://github.com/federico-app/godusage/compare/v1.7.3...v1.7.4)
+
+- [029789e](https://github.com/federico-app/godusage/commit/029789e8860c9d1975daf13be77ca2ed1360ef42) fix(teams): put a plan's team on its own line in This Week's Limit (#115) by @andreaAppload
+- [a132f3e](https://github.com/federico-app/godusage/commit/a132f3e25801cfedc18007f7529608bb3395d53b) feat(teams): working hours per team (#116) by @andreaAppload
+
 ## v1.7.3
 
 ### New Features
