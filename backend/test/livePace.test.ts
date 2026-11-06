@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { localDay, parseSchedule, union, workingIntervals, zonedTime } from "../src/schedules";
+import { env } from "./env";
 import { api, NOW, teamWith, upload } from "./support";
 
 const A = "a".repeat(64);
@@ -70,6 +71,27 @@ describe("member schedules", () => {
     const ownerRow = after.members.find((member: { userID: string }) => member.userID === owner.userID);
     expect(ownerRow).toMatchObject({ isDefault: false, schedule: { ...own, breakStart: null, breakEnd: null } });
     expect(after.members.find((member: { userID: string }) => member.userID === bea.userID).isDefault).toBe(true);
+  });
+
+  it("keeps each member's hours per team", async () => {
+    const first = await teamWith(["Bea"]);
+    const bea = first.members[0]!;
+    const second = await api("POST", "/v1/teams", { token: bea.token, body: { name: "Weekend" } });
+    const weekendID = second.body.team.id;
+    const weekend = { days: [5, 6, 7], start: 570, end: 1110 };
+    expect((await api("PUT", `/v1/teams/${weekendID}/members/${bea.userID}/schedule`, { token: bea.token, body: { schedule: weekend } })).status).toBe(200);
+    const row = (body: { members: { userID: string; isDefault: boolean; schedule: object }[] }) => body.members.find((member) => member.userID === bea.userID)!;
+    const inWeekend = (await api("GET", `/v1/teams/${weekendID}/schedules`, { token: bea.token })).body;
+    expect(row(inWeekend)).toMatchObject({ isDefault: false, schedule: { ...weekend, breakStart: null, breakEnd: null } });
+    // The other team still has her on its default hours.
+    const inFirst = (await api("GET", `/v1/teams/${first.team.id}/schedules`, { token: first.owner.token })).body;
+    expect(row(inFirst)).toMatchObject({ isDefault: true, schedule: { days: [1, 2, 3, 4, 5] } });
+
+    // Leaving a team drops her hours there, and only there.
+    await api("PUT", `/v1/teams/${first.team.id}/members/${bea.userID}/schedule`, { token: bea.token, body: { schedule: { days: [1], start: 540, end: 600 } } });
+    expect((await api("DELETE", `/v1/teams/${first.team.id}/members/${bea.userID}`, { token: bea.token })).status).toBeLessThan(300);
+    const left = await env.db.query<{ team_id: string }>("SELECT team_id FROM team_work_schedules WHERE user_id = $1", [bea.userID]);
+    expect(left.map((stored) => stored.team_id)).toEqual([weekendID]);
   });
 
   it("leaves viewers out of the list, but still answers them", async () => {

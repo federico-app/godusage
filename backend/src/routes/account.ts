@@ -114,7 +114,7 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
   const user = await requireUser(request, env.db);
   const id = [user.id];
   // One transaction, so the document is one consistent snapshot.
-  const [account, sessions, linkedDevices, devices, pulses, days, models, detectedPlans, quotaWindows, exclusions, teams, given, received, challenges, schedule, readings] = await env.db.transaction((tx) =>
+  const [account, sessions, linkedDevices, devices, pulses, days, models, detectedPlans, quotaWindows, exclusions, teams, given, received, challenges, schedules, readings] = await env.db.transaction((tx) =>
     Promise.all([
       tx.query("SELECT id, apple_sub, display_name, created_at, time_zone FROM users WHERE id = $1", id),
       tx.query("SELECT COUNT(*) AS n FROM sessions WHERE user_id = $1", id),
@@ -133,7 +133,7 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
       tx.query("SELECT team_id, to_user, emoji, day, created_at FROM reactions WHERE from_user = $1 ORDER BY created_at", id),
       tx.query("SELECT team_id, from_user, emoji, day, created_at FROM reactions WHERE to_user = $1 ORDER BY created_at", id),
       tx.query("SELECT id, team_id, kind, starts_on, ends_on, created_at FROM challenges WHERE created_by = $1 ORDER BY created_at", id),
-      tx.query("SELECT days, start_minute, end_minute, break_start_minute, break_end_minute, updated_at FROM work_schedules WHERE user_id = $1", id),
+      tx.query("SELECT team_id, days, start_minute, end_minute, break_start_minute, break_end_minute, updated_at FROM team_work_schedules WHERE user_id = $1 ORDER BY team_id", id),
       tx.query("SELECT device_id, provider, account_key, ends_at, observed_at, percent FROM quota_readings WHERE user_id = $1 ORDER BY observed_at", id),
     ]),
   );
@@ -142,7 +142,7 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
     schema: "godusage.export.v1",
     exportedAt: deps.now().toISOString(),
     account: { id: row.id, appleUserID: row.apple_sub, displayName: row.display_name, createdAt: row.created_at, timeZone: row.time_zone },
-    workingHours: schedule[0] ?? null,
+    workingHours: schedules,
     quotaReadings: readings,
     activeSessions: (sessions[0] as { n: number }).n,
     linkedDevices,

@@ -2,7 +2,6 @@ import type { Handler } from "../context";
 import { forbidden, json, notFound, readJSONObject } from "../http";
 import { defaultSchedule, loadMemberHours, parseSchedule, storeSchedule } from "../schedules";
 import { requireUser } from "../session";
-import { userTeamIDs } from "../teamCache";
 import { storedWorkingDays } from "../workingDays";
 
 /**
@@ -21,7 +20,7 @@ export const getSchedules: Handler = async ({ request, env, params }) => {
   const me = members.find((member) => member.user_id === user.id);
   if (!me) throw notFound("Team not found.");
   const counted = members.filter((member) => member.counts_usage);
-  const hours = await loadMemberHours(env.db, counted.map((member) => member.user_id));
+  const hours = await loadMemberHours(env.db, teamID, counted.map((member) => member.user_id));
   const teamDays = storedWorkingDays(me.working_days);
   return json({
     defaultSchedule: defaultSchedule(teamDays),
@@ -41,8 +40,8 @@ export const getSchedules: Handler = async ({ request, env, params }) => {
 
 /**
  * PUT /v1/teams/:teamID/members/:userID/schedule { schedule: { days, start, end, breakStart?, breakEnd? } | null }
- * — sets a member's working hours (null goes back to the team default). Members set their own; owners
- * set anyone's in their team. The hours are the person's, so every team they're in sees the change.
+ * — sets a member's working hours in this team (null goes back to the team default). Members set their
+ * own; owners set anyone's in their team. Other teams keep the member's hours there.
  */
 export const putSchedule: Handler = async ({ request, env, params, deps }) => {
   const user = await requireUser(request, env.db);
@@ -57,8 +56,7 @@ export const putSchedule: Handler = async ({ request, env, params, deps }) => {
   if (target !== user.id && me.role !== "owner") throw forbidden("Only team owners can change someone else's working hours.");
   const body = await readJSONObject(request);
   const schedule = body.schedule === null ? null : parseSchedule(body.schedule);
-  await storeSchedule(env.db, target, schedule, deps.now());
-  // Every plan report the person is paced in changes at once.
-  await env.cache.forgetTeams(await userTeamIDs(env.db, target), "plans|");
+  await storeSchedule(env.db, teamID, target, schedule, deps.now());
+  await env.cache.forgetTeams([teamID], "plans|");
   return json({ schedule: schedule ?? null });
 };
