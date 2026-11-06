@@ -95,7 +95,7 @@ struct TeamDetailSection: View {
                 }
                 Spacer(minLength: 8)
                 if !member.counts {
-                    Text("Not Counted").font(.caption).foregroundStyle(.secondary)
+                    Text(member.role == .owner ? "Not Counted" : "Viewer").font(.caption).foregroundStyle(.secondary)
                 }
                 if member.role == .owner {
                     Text("Owner").font(.caption).foregroundStyle(.secondary)
@@ -107,6 +107,14 @@ struct TeamDetailSection: View {
                         } else {
                             Button("Make Owner…") { confirmation = .makeOwner(member) }
                         }
+                        if member.role == .member {
+                            if member.counts {
+                                Button("Make Viewer") { Task { await teams.setCountsUsage(false, of: member.id, in: summary.id) } }
+                            } else {
+                                Button("Count Their Usage") { Task { await teams.setCountsUsage(true, of: member.id, in: summary.id) } }
+                            }
+                        }
+                        Divider()
                         Button("Remove…", role: .destructive) { confirmation = .remove(member) }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -158,13 +166,16 @@ struct TeamDetailSection: View {
                 SettingsRow("Count My Usage") {
                     Toggle("", isOn: Binding(
                         get: { me.counts },
-                        set: { counts in Task { await teams.setCountsUsage(counts, in: detail.id) } }
+                        set: { counts in Task { await teams.setCountsUsage(counts, of: me.id, in: detail.id) } }
                     ))
                     .settingsSwitchStyle()
                     .disabled(teams.isBusy)
                 }
                 SettingsCaption("Turn off to run the team without being on its leaderboards, challenges, or plans.")
             }
+        } else if let me = detail.members.first(where: { $0.id == teams.user?.id }), !me.counts {
+            SettingsRow("Viewer") { EmptyView() }
+            SettingsCaption("An owner made you a viewer: you see the team, but your usage and accounts don't count in it.")
         }
     }
 
