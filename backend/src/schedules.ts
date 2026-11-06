@@ -158,16 +158,16 @@ export interface MemberHours {
   timeZone: string | null;
 }
 
-/** The stored hours and time zones of `userIDs`. */
-export async function loadMemberHours(db: Queryable, userIDs: string[]): Promise<Map<string, MemberHours>> {
+/** The hours `userIDs` keep in `teamID` and their time zones. */
+export async function loadMemberHours(db: Queryable, teamID: string, userIDs: string[]): Promise<Map<string, MemberHours>> {
   if (userIDs.length === 0) return new Map();
   const rows = await db.query<{
     id: string; time_zone: string | null; days: string | null; start_minute: number | null; end_minute: number | null;
     break_start_minute: number | null; break_end_minute: number | null;
   }>(
     `SELECT u.id, u.time_zone, s.days, s.start_minute, s.end_minute, s.break_start_minute, s.break_end_minute
-     FROM users u LEFT JOIN work_schedules s ON s.user_id = u.id WHERE u.id = ANY($1::text[])`,
-    [userIDs],
+     FROM users u LEFT JOIN team_work_schedules s ON s.user_id = u.id AND s.team_id = $1 WHERE u.id = ANY($2::text[])`,
+    [teamID, userIDs],
   );
   return new Map(rows.map((row) => [row.id, {
     timeZone: parseTimeZone(row.time_zone),
@@ -177,17 +177,17 @@ export async function loadMemberHours(db: Queryable, userIDs: string[]): Promise
   }]));
 }
 
-/** Saves a member's hours; null goes back to the default. */
-export async function storeSchedule(db: Queryable, userID: string, schedule: WorkSchedule | null, now: Date): Promise<void> {
+/** Saves a member's hours in one team; null goes back to the team's default. */
+export async function storeSchedule(db: Queryable, teamID: string, userID: string, schedule: WorkSchedule | null, now: Date): Promise<void> {
   if (schedule === null) {
-    await db.run("DELETE FROM work_schedules WHERE user_id = $1", [userID]);
+    await db.run("DELETE FROM team_work_schedules WHERE team_id = $1 AND user_id = $2", [teamID, userID]);
     return;
   }
   await db.run(
-    `INSERT INTO work_schedules (user_id, days, start_minute, end_minute, break_start_minute, break_end_minute, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT (user_id) DO UPDATE SET days = excluded.days, start_minute = excluded.start_minute, end_minute = excluded.end_minute,
+    `INSERT INTO team_work_schedules (team_id, user_id, days, start_minute, end_minute, break_start_minute, break_end_minute, updated_at)
+     VALUES ($8, $1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (team_id, user_id) DO UPDATE SET days = excluded.days, start_minute = excluded.start_minute, end_minute = excluded.end_minute,
        break_start_minute = excluded.break_start_minute, break_end_minute = excluded.break_end_minute, updated_at = excluded.updated_at`,
-    [userID, JSON.stringify(schedule.days), schedule.start, schedule.end, schedule.breakStart, schedule.breakEnd, now.toISOString()],
+    [userID, JSON.stringify(schedule.days), schedule.start, schedule.end, schedule.breakStart, schedule.breakEnd, now.toISOString(), teamID],
   );
 }

@@ -88,7 +88,7 @@ async function report(db: Queryable, teamID: string, today: string, now: Date, t
         timeZone,
         teamDays: workingDays,
         readings: await teamQuotaReadings(db, teamID, new Date(now.getTime() - READINGS_LOOKBACK_MS).toISOString()),
-        hours: await loadMemberHours(db, members.map((member) => member.user_id)),
+        hours: await loadMemberHours(db, teamID, members.map((member) => member.user_id)),
       };
   const plans = await planReports(db, teamID, await loadPlans(db, teamID), today, detections, now, workingDays, pace);
   // Each member's working hours today, in the viewer's day, for the viewer's own (see `forViewer`).

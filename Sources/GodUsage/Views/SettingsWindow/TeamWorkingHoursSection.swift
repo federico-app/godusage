@@ -1,9 +1,10 @@
 import SwiftUI
 
 /// Settings → Teams → Members: each member's working days and hours, which Live Pace spreads today's
-/// weekly-limit budget over. A member edits their own hours; owners edit anyone's. Hours belong to the
-/// person (shared across their teams) and run in their own Mac's time zone. Members whose usage doesn't
-/// count (viewers) aren't listed: the server leaves them out, and the list reloads when that changes.
+/// weekly-limit budget over. A member edits their own hours; owners edit anyone's. Hours are per team
+/// (someone can work weekdays for one team and weekends for another) and run in their own Mac's time
+/// zone. Members whose usage doesn't count (viewers) aren't listed: the server leaves them out, and the
+/// list reloads when that changes.
 struct TeamWorkingHoursSection: View {
     @Environment(AppContainer.self) private var container
     let teamID: String
@@ -35,7 +36,7 @@ struct TeamWorkingHoursSection: View {
             }
             SettingsCaption(
                 "Live Pace spreads today's weekly-limit budget over these hours, in each person's own time zone. "
-                    + "A shared account uses everyone's hours combined."
+                    + "A shared account uses everyone's hours combined. These hours apply to this team only."
             )
             .padding(.top, 4)
         }
