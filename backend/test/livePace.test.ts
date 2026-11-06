@@ -72,6 +72,18 @@ describe("member schedules", () => {
     expect(after.members.find((member: { userID: string }) => member.userID === bea.userID).isDefault).toBe(true);
   });
 
+  it("leaves viewers out of the list, but still answers them", async () => {
+    const { owner, team, members } = await teamWith(["Bea", "Cy"]);
+    const [bea, cy] = members as [typeof members[0], typeof members[0]];
+    expect((await api("PATCH", `/v1/teams/${team.id}/members/${cy.userID}`, { token: owner.token, body: { countsUsage: false } })).status).toBe(200);
+    const ids = (body: { members: { userID: string }[] }) => body.members.map((member) => member.userID).sort();
+    const listed = (await api("GET", `/v1/teams/${team.id}/schedules`, { token: owner.token })).body;
+    expect(ids(listed)).toEqual([owner.userID, bea.userID].sort());
+    const asViewer = await api("GET", `/v1/teams/${team.id}/schedules`, { token: cy.token });
+    expect(asViewer.status).toBe(200);
+    expect(ids(asViewer.body)).toEqual([owner.userID, bea.userID].sort());
+  });
+
   it("keeps schedules from people outside the team", async () => {
     const { team } = await teamWith([]);
     const other = await teamWith([]);
