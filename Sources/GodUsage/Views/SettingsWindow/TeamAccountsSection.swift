@@ -9,7 +9,11 @@ struct TeamAccountsSection: View {
 
     var body: some View {
         let cardIDs = teams.shareableCardIDs()
-        if !cardIDs.isEmpty {
+        if isViewer {
+            SettingsSection("Accounts Counted in \(summary.name)") {
+                SettingsCaption("An owner made you a viewer, so none of your accounts count in this team.")
+            }
+        } else if !cardIDs.isEmpty {
             SettingsSection("Accounts Counted in \(summary.name)") {
                 ForEach(cardIDs, id: \.self) { cardID in
                     SettingsRow(name(of: cardID)) {
@@ -23,6 +27,11 @@ struct TeamAccountsSection: View {
                 SettingsCaption("Turn off an account, like a personal plan, to leave its usage out of this team. Teammates don't see it. Applies to this Mac.")
             }
         }
+    }
+
+    /// An owner left this user's usage out of the team.
+    private var isViewer: Bool {
+        teams.details[summary.id]?.members.first { $0.id == teams.user?.id }.map { !$0.counts && $0.role == .member } ?? false
     }
 
     private func name(of cardID: String) -> String {

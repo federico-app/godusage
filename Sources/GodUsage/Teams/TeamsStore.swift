@@ -272,9 +272,10 @@ final class TeamsStore {
         await perform { store(try await api.setMemberRole(token: token, teamID: teamID, userID: userID, role: role)) }
     }
 
-    /// An owner can leave themself out of the team's usage and plans, to run a team they don't use.
-    func setCountsUsage(_ counts: Bool, in teamID: String) async {
-        guard let token = session?.token, let userID = user?.id else { return }
+    /// An owner can leave themself out of the team's usage and plans, to run a team they don't use, or
+    /// make a member a viewer: their usage, accounts, and plans leave the team until an owner counts them again.
+    func setCountsUsage(_ counts: Bool, of userID: String, in teamID: String) async {
+        guard let token = session?.token else { return }
         await perform { store(try await api.setCountsUsage(token: token, teamID: teamID, userID: userID, counts: counts)) }
     }
 

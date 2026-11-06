@@ -233,9 +233,18 @@ final class TeamsStoreTests: XCTestCase {
     func testLeavingYourselfOutSendsYourOwnID() async {
         sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
         let store = makeStore()
-        await store.setCountsUsage(false, in: "t1")
+        await store.setCountsUsage(false, of: "u1", in: "t1")
         XCTAssertTrue(api.log.contains("setCountsUsage t1 u1 false"))
         XCTAssertNotNil(store.details["t1"])
+    }
+
+    func testMakingAMemberAViewerSendsTheirID() async {
+        sessions.saved = TeamsSession(token: "s", user: TeamsUser(id: "u1", displayName: "Fede"))
+        let store = makeStore()
+        await store.setCountsUsage(false, of: "u2", in: "t1")
+        await store.setCountsUsage(true, of: "u2", in: "t1")
+        XCTAssertEqual(api.log.suffix(2), ["setCountsUsage t1 u2 false", "setCountsUsage t1 u2 true"])
+        XCTAssertNil(store.errorMessage)
     }
 
     func testAMemberFromAnOlderBackendCounts() throws {
