@@ -91,6 +91,7 @@ struct TeamWeekStrip: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            Self.teamLine(teamName)
             header
             bars
             if showsNote {
@@ -121,12 +122,20 @@ struct TeamWeekStrip: View {
         }
     }
 
-    /// The dot, the plan's name, its team when it's from another of yours, and how many accounts it mixes.
+    /// The team of a plan from another of yours, on its own line above the plan so the name and the
+    /// account count never push it out.
+    @ViewBuilder
+    static func teamLine(_ teamName: String?) -> some View {
+        if let teamName {
+            Text(teamName).font(.caption2).foregroundStyle(.secondary).lineLimit(1).padding(.bottom, -2)
+        }
+    }
+
+    /// The dot, the plan's name, and how many accounts it mixes.
     private var title: some View {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
             Circle().fill(color).frame(width: 7, height: 7)
-            (Text(plan.name).font(.caption.weight(.semibold))
-                + Text(teamName.map { "  \($0)" } ?? "").font(.caption2).foregroundStyle(.secondary))
+            Text(plan.name).font(.caption.weight(.semibold))
             if TeamPlanAccountsButton.isShown(budget: budget, plan: plan) {
                 TeamPlanAccountsButton(teamID: teamID, plan: plan, budget: budget)
             }
