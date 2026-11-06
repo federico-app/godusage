@@ -32,13 +32,13 @@ struct TeamWeekStripCard: View {
                     ForEach(rows, id: \.0.id) { entry, budget in
                         if let live = paces[entry.id], let pace = budget.pace {
                             TeamLivePaceStrip(
-                                plan: entry.plan, budget: budget, pace: pace, live: live, useThisNow: roomFor.contains(entry.id),
+                                teamID: entry.teamID, plan: entry.plan, budget: budget, pace: pace, live: live, useThisNow: roomFor.contains(entry.id),
                                 today: today, teamName: teamName(entry.teamID)
                             )
                         } else {
                             // Three plans or more drop the line under each strip to stay short.
                             TeamWeekStrip(
-                                plan: entry.plan, budget: budget, today: today, showsNote: rows.count < 3, teamName: teamName(entry.teamID)
+                                teamID: entry.teamID, plan: entry.plan, budget: budget, today: today, showsNote: rows.count < 3, teamName: teamName(entry.teamID)
                             )
                         }
                     }
@@ -74,6 +74,7 @@ struct TeamWeekStripCard: View {
 }
 
 struct TeamWeekStrip: View {
+    let teamID: String
     let plan: TeamPlanReport
     let budget: TeamPlanBudget
     let today: String
@@ -126,8 +127,8 @@ struct TeamWeekStrip: View {
             Circle().fill(color).frame(width: 7, height: 7)
             (Text(plan.name).font(.caption.weight(.semibold))
                 + Text(teamName.map { "  \($0)" } ?? "").font(.caption2).foregroundStyle(.secondary))
-            if budget.accounts > 1 {
-                TeamPlanAccountsButton(budget: budget)
+            if TeamPlanAccountsButton.isShown(budget: budget, plan: plan) {
+                TeamPlanAccountsButton(teamID: teamID, plan: plan, budget: budget)
             }
         }
     }

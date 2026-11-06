@@ -1,7 +1,7 @@
 import type { Handler } from "../context";
 import { badRequest, forbidden, json, notFound, nowISO, readJSONObject } from "../http";
 import type { PlanPace } from "../livePace";
-import { covers, keepUnsentFields, parsePlans, planReports, type PlanReport, type PlanRow } from "../plans";
+import { covers, keepUnsentFields, MAX_HIDDEN_ACCOUNTS, parseAccountKey, parsePlans, planReports, withoutHidden, type PlanReport, type PlanRow } from "../plans";
 import { termsOn } from "../planChanges";
 import { teamQuotaReadings, teamQuotaWindows } from "../quota";
 import { dayBounds, unionHours } from "../livePace";
@@ -37,9 +37,9 @@ async function loadPlans(db: Queryable, teamID: string): Promise<PlanRow[]> {
   const [rows, changes] = await Promise.all([
     db.query<{
       id: string; provider: string; name: string; monthly_cost_usd: number; renewal_day: number; member_ids: string | null;
-      detected_plan: string | null; ignored_plans: string | null;
+      detected_plan: string | null; ignored_plans: string | null; hidden_accounts: string | null;
     }>(
-      `SELECT id, provider, name, monthly_cost_usd, renewal_day, member_ids, detected_plan, ignored_plans
+      `SELECT id, provider, name, monthly_cost_usd, renewal_day, member_ids, detected_plan, ignored_plans, hidden_accounts
        FROM team_plans WHERE team_id = $1 ORDER BY position`,
       [teamID],
     ),
@@ -60,6 +60,7 @@ async function loadPlans(db: Queryable, teamID: string): Promise<PlanRow[]> {
     memberIDs: row.member_ids === null ? null : (JSON.parse(row.member_ids) as string[]),
     detectedPlan: row.detected_plan,
     ignoredPlans: row.ignored_plans === null ? [] : (JSON.parse(row.ignored_plans) as string[]),
+    hiddenAccounts: row.hidden_accounts === null ? [] : (JSON.parse(row.hidden_accounts) as string[]),
   }));
 }
 
@@ -139,7 +140,8 @@ async function report(db: Queryable, teamID: string, today: string, now: Date, t
 
 /**
  * The cached report is the same for every member: this marks the plans that cover the viewer, and
- * keeps the members' detected plans (and the mismatches they cause) for owners only. A plan never
+ * keeps the members' detected plans (and the mismatches they cause) and the account keys (which an
+ * owner hides accounts by) for owners only. A plan never
  * covers a viewer who doesn't count toward the team.
  */
 function forViewer(
@@ -154,9 +156,11 @@ function forViewer(
   return {
     plans: result.plans.map((plan) => ({
       ...plan,
+      hiddenAccounts: owner ? plan.hiddenAccounts : [],
+      hiddenPerAccount: owner ? withAccountNames(plan.hiddenPerAccount, userID, result.names, true) : [],
       budget: plan.budget === null ? null : {
         ...plan.budget,
-        perAccount: withAccountNames(plan.budget.perAccount, userID, result.names),
+        perAccount: withAccountNames(plan.budget.perAccount, userID, result.names, owner),
         pace: withSharers(plan.budget.pace, userID, result.names),
       },
       mismatches: owner ? plan.mismatches : [],
@@ -177,10 +181,14 @@ function withSharers(pace: PlanPace | null, userID: string, names: Record<string
   return { ...rest, sharedWith: people.filter((id) => id !== userID).map((id) => names[id] ?? "Someone") };
 }
 
-/** Who reads each of a plan's accounts, by name in place of their ids: "You" first, then the others. */
-function withAccountNames(accounts: AccountWeek[], userID: string, names: Record<string, string>) {
-  return accounts.map(({ people, ...rest }) => ({
+/**
+ * Who reads each of a plan's accounts, by name in place of their ids: "You" first, then the others. The
+ * account key goes to owners only.
+ */
+function withAccountNames(accounts: AccountWeek[], userID: string, names: Record<string, string>, withKeys: boolean) {
+  return accounts.map(({ people, account, ...rest }) => ({
     ...rest,
+    ...(withKeys ? { account } : {}),
     people: [
       ...(people.includes(userID) ? ["You"] : []),
       ...people.filter((id) => id !== userID).map((id) => names[id] ?? "Someone").sort((a, b) => a.localeCompare(b)),
@@ -193,8 +201,8 @@ function withAccountNames(accounts: AccountWeek[], userID: string, names: Record
  * every new quota reading. Live Pace depends on the viewer's time zone, so each one has its own entry.
  */
 function cachedReport(env: Pick<Env, "db" | "cache">, now: Date, teamID: string, today: string, timeZone: string | null) {
-  // The key names the report's shape: a report cached before `perAccount` must not be served.
-  return cachedTeamResult(env.cache, now, teamID, `plans|v2|${today}|${timeZone ?? ""}`, 10 * 60_000, () => report(env.db, teamID, today, now, timeZone));
+  // The key names the report's shape: a report cached before the account keys must not be served.
+  return cachedTeamResult(env.cache, now, teamID, `plans|v3|${today}|${timeZone ?? ""}`, 10 * 60_000, () => report(env.db, teamID, today, now, timeZone));
 }
 
 /** GET /v1/teams/:teamID/plans?today=&tz= — the team's plans and their report, for any member. */
@@ -218,7 +226,7 @@ async function history(db: Queryable, teamID: string, today: string, now: Date, 
       id: plan.id,
       provider: plan.provider,
       name: termsOn(plan, today).name,
-      weeks: planHistory(rows, { provider: plan.provider, covered: (userID) => covers(plan, userID) }, today, now, weeks, workingDays),
+      weeks: planHistory(withoutHidden(rows, plan), { provider: plan.provider, covered: (userID) => covers(plan, userID) }, today, now, weeks, workingDays),
     })),
     workingDays,
   };
@@ -257,6 +265,8 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
   }
   const updatedAt = nowISO();
   await env.db.transaction(async (tx) => {
+    // Locks the plans, so a hide (see `putHiddenAccount`) can't land between reading and rewriting them.
+    await tx.query("SELECT id FROM team_plans WHERE team_id = $1 FOR UPDATE", [teamID]);
     // Fields an older app leaves out keep their stored values (see `keepUnsentFields`).
     const plans = keepUnsentFields(parsed, await loadPlans(tx, teamID), today);
     if (workingDays !== null) await tx.run("UPDATE teams SET working_days = $1 WHERE id = $2", [JSON.stringify(workingDays), teamID]);
@@ -265,12 +275,13 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
     for (const [position, plan] of plans.entries()) {
       const id = crypto.randomUUID();
       await tx.run(
-        `INSERT INTO team_plans (id, team_id, provider, name, monthly_cost_usd, renewal_day, member_ids, position, updated_at, detected_plan, ignored_plans)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        `INSERT INTO team_plans (id, team_id, provider, name, monthly_cost_usd, renewal_day, member_ids, position, updated_at, detected_plan, ignored_plans, hidden_accounts)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
         [
           id, teamID, plan.provider, plan.base.name, plan.base.monthlyCostUSD, plan.renewalDay,
           plan.memberIDs === null ? null : JSON.stringify(plan.memberIDs), position, updatedAt,
           plan.detectedPlan, plan.ignoredPlans.length === 0 ? null : JSON.stringify(plan.ignoredPlans),
+          plan.hiddenAccounts.length === 0 ? null : JSON.stringify(plan.hiddenAccounts),
         ],
       );
       if (plan.changes.length > 0) {
@@ -287,3 +298,46 @@ export const putPlans: Handler = async ({ request, env, url, params, deps }) => 
   const fresh = await report(env.db, teamID, today, deps.now(), parseTimeZone(url.searchParams.get("tz")));
   return json(forViewer(fresh, user.id, viewer));
 };
+
+/**
+ * PUT /v1/teams/:teamID/plans/:planID/hidden-accounts?today=&tz= { account, hidden } — hides one account
+ * from a plan's quota figures, or shows it again. Owner only. Unlike saving the list, the plan keeps
+ * its id. Returns the fresh report.
+ */
+export const putHiddenAccount: Handler = async ({ request, env, url, params, deps }) => {
+  const user = await requireUser(request, env.db);
+  const teamID = params.teamID!;
+  const viewer = await membership(env.db, teamID, user.id);
+  if (viewer.role !== "owner") throw forbidden("Only team owners can hide accounts from a plan.");
+  const body = await readJSONObject(request);
+  const account = parseAccountKey(body.account);
+  if (typeof body.hidden !== "boolean") throw badRequest("hidden must be true or false.");
+  const hidden = body.hidden;
+  const now = deps.now();
+  const today = viewerToday(url, now);
+  await env.db.transaction(async (tx) => {
+    const row = await tx.first<{ provider: string; member_ids: string | null; hidden_accounts: string | null }>(
+      "SELECT provider, member_ids, hidden_accounts FROM team_plans WHERE id = $1 AND team_id = $2 FOR UPDATE",
+      [params.planID!, teamID],
+    );
+    // Plan ids change on every save of the list, so an app showing an older report gets this.
+    if (!row) throw notFound("This plan was just changed. Reload and try again.");
+    const current: string[] = row.hidden_accounts === null ? [] : JSON.parse(row.hidden_accounts);
+    const next = hidden ? [...new Set([...current, account])] : current.filter((key) => key !== account);
+    if (hidden) {
+      // Hiding every open week would leave the plan without one, and the app nowhere to show it again.
+      const plan = { memberIDs: row.member_ids === null ? null : (JSON.parse(row.member_ids) as string[]) };
+      const left = (await teamQuotaWindows(tx, teamID, today)).some((window) =>
+        window.provider === row.provider && window.kind === "limit" && window.period_hours === WEEK_HOURS
+        && Date.parse(window.ends_at) > now.getTime() && covers(plan, window.user_id) && !next.includes(window.account_key));
+      if (!left) throw badRequest("Keep at least one account with an open week in the plan.");
+    }
+    if (next.length > MAX_HIDDEN_ACCOUNTS) throw badRequest(`At most ${MAX_HIDDEN_ACCOUNTS} hidden accounts per plan.`);
+    await tx.run("UPDATE team_plans SET hidden_accounts = $1 WHERE id = $2", [next.length === 0 ? null : JSON.stringify(next), params.planID!]);
+  });
+  await env.cache.forgetTeams([teamID], "plans|");
+  const fresh = await report(env.db, teamID, today, now, parseTimeZone(url.searchParams.get("tz")));
+  return json(forViewer(fresh, user.id, viewer));
+};
+
+const WEEK_HOURS = 168;
