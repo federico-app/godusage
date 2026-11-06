@@ -1,5 +1,146 @@
 # Changelog
 
+## v1.7.2
+
+### New Features
+- This Week's Limit: click **N accounts** next to a plan to see each account of the week: who uses it, how much of its week and of today it used, and when it resets. An account a Mac can only name per Mac is flagged, since it may be the same login as another ([#109](https://github.com/federico-app/godusage/pull/109)) by @andreaAppload
+- Teams: owners can make a member a **viewer** from the member's **…** menu. A viewer still sees the team, but their usage and accounts leave its leaderboards, challenges, Hall of Fame, and plans until an owner counts them again ([#110](https://github.com/federico-app/godusage/pull/110)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.7.1...v1.7.2](https://github.com/federico-app/godusage/compare/v1.7.1...v1.7.2)
+
+- [b46a24b](https://github.com/federico-app/godusage/commit/b46a24bdd12dd39477ea95a57e198cc3d7a6fae7) feat(teams): list who reads each account of a plan's week (#109) by @andreaAppload
+- [46ceaad](https://github.com/federico-app/godusage/commit/46ceaad7fd534b33c3b96c97b154d4e5913265bc) feat(teams): owners can make a member a viewer (#110) by @andreaAppload
+
+## v1.7.1
+
+### New Features
+- Cost card: a **7 Days** period (today and the six days before) beside Today, Yesterday, and 30 Days. It drives the ring, the legend, the share screenshot, and the dashboard's Team ranking ([#106](https://github.com/federico-app/godusage/pull/106)) by @andreaAppload
+- Live Pace: hover the minutes ahead or behind to see what they mean, with where today's use is and where it should be now ([#106](https://github.com/federico-app/godusage/pull/106)) by @andreaAppload
+
+### Bug Fixes
+- Live Pace: the minutes are colored only when where you are and where your pace leads agree, so "+9 min" is no longer green; the tooltip and alerts say when you're ahead but slowing down, or behind but speeding up ([#108](https://github.com/federico-app/godusage/pull/108)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.7.0...v1.7.1](https://github.com/federico-app/godusage/compare/v1.7.0...v1.7.1)
+
+- [1d241e9](https://github.com/federico-app/godusage/commit/1d241e99c6d0879fc0d9f1734a8f5d54b7881f1b) feat(dashboard): 7 Days period in the Cost card, and a tooltip on Live Pace minutes (#106) by @andreaAppload
+- [f8ea4d5](https://github.com/federico-app/godusage/commit/f8ea4d5ce91dbf6cdabe736009f8f6d4d5d9ae19) fix(teams): Live Pace colors the minutes only when position and pace agree (#108) by @andreaAppload
+
+## v1.7.0
+
+### New Features
+- Live Pace in This Week's Limit: each plan shows how many minutes you're ahead of or behind today's pace, a tick in today's bar where you should be now, and when the budget runs out at the current pace. Going over today's budget immediately lowers the following working days. Details holds the pace that lasts until the end of the day, the working hours, and a chart of the day. When one plan is running hot, another provider's plan with room says "use this now". Turn it off in Customize → Team → Live Pace ([#104](https://github.com/federico-app/godusage/pull/104)) by @andreaAppload
+- Working Hours in Settings → Teams → Members: each member's working days, hours, and break, in their Mac's time zone (it follows you when you work abroad). Members set their own, owners anyone's. Today's budget is spread over working hours, and a shared account uses everyone's hours combined ([#104](https://github.com/federico-app/godusage/pull/104)) by @andreaAppload
+- Pace Alerts: Slow Down when today's budget would run out before your working day ends, Room to Spare when much of it would go unused (more eagerly on the last day before the reset, when it's lost). Only during your working hours, at most once a day per plan ([#104](https://github.com/federico-app/godusage/pull/104)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.6.2...v1.7.0](https://github.com/federico-app/godusage/compare/v1.6.2...v1.7.0)
+
+- [8f51346](https://github.com/federico-app/godusage/commit/8f513465c15974511cea9eb293176c2bc71107cd) feat(teams): Live Pace for This Week's Limit, with per-member working hours and time zones (#104) by @andreaAppload
+
+## v1.6.2
+
+### New Features
+- Dashboard: This Week's Limit and usage suggestions follow the plans that cover you in every team you're in, so you can pick a team to see everyone's ranking and still see your own weekly limit; a plan from another team shows that team's name ([#102](https://github.com/federico-app/godusage/pull/102)) by @andreaAppload
+
+### Bug Fixes
+- This Week's Limit: the plan header no longer cuts off the "X% of Y% today" figure; it moves to a second line when it doesn't fit ([#102](https://github.com/federico-app/godusage/pull/102)) by @andreaAppload
+
+### Chores
+- CI: the iOS app is paused in every pipeline and can be run by hand ([#101](https://github.com/federico-app/godusage/pull/101)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.6.1...v1.6.2](https://github.com/federico-app/godusage/compare/v1.6.1...v1.6.2)
+
+- [a8aa273](https://github.com/federico-app/godusage/commit/a8aa27325c0c0895083426331c6936b0d70540c2) feat(teams): This Week's Limit and plan suggestions follow your plans in every team (#102) by @andreaAppload
+- [3db105a](https://github.com/federico-app/godusage/commit/3db105a7bae2df4adb57e98fc85edf2536958078) ci: pause the iOS app in every pipeline, runnable by hand (#101) by @andreaAppload
+
+## v1.6.1
+
+### Bug Fixes
+- An account left out of a team (like a personal Claude plan) no longer counts in that team's plan quota, Per Day, Weekly History, or budget ([#98](https://github.com/federico-app/godusage/pull/98)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.6.0...v1.6.1](https://github.com/federico-app/godusage/compare/v1.6.0...v1.6.1)
+
+- [a08892e](https://github.com/federico-app/godusage/commit/a08892e317635ee8680c0c1037c71749f03d1d76) fix(teams): an account left out of a team leaves its plan quota too (#98) by @andreaAppload
+
+## v1.6.0
+
+### New Features
+- Teams: the backend keeps each plan's weekly limit and 5-hour session readings for 13 months instead of about a month, so past weeks can be compared ([#89](https://github.com/federico-app/godusage/pull/89)) by @andreaAppload
+- Plans: today's budget for each plan's weekly limit (what's left, spread over the working days until the reset) and a weekly history API ([#91](https://github.com/federico-app/godusage/pull/91)) by @andreaAppload
+- Plans: Weekly History under each Claude or Codex plan, one row per weekly window (reset to reset) with each day's share of the limit, the window's share, and its sessions ([#92](https://github.com/federico-app/godusage/pull/92)) by @andreaAppload
+- Dashboard: This Week's Limit strip in the Team section, with today's use against today's budget and the days left until the reset; Customize → Team → Weekly Limit Budget turns it off ([#93](https://github.com/federico-app/godusage/pull/93)) by @andreaAppload
+- Compare → Plan Weeks: two plan weeks side by side, from one team or two of yours ([#94](https://github.com/federico-app/godusage/pull/94)) by @andreaAppload
+
+### Bug Fixes
+- Teams window and Settings → Teams keep their own team, separate from the popover's ([#88](https://github.com/federico-app/godusage/pull/88)) by @andreaAppload
+- An overtake alert could arrive twice when two checks ran at once ([#92](https://github.com/federico-app/godusage/pull/92)) by @andreaAppload
+
+### Chores
+- Test: date the account-sharing upload test today ([#90](https://github.com/federico-app/godusage/pull/90)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.5.0...v1.6.0](https://github.com/federico-app/godusage/compare/v1.5.0...v1.6.0)
+
+- [02792f0](https://github.com/federico-app/godusage/commit/02792f079ff3e49e060061a5afca25ec78cefa29) fix(teams): keep the Teams window and Settings team separate from the popover's (#88) by @andreaAppload
+- [18f7349](https://github.com/federico-app/godusage/commit/18f73498b38d66d10906e02dc5f775d82304755a) test(teams): date the account-sharing upload test today (#90) by @andreaAppload
+- [10947f7](https://github.com/federico-app/godusage/commit/10947f7a12299976a7564a33db048508d9914408) feat(teams): keep quota windows as history for 13 months (#89) by @andreaAppload
+- [e2126be](https://github.com/federico-app/godusage/commit/e2126be217ed95aed85811321a4753898ed027bc) feat(teams): weekly quota history and today's budget for each plan (#91) by @andreaAppload
+- [d2f680e](https://github.com/federico-app/godusage/commit/d2f680e70f4559c18b5fcc92e9153a52a6e0285f) Teams: Weekly History by plan window under each plan (#92) by @andreaAppload
+- [f0e6c6e](https://github.com/federico-app/godusage/commit/f0e6c6e958723e855ea72a9ba258c0fa069dcb69) Teams: This Week's Limit strip in the dashboard (#93) by @andreaAppload
+- [26ac3d3](https://github.com/federico-app/godusage/commit/26ac3d337f5e2fd0c8663d79fc401d2136ede1c0) feat(teams): compare two plan weeks, from one team or two, in Compare (#94) by @andreaAppload
+
+## v1.5.0
+
+### New Features
+- Plans: daily share of the weekly limit, 5-hour sessions, and forecasts paced on the team's working days (Mon–Fri by default). Quota windows are matched by account, so one account on several Macs counts once, and plans warn when an account can't be identified ([#82](https://github.com/federico-app/godusage/pull/82)) by @andreaAppload
+- Settings → Teams: a team picker and Members, Accounts, Plans, and You pages ([#83](https://github.com/federico-app/godusage/pull/83)) by @andreaAppload
+
+### Chores
+- CI: run every macOS job on self-hosted Apple silicon runners ([#84](https://github.com/federico-app/godusage/pull/84)) by @andreaAppload
+- CI: drop the .build cache from the DEV release ([#85](https://github.com/federico-app/godusage/pull/85)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.4.0...v1.5.0](https://github.com/federico-app/godusage/compare/v1.4.0...v1.5.0)
+
+- [eef69bf](https://github.com/federico-app/godusage/commit/eef69bfed07acfb779c27845b3fea43b217b02f0) feat(teams): daily quota, sessions, and working-day forecasts in Plans (#82) by @andreaAppload
+- [e762897](https://github.com/federico-app/godusage/commit/e76289751e5af1e62c6e842e442c159c89863213) CI: run every macOS job on self-hosted Apple silicon runners (#84) by @andreaAppload
+- [b5c0b12](https://github.com/federico-app/godusage/commit/b5c0b121e52b4b25d2fababa2aa998e6956e119d) Settings → Teams: team picker and pages (#83) by @andreaAppload
+- [5ea46b5](https://github.com/federico-app/godusage/commit/5ea46b5d320dc6dd6e17c028760e8b76477e17c8) ci: drop the .build cache from the DEV release (#85) by @andreaAppload
+
+## v1.4.0
+
+### New Features
+- Leave an account out of a team: Settings → Teams lists this Mac's accounts under the selected team, and turning one off (like a personal plan next to the work one) drops its spend, ⚡, and plan quota from that team only ([#78](https://github.com/federico-app/godusage/pull/78)) by @andreaAppload
+
+### Chores
+- Build DEV releases on macos-26-intel runners ([#79](https://github.com/federico-app/godusage/pull/79)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.3.3...v1.4.0](https://github.com/federico-app/godusage/compare/v1.3.3...v1.4.0)
+
+- [80801c4](https://github.com/federico-app/godusage/commit/80801c4cd7aafddd455696d3237e95fd5a7b3f88) feat(teams): leave an account out of a team (#78) by @andreaAppload
+- [9e83397](https://github.com/federico-app/godusage/commit/9e83397df6a3678879e9d4b9cdedb2a74ccfe85a) ci: build DEV releases on macos-26-intel runners by @andreaAppload
+
 ## v1.3.3
 
 ### New Features
