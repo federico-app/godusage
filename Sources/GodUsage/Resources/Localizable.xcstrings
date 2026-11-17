@@ -5430,17 +5430,6 @@
         }
       }
     },
-    "Idle · %lld" : {
-      "comment" : "The leaderboard group of members not spending right now, with how many.",
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inattivi · %lld"
-          }
-        }
-      }
-    },
     "Ignore" : {
       "localizations" : {
         "it" : {

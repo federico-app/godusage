@@ -333,7 +333,8 @@ private struct TeamsRankingList: View {
 
     private var metric: TeamMetric { TeamMetric(sort) }
 
-    /// Active members get the full row; the rest fold into the Idle group under the shared accounts.
+    /// Members in rank order: the full row while they spent something in the last hour, the compact
+    /// row otherwise. Shared accounts follow the members.
     var body: some View {
         let top = stats.rankingTop(for: metric)
         let layout = TeamLeaderboardLayout(members: stats.members, momentum: momentum)
@@ -350,15 +351,27 @@ private struct TeamsRankingList: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
             }
-            ForEach(Array(layout.active.enumerated()), id: \.element.id) { index, member in
+            ForEach(Array(layout.rows.enumerated()), id: \.element.id) { index, row in
+                let member = row.member
                 if index > 0 || !header.isEmpty { Divider() }
-                TeamLeaderboardMemberRow(
-                    member: member, rankLabel: layout.rankLabel(member), isMe: member.userID == currentUserID, top: top,
-                    metric: metric, range: stats.range.name, momentum: momentum(member), newestVersion: newest,
-                    teamID: teamID, reactions: .buttons, valueFont: .body, barHeight: 6
-                )
+                Group {
+                    switch row.style {
+                    case .full:
+                        TeamLeaderboardMemberRow(
+                            member: member, rankLabel: layout.rankLabel(member), isMe: member.userID == currentUserID, top: top,
+                            metric: metric, range: stats.range.name, momentum: momentum(member), newestVersion: newest,
+                            teamID: teamID, reactions: .buttons, valueFont: .body, barHeight: 6
+                        )
+                    case .compact:
+                        TeamLeaderboardCompactRow(
+                            member: member, rankLabel: layout.rankLabel(member), isMe: member.userID == currentUserID,
+                            metric: metric, range: stats.range.name, newestVersion: newest, teamID: teamID,
+                            reactions: .buttons, rankFont: .body
+                        )
+                    }
+                }
                 .padding(.horizontal, 12)
-                .padding(.vertical, 9)
+                .padding(.vertical, row.style == .full ? 9 : 7)
                 .background(member.userID == currentUserID ? TeamLeaderboardRowStyle.youTint : .clear)
             }
             ForEach(shared) { account in
@@ -366,27 +379,6 @@ private struct TeamsRankingList: View {
                 TeamSharedAccountRow(account: account, stats: stats, metric: metric, top: top, providerName: providerName, barHeight: 6)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
-            }
-            if !layout.idle.isEmpty {
-                Divider()
-                VStack(spacing: 0) {
-                    TeamLeaderboardIdleHeader(count: layout.idle.count)
-                        .padding(.bottom, 4)
-                    ForEach(layout.idle) { member in
-                        TeamLeaderboardIdleRow(
-                            member: member, rankLabel: layout.rankLabel(member), isMe: member.userID == currentUserID,
-                            metric: metric, newestVersion: newest, teamID: teamID, reactions: .buttons
-                        )
-                        .padding(.vertical, 5)
-                        .padding(.horizontal, 6)
-                        .background(member.userID == currentUserID ? TeamLeaderboardRowStyle.youTint : .clear, in: RoundedRectangle(cornerRadius: 6))
-                        .padding(.horizontal, -6)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
-                .background(TeamLeaderboardRowStyle.idleBackground)
             }
         }
         .cardSurface()

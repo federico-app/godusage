@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The pieces of a leaderboard card, shared by the dashboard's Team section and the Teams window:
-/// the header (team total, who is active, provider legend), the full member row, the Idle group's
-/// one-line row, and the member's detail.
+/// the header (team total, who is active, provider legend), the full member row (spent something in
+/// the last hour), the compact two-line row (nothing in the last hour), and the member's detail.
 enum TeamLeaderboardRowStyle {
     /// The rank and its movement sit in this column; the shared-account icon too.
     static let rankColumnWidth: CGFloat = 26
@@ -11,8 +11,6 @@ enum TeamLeaderboardRowStyle {
     static var contentInset: CGFloat { rankColumnWidth + columnSpacing }
     /// Your own row's background, besides the You chip.
     static let youTint = Color.accentColor.opacity(0.08)
-    /// The Idle group's slightly darker band.
-    static let idleBackground = Color.primary.opacity(0.03)
 }
 
 /// How a row shows reactions: tappable buttons (Teams window) or today's counts (dashboard, where a
@@ -169,28 +167,40 @@ struct TeamLeaderboardMemberRow: View {
     }
 }
 
-/// One entry in the Idle group: rank, name and value, then when they last synced, an outdated
-/// version, and reactions on a small line under it. No bar: nobody here is spending right now.
-struct TeamLeaderboardIdleRow: View {
+/// A member who spent nothing in the last hour, in their ranking place: rank with its movement under
+/// it, name and value, then when they last synced, an outdated version, and reactions on a small line
+/// under it. No bar.
+struct TeamLeaderboardCompactRow: View {
     @Environment(AppContainer.self) private var container
     let member: TeamStats.Member
     let rankLabel: String
     let isMe: Bool
     let metric: TeamMetric
+    let range: StatsRange
     let newestVersion: String?
     let teamID: String?
     var reactions: TeamReactionsStyle = .counts
+    /// The rank's font: matches the full rows' value font so the rank column reads as one.
+    var rankFont: Font = .callout
     var now = Date()
     /// Expanded, the line becomes the name with the value, then the chips; the detail says the rest.
     var isExpanded = false
 
     var body: some View {
-        HStack(alignment: isExpanded ? .firstTextBaseline : .center, spacing: TeamLeaderboardRowStyle.columnSpacing) {
-            Text(rankLabel)
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .frame(width: TeamLeaderboardRowStyle.rankColumnWidth, alignment: .trailing)
+        HStack(alignment: .firstTextBaseline, spacing: TeamLeaderboardRowStyle.columnSpacing) {
+            // Movement sits under the rank, on the status line, like on the full row.
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(rankLabel)
+                    .font(rankFont.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(member.rank <= 3 ? .primary : .secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                // Movement compares server ranks, which Cost/MTok re-ranks.
+                if metric != .costPerMtok {
+                    RankChangeBadge(member: member, range: range, sort: metric.sort)
+                }
+            }
+            .frame(width: TeamLeaderboardRowStyle.rankColumnWidth, alignment: .trailing)
             if isExpanded {
                 TeamMemberExpandedHeader(member: member, isMe: isMe, value: metric.format(member.totals), teamID: teamID)
             } else {
@@ -251,20 +261,5 @@ struct TeamLeaderboardIdleRow: View {
             case .counts: ReactionCounts(reactions: container.teamsSocial.reactions(teamID: teamID, userID: member.userID))
             }
         }
-    }
-}
-
-/// "Idle · 3" and a hairline: the start of the group of members not spending right now.
-struct TeamLeaderboardIdleHeader: View {
-    let count: Int
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text("Idle · \(count)", comment: "The leaderboard group of members not spending right now, with how many.")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Rectangle().fill(.separator).frame(height: 0.5)
-        }
-        .accessibilityAddTraits(.isHeader)
     }
 }

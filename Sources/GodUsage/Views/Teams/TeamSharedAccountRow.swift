@@ -124,7 +124,7 @@ extension TeamsFormat {
         return SyncNote(text: String(localized: "Not synced for \(days) days") + version, stale: true)
     }
 
-    /// The Idle group's short sync time: "just now", "5m ago", "3h ago", then "3d ago" (stale) once
+    /// The compact row's short sync time: "just now", "5m ago", "3h ago", then "3d ago" (stale) once
     /// it is more than 24 hours old; nil when the sync time is unknown.
     static func syncAge(_ lastSyncAt: String?, now: Date) -> SyncNote? {
         guard let minutes = syncMinutes(lastSyncAt, now: now) else { return nil }
