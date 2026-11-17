@@ -254,31 +254,90 @@ struct TeamDashboardSection: View {
         }
     }
 
+    /// Active members get the full row, then the shared accounts, then the Idle group. The caret
+    /// folds the list to the first members Customize → Team shows, counting active ones first.
     private func ranking(_ stats: TeamStats) -> some View {
         let top = stats.rankingTop(for: metric)
         let ranked = metric.ranked(stats.members)
+        let momentum = container.teams.selectedTeamID.flatMap { container.teams.momentumByTeam[$0] } ?? [:]
+        let layout = TeamLeaderboardLayout(members: ranked, momentum: momentum)
+        let shared = stats.sharedAccounts(for: metric)
         let collapsedCount = (TeamMembersShown(rawValue: membersShown) ?? .default).visibleCount(of: ranked.count)
         let isCollapsible = collapsedCount < ranked.count
-        let visible = isCollapsible && !showsAllMembers ? Array(ranked.prefix(collapsedCount)) : ranked
+        let limit = isCollapsible && !showsAllMembers ? collapsedCount : ranked.count
+        let visibleActive = Array(layout.active.prefix(limit))
+        let visibleIdle = Array(layout.idle.prefix(max(0, limit - layout.active.count)))
         return VStack(spacing: 0) {
-            ForEach(Array(visible.enumerated()), id: \.element.id) { index, member in
-                if index > 0 { Divider().padding(.leading, 12) }
-                memberRow(member, top: top, stats: stats)
+            TeamLeaderboardHeader(
+                total: metric.format(stats.totals),
+                detail: TeamLeaderboardLayout.headerDetail(metric: metric, activeCount: layout.activeCount),
+                providers: TeamLeaderboardLayout.legendProviders(members: ranked, shared: shared, metric: metric),
+                providerName: providerName
+            )
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            Divider()
+            ForEach(Array(visibleActive.enumerated()), id: \.element.id) { index, member in
+                if index > 0 { Divider().padding(.leading, 12 + TeamLeaderboardRowStyle.contentInset) }
+                memberRow(member, layout: layout, top: top, stats: stats, momentum: momentum[member.userID])
             }
-            if isCollapsible {
-                Divider().padding(.leading, 12)
-                membersToggle(hiddenCount: ranked.count - collapsedCount)
-            }
-            ForEach(stats.sharedAccounts(for: metric)) { account in
+            ForEach(shared) { account in
                 Divider().padding(.leading, 12)
                 TeamSharedAccountRow(account: account, stats: stats, metric: metric, top: top, providerName: providerName)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
             }
+            if !visibleIdle.isEmpty {
+                Divider()
+                idleGroup(visibleIdle, total: layout.idle.count, layout: layout, stats: stats)
+            }
+            if isCollapsible {
+                Divider()
+                membersToggle(hiddenCount: ranked.count - collapsedCount)
+            }
             Divider()
             advancedStatsRow
         }
         .cardSurface()
+    }
+
+    private func idleGroup(_ members: [TeamStats.Member], total: Int, layout: TeamLeaderboardLayout, stats: TeamStats) -> some View {
+        let newest = TeamsFormat.newestVersion(stats.members)
+        return VStack(alignment: .leading, spacing: 0) {
+            TeamLeaderboardIdleHeader(count: total)
+                .padding(.horizontal, 12)
+                .padding(.top, 9)
+                .padding(.bottom, 3)
+            ForEach(members) { member in
+                let isExpanded = expandedMemberID == member.userID
+                let isMe = member.userID == container.teams.user?.id
+                VStack(alignment: .leading, spacing: 6) {
+                    Button {
+                        withAnimation(Motion.spring) { expandedMemberID = isExpanded ? nil : member.userID }
+                    } label: {
+                        TeamLeaderboardIdleRow(
+                            member: member, rankLabel: layout.rankLabel(member), isMe: isMe, metric: metric,
+                            newestVersion: newest, teamID: container.teams.selectedTeamID
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if isExpanded {
+                        TeamMemberDetail(
+                            member: member, stats: stats, metric: metric, range: range,
+                            teamID: container.teams.selectedTeamID, providerName: providerName
+                        )
+                        .padding(.leading, TeamLeaderboardRowStyle.contentInset)
+                        .padding(.bottom, 4)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(isMe ? TeamLeaderboardRowStyle.youTint : .clear)
+            }
+        }
+        .padding(.bottom, 4)
+        .background(TeamLeaderboardRowStyle.idleBackground)
     }
 
     /// The centered caret under the ranking, like a provider card's: unfolds or folds the members past
@@ -325,134 +384,32 @@ struct TeamDashboardSection: View {
         .accessibilityLabel("Advanced Stats")
     }
 
-    private func memberRow(_ member: TeamStats.Member, top: Double, stats: TeamStats) -> some View {
+    private func memberRow(
+        _ member: TeamStats.Member, layout: TeamLeaderboardLayout, top: Double, stats: TeamStats, momentum: TeamMomentum?
+    ) -> some View {
         let isExpanded = expandedMemberID == member.userID
         let isMe = member.userID == container.teams.user?.id
         let teamID = container.teams.selectedTeamID
-        let momentum = teamID.flatMap { container.teams.momentumByTeam[$0]?[member.userID] }
         return VStack(alignment: .leading, spacing: 6) {
             Button {
                 withAnimation(Motion.spring) { expandedMemberID = isExpanded ? nil : member.userID }
             } label: {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 8) {
-                        Text("\(member.rank)")
-                            .font(.callout.monospacedDigit().weight(.semibold))
-                            .foregroundStyle(member.rank == 1 ? .primary : .secondary)
-                            .frame(width: 18, alignment: .trailing)
-                        // The top line keeps the name readable: badges live on the status line below.
-                        Text(member.displayName)
-                            .fontWeight(isMe ? .semibold : .regular)
-                            .lineLimit(1)
-                            .layoutPriority(1)
-                        if isMe {
-                            Text("You")
-                                .font(.caption2.weight(.medium))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 1)
-                                .background(.secondary.opacity(0.12), in: Capsule())
-                        }
-                        Spacer(minLength: 6)
-                        Text(metric.format(member.totals))
-                            .font(.callout.monospacedDigit().weight(.semibold))
-                            .layoutPriority(2)
-                    }
-                    providerBar(member, top: top)
-                        .padding(.leading, 26)
-                    HStack(spacing: 6) {
-                        MemberStatusNote(member: member, momentum: momentum, newestVersion: TeamsFormat.newestVersion(stats.members))
-                        Spacer(minLength: 6)
-                        // Badges never truncate: the status note gives way first.
-                        HStack(spacing: 6) {
-                            // Movement compares server ranks, which Cost/MTok re-ranks.
-                            if metric != .costPerMtok {
-                                RankChangeBadge(member: member, range: range, sort: sort)
-                            }
-                            MomentumBolts(momentum: momentum)
-                            if let teamID {
-                                MemberBadges(teamID: teamID, userID: member.userID)
-                                ReactionCounts(reactions: container.teamsSocial.reactions(teamID: teamID, userID: member.userID))
-                            }
-                        }
-                        .fixedSize()
-                    }
-                    .padding(.leading, 26)
-                }
+                TeamLeaderboardMemberRow(
+                    member: member, rankLabel: layout.rankLabel(member), isMe: isMe, top: top, metric: metric,
+                    range: range, momentum: momentum, newestVersion: TeamsFormat.newestVersion(stats.members), teamID: teamID
+                )
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
             if isExpanded {
-                memberDetail(member, stats: stats)
-                    .padding(.leading, 26)
+                TeamMemberDetail(member: member, stats: stats, metric: metric, range: range, teamID: teamID, providerName: providerName)
+                    .padding(.leading, TeamLeaderboardRowStyle.contentInset)
             }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
-    }
-
-    private func providerBar(_ member: TeamStats.Member, top: Double) -> some View {
-        ProviderSplitBar(providers: metric.barSegments(member.providers, total: member.totals), top: top, sort: sort)
-    }
-
-    @ViewBuilder
-    private func memberDetail(_ member: TeamStats.Member, stats: TeamStats) -> some View {
-        let providers = member.providers.filter { metric.value($0.totals) > 0 }
-        let models = stats.models
-            .compactMap { model -> (TeamStats.Model, UsageTotals)? in
-                guard let mine = model.members.first(where: { $0.userID == member.userID }) else { return nil }
-                return (model, mine.totals)
-            }
-            .filter { metric.value($0.1) > 0 }
-            .sorted { metric.value($0.1) > metric.value($1.1) }
-            .prefix(3)
-        VStack(alignment: .leading, spacing: 4) {
-            if let teamID = container.teams.selectedTeamID {
-                MemberDetailNotes(member: member, stats: stats, range: range, teamID: teamID)
-                    .padding(.bottom, 4)
-                ReactionButtons(teamID: teamID, member: member, compact: true)
-                    .padding(.bottom, 2)
-                if let projection = container.teamsSocial.projection(teamID: teamID, userID: member.userID), projection.spentSoFar > 0 {
-                    ProjectionText(projection: projection).font(.caption)
-                }
-            }
-            if providers.isEmpty {
-                Text("No usage in this period.").font(.caption).foregroundStyle(.secondary)
-            }
-            // Cost/MTok already shows the member's rate on their row.
-            if metric != .costPerMtok, let perMillion = TeamsFormat.perMillion(member.totals) {
-                HStack {
-                    Text("Efficiency").font(.caption).foregroundStyle(.secondary)
-                    Spacer(minLength: 6)
-                    Text(perMillion).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                }
-                .padding(.bottom, 2)
-            }
-            ForEach(providers) { provider in
-                detailRow(color: TotalSpendPalette.color(for: provider.provider), title: providerName(provider.provider), totals: provider.totals)
-            }
-            if !models.isEmpty {
-                Text("Top Models")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 4)
-                ForEach(Array(models), id: \.0.id) { model, totals in
-                    detailRow(color: TotalSpendPalette.color(for: model.provider), title: model.model, totals: totals)
-                }
-            }
-        }
-    }
-
-    private func detailRow(color: Color, title: String, totals: UsageTotals) -> some View {
-        HStack(spacing: 6) {
-            Circle().fill(color).frame(width: 6, height: 6)
-            Text(title).font(.caption).lineLimit(1).truncationMode(.middle)
-            Spacer(minLength: 6)
-            Text(metric.format(totals))
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
+        .background(isMe ? TeamLeaderboardRowStyle.youTint : .clear)
     }
 
     private func providerName(_ id: String) -> String {
