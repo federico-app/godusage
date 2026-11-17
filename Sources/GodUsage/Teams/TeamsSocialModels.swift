@@ -61,12 +61,21 @@ struct TeamChampion: Codable, Hashable, Sendable, Identifiable {
     var costUSD: Double
     var id: String { month }
 
-    /// "September 2026".
+    /// "September 2026". English like the rest of the UI (see `TeamsFormat.monthName`).
     var monthLabel: String {
-        guard let date = TeamsFormat.date("\(month)-01") else { return month }
-        // Some locales (Italian: "settembre 2026") lowercase month names; a row label starts capitalized.
-        let label = date.formatted(.dateTime.month(.wide).year())
-        return label.prefix(1).uppercased() + label.dropFirst()
+        guard let parts = monthParts else { return month }
+        return "\(TeamsFormat.monthName(parts.month)) \(parts.year)"
+    }
+
+    /// "September", for the champion chip.
+    var monthName: String {
+        monthParts.map { TeamsFormat.monthName($0.month) } ?? month
+    }
+
+    private var monthParts: (year: Int, month: Int)? {
+        let parts = month.split(separator: "-").compactMap { Int($0) }
+        guard parts.count >= 2, (1...12).contains(parts[1]) else { return nil }
+        return (parts[0], parts[1])
     }
 }
 

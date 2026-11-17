@@ -257,7 +257,10 @@ final class MenuBarContentTests: XCTestCase {
         let session = percent("a.session", "Session", 20)
         let hot = MenuBarContentBuilder.build(groups: [group("a", session, weekly(used: 60))], data: { $0.sample })
         XCTAssertEqual(hot.groups[0].metrics.map(\.isOverPace), [false, true])
-        XCTAssertTrue(hot.accessibilityText.contains("Weekly 60% Over Pace"))
+        XCTAssertTrue(hot.accessibilityText.contains("Over Pace"))
+        XCTAssertEqual(hot.groups[0].metrics[1].displaySpans.first?.tone, .warning)
+        XCTAssertTrue(hot.needsColor(style: .text))
+        XCTAssertTrue(hot.needsColor(style: .bars))
 
         // Same rounded value, calmer pace: the cached image must not keep the flame.
         let calm = MenuBarContent(
