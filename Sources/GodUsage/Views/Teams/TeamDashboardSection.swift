@@ -319,7 +319,11 @@ struct TeamDashboardSection: View {
                     } label: {
                         TeamLeaderboardIdleRow(
                             member: member, rankLabel: layout.rankLabel(member), isMe: isMe, metric: metric,
+<<<<<<< HEAD
                             newestVersion: newest, teamID: container.teams.selectedTeamID, isExpanded: isExpanded
+=======
+                            newestVersion: newest, teamID: container.teams.selectedTeamID
+>>>>>>> origin/main
                         )
                         .contentShape(Rectangle())
                     }
@@ -398,8 +402,12 @@ struct TeamDashboardSection: View {
             } label: {
                 TeamLeaderboardMemberRow(
                     member: member, rankLabel: layout.rankLabel(member), isMe: isMe, top: top, metric: metric,
+<<<<<<< HEAD
                     range: range, momentum: momentum, newestVersion: TeamsFormat.newestVersion(stats.members), teamID: teamID,
                     isExpanded: isExpanded
+=======
+                    range: range, momentum: momentum, newestVersion: TeamsFormat.newestVersion(stats.members), teamID: teamID
+>>>>>>> origin/main
                 )
                 .contentShape(Rectangle())
             }

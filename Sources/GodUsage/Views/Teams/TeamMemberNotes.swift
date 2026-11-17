@@ -57,6 +57,7 @@ struct MemberStatusNote: View {
 /// A small green dot that pulses gently: the member is spending right now. Still with Reduce Motion.
 struct LiveDot: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+<<<<<<< HEAD
 
     var body: some View {
         // A symbol effect runs in Core Animation, so the pulse doesn't redraw the row.
@@ -65,6 +66,113 @@ struct LiveDot: View {
             .foregroundStyle(Theme.positive)
             .symbolEffect(.pulse, options: .repeating, isActive: !reduceMotion)
             .accessibilityHidden(true)
+=======
+
+    var body: some View {
+        // A symbol effect runs in Core Animation, so the pulse doesn't redraw the row.
+        Image(systemName: "circle.fill")
+            .font(.system(size: 6))
+            .foregroundStyle(Theme.positive)
+            .symbolEffect(.pulse, options: .repeating, isActive: !reduceMotion)
+            .accessibilityHidden(true)
+    }
+}
+
+/// The top of a member's detail: what every mark on their row means, in words. Their place and
+/// movement, their spend in the last hour and why it earned ⚡, their crowns, who reacted, and when
+/// and from which version their Macs last synced.
+struct MemberDetailNotes: View {
+    @Environment(AppContainer.self) private var container
+    let member: TeamStats.Member
+    let stats: TeamStats
+    let range: StatsRange
+    let teamID: String
+
+    var body: some View {
+        let social = container.teamsSocial
+        let momentum = container.teams.momentumByTeam[teamID]?[member.userID]
+        VStack(alignment: .leading, spacing: 3) {
+            note(placeText)
+            if let momentum, momentum.lastHourUSD > 0 {
+                note(momentumText(momentum))
+            }
+            if social.kingOfTheDay(teamID: teamID)?.userID == member.userID {
+                note("👑 Top spender today")
+            }
+            if let champion = social.lastMonthChampion(teamID: teamID), champion.userID == member.userID {
+                note("🏆 \(champion.monthLabel) champion: top spender of the month")
+            }
+            ForEach(reactionLines(social.reactions(teamID: teamID, userID: member.userID)), id: \.self) { line in
+                note(line)
+            }
+            note(syncText)
+        }
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// "1st of 6 · up 2 places since yesterday".
+    private var placeText: String {
+        let place = "\(Self.ordinal(member.rank)) of \(stats.members.count)"
+        if range == .year { return place }
+        guard let change = member.rankChange else {
+            return member.costUSD > 0 || member.tokens > 0 ? "\(place) · new: no usage \(range.previousLabel)" : place
+        }
+        if change == 0 { return "\(place) · same place as \(range.previousLabel)" }
+        let places = abs(change) == 1 ? "1 place" : "\(abs(change)) places"
+        return "\(place) · \(change > 0 ? "up" : "down") \(places) since \(range.previousLabel)"
+    }
+
+    /// "$18.40 in the last hour · spending fast, level 2 of 3: over $5, more than twice their usual hour ($3.10), the most in the team".
+    private func momentumText(_ momentum: TeamMomentum) -> String {
+        let spent = "\(Formatters.currency(momentum.lastHourUSD)) in the last hour"
+        let reasons = (momentum.reasons ?? []).compactMap { reason -> String? in
+            switch reason {
+            case "fast": "over $5"
+            case "self": momentum.typicalHourUSD.map { "more than twice their usual hour (\(Formatters.currency($0)))" }
+                ?? "more than twice their usual hour"
+            case "top": "the most in the team"
+            default: nil
+            }
+        }
+        guard momentum.level > 0 else { return spent }
+        let level = "\(spent) · spending fast, level \(min(momentum.level, 3)) of 3"
+        return reasons.isEmpty ? level : "\(level): \(reasons.joined(separator: ", "))"
+    }
+
+    /// "🔥 Lorenzo, You", one line per reaction someone gave today.
+    private func reactionLines(_ reactions: MemberReactions) -> [String] {
+        let names = Dictionary(uniqueKeysWithValues: stats.members.map { ($0.userID, $0.displayName) })
+        let me = container.teams.user?.id
+        return TeamReaction.allCases.compactMap { reaction in
+            let count = reactions.count(reaction)
+            guard count > 0 else { return nil }
+            let givers = (reactions.from?[reaction.rawValue] ?? []).map { $0 == me ? "You" : names[$0] ?? "a former member" }
+            return givers.isEmpty ? "\(reaction.emoji) \(count) today" : "\(reaction.emoji) \(givers.joined(separator: ", "))"
+        }
+    }
+
+    /// "Updated 3m ago · GodUsage v1.0.9", with a nudge when the team runs a newer version.
+    private var syncText: String {
+        let synced = TeamsFormat.syncNote(member.lastSyncAt, now: Date())?.text ?? "Not synced yet"
+        guard let version = member.appVersion else { return synced }
+        let newest = TeamsFormat.newestVersion(stats.members)
+        let outdated = TeamsFormat.isOutdated(version, newest: newest)
+        let suffix = outdated ? ", older than the team's newest (\(TeamsFormat.versionLabel(newest ?? "")))" : ""
+        return "\(synced) · GodUsage \(TeamsFormat.versionLabel(version))\(suffix)"
+    }
+
+    private static func ordinal(_ rank: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .ordinal
+        formatter.locale = Locale(identifier: "en_US")
+        return formatter.string(from: NSNumber(value: rank)) ?? "#\(rank)"
+>>>>>>> origin/main
     }
 }
 

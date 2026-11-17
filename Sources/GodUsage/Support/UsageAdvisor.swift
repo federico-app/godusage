@@ -21,8 +21,11 @@ struct UsageSuggestion: Equatable, Identifiable, Sendable {
     let deadline: Date?
     /// The team whose plan the advice is about, for Open Plans.
     var teamID: String? = nil
+<<<<<<< HEAD
     /// The account card a "Switch to …" suggestion recommends, for the menu bar's green dot.
     var targetProviderID: String? = nil
+=======
+>>>>>>> origin/main
 }
 
 /// Turns this Mac's quotas, its reset credits, and the team's plans into suggestions, most urgent
@@ -186,8 +189,12 @@ enum UsageAdvisor {
                 from: quota, spent: spent, to: target, left: left,
                 plan: roomyPlans.first { $0.family == target.family }
             ),
+<<<<<<< HEAD
             deadline: quota.data.resetsAt,
             targetProviderID: target.providerID
+=======
+            deadline: quota.data.resetsAt
+>>>>>>> origin/main
         )
     }
 
