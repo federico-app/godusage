@@ -566,7 +566,7 @@ final class TeamsStore {
             try sessionStore.save(session)
         } catch {
             AppLog.error(.teams, "couldn't save the teams session: \(error)")
-            throw TeamsAPIError(kind: .server, message: "GodUsage couldn’t save your sign-in on this Mac.")
+            throw TeamsAPIError(kind: .server, message: String(localized: "GodUsage couldn’t save your sign-in on this Mac."))
         }
         self.session = session
     }

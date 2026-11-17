@@ -22,10 +22,10 @@ enum TeamEvents {
 
     static func overtakeMessage(_ overtakers: [TeamStats.Member], team: String) -> (title: String, body: String) {
         let names = overtakers.map(\.displayName)
-        let who = names.count == 1 ? names[0] : names.dropLast().joined(separator: ", ") + " and " + names.last!
+        let who = names.count == 1 ? names[0] : String(localized: "\(names.dropLast().joined(separator: ", ")) and \(names.last!)")
         return (
-            "\(who) Passed You",
-            "\(who) moved ahead of you in \(team) by spend over the last 7 days."
+            String(localized: "\(who) Passed You", comment: "Overtake alert title; the value is one or more names"),
+            String(localized: "\(who) moved ahead of you in \(team) by spend over the last 7 days.", comment: "Overtake alert: one or more names, then the team")
         )
     }
 

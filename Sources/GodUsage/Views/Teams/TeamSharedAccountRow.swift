@@ -113,21 +113,26 @@ extension TeamsFormat {
     static func syncNote(_ lastSyncAt: String?, now: Date, appVersion: String? = nil) -> SyncNote? {
         guard let minutes = syncMinutes(lastSyncAt, now: now) else { return nil }
         let version = appVersion.map { " · \(versionLabel($0))" } ?? ""
-        if minutes < 1 { return SyncNote(text: "Updated just now\(version)", stale: false) }
-        if minutes < 60 { return SyncNote(text: "Updated \(minutes)m ago\(version)", stale: false) }
-        if minutes <= 24 * 60 { return SyncNote(text: "Updated \(minutes / 60)h ago\(version)", stale: false) }
-        let days = minutes / (24 * 60)
-        return SyncNote(text: "Not synced for \(days) \(days == 1 ? "day" : "days")\(version)", stale: true)
+        let hours = minutes / 60, days = minutes / (24 * 60)
+        if minutes < 1 { return SyncNote(text: String(localized: "Updated just now") + version, stale: false) }
+        if minutes < 60 {
+            return SyncNote(text: String(localized: "Updated \(minutes)m ago", comment: "Minutes since a member's last sync.") + version, stale: false)
+        }
+        if minutes <= 24 * 60 {
+            return SyncNote(text: String(localized: "Updated \(hours)h ago", comment: "Hours since a member's last sync.") + version, stale: false)
+        }
+        return SyncNote(text: String(localized: "Not synced for \(days) days") + version, stale: true)
     }
 
     /// The Idle group's short sync time: "just now", "5m ago", "3h ago", then "3d ago" (stale) once
     /// it is more than 24 hours old; nil when the sync time is unknown.
     static func syncAge(_ lastSyncAt: String?, now: Date) -> SyncNote? {
         guard let minutes = syncMinutes(lastSyncAt, now: now) else { return nil }
-        if minutes < 1 { return SyncNote(text: "just now", stale: false) }
-        if minutes < 60 { return SyncNote(text: "\(minutes)m ago", stale: false) }
-        if minutes <= 24 * 60 { return SyncNote(text: "\(minutes / 60)h ago", stale: false) }
-        return SyncNote(text: "\(minutes / (24 * 60))d ago", stale: true)
+        let hours = minutes / 60, days = minutes / (24 * 60)
+        if minutes < 1 { return SyncNote(text: String(localized: "just now", comment: "A member synced less than a minute ago."), stale: false) }
+        if minutes < 60 { return SyncNote(text: String(localized: "\(minutes)m ago", comment: "Minutes since a member's last sync, short."), stale: false) }
+        if minutes <= 24 * 60 { return SyncNote(text: String(localized: "\(hours)h ago", comment: "Hours since a member's last sync, short."), stale: false) }
+        return SyncNote(text: String(localized: "\(days)d ago", comment: "Days since a member's last sync, short."), stale: true)
     }
 
     /// "v1.0.8" for a release version; anything else (a "dev" build) as it is.

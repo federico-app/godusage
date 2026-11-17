@@ -104,8 +104,8 @@ enum StatsSort: String, CaseIterable, Codable, Hashable, Sendable {
 
     var label: String {
         switch self {
-        case .cost: "Spend"
-        case .tokens: "Tokens"
+        case .cost: String(localized: "Spend")
+        case .tokens: String(localized: "Tokens")
         }
     }
 }

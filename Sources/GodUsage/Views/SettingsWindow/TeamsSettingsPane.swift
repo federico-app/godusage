@@ -232,7 +232,7 @@ private struct TeamsAccountSection: View {
     private var uploadStatus: String {
         if teams.teams.isEmpty { return String(localized: "Not sharing (no teams yet)") }
         guard let lastUploadAt = teams.lastUploadAt else { return String(localized: "Sharing usage") }
-        let relative = lastUploadAt.formatted(.relative(presentation: .named))
+        let relative = lastUploadAt.formatted(.relative(presentation: .named).locale(AppLocale.current))
         return String(localized: "Shared \(relative)", comment: "Upload status; the value is a relative time like '5 minutes ago'")
     }
 }

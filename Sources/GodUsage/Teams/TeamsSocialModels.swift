@@ -17,9 +17,9 @@ enum TeamReaction: String, Codable, CaseIterable, Hashable, Sendable {
 
     var accessibilityName: String {
         switch self {
-        case .fire: "Fire"
-        case .clap: "Applause"
-        case .clown: "Clown"
+        case .fire: String(localized: "Fire", comment: "The 🔥 reaction, for VoiceOver")
+        case .clap: String(localized: "Applause", comment: "The 👏 reaction, for VoiceOver")
+        case .clown: String(localized: "Clown", comment: "The 🤡 reaction, for VoiceOver")
         }
     }
 }
@@ -61,7 +61,7 @@ struct TeamChampion: Codable, Hashable, Sendable, Identifiable {
     var costUSD: Double
     var id: String { month }
 
-    /// "September 2026". English like the rest of the UI (see `TeamsFormat.monthName`).
+    /// "September 2026" / "settembre 2026", in the app's language (see `TeamsFormat.monthName`).
     var monthLabel: String {
         guard let parts = monthParts else { return month }
         return "\(TeamsFormat.monthName(parts.month)) \(parts.year)"

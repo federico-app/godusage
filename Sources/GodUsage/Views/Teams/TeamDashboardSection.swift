@@ -213,7 +213,7 @@ struct TeamDashboardSection: View {
 
     private var currentTeamName: String {
         let teams = container.teams
-        return teams.teams.first { $0.id == teams.selectedTeamID }?.name ?? "Team"
+        return teams.teams.first { $0.id == teams.selectedTeamID }?.name ?? String(localized: "Team")
     }
 
     // MARK: - Board
@@ -229,7 +229,7 @@ struct TeamDashboardSection: View {
                 Spacer()
             }
             if showProjection, let teamID = container.teams.selectedTeamID, let projection = container.teamsSocial.projection(teamID: teamID) {
-                ProjectionText(projection: projection, prefix: "Team on pace for")
+                ProjectionText(projection: projection, isTeam: true)
                     .font(.caption)
             }
         }
@@ -361,7 +361,7 @@ struct TeamDashboardSection: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(showsAllMembers ? "Show fewer members" : "Show \(hiddenCount) more members")
+        .accessibilityLabel(showsAllMembers ? Text("Show fewer members") : Text("Show \(hiddenCount) more members"))
     }
 
     /// Opens the Teams window: every range, charts, models, and the two-member comparison.

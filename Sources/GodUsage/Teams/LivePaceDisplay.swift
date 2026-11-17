@@ -34,16 +34,21 @@ enum LivePaceDisplay {
             let ahead = live.ahead ?? 0
             let duration = LivePaceFormat.duration(ahead)
             let style = useThisNow ? .cool : tone
-            if abs(ahead) < LivePace.onPaceMargin { return ("On pace", style) }
-            return (ahead > 0 ? "\(duration) ahead of pace" : "\(duration) under pace", style)
+            if abs(ahead) < LivePace.onPaceMargin { return (String(localized: "On pace", comment: "Live Pace pill: today's use is where it should be"), style) }
+            let text = ahead > 0
+                ? String(localized: "\(duration) ahead of pace", comment: "Live Pace pill; the value is a duration, e.g. 22 min")
+                : String(localized: "\(duration) under pace", comment: "Live Pace pill; the value is a duration, e.g. 2h 40m")
+            return (text, style)
         case .overBudget:
-            return ("\(LivePaceFormat.percent(max(0, live.used - live.budget))) over today", .over)
+            let over = LivePaceFormat.percent(max(0, live.used - live.budget))
+            return (String(localized: "\(over) over today", comment: "Live Pace pill: how far today's use went past today's budget, e.g. 6.3% over today"), .over)
         case .notStarted:
-            return ("Starts \(live.start.map(LivePaceFormat.time) ?? "")", .muted)
+            let start = live.start.map(LivePaceFormat.time) ?? ""
+            return (String(localized: "Starts \(start)", comment: "Live Pace pill before the working day; the value is a time"), .muted)
         case .dayDone:
-            return ("Day Done", .muted)
+            return (String(localized: "Day Done", comment: "Live Pace pill after the working day"), .muted)
         case .dayOff:
-            return ("Day Off", .muted)
+            return (String(localized: "Day Off", comment: "Live Pace pill on a day without working hours"), .muted)
         }
     }
 
@@ -61,22 +66,30 @@ enum LivePaceDisplay {
         switch live.state {
         case .ahead:
             if let runsOutAt = live.runsOutAt {
-                return ("At this pace today’s budget runs out at \(LivePaceFormat.time(runsOutAt)).", .notice)
+                let time = LivePaceFormat.time(runsOutAt)
+                return (String(localized: "At this pace today’s budget runs out at \(time).", comment: "Live Pace note; the value is a time"), .notice)
             }
-            return ("At this pace today ends at \(LivePaceFormat.percent(live.projected)), over its budget.", .notice)
+            let projected = LivePaceFormat.percent(live.projected)
+            return (String(localized: "At this pace today ends at \(projected), over its budget.", comment: "Live Pace note; the value is a percentage of the weekly limit"), .notice)
         case .overBudget:
-            if live.isLastDay { return ("Over today’s budget, on the last working day before the reset.", .notice) }
+            if live.isLastDay {
+                return (String(localized: "Over today’s budget, on the last working day before the reset.", comment: "Live Pace note"), .notice)
+            }
             let over = LivePaceFormat.percent(max(0, live.used - live.budget))
-            return ("Today’s budget is used up. The \(over) comes out of the next working days.", .notice)
+            return (String(localized: "Today’s budget is used up. The \(over) comes out of the next working days.", comment: "Live Pace note; the value is the percentage over today's budget"), .notice)
         case .onPace, .behind, .warmingUp, .notStarted:
             return nil
         case .dayDone:
             guard let next else { return nil }
-            let rise = next.budget >= next.planned
-            return ("\(days) \(rise ? "rise" : "drop") to \(LivePaceFormat.percent(next.budget)).", rise ? .positive : .notice)
+            let budget = LivePaceFormat.percent(next.budget)
+            if next.budget >= next.planned {
+                return (String(localized: "\(days) rise to \(budget).", comment: "Live Pace note: the next working days' budget goes up, e.g. Wed–Mon rise to 18.4%"), .positive)
+            }
+            return (String(localized: "\(days) drop to \(budget).", comment: "Live Pace note: the next working days' budget goes down, e.g. Wed–Mon drop to 18.4%"), .notice)
         case .dayOff:
-            guard let next else { return ("No working days before the reset.", .secondary) }
-            return ("\(LivePaceFormat.percent(next.budget)) on \(days).", .secondary)
+            guard let next else { return (String(localized: "No working days before the reset.", comment: "Live Pace note on a day off"), .secondary) }
+            let budget = LivePaceFormat.percent(next.budget)
+            return (String(localized: "\(budget) on \(days).", comment: "Live Pace note on a day off: the next working days' budget, e.g. 18.4% on Wed–Mon"), .secondary)
         }
     }
 

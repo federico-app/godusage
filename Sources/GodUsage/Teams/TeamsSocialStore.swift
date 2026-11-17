@@ -233,7 +233,7 @@ struct TeamProjection: Equatable {
         return TeamProjection(
             spentSoFar: spentSoFar,
             projected: spentSoFar / Double(daysSoFar) * Double(monthDays),
-            // English like the rest of the UI; the localization work will switch it to the app's locale.
+            // In the app's language, like the rest of the UI.
             monthName: TeamsFormat.monthName(start.month),
             daysLeft: monthDays - daysSoFar
         )

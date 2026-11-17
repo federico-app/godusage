@@ -125,7 +125,7 @@ final class DeviceIdentityStore {
                 // would mint a fresh id and register this Mac a second time, so this fails into the
                 // provisional path exactly like an unreadable item.
                 guard let normalized = normalizedDeviceID(stored) else {
-                    throw KeychainError.readFailed("This Mac's stored device identity is not a valid identifier.")
+                    throw KeychainError.readFailed(String(localized: "This Mac's stored device identity is not a valid identifier."))
                 }
                 return DeviceIdentityResolution(
                     id: normalized, error: nil, isProvisional: false, canRecoverLegacyIdentity: false
@@ -152,7 +152,7 @@ final class DeviceIdentityStore {
             }
             if let migrated {
                 guard let normalized = normalizedDeviceID(migrated) else {
-                    throw KeychainError.readFailed("This Mac's previous device identity is not a valid identifier.")
+                    throw KeychainError.readFailed(String(localized: "This Mac's previous device identity is not a valid identifier."))
                 }
                 return DeviceIdentityResolution(
                     id: normalized, error: nil, isProvisional: false, canRecoverLegacyIdentity: false

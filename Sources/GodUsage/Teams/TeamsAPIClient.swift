@@ -339,7 +339,7 @@ struct TeamsAPIClient: TeamsAPI {
             response = try await http.send(HTTPRequest(method: method, url: url, headers: headers, body: data, timeout: 20))
         } catch {
             AppLog.warn(.teams, "\(method) \(pathWithoutQuery(path)) failed: \(error.localizedDescription)")
-            throw TeamsAPIError(kind: .network, message: "Couldn’t reach the teams server. Check your connection and try again.")
+            throw TeamsAPIError(kind: .network, message: String(localized: "Couldn’t reach the teams server. Check your connection and try again."))
         }
         guard (200..<300).contains(response.statusCode) else {
             throw Self.error(from: response, method: method, path: pathWithoutQuery(path))

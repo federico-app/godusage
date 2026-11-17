@@ -17,7 +17,7 @@ final class WeeklyQuotaVisibilityTests: XCTestCase {
         data.resetsAt = Date(timeIntervalSince1970: 1_800_000_000)
         let dated = WeeklyQuotaVisibility.presentation(data, descriptor: weekly)
         let reset = data.resetsAt!
-        let exactDate = reset.formatted(.dateTime.month(.abbreviated).day())
+        let exactDate = reset.formatted(.dateTime.month(.abbreviated).day().locale(AppLocale.current))
             + " at " + TimeFormatSetting.current.shortTime(reset)
         for (seconds, expected) in [(190_800.0, "Resets in 2d 5h"), (10_800.0, "Resets in 3h"),
                                     (1_200.0, "Resets in 20m"), (60.0, "Resets soon"),

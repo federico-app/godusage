@@ -65,7 +65,7 @@ final class LivePaceDetailsTests: XCTestCase {
         XCTAssertEqual(LivePaceDetails.avatars(names).shown, Array(names.prefix(3)))
         XCTAssertEqual(LivePaceDetails.avatars(names).more, 2)
         XCTAssertEqual(LivePaceDetails.avatars(Array(names.prefix(2))).more, 0)
-        XCTAssertEqual(LivePaceDetails.sharedWith(Array(names.prefix(2))), "Shared with Matteo Scoccia, Maria Vitali")
+        XCTAssertEqual(LivePaceDetails.sharedWith(Array(names.prefix(2))), "Shared with Matteo Scoccia and Maria Vitali")
     }
 
     func testHoursOnOneLine() {

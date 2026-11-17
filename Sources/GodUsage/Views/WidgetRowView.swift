@@ -131,7 +131,7 @@ struct WidgetRowView: View {
     /// Hovering shows the pace projection at reset. The warning gets the space; the title truncates.
     private func boundedLabelRow(_ state: WidgetData.MeterState) -> some View {
         HStack(spacing: 6) {
-            Text(data.title)
+            Text(LocalizedMetricTitle.string(data.title))
                 .font(labelFont)
                 .foregroundStyle(.primary)
                 .lineLimit(1)
@@ -146,7 +146,7 @@ struct WidgetRowView: View {
     private func warning(_ state: WidgetData.MeterState) -> some View {
         switch state {
         case .spent:
-            flameWarning(text: "Limit reached", state: state, accessibility: "Limit reached")
+            flameWarning(text: WidgetData.limitReachedText, state: state, accessibility: WidgetData.limitReachedText)
         case .runningOut(let eta, _):
             // `eta == nil` is the float-edge case: the flame stands alone (the projection lives in
             // the tooltip), rather than printing a misleading time. A shown time reads "Limit in 3h
@@ -154,7 +154,7 @@ struct WidgetRowView: View {
             // countdown/exact mode, so — exactly like the reset label — clicking it flips that mode
             // (lifted reorder previews pass no toggle and render it inert).
             flameWarning(text: eta, state: state,
-                         accessibility: eta ?? "Will reach limit",
+                         accessibility: eta ?? String(localized: "Will reach limit", comment: "VoiceOver: a meter on pace to run out before it resets"),
                          action: eta == nil ? nil : onToggleResetDisplay)
         case .closeToLimit(let spare, _):
             Spacer(minLength: 8)
@@ -386,7 +386,7 @@ struct WidgetRowView: View {
                 arrowEdge: .top
             ) {
                 if let breakdown = data.modelBreakdown {
-                    ModelUsageDetail(title: data.title, breakdown: breakdown) { inside in
+                    ModelUsageDetail(title: LocalizedMetricTitle.string(data.title), breakdown: breakdown) { inside in
                         modelHover.detailHover(inside)
                     }
                 } else if data.showsResetExpiries {
@@ -426,15 +426,15 @@ struct WidgetRowView: View {
 
     private func expiryStatusAccessibilityLabel(_ severity: WidgetData.MeterSeverity) -> String {
         switch severity {
-        case .normal: return "Reset credits expire in more than 7 days"
-        case .warning, .atRisk: return "A reset credit expires within 7 days"
-        case .critical: return "A reset credit expires within 48 hours"
+        case .normal: return String(localized: "Reset credits expire in more than 7 days", comment: "VoiceOver: status dot on a reset credits row")
+        case .warning, .atRisk: return String(localized: "A reset credit expires within 7 days", comment: "VoiceOver: status dot on a reset credits row")
+        case .critical: return String(localized: "A reset credit expires within 48 hours", comment: "VoiceOver: status dot on a reset credits row")
         }
     }
 
     private var labelColumn: some View {
         HStack(spacing: 4) {
-            Text(data.title)
+            Text(LocalizedMetricTitle.string(data.title))
                 // Same point size as the trailing value so the single-line row reads tight;
                 // semibold alone keeps the name/value hierarchy.
                 .font(.system(size: density.supportingPointSize, weight: .semibold))

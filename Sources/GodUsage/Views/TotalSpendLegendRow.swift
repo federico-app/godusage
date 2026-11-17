@@ -41,7 +41,7 @@ struct TotalSpendLegendRow: View {
         // The visual hover state temporarily suppresses the amount, but assistive technologies
         // should always receive the complete, stable row.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(fullTitle), \(value)")
+        .accessibilityLabel(Text(verbatim: "\(fullTitle), \(value)"))
     }
 
     private var textContent: some View {
@@ -152,8 +152,8 @@ struct TotalSpendLegendRow: View {
 
     /// The title, then the account in secondary when there is one.
     private var titleText: Text {
-        guard let account else { return Text(title) }
-        return Text(title) + Text(" \(account)").foregroundStyle(.secondary)
+        guard let account else { return Text(verbatim: title) }
+        return Text(verbatim: title) + Text(verbatim: " \(account)").foregroundStyle(.secondary)
     }
 
     private var valueLabel: some View {

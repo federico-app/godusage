@@ -137,7 +137,7 @@ enum SQLiteError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .queryFailed(let message):
-            return message.isEmpty ? "SQLite query failed." : message
+            return message.isEmpty ? String(localized: "SQLite query failed.") : message
         }
     }
 }

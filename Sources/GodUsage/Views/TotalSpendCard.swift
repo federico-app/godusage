@@ -76,7 +76,7 @@ struct TotalSpendCard: View {
                 .foregroundStyle(.secondary)
                 .hoverTooltip(infoTooltip)
             if usesCompactPicker {
-                Text(period.rawValue)
+                Text(period.title)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -96,11 +96,11 @@ struct TotalSpendCard: View {
     /// stale width and middle-truncate "Cost/MTok".
     private var metricMenu: some View {
         NativeMenuButton(
-            accessibilityLabel: "Total Spend Metric",
-            accessibilityValue: metric.title
+            accessibilityLabel: String(localized: "Total Spend Metric", comment: "Accessibility: the Total Spend card's metric menu"),
+            accessibilityValue: metric.displayTitle
         ) {
             TotalSpendMetric.allCases.map { option in
-                let item = ClosureMenuItem(title: option.title) {
+                let item = ClosureMenuItem(title: option.displayTitle) {
                     metricRawValue = option.rawValue
                 }
                 item.state = option == metric ? .on : .off
@@ -108,7 +108,7 @@ struct TotalSpendCard: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Text(metric.title)
+                Text(metric.displayTitle)
                     .font(.system(size: density.headerPointSize, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
@@ -124,11 +124,11 @@ struct TotalSpendCard: View {
     /// tooltip lie about what the total reflects.
     private var infoTooltip: String {
         let names = providers.map { container.displayName(for: $0) }
-        return "Only includes \(names.formatted(.list(type: .and)))."
+        return String(localized: "Only includes \(AppLocale.list(names)).", comment: "Total Spend tooltip; the argument is a list of provider names")
     }
 
     private var shareButton: some View {
-        CopyFeedbackButton(accessibilityLabel: "Copy \(metric.title) Screenshot") {
+        CopyFeedbackButton(accessibilityLabel: String(localized: "Copy \(metric.displayTitle) Screenshot", comment: "Accessibility: copy a screenshot of a card; the argument is its title")) {
             ShareCardRenderer.shareTotalSpend(
                 total: total,
                 metric: metric,
@@ -225,8 +225,8 @@ struct TotalSpendCard: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(candidate.rawValue)
-        .hoverTooltip(equal || candidate.tinyLabel == candidate.rawValue ? nil : candidate.rawValue)
+        .accessibilityLabel(candidate.title)
+        .hoverTooltip(equal || candidate.tinyLabel == candidate.title ? nil : candidate.title)
         .background {
             if isSelected {
                 Capsule()

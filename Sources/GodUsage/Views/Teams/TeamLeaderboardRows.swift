@@ -72,7 +72,7 @@ struct TeamLeaderboardHeader: View {
         .foregroundStyle(.secondary)
         .fixedSize()
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Bar colors: \(providers.map(providerName).joined(separator: ", "))")
+        .accessibilityLabel("Bar colors: \(AppLocale.list(providers.map(providerName)))")
     }
 }
 
@@ -256,7 +256,7 @@ struct TeamLeaderboardIdleHeader: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Text("Idle · \(count)")
+            Text("Idle · \(count)", comment: "The leaderboard group of members not spending right now, with how many.")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
             Rectangle().fill(.separator).frame(height: 0.5)

@@ -11,15 +11,15 @@ final class MenuBarStripTextTests: XCTestCase {
     // MARK: - Labels
 
     func testPrefixComesFromTheMetricNotItsPosition() {
-        XCTAssertEqual(MenuBarMetricLabel.prefix(limitKeys: ["session"]), "S")
-        XCTAssertEqual(MenuBarMetricLabel.prefix(limitKeys: ["weekly"]), "W")
+        XCTAssertEqual(MenuBarMetricLabel.window(limitKeys: ["session"]), .session)
+        XCTAssertEqual(MenuBarMetricLabel.window(limitKeys: ["weekly"]), .weekly)
         // Antigravity's main (Gemini) pool.
-        XCTAssertEqual(MenuBarMetricLabel.prefix(limitKeys: ["geminiSession"]), "S")
-        XCTAssertEqual(MenuBarMetricLabel.prefix(limitKeys: ["geminiWeekly"]), "W")
+        XCTAssertEqual(MenuBarMetricLabel.window(limitKeys: ["geminiSession"]), .session)
+        XCTAssertEqual(MenuBarMetricLabel.window(limitKeys: ["geminiWeekly"]), .weekly)
         // Separate model pools and everything else get no letter.
         for keys in [["nonGeminiSession"], ["nonGeminiWeekly"], ["argonWeekly"], ["spark"], ["sparkWeekly"],
                      ["sonnet"], ["totalUsage"], ["premiumCredits"], ["webSearches"], ["monthly"], []] {
-            XCTAssertNil(MenuBarMetricLabel.prefix(limitKeys: keys), "\(keys)")
+            XCTAssertNil(MenuBarMetricLabel.window(limitKeys: keys), "\(keys)")
         }
     }
 
@@ -56,28 +56,45 @@ final class MenuBarStripTextTests: XCTestCase {
         return data
     }
 
-    private func spans(_ data: WidgetData, prefix: String?) -> [MenuBarSpan] {
-        MenuBarValueText.spans(value: data.menuBarValue, prefix: prefix, data: data, now: now)
+    private func spans(_ data: WidgetData, prefix: MenuBarMetricLabel.Window?) -> [MenuBarSpan] {
+        MenuBarValueText.spans(value: data.menuBarValue, window: prefix, data: data, now: now)
     }
 
     func testHealthyValueStaysPlain() {
         let data = window(used: 20, resetsIn: 4 * 24 * hour, period: 7 * 24 * hour)
-        XCTAssertEqual(spans(data, prefix: "W"), [MenuBarSpan("20%")])
+        XCTAssertEqual(spans(data, prefix: .weekly), [MenuBarSpan("20%")])
     }
 
     func testOverPaceTurnsOrangeWithTheTimeToTheLimit() {
         // 60% used two days into a week: on pace to run out about 1.3 days from now.
         let data = window(used: 60, resetsIn: 5 * 24 * hour, period: 7 * 24 * hour)
         guard case .runningOut = data.meterState(now: now) else { return XCTFail("expected running out") }
-        let result = spans(data, prefix: "W")
+        let result = spans(data, prefix: .weekly)
         XCTAssertEqual(result, [MenuBarSpan("60%·1d", .warning)])
     }
 
-    func testSessionUnderTenPercentLeftShowsTheResetCountdown() {
+    func testSessionUnderTenPercentLeftKeepsTheValueAndAddsTheResetCountdown() {
         let data = window(used: 92, resetsIn: 38 * 60, period: 5 * hour)
-        XCTAssertEqual(spans(data, prefix: "S"), [MenuBarSpan("↻38m", .warning)])
+        XCTAssertEqual(spans(data, prefix: .session), [MenuBarSpan("\(data.menuBarValue) ↻38m", .warning)])
         // The same reading on a weekly window is not a session: no countdown.
-        XCTAssertNotEqual(spans(data, prefix: "W").first?.text, "↻38m")
+        XCTAssertFalse(spans(data, prefix: .weekly).contains { $0.text.contains("↻") })
+    }
+
+    func testUsedUpSessionStillShowsItsValueWithTheCountdown() {
+        let data = window(used: 100, resetsIn: hour + 7 * 60, period: 5 * hour)
+        XCTAssertEqual(spans(data, prefix: .session), [MenuBarSpan("\(data.menuBarValue) ↻1h 7m", .warning)])
+    }
+
+    func testMenuBarLettersInEnglishAndItalian() throws {
+        XCTAssertEqual(MenuBarMetricLabel.Window.session.letter, "S")
+        XCTAssertEqual(MenuBarMetricLabel.Window.weekly.letter, "W")
+        let url = try XCTUnwrap(Bundle.godUsageResources.url(forResource: "it", withExtension: "lproj"))
+        let italian = try XCTUnwrap(Bundle(url: url))
+        let session = italian.localizedString(forKey: "S", value: nil, table: nil)
+        let weekly = italian.localizedString(forKey: "W", value: nil, table: nil)
+        XCTAssertEqual(session, "H")
+        XCTAssertEqual(weekly, "S")
+        XCTAssertNotEqual(session, weekly)
     }
 
     func testUsedUpLimitShowsTheResetTimeDimmed() {
@@ -117,7 +134,7 @@ final class MenuBarStripTextTests: XCTestCase {
         XCTAssertEqual(content.groups.map(\.badge), [nil, .useNow])
         XCTAssertTrue(content.needsColor(style: .text))
         XCTAssertFalse(content.needsColor(style: .bars), "Bars only show badges on faded icons")
-        XCTAssertEqual(content.groups[0].metrics.first?.prefix, "W")
+        XCTAssertEqual(content.groups[0].metrics.first?.prefix, MenuBarMetricLabel.Window.weekly.letter)
         XCTAssertNotNil(MenuBarStripRenderer.image(for: content, style: .text))
     }
 

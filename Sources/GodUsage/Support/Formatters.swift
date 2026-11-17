@@ -32,10 +32,10 @@ enum Formatters {
         return formatted ?? "$\(String(format: "%.\(fractionDigits)f", amount))"
     }
 
-    /// The app's compact month/day, e.g. "Jun 21" — localized, no year. Shared so every short calendar
+    /// The app's compact month/day, e.g. "Jun 21" / "21 giu" — in the app's language, no year. Shared so every short calendar
     /// date (reset deadlines, the Usage Trend axis) reads the same and changes in one place.
-    static func monthDayLabel(_ date: Date) -> String {
-        date.formatted(.dateTime.month(.abbreviated).day())
+    static func monthDayLabel(_ date: Date, locale: Locale = AppLocale.current) -> String {
+        date.formatted(.dateTime.month(.abbreviated).day().locale(locale))
     }
 
     /// The one mode-aware deadline phrase, shared by every "<verb> + when" label (reset countdowns,

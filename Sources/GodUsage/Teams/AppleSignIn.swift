@@ -148,7 +148,7 @@ final class AppleWebSignIn: AppleSignInProviding {
         case "cancelled":
             throw AppleSignInError.cancelled
         case "invalid_token":
-            throw AppleSignInError.failed("Apple's response couldn't be verified. Try again.")
+            throw AppleSignInError.failed(String(localized: "Apple's response couldn't be verified. Try again."))
         default:
             throw AppleSignInError.failed(String(localized: "Apple couldn't complete the sign-in. Try again."))
         }

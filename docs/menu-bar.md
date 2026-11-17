@@ -18,7 +18,7 @@ Star a metric from any row's right-click menu, or from the star beside a metric 
 
 Settings → Appearance → Icon Style:
 
-- **Text**: provider icon plus values. Two starred metrics from the same provider stack on two lines. Each value of a session (five-hour) or weekly window starts with a small dimmed **S** or **W**. The letter comes from the metric itself, not its position, so Weekly starred alone still reads **W**. Other metrics (model pools such as Codex Spark or Antigravity's Claude pool, credits, spend) have no letter. Hover an account segment to see that card's current name.
+- **Text**: provider icon plus values. Two starred metrics from the same provider stack on two lines. Each value of a session (five-hour) or weekly window starts with a small dimmed **S** or **W** (in Italian **H** for the session, the hours window, and **S** for settimanale, since both words start with S). The letter comes from the metric itself, not its position, so Weekly starred alone still reads **W**. Other metrics (model pools such as Codex Spark or Antigravity's Claude pool, credits, spend) have no letter. Hover an account segment to see that card's current name.
 - **Bars**: a compact glyph with the first four starred metrics that have a limit. Metrics without limits only appear in Text style.
 
 The strip uses color only for things worth acting on: orange for a warning, green for room to spare. A strip with no colored part looks exactly like the plain menu-bar text. Every colored part follows the light or dark menu bar.
@@ -27,7 +27,7 @@ The strip uses color only for things worth acting on: orange for a warning, gree
 
 In Text style a starred value reads, from most to least urgent:
 
-- **Session about to run out**: a session window with under 10% left shows the time until it resets, in orange, for example **↻38m**.
+- **Session about to run out**: a session window with under 10% left keeps its value and adds the time until it resets, both in orange, for example **S 8% ↻1h 7m** (**S 0% ↻1h 7m** once it's used up).
 - **Limit used up**: a limit that is used up (and doesn't fade the whole account, see below) shows the time until it resets, dimmed, for example **↻2d 4h**.
 - **Over pace**: when the dashboard shows the flame on a metric (on pace to run out before it resets), the value turns orange and adds the time to the projected limit, for example **91%·3d**, **91%·17h**, or **91%·45m**. It's the same projection as the dashboard's "Limit in 3d 17h". When the pace lands right at the limit, the value is orange with no time.
 - Otherwise the plain value.
@@ -43,16 +43,17 @@ While the dashboard's **Switch to …** suggestion is active (a provider is runn
 With **Show Rank in Menu Bar** on (Settings → Teams → You), the strip ends with a team segment for the selected team:
 
 - **Top line**: your rank, how it moved since yesterday when known (**▲1** in green, **▼1** dimmed), and your spend today in whole dollars, for example **#2 ▲1 · $37**.
-- **Bottom line**: your pace on your team plan today, from Live Pace (see [Teams](teams.md#leaderboards)) for the plans in the selected team that cover you:
+- **Bottom line**: your pace on your team plan today, from Live Pace (see [Teams](teams.md#leaderboards)), for the same plans This Week's Limit shows that cover you: the selected team's and the ones that cover you in your other teams. The plans load in the background (after each team upload, and with every refresh when older than 30 minutes), so the segment doesn't wait for the popover to open:
   - ahead of pace: **+41m** in orange (plain when you're ahead but slowing down, as on the dashboard),
   - under pace: **−2h 40m** in green,
   - on pace: **On pace**, dimmed,
   - over today's budget: a solid orange chip, for example **+6.3%**.
   
-  On several plans, the most urgent one shows: over today's budget beats ahead of pace, which beats the rest. Plans outside the working day (not started, day done, day off) don't count. Without a plan or pace data, the bottom line shows your share of the team's spend today (**30%**), or nothing while the team has spent nothing.
+  On several plans, the most urgent one shows: over today's budget beats ahead of pace, which beats the rest. Plans outside the working day (not started, day done, day off) don't count.
 - When your team data is more than an hour old (your usage last reached the server over an hour ago), the bottom line says so, dimmed, for example **Upd 2h**.
+- With neither a pace nor stale data, the segment is the top line alone, centered like a single value: **#2 · $37**.
 
-Your share of the team's spend today is in the segment's tooltip and VoiceOver label. The segment updates with each team upload, at most every 15 minutes, and whenever the dashboard's Team section loads Today. See [Teams](teams.md).
+Your share of the team's spend today ("30% of the team's spend today") is only in the segment's tooltip and VoiceOver label, never on the strip. The segment updates with each team upload, at most every 15 minutes, and whenever the dashboard's Team section loads Today. See [Teams](teams.md).
 
 ## Login unavailable
 

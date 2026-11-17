@@ -26,9 +26,9 @@ enum TeamMetric: Hashable, Sendable {
 
     var teamLabel: String {
         switch self {
-        case .spend: "team spend"
-        case .costPerMtok: "team cost per 1M tokens"
-        case .tokens: "team tokens"
+        case .spend: String(localized: "team spend", comment: "Caption under the team total")
+        case .costPerMtok: String(localized: "team cost per 1M tokens", comment: "Caption under the team total")
+        case .tokens: String(localized: "team tokens", comment: "Caption under the team total")
         }
     }
 

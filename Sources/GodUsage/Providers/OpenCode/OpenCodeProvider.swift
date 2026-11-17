@@ -34,7 +34,7 @@ enum OpenCodeUsageError: Error, LocalizedError, Equatable {
         case .unauthorized:
             return String(localized: "OpenCode Go key was rejected. Log into OpenCode Go again.")
         case .noGoSubscription:
-            return "No OpenCode Go subscription on this key."
+            return String(localized: "No OpenCode Go subscription on this key.")
         }
     }
 }

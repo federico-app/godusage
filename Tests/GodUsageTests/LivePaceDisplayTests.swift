@@ -109,7 +109,7 @@ final class LivePaceDisplayTests: XCTestCase {
     func testOverTheBudgetTheDetailsLineSummarizesTheDaysLeft() throws {
         // 14:00, 26% used at 2.5%/h: today ends at 31%, so Friday and Monday drop from 20% to 14.5%.
         let summary = try XCTUnwrap(LivePaceDisplay.futureSummary(live(used: 26, rate: 2.5, at: "14:00")))
-        XCTAssertEqual(summary.days, "Fri, Mon")
+        XCTAssertEqual(summary.days, "Fri and Mon")
         XCTAssertEqual(summary.planned, "20.0%")
         XCTAssertEqual(summary.budget, "14.5%")
         XCTAssertNil(LivePaceDisplay.futureSummary(live(used: 12, rate: 4, at: "11:30")))

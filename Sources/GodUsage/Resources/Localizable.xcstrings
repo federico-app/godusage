@@ -2,16 +2,6 @@
   "sourceLanguage" : "en",
   "strings" : {
     "" : {},
-    " of %@ today" : {
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " di %@ oggi"
-          }
-        }
-      }
-    },
     " · %lld days left" : {
       "localizations" : {
         "en" : {
@@ -72,32 +62,22 @@
         }
       }
     },
-    "%@ %@ in %@" : {
+    "%@ %@, Use This Now" : {
+      "comment" : "VoiceOver: account, its metrics, then a hint that this account should be used now",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ %2$@ in %3$@"
+            "value" : "%1$@ %2$@, Use This Now"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ %@ a %@"
+            "value" : "%1$@ %2$@, usalo ora"
           }
         }
       }
-    },
-    "%@ %@: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ %2$@: %3$@"
-          }
-        }
-      },
-      "shouldTranslate" : false
     },
     "%@ (Owner)" : {
       "localizations" : {
@@ -128,6 +108,28 @@
         }
       }
     },
+    "%@ Click to connect." : {
+      "comment" : "Header notice tooltip; the argument is the notice sentence",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Fai clic per collegare."
+          }
+        }
+      }
+    },
+    "%@ Click to refresh." : {
+      "comment" : "Header notice tooltip; the argument is the notice sentence",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Fai clic per aggiornare."
+          }
+        }
+      }
+    },
     "%@ Ended" : {
       "localizations" : {
         "it" : {
@@ -144,6 +146,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@: accesso richiesto"
+          }
+        }
+      }
+    },
+    "%@ PACE" : {
+      "comment" : "Member detail: uppercase tile label, the month's spend projection, e.g. NOVEMBER PACE",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROIEZIONE DI %@"
+          }
+        }
+      }
+    },
+    "%@ Passed You" : {
+      "comment" : "Overtake alert title; the value is one or more names",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorpasso di %@"
           }
         }
       }
@@ -168,6 +192,23 @@
         }
       }
     },
+    "%@ Usage Exhausted, Resets %@" : {
+      "comment" : "VoiceOver: account out of usage, then when the limit resets",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ Usage Exhausted, Resets %2$@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilizzo %1$@ esaurito, si azzera %2$@"
+          }
+        }
+      }
+    },
     "%@ Won %@" : {
       "localizations" : {
         "en" : {
@@ -180,6 +221,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ ha vinto %@"
+          }
+        }
+      }
+    },
+    "%@ ahead of pace" : {
+      "comment" : "Live Pace pill; the value is a duration, e.g. 22 min",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sopra il ritmo"
+          }
+        }
+      }
+    },
+    "%@ ahead of pace, but slowing down." : {
+      "comment" : "Live Pace alert; the value is a duration, e.g. 9 min",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sopra il ritmo, ma in rallentamento."
+          }
+        }
+      }
+    },
+    "%@ ahead of pace." : {
+      "comment" : "Live Pace alert; the value is a duration, e.g. 9 min",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sopra il ritmo."
           }
         }
       }
@@ -227,12 +301,73 @@
         }
       }
     },
+    "%@ behind pace, but speeding up." : {
+      "comment" : "Live Pace alert; the value is a duration, e.g. 9 min",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sotto il ritmo, ma in accelerazione."
+          }
+        }
+      }
+    },
+    "%@ behind pace." : {
+      "comment" : "Live Pace alert; the value is a duration, e.g. 9 min",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sotto il ritmo."
+          }
+        }
+      }
+    },
     "%@ champion" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Campione di %@"
+          }
+        }
+      }
+    },
+    "%@ champion: top spender of the month" : {
+      "comment" : "Member detail chip tooltip; the value is a month and year",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Campione di %@: chi ha speso di più nel mese"
+          }
+        }
+      }
+    },
+    "%@ drop from %@ to %@ a day" : {
+      "comment" : "The working days left: their planned budget, then the lowered one.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ drop from %2$@ to %3$@ a day"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: da %@ a %@ al giorno"
+          }
+        }
+      }
+    },
+    "%@ drop to %@." : {
+      "comment" : "Live Pace note: the next working days' budget goes down, e.g. Wed–Mon drop to 18.4%",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ scendono al %@."
           }
         }
       }
@@ -296,6 +431,17 @@
         }
       }
     },
+    "%@ in progress" : {
+      "comment" : "Today in the week's boxes.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ in corso"
+          }
+        }
+      }
+    },
     "%@ in the last hour" : {
       "localizations" : {
         "it" : {
@@ -326,6 +472,71 @@
         }
       }
     },
+    "%@ is on pace for %@× its cost and renews in %lld days. Use %@ to get the team's money's worth." : {
+      "comment" : "Usage suggestion: a team plan name, how many times its cost it is on pace to use (e.g. 0.4), days until it renews, then a provider name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo %1$@ renderà %2$@× il suo costo e si rinnova tra %3$lld giorni. Usa %4$@ per far fruttare la spesa del team."
+          }
+        }
+      }
+    },
+    "%@ is on pace for %@× its cost and renews tomorrow. Use %@ to get the team's money's worth." : {
+      "comment" : "Usage suggestion: a team plan name, how many times its cost it is on pace to use (e.g. 0.4), then a provider name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo %1$@ renderà %2$@× il suo costo e si rinnova domani. Usa %3$@ per far fruttare la spesa del team."
+          }
+        }
+      }
+    },
+    "%@ is on pace for %lld%% of its quota and renews in %lld days. Use %@ to get the team's money's worth." : {
+      "comment" : "Usage suggestion: a team plan name, the share of its quota on pace to be used, days until it renews, then a provider name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo %1$@ userà il %2$lld%% della sua quota e si rinnova tra %3$lld giorni. Usa %4$@ per far fruttare la spesa del team."
+          }
+        }
+      }
+    },
+    "%@ is on pace for %lld%% of its quota and renews tomorrow. Use %@ to get the team's money's worth." : {
+      "comment" : "Usage suggestion: a team plan name, the share of its quota on pace to be used, then a provider name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo %1$@ userà il %2$lld%% della sua quota e si rinnova domani. Usa %3$@ per far fruttare la spesa del team."
+          }
+        }
+      }
+    },
+    "%@ is on pace to hit its %@ limit before it resets. %@ has %lld%% of its %@ left." : {
+      "comment" : "Usage suggestion: provider, its limit such as Weekly, then another provider, the percentage it has left and its limit name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo %1$@ raggiungerà il limite %2$@ prima che si azzeri. A %3$@ resta il %4$lld%% del limite %5$@."
+          }
+        }
+      }
+    },
+    "%@ is the solid line, %@ the dashed one." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ è la linea continua, %2$@ quella tratteggiata."
+          }
+        }
+      }
+    },
     "%@ led with %@." : {
       "localizations" : {
         "en" : {
@@ -342,7 +553,85 @@
         }
       }
     },
+    "%@ left" : {
+      "comment" : "A meter reading in Left mode or a remaining balance, e.g. 95% left or $1,503.00 left",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ rimanente"
+          }
+        }
+      }
+    },
+    "%@ limit" : {
+      "comment" : "A dollar limit under a meter, e.g. $100 limit",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "limite di %@"
+          }
+        }
+      }
+    },
+    "%@ lowered" : {
+      "comment" : "A working day left, its budget lowered.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ridotto"
+          }
+        }
+      }
+    },
+    "%@ lowered to %@" : {
+      "comment" : "A working day left, its budget lowered to a share.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ridotto a %@"
+          }
+        }
+      }
+    },
+    "%@ more today on budget · resets %@" : {
+      "comment" : "Points left in today's budget; when the weekly limit resets.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ancora %@ oggi nel budget · reset %@"
+          }
+        }
+      }
+    },
+    "%@ moved ahead of you in %@ by spend over the last 7 days." : {
+      "comment" : "Overtake alert: one or more names, then the team",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorpasso in %2$@: %1$@ davanti a te per spesa negli ultimi 7 giorni."
+          }
+        }
+      }
+    },
+    "%@ no data" : {
+      "comment" : "A day in the week's boxes.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ nessun dato"
+          }
+        }
+      }
+    },
     "%@ of %@ today" : {
+      "comment" : "Today's use, bold, against today's budget.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -354,6 +643,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ di %@ oggi"
+          }
+        }
+      }
+    },
+    "%@ of %lld" : {
+      "comment" : "Member detail, PLACE tile: an ordinal rank and the member count, e.g. 1st of 6",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ di %lld"
           }
         }
       }
@@ -374,12 +674,142 @@
         }
       }
     },
+    "%@ of quota" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ della quota"
+          }
+        }
+      }
+    },
+    "%@ of quota used" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ della quota usata"
+          }
+        }
+      }
+    },
     "%@ of the plan's quota used" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ della quota del piano usata"
+          }
+        }
+      }
+    },
+    "%@ of the week · %@ today · resets %@" : {
+      "comment" : "An account's week: share used, share used today, when it resets",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ della settimana · %2$@ oggi · reset %3$@"
+          }
+        }
+      }
+    },
+    "%@ off" : {
+      "comment" : "A day without working hours, in the week's boxes.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ libero"
+          }
+        }
+      }
+    },
+    "%@ on %@." : {
+      "comment" : "Live Pace note on a day off: the next working days' budget, e.g. 18.4% on Wed–Mon",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ per %@."
+          }
+        }
+      }
+    },
+    "%@ over budget" : {
+      "comment" : "Today in the week's boxes.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ oltre il budget"
+          }
+        }
+      }
+    },
+    "%@ over today" : {
+      "comment" : "Live Pace pill: how far today's use went past today's budget, e.g. 6.3% over today",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ oltre oggi"
+          }
+        }
+      }
+    },
+    "%@ over today's budget · resets %@" : {
+      "comment" : "Points over today's budget; when the weekly limit resets.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ oltre il budget di oggi · reset %@"
+          }
+        }
+      }
+    },
+    "%@ planned" : {
+      "comment" : "A working day left in the week's boxes.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ pianificato"
+          }
+        }
+      }
+    },
+    "%@ purchased" : {
+      "comment" : "Credits bought, under a meter, e.g. $100 purchased",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ acquistati"
+          }
+        }
+      }
+    },
+    "%@ rise to %@." : {
+      "comment" : "Live Pace note: the next working days' budget goes up, e.g. Wed–Mon rise to 18.4%",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ salgono al %@."
+          }
+        }
+      }
+    },
+    "%@ so far" : {
+      "comment" : "A week's share of the limit while the week still runs",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ finora"
           }
         }
       }
@@ -411,6 +841,17 @@
         }
       }
     },
+    "%@ spent" : {
+      "comment" : "A spend amount, e.g. $4.08 spent",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ spesi"
+          }
+        }
+      }
+    },
     "%@ timed out after %llds." : {
       "localizations" : {
         "en" : {
@@ -427,22 +868,88 @@
         }
       }
     },
-    "%@ today" : {
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ oggi"
-          }
-        }
-      }
-    },
     "%@ tokens" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ token"
+          }
+        }
+      }
+    },
+    "%@ under pace" : {
+      "comment" : "Live Pace pill; the value is a duration, e.g. 2h 40m",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ sotto il ritmo"
+          }
+        }
+      }
+    },
+    "%@ unused" : {
+      "comment" : "Dollars of quota left unused",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ inutilizzati"
+          }
+        }
+      }
+    },
+    "%@ used" : {
+      "comment" : "A day gone by in the week's boxes.\nA meter reading in Used mode, e.g. 5% used or $12.00 used",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ usato"
+          }
+        }
+      }
+    },
+    "%@ used %@ points more of its weekly limit than %@." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ha usato %2$@ punti in più del suo limite settimanale rispetto a %3$@."
+          }
+        }
+      }
+    },
+    "%@ used today" : {
+      "comment" : "Today's use, bold.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ usato oggi"
+          }
+        }
+      }
+    },
+    "%@ will hit its %@ limit before the reset. %@ has %@ of today’s budget left." : {
+      "comment" : "Usage suggestion: provider, its limit such as Weekly, then a team plan name and the share of today's budget it has left, e.g. 7.5%",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ raggiungerà il limite %2$@ prima dell’azzeramento. A %3$@ resta il %4$@ del budget di oggi."
+          }
+        }
+      }
+    },
+    "%@ will hit its %@ limit before the reset. %@ is %@ under pace." : {
+      "comment" : "Usage suggestion: provider, its limit such as Weekly, then a team plan name and how far under pace it is, e.g. 2h 48m",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ raggiungerà il limite %2$@ prima dell’azzeramento. %3$@ è %4$@ sotto il ritmo."
           }
         }
       }
@@ -458,6 +965,50 @@
       },
       "shouldTranslate" : false
     },
+    "%@ · %@ at %@" : {
+      "comment" : "Used-up weekly limit: the countdown to its reset, then the reset's date and time, e.g. Resets in 2d 5h · Feb 15 at 3:45 PM",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@ alle %3$@"
+          }
+        }
+      }
+    },
+    "%@ · %lld hidden" : {
+      "comment" : "Accounts of a plan, then how many an owner hid, e.g. 1 account · 1 hidden",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · nascosti: %lld"
+          }
+        }
+      }
+    },
+    "%@ · most in the team" : {
+      "comment" : "Member detail, LAST HOUR tile: a momentum level (Fast), and they spent the most in the team",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · il più alto del team"
+          }
+        }
+      }
+    },
+    "%@ · spending fast, level %lld of 3" : {
+      "comment" : "Member momentum for VoiceOver: the spend in the last hour, then the level",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · spesa veloce, livello %lld di 3"
+          }
+        }
+      }
+    },
     "%@ – %@" : {
       "localizations" : {
         "en" : {
@@ -469,38 +1020,37 @@
       },
       "shouldTranslate" : false
     },
-    "%@%lld" : {
+    "%@ – %@ (this week)" : {
       "localizations" : {
-        "en" : {
+        "it" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@%2$lld"
+            "state" : "translated",
+            "value" : "%1$@ – %2$@ (questa settimana)"
           }
         }
-      },
-      "shouldTranslate" : false
+      }
     },
-    "%@, %@" : {
+    "%@ — on pace to leave most of it unused this cycle." : {
+      "comment" : "<plan list> — one underused plan",
       "localizations" : {
-        "en" : {
+        "it" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@, %2$@"
+            "state" : "translated",
+            "value" : "%@ — rischia di restare in gran parte inutilizzato in questo ciclo."
           }
         }
-      },
-      "shouldTranslate" : false
+      }
     },
-    "%@, %lld" : {
+    "%@ — on pace to leave most of them unused this cycle." : {
+      "comment" : "<plan list> — several underused plans",
       "localizations" : {
-        "en" : {
+        "it" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@, %2$lld"
+            "state" : "translated",
+            "value" : "%@ — rischiano di restare in gran parte inutilizzati in questo ciclo."
           }
         }
-      },
-      "shouldTranslate" : false
+      }
     },
     "%@, opens in browser" : {
       "localizations" : {
@@ -508,6 +1058,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@, si apre nel browser"
+          }
+        }
+      }
+    },
+    "%@/h" : {
+      "comment" : "Live Pace: a rate of the weekly limit per hour, e.g. 10.0%/h",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@/h"
+          }
+        }
+      }
+    },
+    "%@: %@ → %@" : {
+      "comment" : "The working days left: their planned budget, then the lowered one.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: %@ → %@"
           }
         }
       }
@@ -568,6 +1140,23 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%@–%@" : {
+      "comment" : "A range of weekdays, e.g. Wed–Mon",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@–%2$@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@–%2$@"
           }
         }
       }
@@ -815,6 +1404,87 @@
         }
       }
     },
+    "%lld accounts couldn't be identified (an older GodUsage, or no Claude Code or Codex sign-in on that Mac). If one is used on several Macs, it counts once per Mac, so quota, Per Day, and Sessions may be off." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld account couldn't be identified (an older GodUsage, or no Claude Code or Codex sign-in on that Mac). If one is used on several Macs, it counts once per Mac, so quota, Per Day, and Sessions may be off."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld accounts couldn't be identified (an older GodUsage, or no Claude Code or Codex sign-in on that Mac). If one is used on several Macs, it counts once per Mac, so quota, Per Day, and Sessions may be off."
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld account non identificato (una versione meno recente di GodUsage, o nessun accesso a Claude Code o Codex su quel Mac). Se è usato su più Mac conta una volta per Mac, quindi quota, Al giorno e Sessioni potrebbero non essere esatti."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld account non identificati (una versione meno recente di GodUsage, o nessun accesso a Claude Code o Codex su quel Mac). Se uno è usato su più Mac conta una volta per Mac, quindi quota, Al giorno e Sessioni potrebbero non essere esatti."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld active now" : {
+      "comment" : "Leaderboard header: members spending fast right now",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld active now"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld active now"
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld attivo ora"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld attivi ora"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld available" : {
       "localizations" : {
         "en" : {
@@ -848,6 +1518,46 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld disponibili"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cycles estimated" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cycle estimated"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cycles estimated"
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ciclo stimato"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cicli stimati"
                 }
               }
             }
@@ -1055,6 +1765,17 @@
         }
       }
     },
+    "%lld min" : {
+      "comment" : "A duration in minutes, e.g. 44 min",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min"
+          }
+        }
+      }
+    },
     "%lld minutes" : {
       "localizations" : {
         "en" : {
@@ -1135,6 +1856,47 @@
         }
       }
     },
+    "%lld more" : {
+      "comment" : "Member detail: the row for every other model",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld more"
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld altro"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "altri %lld"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld more with no open week" : {
       "localizations" : {
         "en" : {
@@ -1175,6 +1937,17 @@
         }
       }
     },
+    "%lld of %lld" : {
+      "comment" : "Sessions at the limit out of all sessions, e.g. 2 of 14",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld su %2$lld"
+          }
+        }
+      }
+    },
     "%lld of %lld hit" : {
       "localizations" : {
         "en" : {
@@ -1187,6 +1960,47 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld su %lld raggiunti"
+          }
+        }
+      }
+    },
+    "%lld resets" : {
+      "comment" : "Usage suggestion: how many reset credits you have, e.g. 2 resets",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld reset"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld resets"
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld reset"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld reset"
+                }
+              }
+            }
           }
         }
       }
@@ -1311,8 +2125,59 @@
         }
       }
     },
+    "%lld weeks estimated" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld week estimated"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld weeks estimated"
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld settimana stimata"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld settimane stimate"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld%%" : {
       "shouldTranslate" : false
+    },
+    "%lldd" : {
+      "comment" : "Compact duration: days",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldg"
+          }
+        }
+      }
     },
     "%lldd %lldh" : {
       "comment" : "Compact duration: days and hours",
@@ -1331,9 +2196,31 @@
         }
       }
     },
+    "%lldd ago" : {
+      "comment" : "Days since a member's last sync, short.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld g fa"
+          }
+        }
+      }
+    },
     "%lldh" : {
       "comment" : "Compact duration: hours",
       "shouldTranslate" : false
+    },
+    "%lldh %@m" : {
+      "comment" : "A duration in hours and minutes, e.g. 1h 05m",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldh %@m"
+          }
+        }
+      }
     },
     "%lldh %lldm" : {
       "comment" : "Compact duration: hours and minutes",
@@ -1347,12 +2234,42 @@
       },
       "shouldTranslate" : false
     },
+    "%lldh ago" : {
+      "comment" : "Hours since a member's last sync, short.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld h fa"
+          }
+        }
+      }
+    },
     "%lldm" : {
       "comment" : "Compact duration: minutes",
       "shouldTranslate" : false
     },
-    "+%@/h" : {
-      "shouldTranslate" : false
+    "%lldm ago" : {
+      "comment" : "Minutes since a member's last sync, short.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min fa"
+          }
+        }
+      }
+    },
+    "+%@ last hour" : {
+      "comment" : "Spend in the last hour, under a member's bar.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%@ ultima ora"
+          }
+        }
+      }
     },
     "/ mo" : {
       "localizations" : {
@@ -1364,22 +2281,13 @@
         }
       }
     },
-    "1 Plan Is Underused" : {
+    "1 day left" : {
+      "comment" : "Member detail, month projection tile",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "1 piano è sottoutilizzato"
-          }
-        }
-      }
-    },
-    "1 more with no open week" : {
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Altro 1 senza settimana aperta"
+            "value" : "1 giorno rimasto"
           }
         }
       }
@@ -1416,6 +2324,17 @@
         }
       }
     },
+    "30d" : {
+      "comment" : "Total Spend period switcher, narrowest form of Last 30 Days",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "30g"
+          }
+        }
+      }
+    },
     "59s" : {
       "shouldTranslate" : false
     },
@@ -1425,6 +2344,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "7 giorni"
+          }
+        }
+      }
+    },
+    "7d" : {
+      "comment" : "Total Spend period switcher, narrowest form of Last 7 Days",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "7g"
+          }
+        }
+      }
+    },
+    "A former member" : {
+      "comment" : "A reaction giver who left the team",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un ex membro"
           }
         }
       }
@@ -1445,6 +2386,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Una pagina di sola lettura che chiunque abbia il link può aprire, senza accedere."
+          }
+        }
+      }
+    },
+    "A reset credit expires within 48 hours" : {
+      "comment" : "VoiceOver: status dot on a reset credits row",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un reset scade entro 48 ore"
+          }
+        }
+      }
+    },
+    "A reset credit expires within 7 days" : {
+      "comment" : "VoiceOver: status dot on a reset credits row",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un reset scade entro 7 giorni"
           }
         }
       }
@@ -1471,12 +2434,43 @@
         }
       }
     },
+    "API value so far" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "valore API finora"
+          }
+        }
+      }
+    },
+    "About %lld%% of your %@ will go unused: it resets in %@. Use %@ first." : {
+      "comment" : "Usage suggestion: a percentage, a limit name such as Weekly, a duration such as 1d 4h, then a provider name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Circa il %1$lld%% del limite %2$@ resterà inutilizzato: si azzera tra %3$@. Usa prima %4$@."
+          }
+        }
+      }
+    },
     "About GodUsage" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Informazioni su GodUsage"
+          }
+        }
+      }
+    },
+    "Above pace: at this rate an account uses up its week in about %@ working days · %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sopra il ritmo: a questo passo un account esaurisce la settimana in circa %1$@ giorni lavorativi · %2$@"
           }
         }
       }
@@ -1537,6 +2531,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Account di questa settimana"
+          }
+        }
+      }
+    },
+    "Active now: %@ in the last hour" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attivo ora: %@ nell’ultima ora"
           }
         }
       }
@@ -1653,6 +2657,17 @@
         }
       }
     },
+    "All" : {
+      "comment" : "Members shown on the dashboard: every member.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tutti"
+          }
+        }
+      }
+    },
     "Allow Notifications" : {
       "localizations" : {
         "it" : {
@@ -1694,6 +2709,26 @@
         }
       }
     },
+    "An even pace spreads today’s budget (%@) over the working hours until %@." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un ritmo regolare distribuisce il budget di oggi (%@) sull’orario di lavoro fino alle %@."
+          }
+        }
+      }
+    },
+    "An even pace spreads today’s budget (%@) over the working hours." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un ritmo regolare distribuisce il budget di oggi (%@) sull’orario di lavoro."
+          }
+        }
+      }
+    },
     "An owner made you a viewer, so none of your accounts count in this team." : {
       "localizations" : {
         "it" : {
@@ -1710,6 +2745,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Un proprietario ti ha reso osservatore: vedi il team, ma il tuo utilizzo e i tuoi account non contano."
+          }
+        }
+      }
+    },
+    "Another provider’s plan is running hot: this one has room." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il piano di un altro provider sta correndo troppo: questo ha margine."
           }
         }
       }
@@ -1774,12 +2819,33 @@
         }
       }
     },
+    "Applause" : {
+      "comment" : "The 👏 reaction, for VoiceOver",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applausi"
+          }
+        }
+      }
+    },
     "Apple couldn't complete the sign-in. Try again." : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apple non è riuscita a completare l’accesso. Riprova."
+          }
+        }
+      }
+    },
+    "Apple's response couldn't be verified. Try again." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile verificare la risposta di Apple. Riprova."
           }
         }
       }
@@ -1796,12 +2862,109 @@
         }
       }
     },
+    "At the current pace, though, you’ll end the day at %@, over the budget." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al ritmo attuale, però, chiuderai la giornata a %@, oltre il budget."
+          }
+        }
+      }
+    },
+    "At the current pace, though, you’ll end the day at %@, under the budget." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al ritmo attuale, però, chiuderai la giornata a %@, sotto il budget."
+          }
+        }
+      }
+    },
+    "At this pace" : {
+      "comment" : "Chart line label: where the current pace leads.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo"
+          }
+        }
+      }
+    },
+    "At this pace today ends at %@, over its budget." : {
+      "comment" : "Live Pace note; the value is a percentage of the weekly limit",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo oggi chiude al %@, oltre il budget."
+          }
+        }
+      }
+    },
+    "At this pace today’s budget runs out at %@." : {
+      "comment" : "Live Pace note; the value is a time",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo il budget di oggi finisce alle %@."
+          }
+        }
+      }
+    },
     "At this pace, today’s budget runs out at least 30 minutes before your working day ends." : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "A questo ritmo, il budget di oggi finisce almeno 30 minuti prima della fine della giornata lavorativa."
+          }
+        }
+      }
+    },
+    "At this rate %@ of today’s budget moves to %@." : {
+      "comment" : "Live Pace Room to Spare alert: a percentage, then the next working days (Fri and Mon)",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo il %@ del budget di oggi passa a %@."
+          }
+        }
+      }
+    },
+    "At this rate %@ of your weekly limit is lost at the reset %@." : {
+      "comment" : "Live Pace Room to Spare alert: a percentage, then the reset's weekday and time (Mon 09:00)",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo perdi il %@ del limite settimanale all’azzeramento di %@."
+          }
+        }
+      }
+    },
+    "At this rate %@ of your weekly limit is lost at the reset." : {
+      "comment" : "Live Pace Room to Spare alert; the value is a percentage",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo perdi il %@ del limite settimanale all’azzeramento."
+          }
+        }
+      }
+    },
+    "At this rate today’s budget runs out at %@." : {
+      "comment" : "Live Pace Slow Down alert; the value is a time",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A questo ritmo il budget di oggi finisce alle %@."
           }
         }
       }
@@ -1813,6 +2976,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Automatico"
+          }
+        }
+      }
+    },
+    "Average peak %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Picco medio %@"
+          }
+        }
+      }
+    },
+    "Average session peak" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Picco medio per sessione"
           }
         }
       }
@@ -1839,6 +3022,16 @@
         }
       }
     },
+    "Bar colors: %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colori delle barre: %@"
+          }
+        }
+      }
+    },
     "Bars" : {
       "comment" : "Menu bar style option: show meter bars",
       "localizations" : {
@@ -1846,6 +3039,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Barre"
+          }
+        }
+      }
+    },
+    "Below pace: at this rate an account uses about %lld%% of its week · %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sotto il ritmo: a questo passo un account usa circa il %1$lld%% della settimana · %2$@"
           }
         }
       }
@@ -1860,7 +3063,79 @@
         }
       }
     },
+    "Blended cost per million tokens %@ across %lld providers" : {
+      "comment" : "Accessibility: the Total Spend bar",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blended cost per million tokens %1$@ across %2$#@providers@"
+          },
+          "substitutions" : {
+            "providers" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg provider"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg providers"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Costo medio per milione di token %1$@ su %2$#@providers@"
+          },
+          "substitutions" : {
+            "providers" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg provider"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg provider"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Both used about the same share of their weekly limit." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrambi hanno usato circa la stessa quota del limite settimanale."
+          }
+        }
+      }
+    },
     "Break" : {
+      "comment" : "A break in the working hours, on the day chart.",
       "localizations" : {
         "it" : {
           "stringUnit" : {
@@ -1876,6 +3151,68 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pausa %@"
+          }
+        }
+      }
+    },
+    "Budget %@" : {
+      "comment" : "Chart line label: today's budget.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Budget %@"
+          }
+        }
+      }
+    },
+    "Budget ends %@" : {
+      "comment" : "Chart axis label: when today's budget runs out at the current pace (a time).",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Budget esaurito alle %@"
+          }
+        }
+      }
+    },
+    "Busiest day" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giorno più intenso"
+          }
+        }
+      }
+    },
+    "By Day" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per giorno"
+          }
+        }
+      }
+    },
+    "By Model" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per modello"
+          }
+        }
+      }
+    },
+    "By Provider" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per provider"
           }
         }
       }
@@ -1992,6 +3329,17 @@
         }
       }
     },
+    "Claim a %@ Reset" : {
+      "comment" : "Usage suggestion title; the argument is a provider or account name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa un reset di %@"
+          }
+        }
+      }
+    },
     "Claude" : {
       "extractionState" : "manual",
       "generatesSymbol" : false,
@@ -2100,6 +3448,17 @@
         }
       }
     },
+    "Clown" : {
+      "comment" : "The 🤡 reaction, for VoiceOver",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clown"
+          }
+        }
+      }
+    },
     "Codex auth data is invalid." : {
       "localizations" : {
         "it" : {
@@ -2156,6 +3515,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Confronta"
+          }
+        }
+      }
+    },
+    "Compare AI Usage With Friends" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confronta l’utilizzo AI con gli amici"
           }
         }
       }
@@ -2252,6 +3621,17 @@
         }
       }
     },
+    "Copy %@ Screenshot" : {
+      "comment" : "Accessibility: copy a screenshot of a card; the argument is its title",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia screenshot di %@"
+          }
+        }
+      }
+    },
     "Copy Log Path" : {
       "localizations" : {
         "it" : {
@@ -2262,12 +3642,54 @@
         }
       }
     },
+    "Cost" : {
+      "comment" : "Total Spend card metric: dollars spent",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Costo"
+          }
+        }
+      }
+    },
+    "Cost/MTok" : {
+      "comment" : "Total Spend card metric: dollars per million tokens",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Costo/MTok"
+          }
+        }
+      }
+    },
     "Could Not Save" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Impossibile salvare"
+          }
+        }
+      }
+    },
+    "Couldn't Load the Leaderboard" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile caricare la classifica"
+          }
+        }
+      }
+    },
+    "Couldn't change the plan's accounts. Try again." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile modificare gli account del piano. Riprova."
           }
         }
       }
@@ -2288,6 +3710,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Impossibile installare l’helper del terminale: %@"
+          }
+        }
+      }
+    },
+    "Couldn't make the image" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile creare l’immagine"
           }
         }
       }
@@ -2452,6 +3884,16 @@
         }
       }
     },
+    "Couldn’t reach the teams server. Check your connection and try again." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile raggiungere il server di Teams. Controlla la connessione e riprova."
+          }
+        }
+      }
+    },
     "Count My Usage" : {
       "localizations" : {
         "it" : {
@@ -2493,6 +3935,27 @@
         }
       }
     },
+    "Covers %@" : {
+      "comment" : "Who a plan covers: a list of member names",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copre %@"
+          }
+        }
+      }
+    },
+    "Covers %@ · not you" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copre %@ · non te"
+          }
+        }
+      }
+    },
     "Create" : {
       "localizations" : {
         "it" : {
@@ -2509,6 +3972,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Crea file di istruzioni"
+          }
+        }
+      }
+    },
+    "Create a team or join one with an invite link." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea un team o unisciti a uno con un link di invito."
           }
         }
       }
@@ -2690,11 +4163,34 @@
       }
     },
     "Day" : {
+      "comment" : "Chart grouping: one bar per day",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Giorno"
+          }
+        }
+      }
+    },
+    "Day Done" : {
+      "comment" : "Live Pace pill after the working day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giornata finita"
+          }
+        }
+      }
+    },
+    "Day Off" : {
+      "comment" : "Live Pace pill on a day without working hours",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giorno libero"
           }
         }
       }
@@ -2912,18 +4408,46 @@
         }
       }
     },
-    "Down %lld since %@" : {
+    "Down %lld since the previous 30 days" : {
+      "comment" : "Member rank movement: places lost",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Down %1$lld since %2$@"
-          }
-        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Giù di %lld da %@"
+            "value" : "Sceso di %lld rispetto ai 30 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Down %lld since the previous 7 days" : {
+      "comment" : "Member rank movement: places lost",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sceso di %lld rispetto ai 7 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Down %lld since the same days last month" : {
+      "comment" : "Member rank movement: places lost",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sceso di %lld rispetto agli stessi giorni del mese scorso"
+          }
+        }
+      }
+    },
+    "Down %lld since yesterday" : {
+      "comment" : "Member rank movement: places lost",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sceso di %lld rispetto a ieri"
           }
         }
       }
@@ -2948,12 +4472,43 @@
         }
       }
     },
+    "EFFICIENCY" : {
+      "comment" : "Member detail: uppercase tile label, dollars per million tokens",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "EFFICIENZA"
+          }
+        }
+      }
+    },
     "Each month's top spender. A month counts once it's over." : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chi ha speso di più ogni mese. Un mese conta solo quando è finito."
+          }
+        }
+      }
+    },
+    "Each person's most used models. The dot shows the provider." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I modelli più usati da ciascuno. Il pallino indica il provider."
+          }
+        }
+      }
+    },
+    "Each provider for both, left and right of the center line." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ogni provider per entrambi, a sinistra e a destra della linea centrale."
           }
         }
       }
@@ -3008,6 +4563,17 @@
         }
       }
     },
+    "Efficiency: %@ per million tokens" : {
+      "comment" : "Member detail, EFFICIENCY tile for VoiceOver",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Efficienza: %@ per milione di token"
+          }
+        }
+      }
+    },
     "Empty" : {
       "comment" : "Status badge: a memory source's instruction file is empty",
       "localizations" : {
@@ -3029,6 +4595,17 @@
         }
       }
     },
+    "Ended" : {
+      "comment" : "A finished challenge.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conclusa"
+          }
+        }
+      }
+    },
     "Enterprise usage data unavailable. Try again later." : {
       "localizations" : {
         "it" : {
@@ -3046,6 +4623,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Errore"
+          }
+        }
+      }
+    },
+    "Estimated locally, so it may be off" : {
+      "comment" : "Hover note on a spend estimated from local token counts",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stima locale, potrebbe non essere precisa"
+          }
+        }
+      }
+    },
+    "Even pace" : {
+      "comment" : "Chart line label: the pace that uses exactly today's budget.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ritmo regolare"
           }
         }
       }
@@ -3186,6 +4785,17 @@
       "generatesSymbol" : false,
       "shouldTranslate" : false
     },
+    "Fast" : {
+      "comment" : "Member momentum level 2 of 3: spending fast",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veloce"
+          }
+        }
+      }
+    },
     "Feedback" : {
       "comment" : "Memory fact type",
       "localizations" : {
@@ -3193,6 +4803,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Feedback"
+          }
+        }
+      }
+    },
+    "Fire" : {
+      "comment" : "The 🔥 reaction, for VoiceOver",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fuoco"
           }
         }
       }
@@ -3269,12 +4890,93 @@
         }
       }
     },
+    "From your Claude usage history (estimated)" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dalla cronologia di utilizzo di Claude (stima)"
+          }
+        }
+      }
+    },
+    "From your Claude usage history and pi (estimated)" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dalla cronologia di utilizzo di Claude e da pi (stima)"
+          }
+        }
+      }
+    },
+    "From your Codex logs (estimated)" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dai log di Codex (stima)"
+          }
+        }
+      }
+    },
+    "From your Codex logs and OpenCode (estimated)" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dai log di Codex e OpenCode (stima)"
+          }
+        }
+      }
+    },
+    "From your Codex logs and pi (estimated)" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dai log di Codex e pi (stima)"
+          }
+        }
+      }
+    },
+    "From your Codex logs, pi, and OpenCode (estimated)" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dai log di Codex, pi e OpenCode (stima)"
+          }
+        }
+      }
+    },
     "From your Cursor usage history" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dalla cronologia di utilizzo di Cursor"
+          }
+        }
+      }
+    },
+    "From your Cursor usage history." : {
+      "comment" : "Hover note on Cursor spend rows",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dalla cronologia di utilizzo di Cursor."
+          }
+        }
+      }
+    },
+    "From your Fugu Codex logs; estimated API-rate value, not billed spend (orchestration may be omitted)" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dai log di Fugu Codex; valore stimato a prezzi API, non spesa fatturata (l’orchestrazione può essere esclusa)"
           }
         }
       }
@@ -3418,6 +5120,16 @@
         }
       }
     },
+    "GodUsage %@, outdated" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GodUsage %@, non aggiornato"
+          }
+        }
+      }
+    },
     "GodUsage DEV build" : {
       "localizations" : {
         "it" : {
@@ -3458,6 +5170,16 @@
         }
       }
     },
+    "GodUsage couldn’t save your sign-in on this Mac." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GodUsage non è riuscito a salvare l’accesso su questo Mac."
+          }
+        }
+      }
+    },
     "GodUsage does not know where this harness keeps its instruction file." : {
       "localizations" : {
         "it" : {
@@ -3474,6 +5196,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "GodUsage ha bisogno del permesso per inviare avvisi."
+          }
+        }
+      }
+    },
+    "GodUsage, usage hidden while the screen is shared" : {
+      "comment" : "VoiceOver: the menu bar item while screen sharing hides the usage numbers",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GodUsage, utilizzo nascosto durante la condivisione dello schermo"
           }
         }
       }
@@ -3656,6 +5389,16 @@
         }
       }
     },
+    "Hide Week" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nascondi settimana"
+          }
+        }
+      }
+    },
     "Hide an account that isn't this plan's, like someone's own login." : {
       "localizations" : {
         "it" : {
@@ -3672,6 +5415,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stile icona"
+          }
+        }
+      }
+    },
+    "Idle · %lld" : {
+      "comment" : "The leaderboard group of members not spending right now, with how many.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inattivi · %lld"
           }
         }
       }
@@ -3817,6 +5571,16 @@
         }
       }
     },
+    "It’s too early in the day to color it." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "È troppo presto nella giornata per colorarlo."
+          }
+        }
+      }
+    },
     "Join" : {
       "localizations" : {
         "it" : {
@@ -3949,6 +5713,16 @@
         }
       }
     },
+    "Keychain could not be checked for this Mac's previous device identity." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile controllare nel Portachiavi l’identità precedente di questo Mac."
+          }
+        }
+      }
+    },
     "Keychain read failed with status %d." : {
       "localizations" : {
         "it" : {
@@ -4019,6 +5793,27 @@
         }
       }
     },
+    "LAST HOUR" : {
+      "comment" : "Member detail: uppercase tile label, spend in the last hour",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ULTIMA ORA"
+          }
+        }
+      }
+    },
+    "Last 12 Months" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultimi 12 mesi"
+          }
+        }
+      }
+    },
     "Last 30 Days" : {
       "extractionState" : "manual",
       "generatesSymbol" : false,
@@ -4063,12 +5858,33 @@
         }
       }
     },
+    "Last hour: no spend" : {
+      "comment" : "Member detail, LAST HOUR tile, for VoiceOver",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultima ora: nessuna spesa"
+          }
+        }
+      }
+    },
     "Last reported usage: %@" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ultimo utilizzo rilevato: %@"
+          }
+        }
+      }
+    },
+    "Last synced %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultima sincronizzazione: %@"
           }
         }
       }
@@ -4090,6 +5906,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apri al login"
+          }
+        }
+      }
+    },
+    "Leaderboard" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Classifica"
+          }
+        }
+      }
+    },
+    "Leading: %@ · %@" : {
+      "comment" : "A running challenge: leader, their value.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In testa: %@ · %@"
+          }
+        }
+      }
+    },
+    "Lean on %@" : {
+      "comment" : "Usage suggestion title: prefer this provider for now",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Punta su %@"
           }
         }
       }
@@ -4178,6 +6026,17 @@
         }
       }
     },
+    "Limit reached" : {
+      "comment" : "A usage meter that is used up",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limite raggiunto"
+          }
+        }
+      }
+    },
     "Limit soon" : {
       "comment" : "Usage is projected to hit the limit within minutes",
       "localizations" : {
@@ -4215,6 +6074,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Collegato %@"
+          }
+        }
+      }
+    },
+    "Live Pace" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ritmo in tempo reale"
           }
         }
       }
@@ -4396,6 +6265,16 @@
         }
       }
     },
+    "Members Shown" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Membri mostrati"
+          }
+        }
+      }
+    },
     "Members of this team will see your daily AI spend and tokens." : {
       "localizations" : {
         "it" : {
@@ -4518,12 +6397,33 @@
         }
       }
     },
+    "Models" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelli"
+          }
+        }
+      }
+    },
     "Monitor Your AI Subscriptions with GodUsage" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Monitora i tuoi abbonamenti IA con GodUsage"
+          }
+        }
+      }
+    },
+    "Month" : {
+      "comment" : "Chart grouping: one bar per month",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mese"
           }
         }
       }
@@ -4712,6 +6612,16 @@
         }
       }
     },
+    "No" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No"
+          }
+        }
+      }
+    },
     "No Agent Memory Found" : {
       "localizations" : {
         "it" : {
@@ -4763,6 +6673,16 @@
         }
       }
     },
+    "No OpenCode Go subscription on this key." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun abbonamento OpenCode Go su questa chiave."
+          }
+        }
+      }
+    },
     "No OpenRouter API key. Set OPENROUTER_API_KEY or add it to ~/.config/godusage/openrouter.json." : {
       "localizations" : {
         "it" : {
@@ -4779,6 +6699,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ancora nessun piano"
+          }
+        }
+      }
+    },
+    "No Teams Yet" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ancora nessun team"
           }
         }
       }
@@ -4819,6 +6749,47 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ancora nessuna sfida. Avviane una: spesa più bassa, più modelli, più token o migliore efficienza."
+          }
+        }
+      }
+    },
+    "No cost data for this period" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun dato di costo per questo periodo"
+          }
+        }
+      }
+    },
+    "No cost-per-token data for this period" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun dato di costo per token per questo periodo"
+          }
+        }
+      }
+    },
+    "No data" : {
+      "comment" : "A dashboard row with no metric behind it",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun dato"
+          }
+        }
+      }
+    },
+    "No finished working day read yet · %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ancora nessun giorno lavorativo concluso · %@"
           }
         }
       }
@@ -4873,6 +6844,26 @@
         }
       }
     },
+    "No token data for this period" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun dato sui token per questo periodo"
+          }
+        }
+      }
+    },
+    "No tokens yet" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ancora nessun token"
+          }
+        }
+      }
+    },
     "No usage" : {
       "localizations" : {
         "it" : {
@@ -4888,7 +6879,18 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nessun utilizzo in %@"
+            "value" : "Nessun utilizzo (%@)"
+          }
+        }
+      }
+    },
+    "No usage in this period" : {
+      "comment" : "Hover note on a spend row that reads zero",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun utilizzo in questo periodo"
           }
         }
       }
@@ -4923,6 +6925,69 @@
         }
       }
     },
+    "No winner" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun vincitore"
+          }
+        }
+      }
+    },
+    "No working days before the reset." : {
+      "comment" : "Live Pace note on a day off",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna giornata lavorativa prima dell’azzeramento."
+          }
+        }
+      }
+    },
+    "No working hours today" : {
+      "comment" : "Live Pace Details: the hours line on a day off",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun orario di lavoro oggi"
+          }
+        }
+      }
+    },
+    "No working hours today." : {
+      "comment" : "Live Pace chart summary on a day off",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun orario di lavoro oggi."
+          }
+        }
+      }
+    },
+    "No working hours today: the weekly limit is spread over the working days until the reset." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun orario di lavoro oggi: il limite settimanale è distribuito sulle giornate lavorative fino al reset."
+          }
+        }
+      }
+    },
+    "Nobody" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuno"
+          }
+        }
+      }
+    },
     "Nobody qualified this time." : {
       "localizations" : {
         "it" : {
@@ -4933,12 +6998,33 @@
         }
       }
     },
+    "Nobody qualifies yet" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ancora nessuno in gara"
+          }
+        }
+      }
+    },
     "None" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nessuno"
+          }
+        }
+      }
+    },
+    "Normal pace" : {
+      "comment" : "Member detail, LAST HOUR tile: spend that earned no momentum level",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ritmo normale"
           }
         }
       }
@@ -5013,6 +7099,79 @@
         }
       }
     },
+    "Not started" : {
+      "comment" : "A session window that hasn't begun because no message was sent yet",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non iniziata"
+          }
+        }
+      }
+    },
+    "Not synced for %lld days" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Not synced for %lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Not synced for %lld days"
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Non sincronizzato da %lld giorno"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Non sincronizzato da %lld giorni"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Not synced yet" : {
+      "comment" : "Member detail footer: the member's Macs never uploaded",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mai sincronizzato"
+          }
+        }
+      }
+    },
+    "Not synced yet · %@" : {
+      "comment" : "Member detail footer: never uploaded, then the app version",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mai sincronizzato · %@"
+          }
+        }
+      }
+    },
     "Nothing to reset right now" : {
       "localizations" : {
         "it" : {
@@ -5053,6 +7212,28 @@
         }
       }
     },
+    "Now %@" : {
+      "comment" : "Chart axis label: the current time.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ora %@"
+          }
+        }
+      }
+    },
+    "Now %@, expected %@ (the dark tick on today’s bar)." : {
+      "comment" : "Today's use now and the use an even pace expects now.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ora %@, previsto %@ (la tacca scura sulla barra di oggi)."
+          }
+        }
+      }
+    },
     "OK" : {
       "localizations" : {
         "it" : {
@@ -5073,6 +7254,50 @@
         }
       }
     },
+    "On pace" : {
+      "comment" : "Live Pace pill: today's use is where it should be\nMenu bar team segment and pace pill: right on the plan's pace. Keep it short.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In linea"
+          }
+        }
+      }
+    },
+    "On pace for %@ in %@" : {
+      "comment" : "A month-end spend projection: amount, month.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proiezione per %2$@: %1$@"
+          }
+        }
+      }
+    },
+    "On pace for %@ in %@, %@" : {
+      "comment" : "Member detail, month projection for VoiceOver: a dollar amount, the month, the days left",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proiezione: %1$@ a %2$@, %3$@"
+          }
+        }
+      }
+    },
+    "On pace so far." : {
+      "comment" : "Live Pace alert: today's use is where it should be",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finora in linea con il ritmo."
+          }
+        }
+      }
+    },
     "On-demand" : {
       "extractionState" : "manual",
       "generatesSymbol" : false,
@@ -5081,6 +7306,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Su richiesta"
+          }
+        }
+      }
+    },
+    "One of the weeks is still running." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una delle settimane è ancora in corso."
+          }
+        }
+      }
+    },
+    "Only includes %@." : {
+      "comment" : "Total Spend tooltip; the argument is a list of provider names",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Include solo %@."
           }
         }
       }
@@ -5177,6 +7423,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apri classifiche"
+          }
+        }
+      }
+    },
+    "Open Plans" : {
+      "comment" : "Button on a usage suggestion: opens the team's Plans tab",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri piani"
           }
         }
       }
@@ -5318,6 +7575,17 @@
         }
       }
     },
+    "Other" : {
+      "comment" : "Chart series: every model outside the largest ones",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altri"
+          }
+        }
+      }
+    },
     "Other Models" : {
       "extractionState" : "manual",
       "generatesSymbol" : false,
@@ -5349,6 +7617,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Non aggiornato"
+          }
+        }
+      }
+    },
+    "Over today’s budget, on the last working day before the reset." : {
+      "comment" : "Live Pace note",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oltre il budget di oggi, nell’ultima giornata lavorativa prima dell’azzeramento."
           }
         }
       }
@@ -5393,12 +7672,45 @@
         }
       }
     },
+    "PLACE" : {
+      "comment" : "Member detail: uppercase tile label, the member's rank",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "POSIZIONE"
+          }
+        }
+      }
+    },
+    "Pace" : {
+      "comment" : "VoiceOver: the label before your spend versus your plan's pace, read from the menu bar",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ritmo"
+          }
+        }
+      }
+    },
     "Pace Alerts" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Avvisi sul ritmo"
+          }
+        }
+      }
+    },
+    "Pace Now" : {
+      "comment" : "Tile label, shown uppercase: the current spending rate.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ritmo ora"
           }
         }
       }
@@ -5465,6 +7777,16 @@
         }
       }
     },
+    "Per 1M Tokens" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per 1M di token"
+          }
+        }
+      }
+    },
     "Per 1M tokens" : {
       "localizations" : {
         "it" : {
@@ -5525,6 +7847,17 @@
         }
       }
     },
+    "Picking up" : {
+      "comment" : "Member momentum level 1 of 3: spending is picking up",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In aumento"
+          }
+        }
+      }
+    },
     "Plan" : {
       "localizations" : {
         "it" : {
@@ -5541,6 +7874,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rilevato cambio di piano"
+          }
+        }
+      }
+    },
+    "Plan Weeks" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settimane dei piani"
           }
         }
       }
@@ -5606,6 +7949,16 @@
         }
       }
     },
+    "Providers" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provider"
+          }
+        }
+      }
+    },
     "Public Leaderboard" : {
       "localizations" : {
         "it" : {
@@ -5622,6 +7975,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Codice QR per collegare un dispositivo"
+          }
+        }
+      }
+    },
+    "Quiet" : {
+      "comment" : "Member detail, LAST HOUR tile: no spend in the last hour",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tranquillo"
           }
         }
       }
@@ -5646,6 +8010,17 @@
         }
       }
     },
+    "Rank" : {
+      "comment" : "VoiceOver: the label before your rank in the team, read from the menu bar",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posizione"
+          }
+        }
+      }
+    },
     "Rate Limit Resets" : {
       "extractionState" : "manual",
       "generatesSymbol" : false,
@@ -5664,6 +8039,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Accedi di nuovo per l'utilizzo in tempo reale. Esegui `claude` e accedi di nuovo per ripristinare i limiti di sessione e settimanali."
+          }
+        }
+      }
+    },
+    "Reacted today: %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reazioni di oggi: %@"
           }
         }
       }
@@ -5716,6 +8101,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Riferimento"
+          }
+        }
+      }
+    },
+    "Refills your session and weekly limits now. This can't be undone." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricarica subito i limiti di sessione e settimanale. L'operazione non può essere annullata."
+          }
+        }
+      }
+    },
+    "Refills your session limits now. This can't be undone." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricarica subito i limiti di sessione. L'operazione non può essere annullata."
+          }
+        }
+      }
+    },
+    "Refills your weekly limits now. This can't be undone." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ricarica subito i limiti settimanali. L'operazione non può essere annullata."
           }
         }
       }
@@ -6038,6 +8453,17 @@
         }
       }
     },
+    "Reset Time Unavailable" : {
+      "comment" : "Used-up weekly limit whose reset time is unknown",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Orario di azzeramento non disponibile"
+          }
+        }
+      }
+    },
     "Reset Times" : {
       "localizations" : {
         "it" : {
@@ -6054,6 +8480,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reset usato. Buon lavoro!"
+          }
+        }
+      }
+    },
+    "Reset credits expire in more than 7 days" : {
+      "comment" : "VoiceOver: status dot on a reset credits row",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I reset scadono tra più di 7 giorni"
           }
         }
       }
@@ -6162,6 +8599,28 @@
         }
       }
     },
+    "Resets expire in:" : {
+      "comment" : "Header of a numbered list of reset credit expiries, each a duration",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I reset scadono tra:"
+          }
+        }
+      }
+    },
+    "Resets expire:" : {
+      "comment" : "Header of a numbered list of reset credit expiries, each a date and time",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I reset scadono:"
+          }
+        }
+      }
+    },
     "Resets first, so it sets the week." : {
       "localizations" : {
         "it" : {
@@ -6234,12 +8693,44 @@
         }
       }
     },
+    "Room to Spare on %@" : {
+      "comment" : "Live Pace alert title; the value is a plan name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Margine disponibile su %@"
+          }
+        }
+      }
+    },
     "Run devin auth login or sign in to Devin and try again." : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esegui devin auth login o accedi a Devin e riprova."
+          }
+        }
+      }
+    },
+    "S" : {
+      "comment" : "Menu bar: one-letter prefix of the session (five-hour) window value. Must differ from the weekly letter.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "H"
+          }
+        }
+      }
+    },
+    "SQLite query failed." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Query SQLite non riuscita."
           }
         }
       }
@@ -6280,6 +8771,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Trovata una sessione Sakana nel browser. Connetti per caricare la chiave Safe Storage del browser; se macOS lo chiede, scegli Consenti sempre per evitare altre finestre di dialogo."
+          }
+        }
+      }
+    },
+    "Same as the previous 30 days" : {
+      "comment" : "Member rank movement",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come nei 30 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Same as the previous 7 days" : {
+      "comment" : "Member rank movement",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come nei 7 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Same as the same days last month" : {
+      "comment" : "Member rank movement",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come negli stessi giorni del mese scorso"
+          }
+        }
+      }
+    },
+    "Same as yesterday" : {
+      "comment" : "Member rank movement",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come ieri"
           }
         }
       }
@@ -6406,6 +8941,27 @@
         }
       }
     },
+    "Sessions at the limit" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sessioni al limite"
+          }
+        }
+      }
+    },
+    "Sessions start after you send your first message." : {
+      "comment" : "Hover note on a session row that reads Not started",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La sessione inizia quando invii il primo messaggio."
+          }
+        }
+      }
+    },
     "Settings" : {
       "localizations" : {
         "it" : {
@@ -6447,12 +9003,12 @@
       }
     },
     "Shared %@" : {
-      "comment" : "Upload status; the value is a relative time like '5 minutes ago'",
+      "comment" : "Chart row: a provider account shared by the team, e.g. Shared Claude\nUpload status; the value is a relative time like '5 minutes ago'",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Condiviso %@"
+            "value" : "Condiviso: %@"
           }
         }
       }
@@ -6469,6 +9025,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Account %@ condiviso, usato da %@"
+          }
+        }
+      }
+    },
+    "Shared with %@" : {
+      "comment" : "Live Pace Details: whose working hours also count; the value is a list of names",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Condiviso con %@"
           }
         }
       }
@@ -6590,6 +9157,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mostra utilizzo come"
+          }
+        }
+      }
+    },
+    "Show Week" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostra settimana"
           }
         }
       }
@@ -6784,6 +9361,16 @@
         }
       }
     },
+    "Sign in with Apple, then create a team or open an invite link." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accedi con Apple, poi crea un team o apri un link di invito."
+          }
+        }
+      }
+    },
     "Signed in with Apple" : {
       "localizations" : {
         "it" : {
@@ -6800,6 +9387,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rallenta"
+          }
+        }
+      }
+    },
+    "Slow Down on %@" : {
+      "comment" : "Live Pace alert title; the value is a plan name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rallenta su %@"
           }
         }
       }
@@ -6896,6 +9494,16 @@
         }
       }
     },
+    "Spend per member, split by provider." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spesa per membro, divisa per provider."
+          }
+        }
+      }
+    },
     "Spend the least. Only members who spend something count." : {
       "localizations" : {
         "it" : {
@@ -6956,12 +9564,45 @@
         }
       }
     },
+    "Starts %@" : {
+      "comment" : "Live Pace pill before the working day; the value is a time",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inizia alle %@"
+          }
+        }
+      }
+    },
+    "Stay under %@ to last until %@." : {
+      "comment" : "Live Pace Slow Down alert: a rate (10.0%/h), then the end of the working day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resta sotto %@ per arrivare alle %@."
+          }
+        }
+      }
+    },
     "Subscription meters unavailable: %@" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Indicatori dell'abbonamento non disponibili: %@"
+          }
+        }
+      }
+    },
+    "Switch to %@" : {
+      "comment" : "Usage suggestion title; the argument is a provider or account name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passa a %@"
           }
         }
       }
@@ -6988,6 +9629,7 @@
       }
     },
     "Team" : {
+      "comment" : "Dashboard section divider above the team cards",
       "localizations" : {
         "it" : {
           "stringUnit" : {
@@ -7047,6 +9689,16 @@
         }
       }
     },
+    "Team Projection" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proiezione del team"
+          }
+        }
+      }
+    },
     "Team Reactions" : {
       "localizations" : {
         "it" : {
@@ -7077,6 +9729,17 @@
         }
       }
     },
+    "Team on pace for %@ in %@" : {
+      "comment" : "The team's month-end spend projection: amount, month.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proiezione del team per %2$@: %1$@"
+          }
+        }
+      }
+    },
     "Team owners add the team's subscriptions in Settings → Teams." : {
       "localizations" : {
         "it" : {
@@ -7097,6 +9760,26 @@
         }
       }
     },
+    "Team spend per day, split by provider. Hover a day for its numbers." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spesa del team al giorno, divisa per provider. Passa sopra un giorno per vederne i numeri."
+          }
+        }
+      }
+    },
+    "Team spend per day, week, or month, split by model. Hover a bar for its numbers." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spesa del team per giorno, settimana o mese, divisa per modello. Passa sopra una barra per vederne i numeri."
+          }
+        }
+      }
+    },
     "Team stats are paused until midnight UTC to stay within the server’s daily limit." : {
       "localizations" : {
         "it" : {
@@ -7107,12 +9790,43 @@
         }
       }
     },
+    "Team tokens per day, split by provider. Hover a day for its numbers." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token del team al giorno, divisi per provider. Passa sopra un giorno per vederne i numeri."
+          }
+        }
+      }
+    },
+    "Team tokens per day, week, or month, split by model. Hover a bar for its numbers." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token del team per giorno, settimana o mese, divisi per modello. Passa sopra una barra per vederne i numeri."
+          }
+        }
+      }
+    },
     "Team total" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Totale del team"
+          }
+        }
+      }
+    },
+    "Team: %@ of the team’s spend today" : {
+      "comment" : "Menu bar team segment tooltip: your share of the team's spend today, e.g. 42%",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Team: %@ della spesa del team oggi"
           }
         }
       }
@@ -7319,6 +10033,16 @@
         }
       }
     },
+    "The first week used %@ points more of the weekly limit." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La prima settimana ha usato %@ punti in più del limite settimanale."
+          }
+        }
+      }
+    },
     "The instruction file exists but could not be read. Check the log for details." : {
       "localizations" : {
         "it" : {
@@ -7389,12 +10113,32 @@
         }
       }
     },
+    "The plans differ, so the shares are of different limits." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I piani sono diversi, quindi le quote si riferiscono a limiti diversi."
+          }
+        }
+      }
+    },
     "The scan ran out of time and this list may be incomplete. Refresh to rescan." : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "La scansione ha esaurito il tempo e l'elenco potrebbe essere incompleto. Aggiorna per ripeterla."
+          }
+        }
+      }
+    },
+    "The second week used %@ points more of the weekly limit." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La seconda settimana ha usato %@ punti in più del limite settimanale."
           }
         }
       }
@@ -7459,6 +10203,16 @@
         }
       }
     },
+    "The team's most used models. Each provider's models share its color in different shades." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I modelli più usati dal team. I modelli di ogni provider ne condividono il colore in tonalità diverse."
+          }
+        }
+      }
+    },
     "The teams request failed (HTTP %lld)." : {
       "localizations" : {
         "it" : {
@@ -7485,6 +10239,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Il server di Teams ha inviato una risposta che GodUsage non riesce a leggere. Aggiorna GodUsage e riprova."
+          }
+        }
+      }
+    },
+    "The working day is over; today used %@ of its %@ budget." : {
+      "comment" : "Live Pace chart summary: two percentages of the weekly limit",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La giornata lavorativa è finita; oggi hai usato il %@ del budget del %@."
+          }
+        }
+      }
+    },
+    "The working day starts at %@; today’s budget is %@." : {
+      "comment" : "Live Pace chart summary: a time, then a percentage",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La giornata lavorativa inizia alle %@; il budget di oggi è %@."
           }
         }
       }
@@ -7525,6 +10301,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Questo Mac"
+          }
+        }
+      }
+    },
+    "This Mac's previous device identity is not a valid identifier." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’identità precedente di questo Mac non è un identificatore valido."
+          }
+        }
+      }
+    },
+    "This Mac's previous device identity needs your approval. Choose Recover Identity in Teams settings." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’identità precedente di questo Mac richiede la tua approvazione. Scegli Recupera identità nelle impostazioni dei team."
+          }
+        }
+      }
+    },
+    "This Mac's stored device identity is not a valid identifier." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’identità salvata di questo Mac non è un identificatore valido."
           }
         }
       }
@@ -7731,6 +10537,17 @@
         }
       }
     },
+    "This week: %@" : {
+      "comment" : "The week's boxes, day by day.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa settimana: %@"
+          }
+        }
+      }
+    },
     "Time Format" : {
       "localizations" : {
         "it" : {
@@ -7771,6 +10588,17 @@
         }
       }
     },
+    "To Last Until %@" : {
+      "comment" : "Tile label, shown uppercase: the rate that lasts until the end of the working day (a time).",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per arrivare alle %@"
+          }
+        }
+      }
+    },
     "To keep notifications onscreen until dismissed, choose Alerts for GodUsage in System Settings → Notifications." : {
       "localizations" : {
         "it" : {
@@ -7791,18 +10619,100 @@
         }
       }
     },
-    "Today: %@ of %@, at this pace %@ by the end of the day" : {
+    "Today’s budget is used up. The %@ comes out of the next working days." : {
+      "comment" : "Live Pace note; the value is the percentage over today's budget",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Today: %1$@ of %2$@, at this pace %3$@ by the end of the day"
-          }
-        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Oggi: %@ di %@, a questo ritmo %@ entro fine giornata"
+            "value" : "Il budget di oggi è esaurito. Il %@ in più si toglie dalle prossime giornate lavorative."
+          }
+        }
+      }
+    },
+    "Today’s budget is used up: %@ over. The working days until the reset get less." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il budget di oggi è esaurito: %@ oltre. Le giornate lavorative fino al reset avranno meno."
+          }
+        }
+      }
+    },
+    "Today’s use is ahead of even pace; at this pace the budget runs out at %@." : {
+      "comment" : "Live Pace chart summary; the value is a time",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’utilizzo di oggi è sopra il ritmo costante; a questo ritmo il budget finisce alle %@."
+          }
+        }
+      }
+    },
+    "Today’s use is ahead of even pace; at this pace today ends at %@ of its %@ budget." : {
+      "comment" : "Live Pace chart summary: two percentages of the weekly limit",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’utilizzo di oggi è sopra il ritmo costante; a questo ritmo oggi chiude al %@ del suo budget del %@."
+          }
+        }
+      }
+    },
+    "Today’s use is behind even pace; at this pace the budget runs out at %@." : {
+      "comment" : "Live Pace chart summary; the value is a time",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’utilizzo di oggi è sotto il ritmo costante; a questo ritmo il budget finisce alle %@."
+          }
+        }
+      }
+    },
+    "Today’s use is behind even pace; at this pace today ends at %@ of its %@ budget." : {
+      "comment" : "Live Pace chart summary: two percentages of the weekly limit",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’utilizzo di oggi è sotto il ritmo costante; a questo ritmo oggi chiude al %@ del suo budget del %@."
+          }
+        }
+      }
+    },
+    "Today’s use is on even pace; at this pace the budget runs out at %@." : {
+      "comment" : "Live Pace chart summary; the value is a time",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’utilizzo di oggi è in linea con il ritmo costante; a questo ritmo il budget finisce alle %@."
+          }
+        }
+      }
+    },
+    "Today’s use is on even pace; at this pace today ends at %@ of its %@ budget." : {
+      "comment" : "Live Pace chart summary: two percentages of the weekly limit",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’utilizzo di oggi è in linea con il ritmo costante; a questo ritmo oggi chiude al %@ del suo budget del %@."
+          }
+        }
+      }
+    },
+    "Today’s use is over its budget: %@ of %@." : {
+      "comment" : "Live Pace chart summary: two percentages of the weekly limit",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’utilizzo di oggi ha superato il budget: %@ su %@."
           }
         }
       }
@@ -7817,12 +10727,53 @@
         }
       }
     },
+    "Tokens per member, split by provider." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token per membro, divisi per provider."
+          }
+        }
+      }
+    },
+    "Top %lld" : {
+      "comment" : "Members shown on the dashboard: the first N.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primi %lld"
+          }
+        }
+      }
+    },
+    "Top Model" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modello principale"
+          }
+        }
+      }
+    },
     "Top Models" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Modelli più usati"
+          }
+        }
+      }
+    },
+    "Top Provider" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provider principale"
           }
         }
       }
@@ -7837,6 +10788,28 @@
         }
       }
     },
+    "Top today" : {
+      "comment" : "Member detail chip: today's top spender",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primo oggi"
+          }
+        }
+      }
+    },
+    "Total Spend Metric" : {
+      "comment" : "Accessibility: the Total Spend card's metric menu",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metrica della spesa totale"
+          }
+        }
+      }
+    },
     "Total Usage" : {
       "extractionState" : "manual",
       "generatesSymbol" : false,
@@ -7845,6 +10818,170 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Utilizzo totale"
+          }
+        }
+      }
+    },
+    "Total cost %@ across %lld providers" : {
+      "comment" : "Accessibility: the Total Spend bar",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total cost %1$@ across %2$#@providers@"
+          },
+          "substitutions" : {
+            "providers" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg provider"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg providers"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Costo totale %1$@ su %2$#@providers@"
+          },
+          "substitutions" : {
+            "providers" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg provider"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg provider"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Total spend · %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spesa totale · %@"
+          }
+        }
+      }
+    },
+    "Total spend · %@ – %@" : {
+      "comment" : "From and to are days.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spesa totale · %@ – %@"
+          }
+        }
+      }
+    },
+    "Total tokens %@ across %lld providers" : {
+      "comment" : "Accessibility: the Total Spend bar",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total tokens %1$@ across %2$#@providers@"
+          },
+          "substitutions" : {
+            "providers" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg provider"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg providers"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token totali %1$@ su %2$#@providers@"
+          },
+          "substitutions" : {
+            "providers" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg provider"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg provider"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Total tokens · %@" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token totali · %@"
+          }
+        }
+      }
+    },
+    "Total tokens · %@ – %@" : {
+      "comment" : "From and to are days.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token totali · %@ – %@"
           }
         }
       }
@@ -7981,6 +11118,28 @@
         }
       }
     },
+    "Unknown model found" : {
+      "comment" : "Header above a model the pricing can't price",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trovato un modello sconosciuto"
+          }
+        }
+      }
+    },
+    "Unknown models found" : {
+      "comment" : "Header above a list of models the pricing can't price",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trovati modelli sconosciuti"
+          }
+        }
+      }
+    },
     "Unlink" : {
       "localizations" : {
         "it" : {
@@ -8021,18 +11180,57 @@
         }
       }
     },
-    "Up %lld since %@" : {
+    "Up %lld since the previous 30 days" : {
+      "comment" : "Member rank movement: places gained",
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Up %1$lld since %2$@"
-          }
-        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salito di %lld rispetto a %@"
+            "value" : "Salito di %lld rispetto ai 30 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Up %lld since the previous 7 days" : {
+      "comment" : "Member rank movement: places gained",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salito di %lld rispetto ai 7 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Up %lld since the same days last month" : {
+      "comment" : "Member rank movement: places gained",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salito di %lld rispetto agli stessi giorni del mese scorso"
+          }
+        }
+      }
+    },
+    "Up %lld since yesterday" : {
+      "comment" : "Member rank movement: places gained",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salito di %lld rispetto a ieri"
+          }
+        }
+      }
+    },
+    "Up to %@ still fits until %@." : {
+      "comment" : "Live Pace Room to Spare alert: a rate (10.0%/h), then the end of the working day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fino a %@ ci stai ancora fino alle %@."
           }
         }
       }
@@ -8088,6 +11286,17 @@
         }
       }
     },
+    "Upd %@" : {
+      "comment" : "Menu bar team segment: the team data was last updated this long ago, e.g. Upd 2h. Keep it very short.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agg. %@"
+          }
+        }
+      }
+    },
     "Update Automatically" : {
       "localizations" : {
         "it" : {
@@ -8124,6 +11333,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aggiorna pagamento…"
+          }
+        }
+      }
+    },
+    "Updated %lldh ago" : {
+      "comment" : "Hours since a member's last sync.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiornato %lld h fa"
+          }
+        }
+      }
+    },
+    "Updated %lldm ago" : {
+      "comment" : "Minutes since a member's last sync.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiornato %lld min fa"
+          }
+        }
+      }
+    },
+    "Updated just now" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiornato ora"
           }
         }
       }
@@ -8260,12 +11501,45 @@
         }
       }
     },
+    "Use %@ Before It Resets" : {
+      "comment" : "Usage suggestion title; the argument is a provider or account name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa %@ prima che si azzeri"
+          }
+        }
+      }
+    },
+    "Use %@, a Reset Expires Soon" : {
+      "comment" : "Usage suggestion title; the argument is a provider or account name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa %@, un reset scade a breve"
+          }
+        }
+      }
+    },
     "Use Team Default" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Usa predefinito del team"
+          }
+        }
+      }
+    },
+    "Use the Team's %@ Plan" : {
+      "comment" : "Usage suggestion title; the argument is a provider name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa il piano %@ del team"
           }
         }
       }
@@ -8352,6 +11626,17 @@
         }
       }
     },
+    "Very fast" : {
+      "comment" : "Member momentum level 3 of 3: spending very fast",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Molto veloce"
+          }
+        }
+      }
+    },
     "View" : {
       "localizations" : {
         "it" : {
@@ -8368,6 +11653,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Osservatore"
+          }
+        }
+      }
+    },
+    "W" : {
+      "comment" : "Menu bar: one-letter prefix of the weekly window value. Must differ from the session letter.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "S"
           }
         }
       }
@@ -8416,6 +11712,7 @@
       }
     },
     "Week" : {
+      "comment" : "Chart grouping: one bar per week",
       "localizations" : {
         "it" : {
           "stringUnit" : {
@@ -8431,6 +11728,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Settimana che termina il %@"
+          }
+        }
+      }
+    },
+    "Week of %@" : {
+      "comment" : "Chart tooltip: the week starting on <date>",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settimana del %@"
           }
         }
       }
@@ -8453,6 +11761,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Storico settimanale"
+          }
+        }
+      }
+    },
+    "Weekly Limit Budget" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Budget del limite settimanale"
           }
         }
       }
@@ -8491,6 +11809,16 @@
         }
       }
     },
+    "Weekly limit used" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limite settimanale usato"
+          }
+        }
+      }
+    },
     "Weekly quota" : {
       "extractionState" : "manual",
       "generatesSymbol" : false,
@@ -8513,12 +11841,32 @@
         }
       }
     },
+    "What each member pays per million tokens. Lower means cheaper models or more cache use." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quanto paga ogni membro per milione di token. Più basso significa modelli più economici o più uso della cache."
+          }
+        }
+      }
+    },
     "While your screen is shared or recorded, the menu bar shows “GodUsage” instead of your usage." : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mentre lo schermo è condiviso o registrato, la barra dei menu mostra “GodUsage” al posto del tuo utilizzo."
+          }
+        }
+      }
+    },
+    "Who Uses What" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chi usa cosa"
           }
         }
       }
@@ -8530,6 +11878,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Si esaurirà"
+          }
+        }
+      }
+    },
+    "Will reach limit" : {
+      "comment" : "VoiceOver: a meter on pace to run out before it resets",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raggiungerà il limite"
           }
         }
       }
@@ -8554,12 +11913,32 @@
         }
       }
     },
+    "Wrapped copied to clipboard" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wrapped copiato negli appunti"
+          }
+        }
+      }
+    },
     "Year" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Anno"
+          }
+        }
+      }
+    },
+    "Yes" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sì"
           }
         }
       }
@@ -8577,6 +11956,7 @@
       }
     },
     "You" : {
+      "comment" : "Dashboard section divider above your own provider cards",
       "localizations" : {
         "it" : {
           "stringUnit" : {
@@ -8602,6 +11982,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Non hai avuto utilizzo."
+          }
+        }
+      }
+    },
+    "You have %@ and one expires in %@. Use %@ freely: if you hit the limit, claim it before it's gone." : {
+      "comment" : "Usage suggestion: a count of resets such as 2 resets, a duration such as 5h 10m, then a provider name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hai %1$@ e uno scade tra %2$@. Usa %3$@ senza pensieri: se raggiungi il limite, usa il reset prima che scada."
+          }
+        }
+      }
+    },
+    "You have %@, so %@'s limits stretch further. Prefer it for heavy work." : {
+      "comment" : "Usage suggestion: a count of resets such as 2 resets, then a provider name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hai %1$@, quindi i limiti di %2$@ durano di più. Preferiscilo per i lavori pesanti."
           }
         }
       }
@@ -8704,6 +12106,50 @@
         }
       }
     },
+    "Your %@ %@ is used up. %@ has %@ of today’s budget left." : {
+      "comment" : "Usage suggestion: provider, its used-up limit such as Weekly, then a team plan name and the share of today's budget it has left, e.g. 7.5%",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hai esaurito il limite %2$@ di %1$@. A %3$@ resta il %4$@ del budget di oggi."
+          }
+        }
+      }
+    },
+    "Your %@ %@ is used up. %@ has %lld%% of its %@ left." : {
+      "comment" : "Usage suggestion: provider, its used-up limit such as Weekly, then another provider, the percentage it has left and its limit name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hai esaurito il limite %2$@ di %1$@. A %3$@ resta il %4$lld%% del limite %5$@."
+          }
+        }
+      }
+    },
+    "Your %@ %@ is used up. %@ is %@ under pace." : {
+      "comment" : "Usage suggestion: provider, its used-up limit such as Weekly, then a team plan name and how far under pace it is, e.g. 2h 48m",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hai esaurito il limite %2$@ di %1$@. %3$@ è %4$@ sotto il ritmo."
+          }
+        }
+      }
+    },
+    "Your %@ limit is used up, but you have %@. Claim one to start fresh." : {
+      "comment" : "Usage suggestion: provider name, then a count of resets such as 2 resets",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hai esaurito il limite di %1$@, ma hai %2$@. Usane uno per ripartire da zero."
+          }
+        }
+      }
+    },
     "Your Data" : {
       "localizations" : {
         "it" : {
@@ -8720,6 +12166,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "La tua posizione, la tua quota della spesa del team e la tua spesa di oggi nel team selezionato, accanto alle metriche fissate."
+          }
+        }
+      }
+    },
+    "Your reset expires in %@. Use %@ freely: if you hit the limit, claim it before it's gone." : {
+      "comment" : "Usage suggestion: a duration such as 5h 10m, then a provider name",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il tuo reset scade tra %1$@. Usa %2$@ senza pensieri: se raggiungi il limite, usa il reset prima che scada."
           }
         }
       }
@@ -8764,12 +12221,83 @@
         }
       }
     },
+    "Your working day hasn’t started yet. Today’s budget is %@." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tua giornata lavorativa non è ancora iniziata. Il budget di oggi è %@."
+          }
+        }
+      }
+    },
+    "Your working day is over. What today left, or took over its budget, moves to the working days until the reset." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tua giornata lavorativa è finita. Quello che oggi ha lasciato, o preso oltre il budget, passa alle giornate lavorative fino al reset."
+          }
+        }
+      }
+    },
+    "You’re %@ ahead of pace: you’ve already used what an even pace would reach only in %@ more of working time." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sei %@ sopra il ritmo: hai già usato quello che un ritmo regolare raggiungerebbe solo tra %@ di lavoro."
+          }
+        }
+      }
+    },
+    "You’re %@ under pace: an even pace would have reached your use %@ of working time ago, so you have room to spare." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sei %@ sotto il ritmo: un ritmo regolare avrebbe raggiunto il tuo utilizzo %@ di lavoro fa, quindi hai margine."
+          }
+        }
+      }
+    },
+    "You’re right on pace." : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sei in linea con il ritmo."
+          }
+        }
+      }
+    },
     "Z.ai API key invalid. Check your key at z.ai/manage-apikey/apikey-list." : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chiave API di Z.ai non valida. Controllala su z.ai/manage-apikey/apikey-list."
+          }
+        }
+      }
+    },
+    "about %@%%" : {
+      "comment" : "An estimated percentage, e.g. about 19.5%",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "circa %@%%"
+          }
+        }
+      }
+    },
+    "auth.json is not valid JSON" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "auth.json non è un JSON valido"
           }
         }
       }
@@ -8795,12 +12323,13 @@
         }
       }
     },
-    "budget ends %@" : {
+    "budget %@" : {
+      "comment" : "Today's budget, as a share of the weekly limit.",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "budget esaurito alle %@"
+            "value" : "budget %@"
           }
         }
       }
@@ -8815,13 +12344,13 @@
         }
       }
     },
-    "dollars" : {
-      "comment" : "Unit under a dollar total in the spend ring",
+    "every day" : {
+      "comment" : "The team works every day of the week",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "dollari"
+            "value" : "tutti i giorni"
           }
         }
       }
@@ -8832,6 +12361,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "iPhone e iPad"
+          }
+        }
+      }
+    },
+    "just now" : {
+      "comment" : "A member synced less than a minute ago.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ora"
+          }
+        }
+      }
+    },
+    "latest %lld shown" : {
+      "comment" : "How many of the cycle's sessions the squares show",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ultime %lld mostrate"
           }
         }
       }
@@ -8907,6 +12458,39 @@
         }
       }
     },
+    "moments" : {
+      "comment" : "Usage suggestion: a duration too short to show, as in 'expires in moments'",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pochi istanti"
+          }
+        }
+      }
+    },
+    "more than twice their usual hour" : {
+      "comment" : "Member momentum reason",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "più del doppio della sua ora tipica"
+          }
+        }
+      }
+    },
+    "more than twice their usual hour (%@)" : {
+      "comment" : "Member momentum reason; the value is their typical hour's spend",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "più del doppio della sua ora tipica (%@)"
+          }
+        }
+      }
+    },
     "never used" : {
       "comment" : "Codex memory row: how often it was used",
       "localizations" : {
@@ -8914,6 +12498,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "mai usato"
+          }
+        }
+      }
+    },
+    "no reading" : {
+      "comment" : "A day with no usage reading",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nessuna lettura"
           }
         }
       }
@@ -8928,18 +12523,43 @@
         }
       }
     },
-    "of %lld %@ hit the limit this cycle" : {
+    "of %lld sessions hit the limit this cycle" : {
+      "comment" : "After a big number of sessions that hit the limit, e.g. 3 | of 40 sessions hit the limit this cycle",
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "of %1$lld %2$@ hit the limit this cycle"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "of %lld session hit the limit this cycle"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "of %lld sessions hit the limit this cycle"
+                }
+              }
+            }
           }
         },
         "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "di %lld %@ hanno raggiunto il limite in questo ciclo"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "su %lld sessione ha raggiunto il limite in questo ciclo"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "su %lld sessioni hanno raggiunto il limite in questo ciclo"
+                }
+              }
+            }
           }
         }
       }
@@ -8964,6 +12584,38 @@
         }
       }
     },
+    "on pace this cycle" : {
+      "comment" : "The value the plans are projected to reach by the end of the billing cycle",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "proiezione del ciclo"
+          }
+        }
+      }
+    },
+    "over $5" : {
+      "comment" : "Member momentum reason: spent over $5 in the last hour",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "oltre $5"
+          }
+        }
+      }
+    },
+    "paid per month" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pagati al mese"
+          }
+        }
+      }
+    },
     "peak %@" : {
       "comment" : "The highest day in a usage chart",
       "localizations" : {
@@ -8975,12 +12627,66 @@
         }
       }
     },
+    "per million tokens" : {
+      "comment" : "Member detail, EFFICIENCY tile",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "per milione di token"
+          }
+        }
+      }
+    },
+    "quota used" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "quota usata"
+          }
+        }
+      }
+    },
+    "renews %@ · %@" : {
+      "comment" : "A plan's billing cycle renews on <date> · <N days left>",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "si rinnova il %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "renews after %@" : {
+      "comment" : "A plan's billing cycle renews after <day>",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "si rinnova dopo il %@"
+          }
+        }
+      }
+    },
     "share of the weekly limit used each day" : {
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "quota del limite settimanale usata ogni giorno"
+          }
+        }
+      }
+    },
+    "shared" : {
+      "comment" : "After the initials of the people whose working hours count with yours.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "condivise"
           }
         }
       }
@@ -9002,6 +12708,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "a breve"
+          }
+        }
+      }
+    },
+    "team cost per 1M tokens" : {
+      "comment" : "Caption under the team total",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "costo del team per 1M token"
+          }
+        }
+      }
+    },
+    "team spend" : {
+      "comment" : "Caption under the team total",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "spesa del team"
+          }
+        }
+      }
+    },
+    "team tokens" : {
+      "comment" : "Caption under the team total",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "token del team"
+          }
+        }
+      }
+    },
+    "the most in the team" : {
+      "comment" : "Member momentum reason: spent the most in the team in the last hour",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "il più alto del team"
           }
         }
       }
@@ -9042,6 +12792,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "gli stessi giorni del mese scorso"
+          }
+        }
+      }
+    },
+    "this team" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "questo team"
           }
         }
       }
@@ -9100,6 +12860,17 @@
         }
       }
     },
+    "unused this cycle" : {
+      "comment" : "Dollars of quota left unused in this billing cycle",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "inutilizzati in questo ciclo"
+          }
+        }
+      }
+    },
     "used %lld times" : {
       "comment" : "Codex memory row: how often it was used",
       "localizations" : {
@@ -9141,6 +12912,16 @@
         }
       }
     },
+    "value per dollar" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "valore per dollaro"
+          }
+        }
+      }
+    },
     "vs" : {
       "localizations" : {
         "it" : {
@@ -9171,6 +12952,50 @@
         }
       }
     },
+    "~%lld%% left at reset" : {
+      "comment" : "Pace projection: share of the limit left when it resets",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~%lld%% rimanente all’azzeramento"
+          }
+        }
+      }
+    },
+    "~%lld%% over limit at reset" : {
+      "comment" : "Pace projection: how far past the limit usage lands at the reset",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~%lld%% oltre il limite all’azzeramento"
+          }
+        }
+      }
+    },
+    "~%lld%% spare" : {
+      "comment" : "Pace: share of the limit projected to be left at reset, when it's tight",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~%lld%% di margine"
+          }
+        }
+      }
+    },
+    "~%lld%% used at reset" : {
+      "comment" : "Pace projection: share of the limit used when it resets",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~%lld%% usato all’azzeramento"
+          }
+        }
+      }
+    },
     "·" : {
       "shouldTranslate" : false
     },
@@ -9187,12 +13012,116 @@
     "—" : {
       "shouldTranslate" : false
     },
-    "🏆" : {
-      "shouldTranslate" : false
+    "↑ Upgrade to %@ · %@/mo from %@" : {
+      "comment" : "Plan change to come: plan name, monthly price, day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↑ Sale a %@ · %@/mese dal %@"
+          }
+        }
+      }
     },
-    "👑" : {
-      "shouldTranslate" : false
+    "↑ Upgrade to %@ · %@/mo from %@ (next renewal)" : {
+      "comment" : "Plan change to come: plan name, monthly price, day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↑ Sale a %@ · %@/mese dal %@ (prossimo rinnovo)"
+          }
+        }
+      }
+    },
+    "↑ Upgraded to %@ · %@/mo on %@" : {
+      "comment" : "Plan change: plan name, monthly price, day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↑ Salito a %@ · %@/mese il %@"
+          }
+        }
+      }
+    },
+    "→ Change to %@ · %@/mo from %@" : {
+      "comment" : "Plan change to come: plan name, monthly price, day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ Cambia in %@ · %@/mese dal %@"
+          }
+        }
+      }
+    },
+    "→ Change to %@ · %@/mo from %@ (next renewal)" : {
+      "comment" : "Plan change to come: plan name, monthly price, day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ Cambia in %@ · %@/mese dal %@ (prossimo rinnovo)"
+          }
+        }
+      }
+    },
+    "→ Changed to %@ · %@/mo on %@" : {
+      "comment" : "Plan change: plan name, monthly price, day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ Cambiato in %@ · %@/mese il %@"
+          }
+        }
+      }
+    },
+    "↓ Downgrade to %@ · %@/mo from %@" : {
+      "comment" : "Plan change to come: plan name, monthly price, day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↓ Scende a %@ · %@/mese dal %@"
+          }
+        }
+      }
+    },
+    "↓ Downgrade to %@ · %@/mo from %@ (next renewal)" : {
+      "comment" : "Plan change to come: plan name, monthly price, day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↓ Scende a %@ · %@/mese dal %@ (prossimo rinnovo)"
+          }
+        }
+      }
+    },
+    "↓ Downgraded to %@ · %@/mo on %@" : {
+      "comment" : "Plan change: plan name, monthly price, day",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↓ Sceso a %@ · %@/mese il %@"
+          }
+        }
+      }
+    },
+    "🏅 %@ won · %@" : {
+      "comment" : "A finished challenge: winner, their value.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🏅 Ha vinto %@ · %@"
+          }
+        }
+      }
     }
   },
-  "version" : "1.0"
+  "version" : "1.1"
 }

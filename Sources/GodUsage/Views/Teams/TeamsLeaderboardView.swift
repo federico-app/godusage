@@ -21,9 +21,9 @@ struct TeamsLeaderboardView: View {
 
         var label: String {
             switch self {
-            case .leaderboard: "Leaderboard"
-            case .compare: "Compare"
-            case .plans: "Plans"
+            case .leaderboard: String(localized: "Leaderboard")
+            case .compare: String(localized: "Compare")
+            case .plans: String(localized: "Plans")
             }
         }
     }
@@ -33,8 +33,8 @@ struct TeamsLeaderboardView: View {
 
         var label: String {
             switch self {
-            case .members: "Members"
-            case .planWeeks: "Plan Weeks"
+            case .members: String(localized: "Members")
+            case .planWeeks: String(localized: "Plan Weeks")
             }
         }
     }
@@ -52,10 +52,10 @@ struct TeamsLeaderboardView: View {
             if !teams.isSignedIn {
                 emptyState(
                     title: "Compare AI Usage With Friends",
-                    message: "Sign in with Apple, then create a team or open an invite link."
+                    message: Text("Sign in with Apple, then create a team or open an invite link.")
                 ) { TeamsSignInButton(teams: teams).frame(width: 240) }
             } else if teams.teams.isEmpty {
-                emptyState(title: "No Teams Yet", message: "Create a team or join one with an invite link.") {
+                emptyState(title: "No Teams Yet", message: Text("Create a team or join one with an invite link.")) {
                     Button("Open Teams Settings…") { SettingsWindowLink.open(pane: .teams) }
                 }
             } else {
@@ -180,7 +180,7 @@ struct TeamsLeaderboardView: View {
                 TeamPlansReportView(teamID: teamID, providerName: providerName).padding(16)
             }
         } else if let loadError, stats == nil {
-            emptyState(title: "Couldn't Load the Leaderboard", message: loadError) {
+            emptyState(title: "Couldn't Load the Leaderboard", message: Text(loadError)) {
                 Button("Try Again") { Task { await load() } }
             }
         } else if let stats {
@@ -236,7 +236,7 @@ struct TeamsLeaderboardView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if let teamID = currentTeamID, let projection = container.teamsSocial.projection(teamID: teamID) {
-                    ProjectionText(projection: projection, prefix: "Team on pace for").font(.caption)
+                    ProjectionText(projection: projection, isTeam: true).font(.caption)
                 }
             }
             Spacer()
@@ -244,9 +244,14 @@ struct TeamsLeaderboardView: View {
     }
 
     private func rangeCaption(_ stats: TeamStats) -> String {
-        let total = sort == .cost ? "Total spend" : "Total tokens"
-        guard stats.range.from != stats.range.to else { return "\(total) · \(TeamsFormat.dayLabel(stats.range.to))" }
-        return "\(total) · \(TeamsFormat.dayLabel(stats.range.from)) – \(TeamsFormat.dayLabel(stats.range.to))"
+        let to = TeamsFormat.dayLabel(stats.range.to)
+        guard stats.range.from != stats.range.to else {
+            return sort == .cost ? String(localized: "Total spend · \(to)") : String(localized: "Total tokens · \(to)")
+        }
+        let from = TeamsFormat.dayLabel(stats.range.from)
+        return sort == .cost
+            ? String(localized: "Total spend · \(from) – \(to)", comment: "From and to are days.")
+            : String(localized: "Total tokens · \(from) – \(to)", comment: "From and to are days.")
     }
 
     private func shareWrapped(_ period: TeamWrapped.Period) {
@@ -256,7 +261,7 @@ struct TeamsLeaderboardView: View {
                 period: period, teamID: teamID, teamName: team.name, teams: container.teams,
                 appearance: colorScheme, providerName: providerName
             )
-            withAnimation { wrappedNotice = copied ? "Wrapped copied to clipboard" : "Couldn't make the image" }
+            withAnimation { wrappedNotice = copied ? String(localized: "Wrapped copied to clipboard") : String(localized: "Couldn't make the image") }
             try? await Task.sleep(for: .seconds(2.5))
             withAnimation { wrappedNotice = nil }
         }
@@ -276,7 +281,7 @@ struct TeamsLeaderboardView: View {
                 Button("Join Team") { Task { await container.teams.acceptPendingInvite() } }
                     .keyboardShortcut(.defaultAction)
             } else if invite.preview?.alreadyMember == true {
-                Text("You're already in \(invite.preview?.team.name ?? "this team").")
+                Text("You're already in \(invite.preview?.team.name ?? String(localized: "this team")).")
                 Spacer()
                 Button("OK") { container.teams.dismissPendingInvite() }
             } else if container.teams.isSignedIn {
@@ -292,14 +297,14 @@ struct TeamsLeaderboardView: View {
         .background(.secondary.opacity(0.08))
     }
 
-    private func emptyState(title: String, message: String, @ViewBuilder action: () -> some View) -> some View {
+    private func emptyState(title: LocalizedStringKey, message: Text, @ViewBuilder action: () -> some View) -> some View {
         VStack(spacing: 10) {
             Spacer()
             Image(systemName: "person.3")
                 .font(.system(size: 36))
                 .foregroundStyle(.secondary)
             Text(title).font(.title3.weight(.semibold))
-            Text(message)
+            message
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 360)

@@ -73,7 +73,7 @@ struct TeamPlansReportView: View {
         .padding(.horizontal, 8)
     }
 
-    private func stat(_ value: String, _ label: String, emphasis: AnyShapeStyle = AnyShapeStyle(.primary)) -> some View {
+    private func stat(_ value: String, _ label: LocalizedStringKey, emphasis: AnyShapeStyle = AnyShapeStyle(.primary)) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(value).font(.system(size: 22, weight: .semibold).monospacedDigit()).foregroundStyle(emphasis)
             Text(label).font(.caption).foregroundStyle(.secondary)
@@ -87,9 +87,8 @@ struct TeamPlansReportView: View {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.notice)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(plans.count == 1 ? "1 Plan Is Underused" : "\(plans.count) Plans Are Underused").font(.callout.weight(.semibold))
-                    Text(plans.map { "\($0.name) (\(Self.underusedDetail($0)))" }.joined(separator: ", ")
-                        + " — on pace to leave most of \(plans.count == 1 ? "it" : "them") unused this cycle.")
+                    Text("\(plans.count) Plans Are Underused").font(.callout.weight(.semibold))
+                    Text(Self.underusedText(plans))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -176,8 +175,16 @@ struct TeamPlansReportView: View {
     private func workingDaysText(_ report: TeamPlansReport) -> String {
         let days = report.workingDays ?? TeamPlansReport.defaultWorkingDays
         if days == [1, 2, 3, 4, 5] { return "\(TeamPlansSection.weekdaySymbol(1))–\(TeamPlansSection.weekdaySymbol(5))" }
-        if days.count == 7 { return "every day" }
-        return days.map(TeamPlansSection.weekdaySymbol).joined(separator: ", ")
+        if days.count == 7 { return String(localized: "every day", comment: "The team works every day of the week") }
+        return AppLocale.list(days.map(TeamPlansSection.weekdaySymbol))
+    }
+
+    /// "Max (30% of quota) and Pro (0.4×) — on pace to leave most of them unused this cycle."
+    static func underusedText(_ plans: [TeamPlanReport]) -> String {
+        let list = AppLocale.list(plans.map { "\($0.name) (\(underusedDetail($0)))" })
+        return plans.count == 1
+            ? String(localized: "\(list) — on pace to leave most of it unused this cycle.")
+            : String(localized: "\(list) — on pace to leave most of them unused this cycle.")
     }
 
     /// Who a plan with a member list covers; nothing for plans that cover everyone.
@@ -186,19 +193,22 @@ struct TeamPlansReportView: View {
         let members = container.teams.details[teamID]?.members ?? []
         let names = members.filter { ids.contains($0.id) }.map(\.displayName)
         guard !names.isEmpty else { return nil }
-        return "Covers \(names.joined(separator: ", "))" + (plan.includesYou ? "" : " · not you")
+        let list = AppLocale.list(names)
+        return plan.includesYou ? String(localized: "Covers \(list)") : String(localized: "Covers \(list) · not you")
     }
 
     private func renewalText(_ cycle: TeamPlanReport.Cycle) -> String {
         guard let end = TeamsFormat.date(cycle.to), let next = Calendar.current.date(byAdding: .day, value: 1, to: end) else {
-            return "renews after \(cycle.to)"
+            return String(localized: "renews after \(cycle.to)", comment: "A plan's billing cycle renews after <day>")
         }
         let left = cycle.daysLeft + 1
-        return "renews \(Formatters.monthDayLabel(next)) · \(left) \(left == 1 ? "day" : "days") left"
+        let date = next.formatted(.dateTime.month(.abbreviated).day().locale(AppLocale.current))
+        let daysLeft = String(localized: "\(left) days left")
+        return String(localized: "renews \(date) · \(daysLeft)", comment: "A plan's billing cycle renews on <date> · <N days left>")
     }
 
     static func multiple(_ value: Double) -> String {
-        String(format: value >= 10 ? "%.0f×" : "%.1f×", value)
+        AppLocale.decimal(value, digits: value >= 10 ? 0 : 1) + "×"
     }
 
     static func percent(_ value: Double) -> String {
@@ -214,26 +224,25 @@ struct TeamPlansReportView: View {
 
     /// Why a plan counts as underused: its quota share when there is one, else its value per dollar.
     static func underusedDetail(_ plan: TeamPlanReport) -> String {
-        plan.quota.map { "\(percent($0.usedPercent)) of quota" } ?? multiple(plan.projectedMultiple)
+        plan.quota.map { String(localized: "\(percent($0.usedPercent)) of quota") } ?? multiple(plan.projectedMultiple)
     }
 
     /// Why some of a plan's quota figures may be off: accounts named per Mac count once per Mac.
     static func perDeviceText(_ count: Int) -> String {
-        let accounts = count == 1 ? "1 account couldn't be identified" : "\(count) accounts couldn't be identified"
-        return "\(accounts) (an older GodUsage, or no Claude Code or Codex sign-in on that Mac). "
-            + "If one is used on several Macs, it counts once per Mac, so quota, Per Day, and Sessions may be off."
+        String(localized: "\(count) accounts couldn't be identified (an older GodUsage, or no Claude Code or Codex sign-in on that Mac). If one is used on several Macs, it counts once per Mac, so quota, Per Day, and Sessions may be off.")
     }
 
     static func quotaText(_ quota: TeamPlanQuota, provider: String) -> String {
         var parts = [
-            "\(percent(quota.usedPercent)) of quota used",
-            "\(Formatters.currency(quota.wastedUSD)) unused",
-            quota.accounts == 1 ? "1 account" : "\(quota.accounts) accounts",
+            String(localized: "\(percent(quota.usedPercent)) of quota used"),
+            String(localized: "\(Formatters.currency(quota.wastedUSD)) unused"),
+            String(localized: "\(quota.accounts) accounts"),
         ]
         if quota.estimatedWindows > 0 {
             // Cursor's window is its billing cycle; Claude's and Codex's a week.
-            let unit = provider == "cursor" ? "cycle" : "week"
-            parts.append("\(quota.estimatedWindows) \(unit)\(quota.estimatedWindows == 1 ? "" : "s") estimated")
+            parts.append(provider == "cursor"
+                ? String(localized: "\(quota.estimatedWindows) cycles estimated")
+                : String(localized: "\(quota.estimatedWindows) weeks estimated"))
         }
         return parts.joined(separator: " · ")
     }

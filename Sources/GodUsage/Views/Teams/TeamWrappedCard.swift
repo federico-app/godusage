@@ -84,11 +84,11 @@ struct TeamWrappedCard: View {
         .background(Theme.traySurface)
     }
 
-    private func stat(_ title: String, _ value: String) -> some View {
+    private func stat(_ title: LocalizedStringKey, _ value: String) -> some View {
         labeled(title) { Text(value).font(.title3.weight(.semibold).monospacedDigit()) }
     }
 
-    private func labeled(_ title: String, @ViewBuilder content: () -> some View) -> some View {
+    private func labeled(_ title: LocalizedStringKey, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption).foregroundStyle(.secondary)
             content()
@@ -111,7 +111,7 @@ enum TeamWrapped {
         case year
 
         var range: StatsRange { self == .month ? .month : .year }
-        var menuTitle: String { self == .month ? "Last 30 Days" : "Last 12 Months" }
+        var menuTitle: String { self == .month ? String(localized: "Last 30 Days") : String(localized: "Last 12 Months") }
     }
 
     /// Loads the period's stats, renders the card in `appearance`, and copies the PNG. Returns

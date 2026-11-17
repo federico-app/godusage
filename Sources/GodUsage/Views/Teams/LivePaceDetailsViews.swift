@@ -12,8 +12,10 @@ struct LivePaceRateTiles: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            tile("Pace Now", value: now ?? "–", style: now == nil ? AnyShapeStyle(.secondary) : toneStyle)
-            tile("To Last Until \(until)", value: allowed, style: AnyShapeStyle(.primary))
+            tile(String(localized: "Pace Now", comment: "Tile label, shown uppercase: the current spending rate."), value: now ?? "–",
+                 style: now == nil ? AnyShapeStyle(.secondary) : toneStyle)
+            tile(String(localized: "To Last Until \(until)", comment: "Tile label, shown uppercase: the rate that lasts until the end of the working day (a time)."),
+                 value: allowed, style: AnyShapeStyle(.primary))
         }
     }
 
@@ -27,7 +29,7 @@ struct LivePaceRateTiles: View {
 
     private func tile(_ title: String, value: String, style: AnyShapeStyle) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(title.uppercased())
+            Text(title.uppercased(with: AppLocale.current))
                 .font(.system(size: 9, weight: .semibold))
                 .tracking(0.3)
                 .foregroundStyle(.secondary)
@@ -71,9 +73,9 @@ struct LivePaceHoursLine: View {
                 ForEach(Array(shown.enumerated()), id: \.offset) { _, name in InitialsCircle(name: name) }
             }
             if more > 0 {
-                Text("+\(more)").font(.caption2.weight(.semibold).monospacedDigit()).foregroundStyle(.secondary)
+                Text(verbatim: "+\(more)").font(.caption2.weight(.semibold).monospacedDigit()).foregroundStyle(.secondary)
             }
-            Text("shared").font(.caption2).foregroundStyle(.secondary)
+            Text("shared", comment: "After the initials of the people whose working hours count with yours.").font(.caption2).foregroundStyle(.secondary)
         }
         .fixedSize()
         .hoverTooltip(label)

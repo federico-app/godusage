@@ -58,7 +58,9 @@ struct ProviderErrorCardView: View {
             let description = String(trimmed[range.upperBound...])
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if !title.isEmpty, !description.isEmpty {
-                return Copy(title: titleCased(title), description: description)
+                // Title case is an English convention: Italian headings keep sentence case.
+                let heading = AppLocale.languageCode == "en" ? titleCased(title) : title
+                return Copy(title: heading, description: description)
             }
         }
         return Copy(title: String(localized: "Can't Load Usage"), description: trimmed)

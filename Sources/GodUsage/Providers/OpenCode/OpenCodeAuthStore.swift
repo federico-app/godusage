@@ -64,7 +64,7 @@ struct OpenCodeAuthStore: Sendable {
         guard let data = text.data(using: .utf8),
               let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         else {
-            throw OpenCodeUsageError.credentialsUnreadable(detail: "auth.json is not valid JSON")
+            throw OpenCodeUsageError.credentialsUnreadable(detail: String(localized: "auth.json is not valid JSON"))
         }
         return object
     }

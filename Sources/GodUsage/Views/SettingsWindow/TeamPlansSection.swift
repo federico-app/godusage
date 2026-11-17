@@ -105,7 +105,9 @@ struct TeamPlansSection: View {
 
     /// The short name of an ISO weekday (1 = Monday) in the user's language.
     static func weekdaySymbol(_ isoDay: Int) -> String {
-        Calendar.current.shortWeekdaySymbols[isoDay % 7]
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = AppLocale.current
+        return calendar.shortWeekdaySymbols[isoDay % 7]
     }
 
     private var isValid: Bool {

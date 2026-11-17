@@ -23,8 +23,8 @@ enum TeamMembersShown: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .all: "All"
-        default: "Top \(rawValue)"
+        case .all: String(localized: "All", comment: "Members shown on the dashboard: every member.")
+        default: String(localized: "Top \(rawValue)", comment: "Members shown on the dashboard: the first N.")
         }
     }
 
@@ -97,7 +97,7 @@ struct CustomizeTeamCard: View {
         .animation(Motion.spring, value: showSection)
     }
 
-    private func row<Trailing: View>(_ title: String, indent: CGFloat = 40, @ViewBuilder trailing: () -> Trailing) -> some View {
+    private func row<Trailing: View>(_ title: LocalizedStringKey, indent: CGFloat = 40, @ViewBuilder trailing: () -> Trailing) -> some View {
         HStack(spacing: 10) {
             Text(title)
             Spacer(minLength: 8)
