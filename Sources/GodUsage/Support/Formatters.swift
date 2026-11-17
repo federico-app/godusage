@@ -51,10 +51,34 @@ enum Formatters {
         calendar: Calendar = .current
     ) -> String? {
         guard let when = whenLabel(at: date, mode: mode, now: now, calendar: calendar) else { return nil }
-        if when == imminent { return "\(prefix) \(when)" }
-        switch mode {
-        case .relative: return "\(prefix) in \(when)"
-        case .absolute: return "\(prefix) \(when)"
+        return deadlinePhrase(prefix, when: when, isImminent: when == imminent, relative: mode == .relative)
+    }
+
+    /// One full localizable sentence per known verb, so a translation can reorder words instead of
+    /// gluing "<verb> in <when>" fragments. The verbs stay English at the call sites (`prefix`); an
+    /// unknown one falls back to a generic "<verb> in <when>" template.
+    private static func deadlinePhrase(_ prefix: String, when: String, isImminent: Bool, relative: Bool) -> String {
+        switch prefix {
+        case "Resets":
+            if isImminent { return String(localized: "Resets soon", comment: "A usage limit resets within minutes") }
+            return relative
+                ? String(localized: "Resets in \(when)", comment: "A usage limit resets after a duration, e.g. in 2d 6h")
+                : String(localized: "Resets \(when)", comment: "A usage limit resets at a time, e.g. today at 5:30 PM")
+        case "Reset expires":
+            if isImminent { return String(localized: "Reset expires soon", comment: "An unused reset credit expires within minutes") }
+            return relative
+                ? String(localized: "Reset expires in \(when)", comment: "An unused reset credit expires after a duration")
+                : String(localized: "Reset expires \(when)", comment: "An unused reset credit expires at a time, e.g. today at 5:30 PM")
+        case "Limit":
+            if isImminent { return String(localized: "Limit soon", comment: "Usage is projected to hit the limit within minutes") }
+            return relative
+                ? String(localized: "Limit in \(when)", comment: "Usage is projected to hit the limit after a duration")
+                : String(localized: "Limit \(when)", comment: "Usage is projected to hit the limit at a time, e.g. today at 5:30 PM")
+        default:
+            if isImminent { return String(localized: "\(prefix) soon", comment: "Generic deadline: <verb> soon") }
+            return relative
+                ? String(localized: "\(prefix) in \(when)", comment: "Generic deadline: <verb> in <duration>")
+                : "\(prefix) \(when)"
         }
     }
 
@@ -82,15 +106,15 @@ enum Formatters {
             ).day ?? 0
             // The wall-clock part honors the user's Auto/12h/24h time-format setting.
             let time = TimeFormatSetting.current.shortTime(date)
-            if dayDiff <= 0 { return "today at \(time)" }
-            if dayDiff == 1 { return "tomorrow at \(time)" }
-            return "\(monthDayLabel(date)) at \(time)"
+            if dayDiff <= 0 { return String(localized: "today at \(time)", comment: "Deadline time later today") }
+            if dayDiff == 1 { return String(localized: "tomorrow at \(time)", comment: "Deadline time tomorrow") }
+            return String(localized: "\(monthDayLabel(date)) at \(time)", comment: "Deadline: <month day> at <time>, e.g. Feb 15 at 3:45 PM")
         }
     }
 
     /// The collapsed phrase for a deadline that's past-due or within ~5 minutes — too close to print a
     /// useful countdown. Shared so `deadlineLabel` and any bare-`whenLabel` caller agree on the wording.
-    static let imminent = "soon"
+    static var imminent: String { String(localized: "soon", comment: "A deadline only minutes away") }
 
     static func resetRelativeLabel(until resetsAt: Date, now: Date = Date()) -> String? {
         deadlineLabel("Resets", at: resetsAt, mode: .relative, now: now)
@@ -111,11 +135,13 @@ enum Formatters {
         let minutes = totalMinutes % 60
 
         if days > 0 {
-            return "\(days)d \(hours)h"
+            return String(localized: "\(days)d \(hours)h", comment: "Compact duration: days and hours")
         }
         if hours > 0 {
-            return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
+            return minutes > 0
+                ? String(localized: "\(hours)h \(minutes)m", comment: "Compact duration: hours and minutes")
+                : String(localized: "\(hours)h", comment: "Compact duration: hours")
         }
-        return "\(minutes)m"
+        return String(localized: "\(minutes)m", comment: "Compact duration: minutes")
     }
 }

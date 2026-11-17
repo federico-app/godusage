@@ -15,19 +15,26 @@ extension RateLimitResetsDetail {
     static func banner(for outcome: ResetClaimOutcome, now: Date = Date()) -> Banner {
         switch outcome {
         case .success:
-            return .init(text: "Reset claimed. Enjoy!", icon: "checkmark.circle.fill", tint: .green)
+            return .init(text: String(localized: "Reset claimed. Enjoy!"), icon: "checkmark.circle.fill", tint: .green)
         case .nothingToReset:
-            return .init(text: "Your usage doesn't need a reset yet", icon: "info.circle.fill", tint: .accentColor)
+            return .init(text: String(localized: "Your usage doesn't need a reset yet"), icon: "info.circle.fill", tint: .accentColor)
         case .noCredit:
-            return .init(text: "That reset is no longer available", icon: "exclamationmark.triangle.fill", tint: .orange)
+            return .init(text: String(localized: "That reset is no longer available"), icon: "exclamationmark.triangle.fill", tint: .orange)
         case .unconfirmed:
-            return .init(text: "Your reset may still be going through. Check again in a minute.", icon: "clock.fill", tint: .accentColor)
+            return .init(text: String(localized: "Your reset may still be going through. Check again in a minute."), icon: "clock.fill", tint: .accentColor)
         case .unavailableNow(let until):
             let wait = until.flatMap { Formatters.whenLabel(at: $0, mode: .relative, now: now) }
-                .map { $0 == Formatters.imminent ? " Try again soon." : " Try again in \($0)." } ?? ""
-            return .init(text: "Resets can't be used right now.\(wait)", icon: "exclamationmark.triangle.fill", tint: .orange)
+            let text: String
+            if let wait {
+                text = wait == Formatters.imminent
+                    ? String(localized: "Resets can't be used right now. Try again soon.")
+                    : String(localized: "Resets can't be used right now. Try again in \(wait).")
+            } else {
+                text = String(localized: "Resets can't be used right now.")
+            }
+            return .init(text: text, icon: "exclamationmark.triangle.fill", tint: .orange)
         case .failed:
-            return .init(text: "Couldn't reset usage. Please try again.", icon: "xmark.circle.fill", tint: .red)
+            return .init(text: String(localized: "Couldn't reset usage. Please try again."), icon: "xmark.circle.fill", tint: .red)
         }
     }
 
@@ -73,7 +80,10 @@ extension RateLimitResetsDetail {
         }
 
         var accessibilityLabel: String {
-            "Reset \(number), \(time)" + (countdown.map { ", expires in \($0)" } ?? "")
+            if let countdown {
+                return String(localized: "Reset \(number), \(time), expires in \(countdown)", comment: "Accessibility: one rate-limit reset credit")
+            }
+            return String(localized: "Reset \(number), \(time)", comment: "Accessibility: one rate-limit reset credit")
         }
     }
 
@@ -97,7 +107,7 @@ extension RateLimitResetsDetail {
                 date: date,
                 key: Entry.Key(date: date, ordinal: ordinal),
                 severity: WidgetData.expirySeverity(secondsRemaining: date.timeIntervalSince(now)),
-                time: (imminent || absolute == nil) ? "Expiring soon" : absolute!,
+                time: (imminent || absolute == nil) ? String(localized: "Expiring soon") : absolute!,
                 countdown: imminent ? nil : relative
             )
         }

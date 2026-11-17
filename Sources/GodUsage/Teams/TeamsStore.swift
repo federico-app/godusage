@@ -43,7 +43,7 @@ final class TeamsStore {
     private(set) var statsError: String?
     /// The server spent its daily database budget: boards stay as they are until midnight UTC.
     private(set) var statsPaused = false
-    static let statsPausedMessage = "Team stats are paused until midnight UTC to stay within the server’s daily limit."
+    static var statsPausedMessage: String { String(localized: "Team stats are paused until midnight UTC to stay within the server’s daily limit.") }
     /// The team the popover and the Teams window show. Falls back to the first team.
     var selectedTeamID: String? {
         get { teams.contains { $0.id == storedSelectedTeamID } ? storedSelectedTeamID : teams.first?.id }
@@ -141,7 +141,7 @@ final class TeamsStore {
             session = try sessionStore.load()
         } catch {
             AppLog.error(.teams, "couldn't read the saved teams session: \(error)")
-            errorMessage = "GodUsage couldn’t read your saved teams sign-in. Sign in again."
+            errorMessage = String(localized: "GodUsage couldn’t read your saved teams sign-in. Sign in again.")
         }
     }
 
@@ -317,7 +317,7 @@ final class TeamsStore {
     /// `endingOn` picks the period's last day (a past week, month, or year); nil means today.
     /// `include` (`today`, `monthToDate`) also loads those spend boards into `cachedStats`.
     func stats(for teamID: String, range: StatsRange, sort: StatsSort, endingOn: String? = nil, include: [StatsRange] = []) async throws -> TeamStats {
-        guard let token = session?.token else { throw TeamsAPIError(kind: .unauthorized, message: "Sign in to see team stats.") }
+        guard let token = session?.token else { throw TeamsAPIError(kind: .unauthorized, message: String(localized: "Sign in to see team stats.")) }
         let today = endingOn ?? DailyUsageAccumulator.dayKey(from: now(), calendar: .current)
         do {
             let response = try await api.stats(token: token, teamID: teamID, range: range, sort: sort, today: today, include: include)
@@ -397,7 +397,7 @@ final class TeamsStore {
         guard let token = session?.token else { return }
         guard let deviceID = deviceID() else {
             AppLog.warn(.teams, "teams upload skipped: this Mac's device identity is unresolved")
-            uploadError = "This Mac’s identity isn’t resolved yet, so its usage isn’t shared."
+            uploadError = String(localized: "This Mac’s identity isn’t resolved yet, so its usage isn’t shared.")
             return
         }
         let sources = historySources()
@@ -512,7 +512,7 @@ final class TeamsStore {
             guard let stats = try? await stats(for: team.id, range: .week, sort: .cost, endingOn: due.endDay),
                   let message = TeamEvents.weeklyRecapMessage(stats: stats, team: team.name, me: me)
             else { continue }
-            if await postNotification("team-weekly-recap", message.title, "Week ending \(TeamsFormat.dayLabel(due.endDay))", message.body) {
+            if await postNotification("team-weekly-recap", message.title, String(localized: "Week ending \(TeamsFormat.dayLabel(due.endDay))"), message.body) {
                 delivered = true
             }
         }
@@ -593,6 +593,6 @@ final class TeamsStore {
     private func sessionExpired() {
         AppLog.warn(.teams, "teams session is no longer valid; signed out")
         clearSession()
-        errorMessage = "Your teams sign-in ended. Sign in again."
+        errorMessage = String(localized: "Your teams sign-in ended. Sign in again.")
     }
 }

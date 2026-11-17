@@ -77,10 +77,15 @@ struct MenuBarContent: Equatable {
     /// "Claude Session 41%, Weekly 12%; Cursor Credits $12".
     var accessibilityText: String {
         groups.map { group in
-            if group.loginRequired { return "\(group.displayName) Login Required" }
-            if group.isExhausted { return "\(group.displayName) Usage Exhausted" }
+            if group.loginRequired { return String(localized: "\(group.displayName) Login Required") }
+            if group.isExhausted { return String(localized: "\(group.displayName) Usage Exhausted") }
             let metrics = group.metrics
-                .map { "\($0.label) \($0.value)\($0.isOverPace ? " Over Pace" : "")" }
+                .map { metric in
+                    let label = LocalizedMetricTitle.string(metric.label)
+                    return metric.isOverPace
+                        ? String(localized: "\(label) \(metric.value) Over Pace", comment: "VoiceOver: metric, value, ahead of a sustainable pace")
+                        : "\(label) \(metric.value)"
+                }
                 .joined(separator: ", ")
             return "\(group.displayName) \(metrics)"
         }

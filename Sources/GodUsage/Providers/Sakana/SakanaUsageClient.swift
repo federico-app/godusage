@@ -48,7 +48,7 @@ enum SakanaUsageError: Error, LocalizedError, Equatable {
         case .connectionFailed:
             return ProviderUsageErrorText.connectionFailed
         case .invalidResponse:
-            return "Sakana Console returned an unsupported billing response. The private console format may have changed."
+            return String(localized: "Sakana Console returned an unsupported billing response. The private console format may have changed.")
         case .requestFailed(let status):
             return ProviderUsageErrorText.requestFailed(statusCode: status)
         }

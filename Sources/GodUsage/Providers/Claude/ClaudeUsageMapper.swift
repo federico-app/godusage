@@ -104,9 +104,10 @@ enum ClaudeUsageMapper {
     /// carrying it marks itself `.wait`, leaving the header triangle inert instead of offering the
     /// refresh this very sentence warns against.
     static func rateLimitedWarning(retryAfterSeconds: Int?) -> String {
-        let base = "Updates blocked by Anthropic. Be patient — manual refreshes will make it worse."
-        guard let retryText = retryAfterSeconds.map(formatRateLimitMinutes) else { return base }
-        return "\(base) Retrying in ~\(retryText)."
+        guard let retryText = retryAfterSeconds.map(formatRateLimitMinutes) else {
+            return String(localized: "Updates blocked by Anthropic. Be patient — manual refreshes will make it worse.")
+        }
+        return String(localized: "Updates blocked by Anthropic. Be patient — manual refreshes will make it worse. Retrying in ~\(retryText).")
     }
 
     /// Provider warning shown on the Claude header (the amber triangle + tooltip, like Z.ai's "no coding
@@ -117,8 +118,10 @@ enum ClaudeUsageMapper {
     /// The card's token belongs to a different account than the one the card is named after. Its
     /// usage is withheld (it is another account's), so the notice names the fix.
     static func accountMismatchWarning(tokenAccount: ClaudeAccountIdentity) -> String {
-        let owner = tokenAccount.email.map { " (\($0))" } ?? ""
-        return "This login belongs to another account\(owner). Run `claude /login` again."
+        guard let email = tokenAccount.email else {
+            return String(localized: "This login belongs to another account. Run `claude /login` again.")
+        }
+        return String(localized: "This login belongs to another account (\(email)). Run `claude /login` again.")
     }
 
     /// No live bars and no plan badge: both would describe the token's account, not the card's.
@@ -132,7 +135,9 @@ enum ClaudeUsageMapper {
         )
     }
 
-    static let missingProfileScopeWarning = "Re-login for live usage. Run `claude` and sign in again to restore session and weekly limits."
+    static var missingProfileScopeWarning: String {
+        String(localized: "Re-login for live usage. Run `claude` and sign in again to restore session and weekly limits.")
+    }
 
     /// The "live usage is rate limited" note appended to a last-good snapshot so the still-shown bars are
     /// flagged as possibly stale. Shared with `rateLimitedUsage` so the wording stays in one place.

@@ -83,19 +83,19 @@ enum CodexAuthError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notLoggedIn:
-            return "Not logged in. Run `codex` to authenticate."
+            return String(localized: "Not logged in. Run `codex` to authenticate.")
         case .loginRenewalRequired:
-            return "Codex login needs renewal. Run `codex`, then refresh GodUsage."
+            return String(localized: "Codex login needs renewal. Run `codex`, then refresh GodUsage.")
         case .usageAPIKey:
-            return "Usage not available for API key."
+            return String(localized: "Usage not available for API key.")
         case .invalidAuthPayload:
-            return "Codex auth data is invalid."
+            return String(localized: "Codex auth data is invalid.")
         case .keychainConnectRequired:
-            return "Codex login found in Keychain. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs."
+            return String(localized: "Codex login found in Keychain. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs.")
         case .keychainPermissionRequired:
-            return "Keychain access to the Codex login was declined. Refresh and choose Always Allow when macOS asks."
+            return String(localized: "Keychain access to the Codex login was declined. Refresh and choose Always Allow when macOS asks.")
         case .credentialStoreUnreadable:
-            return "Codex credentials couldn’t be read. Unlock your login keychain and refresh."
+            return String(localized: "Codex credentials couldn’t be read. Unlock your login keychain and refresh.")
         }
     }
 

@@ -89,9 +89,7 @@ private struct TeamsSignedOutSection: View {
     var body: some View {
         SettingsSection("Teams") {
             SettingsCaption(
-                "Create a team, invite friends with a link, and compare AI usage on a leaderboard. "
-                    + "Members see each other's daily spend and tokens by provider and model. "
-                    + "Credentials, logs, and project names never leave this Mac."
+                "Create a team, invite friends with a link, and compare AI usage on a leaderboard. Members see each other's daily spend and tokens by provider and model. Credentials, logs, and project names never leave this Mac."
             )
             .padding(.top, 10)
             if teams.pendingInvite != nil {
@@ -99,27 +97,39 @@ private struct TeamsSignedOutSection: View {
             }
             TeamsSignInButton(teams: teams)
                 .padding(.horizontal, 12)
-            TeamsLegalLinks(prefix: "By signing in you agree to the")
+            TeamsLegalLinks(lead: .signingIn)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
         }
     }
 }
 
-/// "… the Terms and the Privacy Policy" of the Teams service (served by the backend).
+/// "… the Terms and the Privacy Policy" of the Teams service (served by the backend), as one
+/// localized sentence so a translation can reorder it. The catalog's Markdown links point at the
+/// placeholders `terms` and `privacy`; the real URLs replace them here.
 struct TeamsLegalLinks: View {
-    var prefix: String? = nil
+    enum Lead { case signingIn, see }
+    let lead: Lead
 
     var body: some View {
         let client = TeamsAPIClient()
-        HStack(spacing: 4) {
-            if let prefix { Text(prefix) }
-            Link("Terms", destination: client.termsURL)
-            Text("and the")
-            Link("Privacy Policy", destination: client.privacyURL)
+        Text(Self.sentence(lead, terms: client.termsURL, privacy: client.privacyURL))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+    }
+
+    static func sentence(_ lead: Lead, terms: URL, privacy: URL) -> AttributedString {
+        var text = switch lead {
+        case .signingIn:
+            AttributedString(localized: "By signing in you agree to the [Terms](terms) and the [Privacy Policy](privacy).")
+        case .see:
+            AttributedString(localized: "See the [Terms](terms) and the [Privacy Policy](privacy).")
         }
-        .font(.caption)
-        .foregroundStyle(.secondary)
+        let links = text.runs.compactMap { run in run.link.map { (run.range, $0) } }
+        for (range, placeholder) in links {
+            text[range].link = placeholder.absoluteString == "privacy" ? privacy : terms
+        }
+        return text
     }
 }
 
@@ -136,7 +146,7 @@ private struct TeamsInviteCard: View {
                         }
                     } else {
                         SettingsRow("Join \(preview.team.name)?") {
-                            Text(preview.team.memberCount == 1 ? "1 member" : "\(preview.team.memberCount) members")
+                            Text("\(preview.team.memberCount) members")
                                 .foregroundStyle(.secondary)
                         }
                         SettingsCaption("Members of this team will see your daily AI spend and tokens.")
@@ -220,9 +230,10 @@ private struct TeamsAccountSection: View {
     }
 
     private var uploadStatus: String {
-        if teams.teams.isEmpty { return "Not sharing (no teams yet)" }
-        guard let lastUploadAt = teams.lastUploadAt else { return "Sharing usage" }
-        return "Shared \(lastUploadAt.formatted(.relative(presentation: .named)))"
+        if teams.teams.isEmpty { return String(localized: "Not sharing (no teams yet)") }
+        guard let lastUploadAt = teams.lastUploadAt else { return String(localized: "Sharing usage") }
+        let relative = lastUploadAt.formatted(.relative(presentation: .named))
+        return String(localized: "Shared \(relative)", comment: "Upload status; the value is a relative time like '5 minutes ago'")
     }
 }
 
@@ -266,10 +277,10 @@ private struct TeamsAccountActionsSection: View {
             guard panel.runModal() == .OK, let url = panel.url else { return }
             do {
                 try data.write(to: url, options: .atomic)
-                exportMessage = "Saved \(url.lastPathComponent)."
+                exportMessage = String(localized: "Saved \(url.lastPathComponent).")
             } catch {
                 AppLog.error(.teams, "export save failed: \(error.localizedDescription)")
-                exportMessage = "Couldn't save the file: \(error.localizedDescription)"
+                exportMessage = String(localized: "Couldn't save the file: \(error.localizedDescription)")
             }
         }
     }
@@ -296,7 +307,7 @@ private struct TeamsAccountActionsSection: View {
                     .disabled(teams.isBusy)
             }
             SettingsCaption("Deletes your account, the usage every Mac shared, and the teams you own.")
-            TeamsLegalLinks(prefix: "See the")
+            TeamsLegalLinks(lead: .see)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 10)
         }

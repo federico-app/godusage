@@ -243,15 +243,15 @@ struct TeamProjection: Equatable {
     static func challengeResultMessage(_ challenge: TeamChallenge, me: String?) -> (title: String, body: String)? {
         let winners = challenge.winners
         guard !winners.isEmpty else {
-            return ("\(challenge.kind.title) Ended", "Nobody qualified this time.")
+            return (String(localized: "\(challenge.kind.title) Ended"), String(localized: "Nobody qualified this time."))
         }
-        let names = winners.map { $0.userID == me ? "You" : $0.displayName }
-        let who = names.count == 1 ? names[0] : names.dropLast().joined(separator: ", ") + " and " + names.last!
+        let names = winners.map { $0.userID == me ? String(localized: "You") : $0.displayName }
+        let who = names.count == 1 ? names[0] : String(localized: "\(names.dropLast().joined(separator: ", ")) and \(names.last!)")
         let value = challenge.kind.valueText(winners[0].value)
         let iWon = winners.contains { $0.userID == me }
         return (
-            iWon ? "You Won \(challenge.kind.title)" : "\(who) Won \(challenge.kind.title)",
-            "\(who) finished first with \(value)."
+            iWon ? String(localized: "You Won \(challenge.kind.title)") : String(localized: "\(who) Won \(challenge.kind.title)"),
+            String(localized: "\(who) finished first with \(value).")
         )
     }
 }

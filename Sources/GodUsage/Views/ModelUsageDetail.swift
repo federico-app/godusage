@@ -70,10 +70,7 @@ struct ModelUsageDetail: View {
                 Text("\(percent)%")
                     .monospacedDigit()
                 Spacer(minLength: 8)
-                Text(MetricFormatter.string(
-                    for: MetricValue(number: Double(model.totalTokens), kind: .count, label: "tokens"),
-                    style: .row
-                ))
+                Text(tokensLabel(model.totalTokens))
                 .monospacedDigit()
             }
             .font(.system(size: density.supportingPointSize))
@@ -92,6 +89,12 @@ struct ModelUsageDetail: View {
             .padding(.top, 2)
         }
         .padding(.vertical, density.textRowPadding)
+    }
+
+    /// A model's token total as a row label, e.g. "56.9M tokens".
+    private func tokensLabel(_ tokens: Int) -> String {
+        let count = MetricFormatter.number(Double(tokens), kind: .count, style: .row)
+        return String(localized: "\(count) tokens")
     }
 
     /// Share against the sum of the listed models' own (display-rounded) figures, not the spend row's

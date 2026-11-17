@@ -54,7 +54,7 @@ final class GrokProvider: ProviderRuntime {
                 .exportingHistory(
                     scope: .machineLocal,
                     estimatedCost: true,
-                    sourceNote: "From your Grok logs (estimated)"
+                    sourceNote: String(localized: "From your Grok logs (estimated)")
                 )
             // Local spend tiles, estimated from Grok CLI session activity (see GrokLogUsageScanner).
         ] + WidgetDescriptor.spendTiles(provider: provider)
@@ -128,7 +128,7 @@ final class GrokProvider: ProviderRuntime {
                 now: now(),
                 unknownModelsByDay: scan.unknownModelsByDay,
                 modelUsage: scan.modelUsage,
-                modelSourceNote: "From your Grok logs (estimated)"
+                modelSourceNote: String(localized: "From your Grok logs (estimated)")
             )
             SpendTileMapper.appendUsageTrend(scan.series, to: &mapped.lines, now: now(),
                                              note: "From your Grok logs (estimated)")

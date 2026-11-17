@@ -144,25 +144,25 @@ enum ClaudeAuthError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notLoggedIn:
-            return "Not logged in. Run `claude` to authenticate."
+            return String(localized: "Not logged in. Run `claude` to authenticate.")
         case .codeConnectRequired:
-            return "Claude Code login found. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs."
+            return String(localized: "Claude Code login found. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs.")
         case .codePermissionDenied:
-            return "Keychain access to the Claude Code login was declined. Refresh and choose Always Allow when macOS asks."
+            return String(localized: "Keychain access to the Claude Code login was declined. Refresh and choose Always Allow when macOS asks.")
         case .codeCredentialsUnavailable:
-            return "Claude Code credentials couldn't be checked. Unlock your login keychain, then refresh."
+            return String(localized: "Claude Code credentials couldn't be checked. Unlock your login keychain, then refresh.")
         case .desktopConnectRequired:
-            return "Claude Desktop login found. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs."
+            return String(localized: "Claude Desktop login found. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs.")
         case .desktopPermissionDenied:
-            return "Keychain access to the Claude Desktop login was declined. Refresh and choose Always Allow when macOS asks."
+            return String(localized: "Keychain access to the Claude Desktop login was declined. Refresh and choose Always Allow when macOS asks.")
         case .desktopTokenExpired:
-            return "Claude Desktop login is stale. Open Claude Desktop, then refresh GodUsage."
+            return String(localized: "Claude Desktop login is stale. Open Claude Desktop, then refresh GodUsage.")
         case .desktopCredentialsUnavailable:
-            return "Claude Desktop login couldn't be read. Open Claude Desktop, then try again."
+            return String(localized: "Claude Desktop login couldn't be read. Open Claude Desktop, then try again.")
         case .loginRenewalRequired:
-            return "Claude login needs renewal. Open Claude Code, then refresh GodUsage."
+            return String(localized: "Claude login needs renewal. Open Claude Code, then refresh GodUsage.")
         case .invalidOAuthURL(let value):
-            return "Invalid Claude OAuth URL: \(value). Check CLAUDE_CODE_CUSTOM_OAUTH_URL / CLAUDE_LOCAL_OAUTH_API_BASE."
+            return String(localized: "Invalid Claude OAuth URL: \(value). Check CLAUDE_CODE_CUSTOM_OAUTH_URL / CLAUDE_LOCAL_OAUTH_API_BASE.")
         }
     }
 

@@ -80,7 +80,7 @@ enum MetricFormatter {
         switch metric {
         case .cost:
             // Keep the `$` — unit line still says "dollars" for clarity in the hole.
-            return TotalSpendRingCenter(primary: number(value, kind: .dollars, style: .tray), unit: "dollars")
+            return TotalSpendRingCenter(primary: number(value, kind: .dollars, style: .tray), unit: String(localized: "dollars", comment: "Unit under a dollar total in the spend ring"))
         case .tokens:
             return tokenRingCenter(value)
         case .costPerMtok:
@@ -105,26 +105,26 @@ enum MetricFormatter {
             let scaled = value / 1_000_000_000
             return TotalSpendRingCenter(
                 primary: scaled.formatted(.number.precision(.fractionLength(0...1)).locale(locale)),
-                unit: "billion"
+                unit: String(localized: "billion", comment: "Unit under a token total in the spend ring, e.g. 1.2 billion")
             )
         }
         if magnitude >= 1_000_000 {
             let scaled = value / 1_000_000
             return TotalSpendRingCenter(
                 primary: scaled.formatted(.number.precision(.fractionLength(0...1)).locale(locale)),
-                unit: "million"
+                unit: String(localized: "million", comment: "Unit under a token total in the spend ring, e.g. 461.8 million")
             )
         }
         if magnitude >= 1_000 {
             let scaled = value / 1_000
             return TotalSpendRingCenter(
                 primary: scaled.formatted(.number.precision(.fractionLength(0...1)).locale(locale)),
-                unit: "thousand"
+                unit: String(localized: "thousand", comment: "Unit under a token total in the spend ring, e.g. 12.4 thousand")
             )
         }
         return TotalSpendRingCenter(
             primary: value.formatted(.number.precision(.fractionLength(0...1)).locale(locale)),
-            unit: "tokens"
+            unit: String(localized: "tokens", comment: "Unit under a small token total in the spend ring")
         )
     }
 }

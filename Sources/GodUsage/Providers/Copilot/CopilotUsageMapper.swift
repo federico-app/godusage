@@ -287,15 +287,15 @@ enum CopilotUsageError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidResponse:
-            return "Copilot usage response invalid. Try again later."
+            return String(localized: "Copilot usage response invalid. Try again later.")
         case .connectionFailed:
-            return "Couldn't reach GitHub. Check your connection."
+            return String(localized: "Couldn't reach GitHub. Check your connection.")
         case .requestFailed(let status):
-            return "Copilot usage request failed (HTTP \(status)). Try again later."
+            return String(localized: "Copilot usage request failed (HTTP \(status)). Try again later.")
         case .quotaUnavailable:
-            return "Copilot usage data is unavailable for this account."
+            return String(localized: "Copilot usage data is unavailable for this account.")
         case .orgBillingUnavailable:
-            return "GitHub billing could not be reached. Try again later."
+            return String(localized: "GitHub billing could not be reached. Try again later.")
         }
     }
 }

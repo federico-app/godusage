@@ -171,8 +171,7 @@ final class DeviceIdentityStore {
                 // preferences reset.
                 return DeviceIdentityResolution(
                     id: saved,
-                    error: "GodUsage couldn’t save this Mac’s identity. Teams can count this Mac twice "
-                        + "if you reset app preferences.",
+                    error: String(localized: "GodUsage couldn’t save this Mac’s identity. Teams can count this Mac twice if you reset app preferences."),
                     isProvisional: false,
                     canRecoverLegacyIdentity: false
                 )
@@ -181,8 +180,7 @@ final class DeviceIdentityStore {
             // of the defaults and off the server until the lookup works.
             return DeviceIdentityResolution(
                 id: UUID().uuidString.lowercased(),
-                error: "GodUsage couldn’t identify this Mac, so Teams won’t share its usage until "
-                    + "its local identity storage is available again.",
+                error: String(localized: "GodUsage couldn’t identify this Mac, so Teams won’t share its usage until its local identity storage is available again."),
                 isProvisional: true,
                 canRecoverLegacyIdentity: legacyRecoveryFailed
             )

@@ -244,7 +244,7 @@ struct MemoryInventoryScanner: Sendable {
 
     /// A memory file that exists but could not be read must not vanish silently — the log has the
     /// path, the sidebar gets this pointer.
-    static let readFailureFootnote = "Some memory files could not be read. Check the log for details."
+    static var readFailureFootnote: String { String(localized: "Some memory files could not be read. Check the log for details.") }
 
     /// One `projects/<slug>/memory/` directory. Facts come from the directory listing (every `*.md`
     /// except MEMORY.md) so a fact whose index line was lost still shows; titles and hooks are
@@ -345,7 +345,7 @@ struct MemoryInventoryScanner: Sendable {
             notes.append("codex home \(logPath(home)): use_memories = false in config.toml → memory disabled")
             // One sentence shape for every disabled source — "Memory is turned off in <the other
             // tool>, <where its switch lives>" — so Codex and Grok read as the same state.
-            status = .memoryDisabled(note: "Memory is turned off in Codex (use_memories = false in config.toml).")
+            status = .memoryDisabled(note: String(localized: "Memory is turned off in Codex (use_memories = false in config.toml)."))
         }
 
         return MemorySource(
@@ -411,10 +411,10 @@ struct MemoryInventoryScanner: Sendable {
         let configText = readIfPresent(home + "/config.toml", notes: &notes, failed: &configUnreadable)
         let memoryConfigured = configText.map(Self.grokMemoryConfigured(in:)) ?? false
         let configFootnote = configUnreadable
-            ? "Grok's config.toml could not be read, so its memory state is unknown. Check the log for details."
+            ? String(localized: "Grok's config.toml could not be read, so its memory state is unknown. Check the log for details.")
             : nil
         let disabledStatus = MemorySourceStatus.memoryDisabled(
-            note: "Memory is turned off in Grok (no [memory] section in its config.toml)."
+            note: String(localized: "Memory is turned off in Grok (no [memory] section in its config.toml).")
         )
         let memoryDir = home + "/memory"
         guard directoryPresent(memoryDir) else {
@@ -514,7 +514,7 @@ struct MemoryInventoryScanner: Sendable {
                 .max { sources[$0].homePath.count < sources[$1].homePath.count }
             if let match {
                 sources[match].footnote = sources[match].footnote
-                    ?? "Some folders under this home could not be listed. Check the log for details."
+                    ?? String(localized: "Some folders under this home could not be listed. Check the log for details.")
             }
         }
     }

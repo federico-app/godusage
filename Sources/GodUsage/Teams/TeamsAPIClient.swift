@@ -314,7 +314,7 @@ struct TeamsAPIClient: TeamsAPI {
             return try JSONDecoder().decode(Response.self, from: response.body)
         } catch {
             AppLog.error(.teams, "\(method) \(pathWithoutQuery(path)) returned an unreadable response: \(error)")
-            throw TeamsAPIError(kind: .server, message: "The teams server sent a response GodUsage couldn’t read. Update GodUsage and try again.")
+            throw TeamsAPIError(kind: .server, message: String(localized: "The teams server sent a response GodUsage couldn’t read. Update GodUsage and try again."))
         }
     }
 
@@ -324,7 +324,7 @@ struct TeamsAPIClient: TeamsAPI {
 
     private func perform(_ method: String, _ path: String, token: String?, body: (some Encodable)?) async throws -> HTTPResponse {
         guard let url = URL(string: path, relativeTo: baseURL) else {
-            throw TeamsAPIError(kind: .invalidRequest, message: "Invalid teams request.")
+            throw TeamsAPIError(kind: .invalidRequest, message: String(localized: "Invalid teams request."))
         }
         var headers = ["accept": "application/json"]
         if let token { headers["authorization"] = "Bearer \(token)" }
@@ -358,8 +358,8 @@ struct TeamsAPIClient: TeamsAPI {
         default: .server
         }
         let fallback = kind == .server
-            ? "The teams server had a problem (HTTP \(response.statusCode)). Try again later."
-            : "The teams request failed (HTTP \(response.statusCode))."
+            ? String(localized: "The teams server had a problem (HTTP \(response.statusCode)). Try again later.")
+            : String(localized: "The teams request failed (HTTP \(response.statusCode)).")
         return TeamsAPIError(kind: kind, message: message ?? fallback)
     }
 

@@ -21,13 +21,13 @@ enum OpenRouterAuthError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .missingKey:
-            return "No OpenRouter API key. Set OPENROUTER_API_KEY or add it to ~/.config/godusage/openrouter.json."
+            return String(localized: "No OpenRouter API key. Set OPENROUTER_API_KEY or add it to ~/.config/godusage/openrouter.json.")
         case .invalidKey:
-            return "OpenRouter API key invalid. Check your key at openrouter.ai/keys."
+            return String(localized: "OpenRouter API key invalid. Check your key at openrouter.ai/keys.")
         case .saveFailed:
-            return "Couldn't save the OpenRouter API key."
+            return String(localized: "Couldn't save the OpenRouter API key.")
         case .deleteFailed:
-            return "Couldn't remove the saved OpenRouter API key."
+            return String(localized: "Couldn't remove the saved OpenRouter API key.")
         }
     }
 }

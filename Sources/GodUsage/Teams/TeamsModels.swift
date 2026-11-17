@@ -78,22 +78,22 @@ enum StatsRange: String, CaseIterable, Codable, Hashable, Sendable {
 
     var label: String {
         switch self {
-        case .today: "Today"
-        case .week: "7 Days"
-        case .month: "30 Days"
-        case .year: "Year"
-        case .monthToDate: "This Month"
+        case .today: String(localized: "Today")
+        case .week: String(localized: "7 Days")
+        case .month: String(localized: "30 Days")
+        case .year: String(localized: "Year")
+        case .monthToDate: String(localized: "This Month")
         }
     }
 
     /// The period before this one, in words, for the movement arrows' tooltips and captions.
     var previousLabel: String {
         switch self {
-        case .today: "yesterday"
-        case .week: "the previous 7 days"
-        case .month: "the previous 30 days"
-        case .year: "the previous year"
-        case .monthToDate: "the same days last month"
+        case .today: String(localized: "yesterday")
+        case .week: String(localized: "the previous 7 days")
+        case .month: String(localized: "the previous 30 days")
+        case .year: String(localized: "the previous year")
+        case .monthToDate: String(localized: "the same days last month")
         }
     }
 }

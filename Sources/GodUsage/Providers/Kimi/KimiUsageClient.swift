@@ -125,7 +125,7 @@ enum KimiUsageError: Error, LocalizedError, Equatable {
         case .requestFailed(let status):
             return ProviderUsageErrorText.requestFailed(statusCode: status)
         case .usageUnavailable:
-            return "Kimi Code subscription usage is unavailable for this account."
+            return String(localized: "Kimi Code subscription usage is unavailable for this account.")
         }
     }
 }

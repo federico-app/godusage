@@ -190,7 +190,7 @@ struct MemoryRootView: View {
                 Label("No Agent Memory Found", systemImage: "brain")
             } description: {
                 Text(store.loadError
-                    ?? "No harness on this Mac keeps memory or instruction files GodUsage knows how to read.")
+                    ?? String(localized: "No harness on this Mac keeps memory or instruction files GodUsage knows how to read."))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Theme.traySurface)

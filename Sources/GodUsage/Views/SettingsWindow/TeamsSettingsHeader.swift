@@ -9,10 +9,10 @@ enum TeamsSettingsTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .members: "Members"
-        case .accounts: "Accounts"
-        case .plans: "Plans"
-        case .you: "You"
+        case .members: String(localized: "Members")
+        case .accounts: String(localized: "Accounts")
+        case .plans: String(localized: "Plans")
+        case .you: String(localized: "You")
         }
     }
 
@@ -61,13 +61,13 @@ struct TeamsSettingsHeader: View {
                         set: { selectTeam($0) }
                     )) {
                         ForEach(teams.teams) { team in
-                            Text(team.role == .owner ? "\(team.name) (Owner)" : team.name).tag(team.id)
+                            Text(team.role == .owner ? String(localized: "\(team.name) (Owner)") : team.name).tag(team.id)
                         }
                     }
                     .labelsHidden()
                     .fixedSize()
                     if let selected {
-                        Text(selected.memberCount == 1 ? "1 member" : "\(selected.memberCount) members")
+                        Text("\(selected.memberCount) members")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -113,7 +113,7 @@ struct TeamsSettingsHeader: View {
             Button("Join") {
                 let link = text
                 Task {
-                    joinError = await teams.receiveInvite(link) ? nil : "That isn't a GodUsage invite link."
+                    joinError = await teams.receiveInvite(link) ? nil : String(localized: "That isn't a GodUsage invite link.")
                 }
             }
             Button("Cancel", role: .cancel) {}

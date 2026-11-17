@@ -27,15 +27,15 @@ enum CursorAuthError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notLoggedIn:
-            return "Not logged in. Sign in via Cursor app or run `agent login`."
+            return String(localized: "Not logged in. Sign in via Cursor app or run `agent login`.")
         case .loginRenewalRequired:
-            return "Cursor login needs renewal. Open the Cursor app (or run `agent login`), then refresh GodUsage."
+            return String(localized: "Cursor login needs renewal. Open the Cursor app (or run `agent login`), then refresh GodUsage.")
         case .keychainConnectRequired:
-            return "Cursor login found in Keychain. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs."
+            return String(localized: "Cursor login found in Keychain. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs.")
         case .keychainPermissionRequired:
-            return "Keychain access to the Cursor login was declined. Refresh and choose Always Allow when macOS asks."
+            return String(localized: "Keychain access to the Cursor login was declined. Refresh and choose Always Allow when macOS asks.")
         case .credentialStoreUnreadable:
-            return "Cursor login couldn’t be read. Unlock your login keychain and refresh."
+            return String(localized: "Cursor login couldn’t be read. Unlock your login keychain and refresh.")
         }
     }
 }

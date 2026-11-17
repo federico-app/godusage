@@ -35,8 +35,7 @@ struct TeamWorkingHoursSection: View {
                     .padding(.top, 8)
             }
             SettingsCaption(
-                "Live Pace spreads today's weekly-limit budget over these hours, in each person's own time zone. "
-                    + "A shared account uses everyone's hours combined. These hours apply to this team only."
+                "Live Pace spreads today's weekly-limit budget over these hours, in each person's own time zone. A shared account uses everyone's hours combined. These hours apply to this team only."
             )
             .padding(.top, 4)
         }
@@ -201,7 +200,7 @@ struct TeamWorkingHoursEditor: View {
         }
     }
 
-    private func timePicker(_ label: String, _ minutes: Binding<Int>) -> some View {
+    private func timePicker(_ label: LocalizedStringKey, _ minutes: Binding<Int>) -> some View {
         Picker(label, selection: minutes) {
             ForEach(Self.quarterHours, id: \.self) { value in
                 Text(TeamSchedule.clock(value)).tag(value)

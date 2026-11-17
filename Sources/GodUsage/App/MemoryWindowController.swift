@@ -122,11 +122,11 @@ final class MemoryWindowController: NSObject, NSWindowDelegate {
         guard MemoryEditorState.shared.isDirty else { return .terminateNow }
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Save Changes?"
-        alert.informativeText = "A memory has unsaved changes. Quitting without saving discards them."
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Discard")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Save Changes?")
+        alert.informativeText = String(localized: "A memory has unsaved changes. Quitting without saving discards them.")
+        alert.addButton(withTitle: String(localized: "Save"))
+        alert.addButton(withTitle: String(localized: "Discard"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
         switch alert.runModal() {
         case .alertFirstButtonReturn:
             guard let save = MemoryEditorState.shared.saveDirtyDocument else {
@@ -152,7 +152,7 @@ final class MemoryWindowController: NSObject, NSWindowDelegate {
                     AppLog.error(.memory, "saving before quit failed: \(error.localizedDescription)")
                     let failureAlert = NSAlert()
                     failureAlert.alertStyle = .warning
-                    failureAlert.messageText = "Could Not Save"
+                    failureAlert.messageText = String(localized: "Could Not Save")
                     failureAlert.informativeText = error.localizedDescription
                     failureAlert.runModal()
                     NSApplication.shared.reply(toApplicationShouldTerminate: false)
@@ -199,7 +199,7 @@ final class MemoryWindowController: NSObject, NSWindowDelegate {
         // `MemoryRootView`'s vibrancy backdrop owns the whole window surface and the traffic lights
         // float over it (the sidebar reserves their clearance with top padding and paints a
         // frosted fade behind them — see `SidebarTitlebarFade`).
-        window.title = "Memory"
+        window.title = String(localized: "Memory", comment: "Window title of the Memory browser")
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
@@ -242,11 +242,11 @@ final class MemoryWindowController: NSObject, NSWindowDelegate {
 
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Save Changes?"
-        alert.informativeText = "This memory has unsaved changes. Closing without saving discards them."
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Discard")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "Save Changes?")
+        alert.informativeText = String(localized: "This memory has unsaved changes. Closing without saving discards them.")
+        alert.addButton(withTitle: String(localized: "Save"))
+        alert.addButton(withTitle: String(localized: "Discard"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
 
         switch alert.runModal() {
         case .alertFirstButtonReturn:
@@ -284,7 +284,7 @@ final class MemoryWindowController: NSObject, NSWindowDelegate {
                     AppLog.error(.memory, "saving before close failed: \(error.localizedDescription)")
                     let failureAlert = NSAlert()
                     failureAlert.alertStyle = .warning
-                    failureAlert.messageText = "Could Not Save"
+                    failureAlert.messageText = String(localized: "Could Not Save")
                     failureAlert.informativeText = error.localizedDescription
                     failureAlert.runModal()
                 }

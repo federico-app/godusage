@@ -20,11 +20,11 @@ enum OpenCodeUsageError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notLoggedIn:
-            return "OpenCode not detected. Log in with OpenCode Go or use OpenCode locally first."
+            return String(localized: "OpenCode not detected. Log in with OpenCode Go or use OpenCode locally first.")
         case .credentialsUnreadable:
-            return "Couldn't read OpenCode's auth.json. Check its file permissions or log into OpenCode Go again."
+            return String(localized: "Couldn't read OpenCode's auth.json. Check its file permissions or log into OpenCode Go again.")
         case .databaseUnreadable:
-            return "Couldn't read OpenCode's local database. Quit OpenCode and refresh, or check the data directory's permissions."
+            return String(localized: "Couldn't read OpenCode's local database. Quit OpenCode and refresh, or check the data directory's permissions.")
         case .connectionFailed:
             return ProviderUsageErrorText.connectionFailed
         case .invalidResponse:
@@ -32,7 +32,7 @@ enum OpenCodeUsageError: Error, LocalizedError, Equatable {
         case .requestFailed(let status):
             return ProviderUsageErrorText.requestFailed(statusCode: status)
         case .unauthorized:
-            return "OpenCode Go key was rejected. Log into OpenCode Go again."
+            return String(localized: "OpenCode Go key was rejected. Log into OpenCode Go again.")
         case .noGoSubscription:
             return "No OpenCode Go subscription on this key."
         }
@@ -60,7 +60,7 @@ final class OpenCodeProvider: ProviderRuntime {
     /// Names the local source on hover (the dollars can only undercount true account usage — this
     /// machine only). No "(estimated)": OpenCode records its own per-message cost, so the values are
     /// measured, not imputed.
-    private let sourceNote = "From your OpenCode logs"
+    private let sourceNote = String(localized: "From your OpenCode logs")
 
     /// Edge-triggers the auth-read-failure log so a persistently unreadable `auth.json` warns once per
     /// run, not once per 5-minute refresh.

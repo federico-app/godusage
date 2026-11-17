@@ -264,7 +264,7 @@ final class TeamPlansStore {
                     let key = TeamPlanChanges.alertKey(teamID: team.id, provider: plan.provider, mismatch: mismatch)
                     guard notified.insert(key).inserted, stored != nil else { continue }
                     let message = TeamPlanChanges.mismatchMessage(mismatch, plan: plan)
-                    _ = await postNotification("team-plan-change", "Plan Change Detected", team.name, message)
+                    _ = await postNotification("team-plan-change", String(localized: "Plan Change Detected"), team.name, message)
                 }
             }
         }

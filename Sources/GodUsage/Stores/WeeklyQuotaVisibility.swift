@@ -33,10 +33,10 @@ enum WeeklyQuotaVisibility {
               })?.key else { return data }
         var result = data
         switch key {
-        case "geminiWeekly": result.exhaustedWeeklyTitle = "Gemini Usage Exhausted"
-        case "nonGeminiWeekly": result.exhaustedWeeklyTitle = "Claude Usage Exhausted"
-        case "sparkWeekly": result.exhaustedWeeklyTitle = "Spark Usage Exhausted"
-        default: result.exhaustedWeeklyTitle = "Usage Exhausted"
+        case "geminiWeekly": result.exhaustedWeeklyTitle = String(localized: "Gemini Usage Exhausted")
+        case "nonGeminiWeekly": result.exhaustedWeeklyTitle = String(localized: "Claude Usage Exhausted")
+        case "sparkWeekly": result.exhaustedWeeklyTitle = String(localized: "Spark Usage Exhausted")
+        default: result.exhaustedWeeklyTitle = String(localized: "Usage Exhausted")
         }
         return result
     }

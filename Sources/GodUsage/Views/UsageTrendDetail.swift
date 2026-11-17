@@ -98,7 +98,7 @@ struct UsageTrendDetail: View {
         if let activeIndex, points.indices.contains(activeIndex) {
             return "\(points[activeIndex].label) · \(points[activeIndex].readout)"
         }
-        if let peakIndex { return "peak \(points[peakIndex].readout)" }
+        if let peakIndex { return String(localized: "peak \(points[peakIndex].readout)", comment: "The highest day in a usage chart") }
         return ""
     }
 

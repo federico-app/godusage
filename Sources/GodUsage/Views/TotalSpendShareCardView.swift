@@ -30,7 +30,7 @@ struct TotalSpendShareCardView: View {
             Text(metric.title)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.primary)
-            Text(total.period.rawValue)
+            Text(LocalizedMetricTitle.string(total.period.rawValue))
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)

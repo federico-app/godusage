@@ -54,17 +54,17 @@ enum MuseAuthError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notLoggedIn:
-            return "Sign in to dev.meta.ai in Chrome, Arc, Brave, Edge, or Firefox to see Muse subscription usage."
+            return String(localized: "Sign in to dev.meta.ai in Chrome, Arc, Brave, Edge, or Firefox to see Muse subscription usage.")
         case .invalidCredentialData:
-            return "The Meta browser session couldn't be decoded. Sign in to dev.meta.ai again, then refresh."
+            return String(localized: "The Meta browser session couldn't be decoded. Sign in to dev.meta.ai again, then refresh.")
         case .sessionExpired:
-            return "The Meta browser session expired. Sign in to dev.meta.ai again, then refresh."
+            return String(localized: "The Meta browser session expired. Sign in to dev.meta.ai again, then refresh.")
         case .keychainConnectRequired:
-            return "Meta browser session found. Connect to read it; if macOS asks, allow access to your browser's Safe Storage key."
+            return String(localized: "Meta browser session found. Connect to read it; if macOS asks, allow access to your browser's Safe Storage key.")
         case .keychainPermissionRequired:
-            return "Access to your browser's Safe Storage key was declined. Refresh to connect again."
+            return String(localized: "Access to your browser's Safe Storage key was declined. Refresh to connect again.")
         case .credentialStoreUnreadable:
-            return "Couldn't read the Meta browser session. Open dev.meta.ai in a supported browser and refresh again."
+            return String(localized: "Couldn't read the Meta browser session. Open dev.meta.ai in a supported browser and refresh again.")
         }
     }
 }

@@ -290,7 +290,7 @@ struct TeamPlansSection: View {
                     Button(label) { plan.wrappedValue.detectedPlan = label }
                 }
             } label: {
-                Text(linked ?? "None")
+                Text(linked ?? String(localized: "None"))
             }
             .fixedSize()
         }
@@ -323,9 +323,9 @@ struct TeamPlansSection: View {
     }
 
     private func coverageLabel(_ memberIDs: [String]?) -> String {
-        guard let memberIDs else { return "Everyone" }
+        guard let memberIDs else { return String(localized: "Everyone") }
         let names = members.filter { memberIDs.contains($0.id) }.map(\.displayName)
-        return names.count == 1 ? names[0] : "\(names.count) Members"
+        return names.count == 1 ? names[0] : String(localized: "\(names.count) Members")
     }
 
     private func providerName(_ id: String) -> String {

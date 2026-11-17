@@ -157,7 +157,7 @@ enum TeamPlanChanges {
 
     /// "Detected Max 5x on Bea's Mac. This plan says Max 20x ($200/mo)."
     static func mismatchMessage(_ mismatch: TeamPlanMismatch, plan: TeamPlanReport) -> String {
-        "Detected \(mismatch.detectedPlan) on \(mismatch.displayName)’s Mac. \(plan.name) says \(plan.detectedPlan ?? plan.name) (\(monthly(plan.monthlyCostUSD))/mo)."
+        String(localized: "Detected \(mismatch.detectedPlan) on \(mismatch.displayName)’s Mac. \(plan.name) says \(plan.detectedPlan ?? plan.name) (\(monthly(plan.monthlyCostUSD))/mo).")
     }
 
     /// "$100", or "$19.99" when there are cents.

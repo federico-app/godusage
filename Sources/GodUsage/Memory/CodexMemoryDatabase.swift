@@ -147,9 +147,9 @@ struct CodexMemoryDatabase: Sendable {
         }
         switch row.usageCount {
         case nil: break
-        case 0: parts.append("never used")
-        case 1: parts.append("used once")
-        case let count?: parts.append("used \(count) times")
+        case 0: parts.append(String(localized: "never used", comment: "Codex memory row: how often it was used"))
+        // Plural key: the catalog's "one" form reads "used once".
+        case let count?: parts.append(String(localized: "used \(count) times", comment: "Codex memory row: how often it was used"))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
@@ -170,9 +170,9 @@ enum CodexMemoryDatabaseError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .malformedRows(let detail):
-            return "The Codex memory database returned unreadable rows: \(detail)"
+            return String(localized: "The Codex memory database returned unreadable rows: \(detail)")
         case .rowNotFound(let threadID):
-            return "Memory \(threadID) was not found in the Codex database."
+            return String(localized: "Memory \(threadID) was not found in the Codex database.")
         }
     }
 }

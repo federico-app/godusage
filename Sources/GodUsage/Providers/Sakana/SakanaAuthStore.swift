@@ -22,17 +22,17 @@ enum SakanaAuthError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notLoggedIn:
-            return "Sign in to Sakana AI Console in Chrome, Arc, Brave, or Edge to see Fugu usage."
+            return String(localized: "Sign in to Sakana AI Console in Chrome, Arc, Brave, or Edge to see Fugu usage.")
         case .connectRequired:
-            return "Sakana browser session found. Connect to load your browser's Safe Storage key; if macOS asks, choose Always Allow to avoid future dialogs."
+            return String(localized: "Sakana browser session found. Connect to load your browser's Safe Storage key; if macOS asks, choose Always Allow to avoid future dialogs.")
         case .permissionRequired:
-            return "Keychain access to your browser's Safe Storage key was declined. Refresh and choose Always Allow when macOS asks."
+            return String(localized: "Keychain access to your browser's Safe Storage key was declined. Refresh and choose Always Allow when macOS asks.")
         case .credentialsUnreadable:
-            return "Couldn't read the signed-in Sakana browser session. Open Sakana AI Console in a supported browser and refresh again."
+            return String(localized: "Couldn't read the signed-in Sakana browser session. Open Sakana AI Console in a supported browser and refresh again.")
         case .invalidCookie:
-            return "The Sakana browser session couldn't be decoded. Sign in to Sakana AI Console again, then refresh."
+            return String(localized: "The Sakana browser session couldn't be decoded. Sign in to Sakana AI Console again, then refresh.")
         case .sessionExpired:
-            return "The Sakana browser session expired. Sign in to Sakana AI Console again, then refresh."
+            return String(localized: "The Sakana browser session expired. Sign in to Sakana AI Console again, then refresh.")
         }
     }
 }

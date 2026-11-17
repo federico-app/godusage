@@ -58,7 +58,7 @@ struct PopoverFooter: View {
     private var shareCopiedPill: some View {
         TransientPill(
             systemImage: "checkmark.circle.fill",
-            text: "Copied to clipboard",
+            text: String(localized: "Copied to clipboard"),
             tint: Theme.positive,
             trigger: layout.shareConfirmationTrigger
         )
@@ -93,7 +93,7 @@ struct PopoverFooter: View {
         }
         .buttonStyle(.plain)
         .keyboardShortcut("r", modifiers: .command)
-        .hoverTooltip("Refresh now (⌘R)")
+        .hoverTooltip(String(localized: "Refresh now (⌘R)"))
         .disabled(isUpdating)
         .onHover { isRefreshHovered = $0 }
         // `NSPanel.orderOut` retains this SwiftUI tree and may not deliver a hover exit, so clear the

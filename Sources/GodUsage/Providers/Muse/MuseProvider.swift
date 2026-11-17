@@ -18,7 +18,7 @@ final class MuseProvider: ProviderRuntime {
     let now: @Sendable () -> Date
     let pricing: @Sendable () async -> ModelPricing
 
-    private let localSourceNote = "From your Muse logs (estimated)"
+    private let localSourceNote = String(localized: "From your Muse logs (estimated)")
 
     /// A provider floor applies to automatic and manual reads. Local history still refreshes.
     static let minimumRefreshInterval: TimeInterval = 15 * 60
@@ -158,7 +158,7 @@ final class MuseProvider: ProviderRuntime {
             }
             let snapshot: ProviderSnapshot
             if var stale = lastGood {
-                stale.warning = "Last reported usage: " + error.localizedDescription
+                stale.warning = String(localized: "Last reported usage: \(error.localizedDescription)")
                 stale.warningAction = .wait
                 stale.loginRequired = nil
                 snapshot = stale
@@ -219,12 +219,13 @@ final class MuseProvider: ProviderRuntime {
         let warning: String?
         let warningAction: ProviderSnapshot.WarningAction?
         if lostMeters, rateLimited {
-            warning = "Meta dashboard updates are temporarily rate limited. GodUsage will retry after the cooldown."
+            warning = String(localized: "Meta dashboard updates are temporarily rate limited. GodUsage will retry after the cooldown.")
             warningAction = .wait
         } else if lostMeters {
+            let detail = museErrorText(snapshot) ?? snapshot.warning ?? ""
             warning = isConnectPrompt
                 ? MuseAuthError.keychainConnectRequired.localizedDescription
-                : "Subscription meters unavailable: \(museErrorText(snapshot) ?? snapshot.warning ?? "")"
+                : String(localized: "Subscription meters unavailable: \(detail)")
             warningAction = snapshot.warningAction
         } else {
             warning = snapshot.warning

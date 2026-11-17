@@ -29,8 +29,8 @@ struct NotificationsSettingsPane: View {
                         .font(.caption)
                         .foregroundStyle(.orange)
                         .hoverTooltip(auth == .denied
-                            ? "Notifications are turned off for GodUsage. Enable them in System Settings."
-                            : "GodUsage needs permission to send alerts.")
+                            ? String(localized: "Notifications are turned off for GodUsage. Enable them in System Settings.")
+                            : String(localized: "GodUsage needs permission to send alerts."))
                 }
             }
             .padding(.horizontal, 8)
@@ -105,7 +105,7 @@ struct NotificationsSettingsPane: View {
         }
     }
 
-    private func teamToggle(_ title: String, isOn: Binding<Bool>) -> some View {
+    private func teamToggle(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
         HStack {
             Text(title)
             Spacer(minLength: 8)
