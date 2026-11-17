@@ -267,16 +267,18 @@ struct TeamDashboardSection: View {
         let limit = isCollapsible && !showsAllMembers ? collapsedCount : ranked.count
         let visibleActive = Array(layout.active.prefix(limit))
         let visibleIdle = Array(layout.idle.prefix(max(0, limit - layout.active.count)))
+        let header = TeamLeaderboardHeader(
+            activeSummary: TeamLeaderboardLayout.activeSummary(activeCount: layout.activeCount),
+            providers: TeamLeaderboardLayout.legendProviders(members: ranked, shared: shared, metric: metric),
+            providerName: providerName
+        )
         return VStack(spacing: 0) {
-            TeamLeaderboardHeader(
-                total: metric.format(stats.totals),
-                detail: TeamLeaderboardLayout.headerDetail(metric: metric, activeCount: layout.activeCount),
-                providers: TeamLeaderboardLayout.legendProviders(members: ranked, shared: shared, metric: metric),
-                providerName: providerName
-            )
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            Divider()
+            if !header.isEmpty {
+                header
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                Divider()
+            }
             ForEach(Array(visibleActive.enumerated()), id: \.element.id) { index, member in
                 if index > 0 { Divider().padding(.leading, 12 + TeamLeaderboardRowStyle.contentInset) }
                 memberRow(member, layout: layout, top: top, stats: stats, momentum: momentum[member.userID])

@@ -50,10 +50,10 @@ final class TeamLeaderboardLayoutTests: XCTestCase {
         XCTAssertEqual(layout.activeCount, 0)
     }
 
-    func testHeaderDetail() {
-        XCTAssertEqual(TeamLeaderboardLayout.headerDetail(metric: .spend, activeCount: 4), "team · 4 active")
-        XCTAssertEqual(TeamLeaderboardLayout.headerDetail(metric: .spend, activeCount: 0), "team")
-        XCTAssertEqual(TeamLeaderboardLayout.headerDetail(metric: .tokens, activeCount: 1), "team tokens · 1 active")
+    func testActiveSummary() {
+        XCTAssertEqual(TeamLeaderboardLayout.activeSummary(activeCount: 4), "4 active now")
+        XCTAssertEqual(TeamLeaderboardLayout.activeSummary(activeCount: 1), "1 active now")
+        XCTAssertNil(TeamLeaderboardLayout.activeSummary(activeCount: 0))
     }
 
     func testLegendListsOnlyProvidersOnTheBarsLargestFirst() {

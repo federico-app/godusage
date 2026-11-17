@@ -76,7 +76,7 @@ The gear button in its toolbar opens Settings → Teams.
 
 **Ranking rows.** The dashboard and the Teams window draw the ranking the same way:
 
-- **Header:** the team total for the period and metric, how many members are active (spending fast right now, see **Accelerating** below), and a legend naming the color of each provider that appears in the bars.
+- **Header:** how many members are active (**4 active now**: spending fast right now, see **Accelerating** below; nothing when nobody is), and a legend naming the color of each provider that appears in the bars. The team total is above the ranking, not in it.
 - **Full row** (active members): the rank, with the movement since the period before right under it; the name, **You** on your own row (which is also lightly tinted), and the crown or trophy; the value alone on the right; the provider bar; then the status line: the last hour or the last update on the left, the momentum chip and reactions on the right.
 - **Ties:** members with the same value share a rank, shown as **6=**.
 - **Idle group:** when at least one member is active, everyone else folds into **Idle · N** at the bottom, one line each: rank, name, when they last synced, an outdated version, reactions, and the value, without a bar. When nobody is active, every member gets a full row.

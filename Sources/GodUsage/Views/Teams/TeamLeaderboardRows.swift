@@ -22,13 +22,16 @@ enum TeamReactionsStyle {
     case counts
 }
 
-/// "$87.58 team · 4 active" on the left, the providers the bars use on the right (or below, when
-/// they don't fit on one line).
+/// "4 active now" on the left (nothing while nobody is active), the providers the bars use on the
+/// right (or below, when they don't fit on one line). The team total is above the card already.
 struct TeamLeaderboardHeader: View {
-    let total: String
-    let detail: String
+    /// From `TeamLeaderboardLayout.activeSummary`.
+    let activeSummary: String?
     let providers: [String]
     let providerName: (String) -> String
+
+    /// Nothing to show: callers leave the header and its divider out.
+    var isEmpty: Bool { activeSummary == nil && providers.isEmpty }
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -44,10 +47,14 @@ struct TeamLeaderboardHeader: View {
         }
     }
 
+    @ViewBuilder
     private var summary: some View {
-        (Text(total).fontWeight(.semibold).monospacedDigit() + Text(" \(detail)").foregroundStyle(.secondary))
-            .font(.caption)
-            .lineLimit(1)
+        if let activeSummary {
+            Text(activeSummary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
     }
 
     private var legend: some View {

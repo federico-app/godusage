@@ -43,11 +43,10 @@ struct TeamLeaderboardLayout: Equatable {
         rankLabels[member.userID] ?? "\(member.rank)"
     }
 
-    /// The header line after the total: "team · 4 active" ("team tokens" for Tokens), without the
-    /// active count while nobody is active.
-    static func headerDetail(metric: TeamMetric, activeCount: Int) -> String {
-        let team = metric == .tokens ? "team tokens" : "team"
-        return activeCount > 0 ? "\(team) · \(activeCount) active" : team
+    /// The header's left side: "4 active now", or nil while nobody is active. The team total is
+    /// already above the card, so the header leaves it out.
+    static func activeSummary(activeCount: Int) -> String? {
+        activeCount > 0 ? "\(activeCount) active now" : nil
     }
 
     /// The providers the ranking's bars draw (members and shared accounts), largest first, so the

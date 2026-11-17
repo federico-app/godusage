@@ -334,17 +334,19 @@ private struct TeamsRankingList: View {
         let layout = TeamLeaderboardLayout(members: stats.members, momentum: momentum)
         let shared = stats.sharedAccounts(for: metric)
         let newest = TeamsFormat.newestVersion(stats.members)
+        let header = TeamLeaderboardHeader(
+            activeSummary: TeamLeaderboardLayout.activeSummary(activeCount: layout.activeCount),
+            providers: TeamLeaderboardLayout.legendProviders(members: stats.members, shared: shared, metric: metric),
+            providerName: providerName
+        )
         VStack(spacing: 0) {
-            TeamLeaderboardHeader(
-                total: metric.format(stats.totals),
-                detail: TeamLeaderboardLayout.headerDetail(metric: metric, activeCount: layout.activeCount),
-                providers: TeamLeaderboardLayout.legendProviders(members: stats.members, shared: shared, metric: metric),
-                providerName: providerName
-            )
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            ForEach(layout.active) { member in
-                Divider()
+            if !header.isEmpty {
+                header
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+            }
+            ForEach(Array(layout.active.enumerated()), id: \.element.id) { index, member in
+                if index > 0 || !header.isEmpty { Divider() }
                 TeamLeaderboardMemberRow(
                     member: member, rankLabel: layout.rankLabel(member), isMe: member.userID == currentUserID, top: top,
                     metric: metric, range: stats.range.name, momentum: momentum(member), newestVersion: newest,
