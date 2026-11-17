@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// The pieces of a leaderboard card, shared by the dashboard's Team section and the Teams window:
-/// the header (team total, who is active, provider legend), the full member row (spent something in
-/// the last hour), the compact two-line row (nothing in the last hour), and the member's detail.
+/// the header (who is active, provider legend) and member rows, each with a provider bar.
 enum TeamLeaderboardRowStyle {
     /// The rank and its movement sit in this column; the shared-account icon too.
     static let rankColumnWidth: CGFloat = 26
@@ -153,103 +152,6 @@ struct TeamLeaderboardMemberRow: View {
                     }
                 }
             }
-        }
-    }
-
-    @ViewBuilder
-    private var reactionsView: some View {
-        if let teamID {
-            switch reactions {
-            case .buttons: ReactionButtons(teamID: teamID, member: member, compact: true)
-            case .counts: ReactionCounts(reactions: container.teamsSocial.reactions(teamID: teamID, userID: member.userID))
-            }
-        }
-    }
-}
-
-/// A member who spent nothing in the last hour, in their ranking place: rank with its movement under
-/// it, name and value, then when they last synced, an outdated version, and reactions on a small line
-/// under it. No bar.
-struct TeamLeaderboardCompactRow: View {
-    @Environment(AppContainer.self) private var container
-    let member: TeamStats.Member
-    let rankLabel: String
-    let isMe: Bool
-    let metric: TeamMetric
-    let range: StatsRange
-    let newestVersion: String?
-    let teamID: String?
-    var reactions: TeamReactionsStyle = .counts
-    /// The rank's font: matches the full rows' value font so the rank column reads as one.
-    var rankFont: Font = .callout
-    var now = Date()
-    /// Expanded, the line becomes the name with the value, then the chips; the detail says the rest.
-    var isExpanded = false
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: TeamLeaderboardRowStyle.columnSpacing) {
-            // Movement sits under the rank, on the status line, like on the full row.
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(rankLabel)
-                    .font(rankFont.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(member.rank <= 3 ? .primary : .secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                // Movement compares server ranks, which Cost/MTok re-ranks.
-                if metric != .costPerMtok {
-                    RankChangeBadge(member: member, range: range, sort: metric.sort)
-                }
-            }
-            .frame(width: TeamLeaderboardRowStyle.rankColumnWidth, alignment: .trailing)
-            if isExpanded {
-                TeamMemberExpandedHeader(member: member, isMe: isMe, value: metric.format(member.totals), teamID: teamID)
-            } else {
-                line
-            }
-        }
-    }
-
-    /// Two lines so the name never fights the status marks for width: the name, You, the gold marks
-    /// and the value on top; when they last synced, an outdated version, and reactions under it.
-    private var line: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Text(member.displayName)
-                    .font(.callout)
-                    .fontWeight(isMe ? .semibold : .regular)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .layoutPriority(1)
-                if isMe { YouChip() }
-                if let teamID { MemberBadges(teamID: teamID, userID: member.userID) }
-                Spacer(minLength: 6)
-                Text(metric.format(member.totals))
-                    .font(.callout.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(metric.value(member.totals) > 0 ? .primary : .secondary)
-                    .fixedSize()
-            }
-            HStack(spacing: 6) {
-                syncAge
-                OutdatedVersionChip(version: member.appVersion, newestVersion: newestVersion)
-                reactionsView
-            }
-            .fixedSize()
-        }
-    }
-
-    @ViewBuilder
-    private var syncAge: some View {
-        if let age = TeamsFormat.syncAge(member.lastSyncAt, now: now) {
-            Group {
-                if age.stale {
-                    Label(age.text, systemImage: "exclamationmark.arrow.triangle.2.circlepath").labelStyle(.titleAndIcon)
-                } else {
-                    Text(age.text)
-                }
-            }
-            .font(.caption2.monospacedDigit())
-            .foregroundStyle(.secondary)
-            .accessibilityLabel("Last synced \(age.text)")
         }
     }
 

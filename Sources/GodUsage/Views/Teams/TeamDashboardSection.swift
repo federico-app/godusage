@@ -254,8 +254,8 @@ struct TeamDashboardSection: View {
         }
     }
 
-    /// Members in rank order (full row while they spent something in the last hour, compact
-    /// otherwise), then the shared accounts. The caret folds the list to the first members
+    /// Members in rank order, each with a provider bar, then the shared accounts.
+    /// The caret folds the list to the first members
     /// Customize → Team shows, in rank order.
     private func ranking(_ stats: TeamStats) -> some View {
         let top = stats.rankingTop(for: metric)
@@ -356,21 +356,11 @@ struct TeamDashboardSection: View {
             Button {
                 withAnimation(Motion.spring) { expandedMemberID = isExpanded ? nil : member.userID }
             } label: {
-                Group {
-                    switch row.style {
-                    case .full:
-                        TeamLeaderboardMemberRow(
-                            member: member, rankLabel: layout.rankLabel(member), isMe: isMe, top: top, metric: metric,
-                            range: range, momentum: momentum, newestVersion: newestVersion, teamID: teamID,
-                            isExpanded: isExpanded
-                        )
-                    case .compact:
-                        TeamLeaderboardCompactRow(
-                            member: member, rankLabel: layout.rankLabel(member), isMe: isMe, metric: metric, range: range,
-                            newestVersion: newestVersion, teamID: teamID, isExpanded: isExpanded
-                        )
-                    }
-                }
+                TeamLeaderboardMemberRow(
+                    member: member, rankLabel: layout.rankLabel(member), isMe: isMe, top: top, metric: metric,
+                    range: range, momentum: momentum, newestVersion: newestVersion, teamID: teamID,
+                    isExpanded: isExpanded
+                )
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -381,7 +371,7 @@ struct TeamDashboardSection: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, row.style == .full ? 9 : 7)
+        .padding(.vertical, 9)
         .background(isMe ? TeamLeaderboardRowStyle.youTint : .clear)
     }
 
