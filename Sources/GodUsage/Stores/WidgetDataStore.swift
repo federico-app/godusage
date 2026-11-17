@@ -152,7 +152,7 @@ final class WidgetDataStore {
 
     /// Global "always show pacing" opt-in: when on, on-track rows surface their pace projection (the
     /// blue/healthy row gains its "~N% left at reset" copy + an even-pace tick, the amber tick switches
-    /// to the same even-pace line). Persisted across relaunch; defaults to `false` (every row unchanged).
+    /// to the same even-pace line). Persisted across relaunch; defaults to `true` (a saved Off is kept).
     var alwaysShowPacing: Bool {
         didSet { defaults.set(alwaysShowPacing, forKey: Self.alwaysShowPacingKey) }
     }
@@ -199,7 +199,8 @@ final class WidgetDataStore {
         self.resolveDisplayName = resolveDisplayName
         self.meterStyle = defaults.enumValue(forKey: Self.meterStyleKey, default: .remaining)
         self.resetDisplayMode = defaults.enumValue(forKey: Self.resetDisplayModeKey, default: .relative)
-        self.alwaysShowPacing = defaults.bool(forKey: Self.alwaysShowPacingKey)
+        // On by default; an explicit Off the user saved is kept.
+        self.alwaysShowPacing = defaults.object(forKey: Self.alwaysShowPacingKey) as? Bool ?? true
         // Stale-while-revalidate: load whatever was cached (expired included) so the menu bar and
         // dashboard show last-known values immediately at launch instead of "—"; the refresh loop
         // replaces them as soon as fresh data lands.

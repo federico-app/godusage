@@ -1,3 +1,5 @@
+import Foundation
+
 /// Temporary dashboard filtering; saved layout and On Demand rows are never mutated.
 enum WeeklyQuotaVisibility {
     /// A shared weekly limit blocks the account. Separate pools only dim the icon when every
@@ -22,6 +24,25 @@ enum WeeklyQuotaVisibility {
                 pools[resource.key].map { exhausted.contains($0) } ?? false
             }
         }
+    }
+
+    /// When an exhausted account's values come back: the shared weekly window's reset, or else the
+    /// first reset among its exhausted model pools. Nil when no exhausted window reports a reset.
+    static func menuBarExhaustedResetsAt(
+        descriptors: [WidgetDescriptor],
+        data: (WidgetDescriptor) -> WidgetData
+    ) -> Date? {
+        func resets(_ keys: Set<String>) -> [Date] {
+            descriptors.compactMap { descriptor -> Date? in
+                guard descriptor.limitResources.contains(where: { keys.contains($0.key) }) else { return nil }
+                let value = data(descriptor)
+                guard value.hasData, let limit = value.limit, limit > 0,
+                      value.used.isFinite, limit.isFinite, value.used >= limit else { return nil }
+                return value.resetsAt
+            }
+        }
+        if let shared = resets(["weekly"]).max() { return shared }
+        return resets(["geminiWeekly", "nonGeminiWeekly", "sparkWeekly"]).min()
     }
 
     /// Presentation copy only: preserve raw quota values for filtering, pins, and the local API.

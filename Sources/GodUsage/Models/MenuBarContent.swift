@@ -8,14 +8,27 @@ struct MenuBarContent: Equatable {
     /// One resolved pinned metric.
     struct Metric: Equatable {
         let id: String          // descriptor id
-        let label: String       // metric label, e.g. "Session" (shown when a provider has two metrics)
+        let label: String       // metric label, e.g. "Session" (VoiceOver)
         let value: String       // tray display: a "%" for bounded metrics, the raw value (e.g. "$5.23") for unbounded, or the no-data marker
         let fraction: Double     // 0...1 fill, meaningful for bounded metrics (drives the bars)
         let isBounded: Bool      // has a limit → has a fill, so it can render as a bar
         let hasData: Bool
-        /// Spent or projected to run out before the reset (`MeterState.showsFlame`): the strip draws a
-        /// small flame beside the value.
+        /// Spent or projected to run out before the reset (`MeterState.showsFlame`): the Text strip
+        /// draws the value in orange, the Bars glyph draws its bar in orange.
         var isOverPace: Bool = false
+        /// The dimmed session/weekly letter ("S"/"W", Italian "H"/"S") in front of a stacked value (`MenuBarMetricLabel`).
+        var prefix: String? = nil
+        /// What the Text strip draws (`MenuBarValueText`); nil draws `value` plainly.
+        var spans: [MenuBarSpan]? = nil
+
+        var displaySpans: [MenuBarSpan] { spans ?? [MenuBarSpan(value)] }
+        var displayText: String { displaySpans.map(\.text).joined() }
+
+        /// Same drawing in the Text strip: everything but the bar fill.
+        func rendersSameText(as other: Metric) -> Bool {
+            id == other.id && label == other.label && value == other.value && hasData == other.hasData
+                && isOverPace == other.isOverPace && prefix == other.prefix && displaySpans == other.displaySpans
+        }
     }
 
     /// A provider and its pinned metrics, in order. One segment of the Text strip.
@@ -26,13 +39,20 @@ struct MenuBarContent: Equatable {
         let metrics: [Metric]
         var isExhausted: Bool = false
         var loginRequired: Bool = false
+        /// The dot on the icon (`MenuBarBadge.decide`).
+        var badge: MenuBarBadge? = nil
+        /// An exhausted account's time to its reset, dimmed beside the faded icon ("↻2d 4h").
+        var resetText: String? = nil
+        /// Replaces the display name in the hover tooltip and VoiceOver (the team segment's share).
+        var detail: String? = nil
         var isDimmed: Bool { isExhausted || loginRequired }
+        var toolTip: String { detail ?? displayName }
     }
 
     /// Provider groups for the Text style, in Customize order. Dynamic: only metrics that currently
     /// have real data appear, and a provider whose pinned metrics all lack data drops out entirely
     /// (no orphan icon) — so the strip never renders "—" placeholders. An exhausted weekly
-    /// allowance keeps an icon-only group, explicitly marked so renderers can dim it.
+    /// allowance or a login to renew keeps an icon-only group, explicitly marked so renderers can dim it.
     let groups: [Group]
     /// Bounded metrics (those with a fill) for the Bars style, flattened in order and capped to four.
     let bars: [Metric]
@@ -42,10 +62,10 @@ struct MenuBarContent: Equatable {
     var isEmpty: Bool { groups.isEmpty }
 
     /// Whether two contents render identically under `style` — the strip cache's memo predicate.
-    /// The Text style draws each metric's `value`/`label` but never its `fraction`. Comparing only
-    /// what the style draws (plus the group text `accessibilityText` bakes into the cached image)
-    /// keeps a refresh that nudged an underlying fraction behind an unchanged rounded value (still
-    /// "41%") from paying a full re-render: N+1 `ImageRenderer` passes plus a per-pixel bounds scan.
+    /// The Text style draws each metric's text but never its `fraction`. Comparing only what the
+    /// style draws (plus the group text `accessibilityText` bakes into the cached image) keeps a
+    /// refresh that nudged an underlying fraction behind an unchanged rounded value (still "41%")
+    /// from paying a full re-render: N+1 `ImageRenderer` passes plus a per-pixel bounds scan.
     func isRenderEquivalent(to other: MenuBarContent, style: MenuBarStyle) -> Bool {
         // Both styles bake `accessibilityText` — group names, labels, values — into the image.
         guard groups.count == other.groups.count else { return false }
@@ -55,11 +75,11 @@ struct MenuBarContent: Equatable {
                 && mine.icon == theirs.icon
                 && mine.isExhausted == theirs.isExhausted
                 && mine.loginRequired == theirs.loginRequired
+                && mine.badge == theirs.badge
+                && mine.resetText == theirs.resetText
+                && mine.detail == theirs.detail
                 && mine.metrics.count == theirs.metrics.count
-                && zip(mine.metrics, theirs.metrics).allSatisfy { lhs, rhs in
-                    lhs.id == rhs.id && lhs.label == rhs.label && lhs.value == rhs.value
-                        && lhs.hasData == rhs.hasData && lhs.isOverPace == rhs.isOverPace
-                }
+                && zip(mine.metrics, theirs.metrics).allSatisfy { $0.rendersSameText(as: $1) }
         }
         guard groupTextMatches else { return false }
         switch style {
@@ -69,7 +89,21 @@ struct MenuBarContent: Equatable {
             guard bars.count == other.bars.count else { return false }
             return zip(bars, other.bars).allSatisfy { lhs, rhs in
                 lhs.id == rhs.id && lhs.fraction == rhs.fraction && lhs.hasData == rhs.hasData
+                    && lhs.isOverPace == rhs.isOverPace
             }
+        }
+    }
+
+    /// Whether any part of the strip is drawn in color (orange, green, or a badge), so the image
+    /// can't be a template.
+    func needsColor(style: MenuBarStyle) -> Bool {
+        let shownGroups = style == .text ? groups : groups.filter(\.isDimmed)
+        if shownGroups.contains(where: { $0.badge != nil }) { return true }
+        switch style {
+        case .text:
+            return groups.contains { $0.metrics.contains { $0.displaySpans.contains(where: \.tone.isColored) } }
+        case .bars:
+            return bars.contains(where: \.isOverPace)
         }
     }
 
@@ -77,17 +111,26 @@ struct MenuBarContent: Equatable {
     /// "Claude Session 41%, Weekly 12%; Cursor Credits $12".
     var accessibilityText: String {
         groups.map { group in
-            if group.loginRequired { return String(localized: "\(group.displayName) Login Required") }
-            if group.isExhausted { return String(localized: "\(group.displayName) Usage Exhausted") }
+            let name = group.detail ?? group.displayName
+            if group.loginRequired { return String(localized: "\(name) Login Required") }
+            if group.isExhausted {
+                if let reset = group.resetText {
+                    return String(localized: "\(name) Usage Exhausted, Resets \(reset)", comment: "VoiceOver: account out of usage, then when the limit resets")
+                }
+                return String(localized: "\(name) Usage Exhausted")
+            }
             let metrics = group.metrics
                 .map { metric in
                     let label = LocalizedMetricTitle.string(metric.label)
                     return metric.isOverPace
-                        ? String(localized: "\(label) \(metric.value) Over Pace", comment: "VoiceOver: metric, value, ahead of a sustainable pace")
-                        : "\(label) \(metric.value)"
+                        ? String(localized: "\(label) \(metric.displayText) Over Pace", comment: "VoiceOver: metric, value, ahead of a sustainable pace")
+                        : "\(label) \(metric.displayText)"
                 }
                 .joined(separator: ", ")
-            return "\(group.displayName) \(metrics)"
+            if group.badge == .useNow {
+                return String(localized: "\(name) \(metrics), Use This Now", comment: "VoiceOver: account, its metrics, then a hint that this account should be used now")
+            }
+            return "\(name) \(metrics)"
         }
         .joined(separator: "; ")
     }
@@ -101,47 +144,62 @@ enum MenuBarContentBuilder {
     /// The Text strip has room for two stacked values per provider.
     static let maxMetricsPerGroup = 2
 
-    /// Resolve pinned provider groups into menu-bar content. `groups` is `LayoutStore.pinnedGroups`
-    /// (already ordered, disabled providers excluded); `data` resolves each descriptor to its live
-    /// `WidgetData` (i.e. `WidgetDataStore.data(for:)`), so the values follow the global meter style
-    /// just like the dashboard tiles.
+    /// Resolve provider groups into menu-bar content. `groups` is `LayoutStore.menuBarGroups`
+    /// (ordered, disabled providers excluded, providers without stars carry no metrics); `data`
+    /// resolves each descriptor to its live `WidgetData` (i.e. `WidgetDataStore.data(for:)`), so the
+    /// values follow the global meter style just like the dashboard tiles.
     ///
     /// The strip is dynamic: a pinned metric without data is dropped (one of two pins renders alone at
     /// full size), and a provider with no data-carrying pins contributes no icon at all. Pins are
-    /// membership; the strip shows whatever subset is real right now.
+    /// membership; the strip shows whatever subset is real right now. A provider whose login needs
+    /// renewing shows its faded icon whether or not it has stars.
     /// `title` resolves each provider's card title (the VoiceOver summary is a human-facing name, so
     /// the caller passes the account-registry resolver); defaults to the baked derived name.
+    /// `switchTargets` are the accounts a "Switch to …" suggestion recommends (green dot).
     static func build(
         groups: [ProviderMetrics],
         data: (WidgetDescriptor) -> WidgetData,
         title: (Provider) -> String = { $0.displayName },
         quotaDescriptors: (String) -> [WidgetDescriptor] = { _ in [] },
-        loginRequired: (String) -> Bool = { _ in false }
+        loginRequired: (String) -> Bool = { _ in false },
+        switchTargets: Set<String> = [],
+        now: Date = Date()
     ) -> MenuBarContent {
         let resolvedGroups = groups.compactMap { group -> MenuBarContent.Group? in
+            let needsLogin = loginRequired(group.provider.id)
+            // A provider with no stars shows only to say its login needs renewing.
+            guard !group.metrics.isEmpty || needsLogin else { return nil }
             // Applicability can change after dormant pins were retained. Resolve live values first so
             // no-data pins consume no room, then reapply the renderer's two-row invariant without
             // destructively changing the user's saved preferences.
             let metrics = Array(
                 group.metrics
-                    .map { resolve($0, data($0)) }
+                    .map { resolve($0, data($0), now: now) }
                     .filter(\.hasData)
                     .prefix(maxMetricsPerGroup)
             )
-            let needsLogin = loginRequired(group.provider.id)
-            let exhausted = WeeklyQuotaVisibility.menuBarIsExhausted(
-                descriptors: quotaDescriptors(group.provider.id) + group.metrics,
+            let quotas = quotaDescriptors(group.provider.id) + group.metrics
+            let exhausted = !group.metrics.isEmpty && WeeklyQuotaVisibility.menuBarIsExhausted(
+                descriptors: quotas,
                 pinned: group.metrics.filter { descriptor in metrics.contains { $0.id == descriptor.id } },
                 data: data
             )
-            guard !group.metrics.isEmpty, !metrics.isEmpty || needsLogin || exhausted else { return nil }
+            guard !metrics.isEmpty || needsLogin || exhausted else { return nil }
+            let resetText = exhausted && !needsLogin
+                ? WeeklyQuotaVisibility.menuBarExhaustedResetsAt(descriptors: quotas, data: data)
+                    .flatMap { MenuBarValueText.resetText($0.timeIntervalSince(now)) }
+                : nil
             return MenuBarContent.Group(
                 providerID: group.provider.id,
                 displayName: title(group.provider),
                 icon: group.provider.icon,
                 metrics: exhausted || needsLogin ? [] : metrics,
                 isExhausted: exhausted,
-                loginRequired: needsLogin
+                loginRequired: needsLogin,
+                badge: MenuBarBadge.decide(
+                    loginRequired: needsLogin, isSwitchTarget: switchTargets.contains(group.provider.id)
+                ),
+                resetText: resetText
             )
         }
         // Bars show any *bounded* metric (it has a fill), not just percentages. Unbounded values (raw
@@ -153,15 +211,46 @@ enum MenuBarContentBuilder {
         return MenuBarContent(groups: resolvedGroups, bars: Array(bars))
     }
 
-    private static func resolve(_ descriptor: WidgetDescriptor, _ data: WidgetData) -> MenuBarContent.Metric {
-        MenuBarContent.Metric(
+    /// The team segment: rank, movement and spend over your plan's pace (`MenuBarTeamSegment`).
+    static func teamGroup(
+        standing: MenuBarTeamSegment.Standing, paces: [LivePace], now: Date
+    ) -> MenuBarContent.Group {
+        var metrics = [
+            MenuBarContent.Metric(
+                id: "team.rank",
+                label: String(localized: "Rank", comment: "VoiceOver: the label before your rank in the team, read from the menu bar"), value: "#\(standing.rank)", fraction: 0, isBounded: false,
+                hasData: true, spans: MenuBarTeamSegment.topLine(standing)
+            ),
+        ]
+        if let bottom = MenuBarTeamSegment.bottomLine(standing: standing, paces: paces, now: now) {
+            metrics.append(MenuBarContent.Metric(
+                id: "team.pace",
+                label: String(localized: "Pace", comment: "VoiceOver: the label before your spend versus your plan's pace, read from the menu bar"), value: bottom.map(\.text).joined(), fraction: 0,
+                isBounded: false, hasData: true, spans: bottom
+            ))
+        }
+        return MenuBarContent.Group(
+            providerID: TeamsStore.menuBarGroupID,
+            displayName: String(localized: "Team"),
+            icon: .providerMark(TeamsStore.menuBarGroupID),
+            metrics: metrics,
+            detail: MenuBarTeamSegment.detail(standing)
+        )
+    }
+
+    private static func resolve(_ descriptor: WidgetDescriptor, _ data: WidgetData, now: Date) -> MenuBarContent.Metric {
+        let window = MenuBarMetricLabel.window(for: descriptor)
+        let value = data.menuBarValue
+        return MenuBarContent.Metric(
             id: descriptor.id,
             label: trayLabel(descriptor.metricLabel),
-            value: data.menuBarValue,
+            value: value,
             fraction: data.fraction,
             isBounded: data.isBounded,
             hasData: data.hasData,
-            isOverPace: data.meterState().showsFlame
+            isOverPace: data.meterState(now: now).showsFlame,
+            prefix: window?.letter,
+            spans: MenuBarValueText.spans(value: value, window: window, data: data, now: now)
         )
     }
 

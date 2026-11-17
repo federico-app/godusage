@@ -64,9 +64,9 @@ export async function storeDeviceUsage(env: Pick<Env, "db" | "cache">, userID: s
   );
 
   const { written, usageChanged, plansChanged, exclusionsChanged } = await env.db.transaction(async (tx) => {
-    // Before anything is stored: how much the recent days grew. A device's first upload is skipped.
+    // Before anything is stored: how much the Mac's today grew. A device's first upload is skipped.
     const known = await tx.first("SELECT 1 AS known FROM devices WHERE user_id = $1 AND id = $2", [userID, deviceID]);
-    if (known) await recordPulse(tx, userID, deviceID, upload.days, now);
+    if (known) await recordPulse(tx, userID, deviceID, upload.days, upload.localDay, now);
     const device = await tx.run(
       `INSERT INTO devices (user_id, id, name, updated_at, app_version) VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (user_id, id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at, app_version = excluded.app_version`,

@@ -188,8 +188,9 @@ final class AppContainer {
         let usageAdvice = UsageAdviceStore(
             registry: registry, dataStore: dataStore,
             isEnabled: { [enablement] in enablement.isEnabled($0) },
+            // The banner names an account by its short label ("Claude (Appload)"), like the card header.
             displayName: { [accounts] id in
-                accounts.resolvedDisplayName(cardID: id) ?? registry.provider(id: id)?.displayName ?? id
+                accounts.resolvedDisplayParts(cardID: id)?.inline ?? registry.provider(id: id)?.displayName ?? id
             },
             teams: teams, plans: teamPlans, settings: notificationSettings
         )
@@ -261,6 +262,12 @@ final class AppContainer {
     /// default, so the fallback can never be a stale rename.
     func displayName(for provider: Provider) -> String {
         accounts.resolvedDisplayName(cardID: provider.id) ?? provider.displayName
+    }
+
+    /// The dashboard's split card name: the provider, then the account's short label ("Claude" +
+    /// "Appload"), with the full label for the tooltip. See `ProviderAccountsStore.resolvedDisplayParts`.
+    func displayParts(for provider: Provider) -> AccountDisplayName {
+        accounts.resolvedDisplayParts(cardID: provider.id) ?? AccountDisplayName(name: provider.displayName)
     }
 
     /// Whether the card has an account record a rename can attach to (accounts-model families only,

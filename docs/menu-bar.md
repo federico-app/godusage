@@ -18,26 +18,51 @@ Star a metric from any row's right-click menu, or from the star beside a metric 
 
 Settings → Appearance → Icon Style:
 
-- **Text**: provider icon plus values. Two starred metrics from the same provider stack as a labeled pair. Hover an account segment to see that card's current name.
+- **Text**: provider icon plus values. Two starred metrics from the same provider stack on two lines. Each value of a session (five-hour) or weekly window starts with a small dimmed **S** or **W**. The letter comes from the metric itself, not its position, so Weekly starred alone still reads **W**. Other metrics (model pools such as Codex Spark or Antigravity's Claude pool, credits, spend) have no letter. Hover an account segment to see that card's current name.
 - **Bars**: a compact glyph with the first four starred metrics that have a limit. Metrics without limits only appear in Text style.
 
-## Over-pace flame
+The strip uses color only for things worth acting on: orange for a warning, green for room to spare. A strip with no colored part looks exactly like the plain menu-bar text. Every colored part follows the light or dark menu bar.
 
-When a starred metric shows the flame in the dashboard (used up, or on pace to run out before it resets), the strip shows a small flame before its value. In Bars style, one flame follows the glyph when any of its bars is over pace. The flame goes away once the pace recovers or the limit resets.
+## What a value shows
+
+In Text style a starred value reads, from most to least urgent:
+
+- **Session about to run out**: a session window with under 10% left shows the time until it resets, in orange, for example **↻38m**.
+- **Limit used up**: a limit that is used up (and doesn't fade the whole account, see below) shows the time until it resets, dimmed, for example **↻2d 4h**.
+- **Over pace**: when the dashboard shows the flame on a metric (on pace to run out before it resets), the value turns orange and adds the time to the projected limit, for example **91%·3d**, **91%·17h**, or **91%·45m**. It's the same projection as the dashboard's "Limit in 3d 17h". When the pace lands right at the limit, the value is orange with no time.
+- Otherwise the plain value.
+
+In Bars style a bar over pace fills in orange. The color goes away once the pace recovers or the limit resets. Times move with the clock: the strip redraws once a minute.
+
+## Use this now
+
+While the dashboard's **Switch to …** suggestion is active (a provider is running out and another one has room), the account it recommends gets a small green dot on its icon. The dot stays even if you close the suggestion banner, and goes away when the situation ends. Bars style shows it only on faded icons.
 
 ## Team rank
 
-With **Show Rank in Menu Bar** on (Settings → Teams → You), the strip ends with a team segment: your rank in the selected team and your share of the team's spend today, over your spend today, for example **#2 · 38%** over **$12.40**. The share is left out while the team has spent nothing today. It updates with each team upload, at most every 15 minutes, and whenever the dashboard's Team section loads Today. See [Teams](teams.md).
+With **Show Rank in Menu Bar** on (Settings → Teams → You), the strip ends with a team segment for the selected team:
+
+- **Top line**: your rank, how it moved since yesterday when known (**▲1** in green, **▼1** dimmed), and your spend today in whole dollars, for example **#2 ▲1 · $37**.
+- **Bottom line**: your pace on your team plan today, from Live Pace (see [Teams](teams.md#leaderboards)) for the plans in the selected team that cover you:
+  - ahead of pace: **+41m** in orange (plain when you're ahead but slowing down, as on the dashboard),
+  - under pace: **−2h 40m** in green,
+  - on pace: **On pace**, dimmed,
+  - over today's budget: a solid orange chip, for example **+6.3%**.
+  
+  On several plans, the most urgent one shows: over today's budget beats ahead of pace, which beats the rest. Plans outside the working day (not started, day done, day off) don't count. Without a plan or pace data, the bottom line shows your share of the team's spend today (**30%**), or nothing while the team has spent nothing.
+- When your team data is more than an hour old (your usage last reached the server over an hour ago), the bottom line says so, dimmed, for example **Upd 2h**.
+
+Your share of the team's spend today is in the segment's tooltip and VoiceOver label. The segment updates with each team upload, at most every 15 minutes, and whenever the dashboard's Team section loads Today. See [Teams](teams.md).
 
 ## Login unavailable
 
-A pinned account with an expired, invalid, missing, or unreadable login stays in the menu bar as a faded provider icon with no values, even when no usage has loaded. This also applies when a login failure leaves cached usage or local spend history available. Both Text and Bars styles restore the normal icon and values after a successful refresh. Open the dashboard for the login notice and recovery steps. Unpinned and disabled accounts stay hidden. Temporary network failures do not count as login failures and cannot clear an already-known login failure.
+An account with an expired, invalid, missing, or unreadable login shows in the menu bar as a faded provider icon with a small orange dot and no values, even when no usage has loaded. This applies to every enabled account, starred or not, and also when a login failure leaves cached usage or local spend history available. Both Text and Bars styles restore the normal icon and values after a successful refresh. Open the dashboard for the login notice and recovery steps. Disabled accounts stay hidden. Temporary network failures do not count as login failures and cannot clear an already-known login failure.
 
 ## Exhausted weekly usage
 
-When an account has used all of its weekly allowance, its menu-bar segment becomes a faded provider icon with no values. In Bars style, its bars are replaced by the faded icon beside any remaining active bars. The icon and values return to normal after a refresh reports available usage. Your stars stay saved, and Weekly does not need to be starred or Always Visible for this to work.
+When an account has used all of its weekly allowance, its menu-bar segment becomes a faded provider icon with the time until the weekly reset, dimmed, for example **↻2d 4h**. In Bars style, its bars are replaced by the faded icon and reset time beside any remaining active bars. The icon and values return to normal after a refresh reports available usage. Your stars stay saved, and Weekly does not need to be starred or Always Visible for this to work.
 
-Independent model pools (Antigravity and Codex Spark) fade the icon only when all currently rendered starred metrics belong to exhausted pools. Dormant pins and pins beyond the two-value display limit do not count as usable alternatives. Other usable starred pools keep their values. Open the dashboard for the exhaustion message and reset time.
+Independent model pools (Antigravity and Codex Spark) fade the icon only when all currently rendered starred metrics belong to exhausted pools; the reset time is then the first of those pools to reset. Dormant pins and pins beyond the two-value display limit do not count as usable alternatives. Other usable starred pools keep their values. Open the dashboard for the exhaustion message.
 
 ## Hiding usage while screen sharing
 
@@ -67,4 +92,4 @@ On macOS 27 and later this recovery is off. The system folds items that do not f
 
 ## What the strip shows
 
-The strip only renders real data. A starred metric with nothing fetched yet is skipped. A provider whose stars all lack data disappears, icon included, unless it needs a login or its shared weekly allowance is exhausted—in those cases its faded icon stays visible. An exhausted weekly allowance instead keeps a faded icon and temporarily hides its values. When nothing has data, the strip shows the app icon. Stars follow your Customize order: Always Visible metrics first, then On Demand ones. A metric can be starred whether it is Always Visible or On Demand.
+The strip only renders real data. A starred metric with nothing fetched yet is skipped. A provider whose stars all lack data disappears, icon included, unless it needs a login or its shared weekly allowance is exhausted—in those cases its faded icon stays visible. A provider with no stars appears only when its login needs renewing. An exhausted weekly allowance instead keeps a faded icon and temporarily hides its values. When nothing has data, the strip shows the app icon. Stars follow your Customize order: Always Visible metrics first, then On Demand ones. A metric can be starred whether it is Always Visible or On Demand.

@@ -8,6 +8,8 @@ import SwiftUI
 /// height.
 struct TotalSpendLegendRow: View {
     let title: String
+    /// The account's short label, drawn after the title in secondary ("Claude Appload").
+    var account: String? = nil
     let value: String
     let color: Color
     let fontSize: CGFloat
@@ -39,7 +41,7 @@ struct TotalSpendLegendRow: View {
         // The visual hover state temporarily suppresses the amount, but assistive technologies
         // should always receive the complete, stable row.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title), \(value)")
+        .accessibilityLabel("\(fullTitle), \(value)")
     }
 
     private var textContent: some View {
@@ -99,7 +101,7 @@ struct TotalSpendLegendRow: View {
             .overlay(alignment: .leading) {
                 if let marqueeMetrics {
                     MarqueeTextScroller(
-                        text: title,
+                        text: fullTitle,
                         font: .system(size: fontSize),
                         distance: marqueeMetrics.distance,
                         duration: marqueeMetrics.duration,
@@ -137,11 +139,21 @@ struct TotalSpendLegendRow: View {
             }
     }
 
+    private var fullTitle: String {
+        account.map { "\(title) \($0)" } ?? title
+    }
+
     private var titleLabel: some View {
-        Text(title)
+        titleText
             .font(.system(size: fontSize))
             .foregroundStyle(.primary)
             .lineLimit(1)
+    }
+
+    /// The title, then the account in secondary when there is one.
+    private var titleText: Text {
+        guard let account else { return Text(title) }
+        return Text(title) + Text(" \(account)").foregroundStyle(.secondary)
     }
 
     private var valueLabel: some View {
@@ -151,6 +163,8 @@ struct TotalSpendLegendRow: View {
             .monospacedDigit()
             .lineLimit(1)
             .minimumScaleFactor(0.7)
+            // Digits roll to the new amount on a period or metric switch, like the meter headlines.
+            .contentTransition(.numericText())
     }
 }
 

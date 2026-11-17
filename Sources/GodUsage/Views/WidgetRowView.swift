@@ -193,7 +193,7 @@ struct WidgetRowView: View {
         let label = HStack(spacing: 3) {
             Image(systemName: "flame.fill")
                 .font(.system(size: density.supportingPointSize - 1))
-                .foregroundStyle(severityColor(state.severity))
+                .foregroundStyle(severityColor(data.meterSeverity(for: state)))
                 .accessibilityHidden(true) // the warning text alongside carries the message
             if let text {
                 Text(text)
@@ -427,7 +427,7 @@ struct WidgetRowView: View {
     private func expiryStatusAccessibilityLabel(_ severity: WidgetData.MeterSeverity) -> String {
         switch severity {
         case .normal: return "Reset credits expire in more than 7 days"
-        case .warning: return "A reset credit expires within 7 days"
+        case .warning, .atRisk: return "A reset credit expires within 7 days"
         case .critical: return "A reset credit expires within 48 hours"
         }
     }
@@ -463,8 +463,8 @@ struct WidgetRowView: View {
     /// leading-anchored fill, like the redesigned Slider / Control Center). Deliberately NOT the
     /// native linear `Gauge`/`ProgressView`, which Tahoe left as the thin legacy bar. The fill is
     /// a flat **system color** carrying the pace verdict (blue = well within limits, yellow =
-    /// projected to land inside the last 10%, red = projected to run out; `Theme.meterFill` /
-    /// `MeterState.severity`) at full strength on the opaque popover surface; the earlier
+    /// projected to land inside the last 10%, orange = projected to run out, red = reached or nearly
+    /// reached; `Theme.meterFill` / `WidgetData.meterSeverity(for:)`) at full strength on the opaque popover surface; the earlier
     /// provider-brand gradient was removed deliberately so the bar's color always reads as state.
     /// Empty + colorless without data. A thin tick marks the even-pace line — where usage would sit
     /// if it burned evenly across the reset window — on yellow and red bars always, and on blue when
@@ -481,7 +481,7 @@ struct WidgetRowView: View {
                 // on glass and adapts to Increase Contrast / Reduce Transparency.
                 Capsule().fill(.quaternary)
                 Capsule()
-                    .fill(partyMode ? PartyMode.meterFill : severityColor(state.severity))
+                    .fill(partyMode ? PartyMode.meterFill : severityColor(data.meterSeverity(for: state)))
                     .frame(width: fillWidth(track: proxy.size.width))
             }
             .overlay(alignment: .leading) {

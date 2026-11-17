@@ -291,8 +291,9 @@ final class TeamsStoreTests: XCTestCase {
 
         store.showRankInMenuBar = true
         // Fede spent $5 of the team's $14 today.
-        XCTAssertEqual(store.menuBarStanding?.rank, "#2 · 36%")
-        XCTAssertEqual(store.menuBarStanding?.spend, "$5.00")
+        XCTAssertEqual(store.menuBarStanding?.rank, 2)
+        XCTAssertEqual(store.menuBarStanding?.share, "36%")
+        XCTAssertEqual(store.menuBarStanding?.spendUSD, 5)
     }
 
     func testShareText() {

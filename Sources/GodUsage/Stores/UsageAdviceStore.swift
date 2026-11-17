@@ -50,8 +50,17 @@ final class UsageAdviceStore {
     /// Every current suggestion, most urgent first, without the dismissed ones.
     func suggestions(now: Date = Date()) -> [UsageSuggestion] {
         let dismissed = Set(dismissedIDs)
-        return UsageAdvisor.suggestions(quotas: quotas(), resets: resets(now: now), plans: teamPlans(), now: now)
-            .filter { !dismissed.contains($0.id) }
+        return UsageAdvisor.suggestions(
+            quotas: quotas(), resets: resets(now: now), plans: teamPlans(), roomyPlans: roomyPlans(now: now), now: now
+        )
+        .filter { !dismissed.contains($0.id) }
+    }
+
+    /// The accounts a "Switch to …" suggestion currently recommends: the menu bar marks them with a
+    /// green dot. Dismissing the banner does not clear it; the dot lasts as long as the situation.
+    func switchTargets(now: Date = Date()) -> Set<String> {
+        let all = UsageAdvisor.suggestions(quotas: quotas(), resets: resets(now: now), plans: [], now: now)
+        return Set(all.filter { $0.kind == .switchProvider }.compactMap(\.targetProviderID))
     }
 
     func dismiss(_ suggestion: UsageSuggestion) {
@@ -137,6 +146,29 @@ final class UsageAdviceStore {
                 providerName: registry.provider(id: plan.provider)?.displayName ?? plan.provider.capitalized,
                 name: plan.name, projectedMultiple: plan.projectedMultiple, quotaPercent: plan.quota?.usedPercent, underused: plan.underused,
                 daysLeft: plan.cycle.daysLeft + 1, cycleEnd: plan.cycle.to, teamID: entry.teamID
+            )
+        }
+    }
+
+    /// The plans covering you that Live Pace marks "use this now" (the This Week's Limit rows, with
+    /// the same rule), for the switch suggestion to name. Empty while Live Pace is off.
+    private func roomyPlans(now: Date) -> [UsageAdvisor.RoomyPlan] {
+        guard teams.isSignedIn, TeamPlansStore.livePaceShown else { return [] }
+        let entries = plans.yourPlans(selectedTeamID: teams.selectedTeamID, teamIDs: teams.teams.map(\.id))
+            .filter { $0.plan.budget != nil }
+        var paces: [String: LivePace] = [:]
+        for entry in entries {
+            if let live = plans.livePace(entry, now: now) { paces[entry.id] = live }
+        }
+        return Self.roomyPlans(entries, paces: paces)
+    }
+
+    static func roomyPlans(_ entries: [TeamPlanEntry], paces: [String: LivePace]) -> [UsageAdvisor.RoomyPlan] {
+        let useNow = TeamWeekStripCard.useThisNow(entries, paces: paces)
+        return entries.compactMap { entry in
+            guard entry.plan.includesYou, useNow.contains(entry.id), let live = paces[entry.id] else { return nil }
+            return UsageAdvisor.RoomyPlan(
+                family: entry.plan.provider, name: entry.plan.name, ahead: live.ahead, leftToday: max(0, live.budget - live.used)
             )
         }
     }
