@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 
 /// The dashboard's cross-provider Total Spend section: a native segmented period picker
-/// (Today / Yesterday / Last 30 Days) over a donut ring whose segments are each provider's share of
-/// the selected metric, with the total in the center and a ranked legend beside it. The title is a
+/// (Today / Yesterday / Last 30 Days) over a bar whose segments are each provider's share of
+/// the selected metric, with the total above it and a ranked legend below. The title is a
 /// pull-down menu for Cost / Cost/MTok / Tokens. Data comes from `TotalSpendAggregator` over
 /// the same snapshots the provider cards render. Shown whenever any enabled provider tracks spend
 /// (`LayoutStore.hasSpendCapableProvider`) and the toggle at the top of Settings is on; a period
@@ -119,7 +119,7 @@ struct TotalSpendCard: View {
         }
     }
 
-    /// Names the providers actually feeding the ring — the enabled spend-capable set — instead of a
+    /// Names the providers actually feeding the bar — the enabled spend-capable set — instead of a
     /// hardcoded list, so disabling a provider (or a new spend provider shipping) can't make the
     /// tooltip lie about what the total reflects.
     private var infoTooltip: String {
@@ -146,7 +146,7 @@ struct TotalSpendCard: View {
             if projection.isEmpty {
                 emptyState
             } else {
-                TotalSpendRingContent(projection: projection)
+                TotalSpendBarContent(projection: projection)
             }
         }
         .padding(.horizontal, 14)
@@ -239,7 +239,7 @@ struct TotalSpendCard: View {
     }
 
     /// A metric/period combination with nothing to show mirrors the spend tiles' "No data" rule —
-    /// never a fabricated zero ring.
+    /// never a fabricated zero bar.
     private var emptyState: some View {
         Text(metric.emptyMessage)
             .font(.system(size: density.supportingPointSize))
@@ -249,153 +249,7 @@ struct TotalSpendCard: View {
     }
 }
 
-/// The ring + legend body, shared by the live card and the share-card export so the PNG can't drift
-/// from what's on screen. Slices come ranked by the selected metric from `TotalSpend.projection`,
-/// so the ring reads clockwise from 12 o'clock in the same order the legend reads top-down.
-///
-/// A period or metric switch **morphs** the arcs: each provider's slice slides and resizes to its
-/// new share. Swift Charts' `SectorMark` can't do this — it matches sectors by array position when
-/// animating, so any re-sort smears one provider's arc into another's color mid-morph (there is no
-/// identity hook for sectors). The ring therefore draws its own sectors: one `RingSectorShape` per
-/// provider, identity-keyed by provider ID, with the start/end angles as `animatableData`. SwiftUI
-/// animates each provider's own arc, and the color can't swap because each arc view owns its
-/// provider's color. The shape reproduces the SectorMark look — golden-ratio hole, hairline gaps,
-/// rounded sector corners — so nothing changes visually at rest.
-struct TotalSpendRingContent: View {
-    let projection: TotalSpendProjection
-
-    private let density = DensitySetting.compact
-
-    private static let ringDiameter: CGFloat = 104
-
-    var body: some View {
-        // One source makes a one-color ring: show its total and a full bar instead.
-        if let sole = projection.soleSlice {
-            TotalSpendSingleSourceContent(projection: projection, slice: sole)
-        } else {
-            HStack(spacing: 18) {
-                ring
-                legend
-            }
-        }
-    }
-
-    // MARK: - Ring
-
-    /// Every slice is guaranteed at least this share of the circle, so a tiny provider next to a
-    /// dominant one still shows a visible sliver instead of vanishing. Presentation-only — the
-    /// legend and center keep the true amounts.
-    private static let minimumSliceShare = 0.025
-
-    private var ring: some View {
-        ZStack {
-            // Identity is the provider ID: a provider that exists in both states keeps its view,
-            // so a switch animates that arc's angles. A provider entering or leaving fades in/out
-            // (the default transition) while the survivors re-flow around it.
-            ForEach(arcs) { arc in
-                RingSectorShape(startFraction: arc.start, endFraction: arc.end)
-                    .fill(TotalSpendPalette.color(for: arc.providerID))
-            }
-            centerLabel
-        }
-        .frame(width: Self.ringDiameter, height: Self.ringDiameter)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
-    }
-
-    private var accessibilityLabel: String {
-        let center = formatValue(projection.centerValue, style: .full)
-        switch projection.metric {
-        case .cost:
-            return "Total cost \(center) across \(projection.slices.count) providers"
-        case .tokens:
-            return "Total tokens \(center) across \(projection.slices.count) providers"
-        case .costPerMtok:
-            return "Blended cost per megatoken \(center) across \(projection.slices.count) providers"
-        }
-    }
-
-    private struct RingArc: Identifiable, Equatable {
-        let providerID: String
-        var start: Double
-        var end: Double
-
-        var id: String { providerID }
-    }
-
-    /// The ranked slices as cumulative ring fractions, with the minimum-sliver floor applied and the
-    /// result renormalized so the ring always closes exactly.
-    private var arcs: [RingArc] {
-        let totalDisplay = projection.slices.reduce(0) { $0 + $1.displayAmount }
-        guard totalDisplay > 0 else { return [] }
-        let floored = projection.slices.map { max($0.displayAmount / totalDisplay, Self.minimumSliceShare) }
-        let sum = floored.reduce(0, +)
-        guard sum > 0 else { return [] }
-
-        var cursor = 0.0
-        return zip(projection.slices, floored).map { slice, share in
-            let width = share / sum
-            defer { cursor += width }
-            return RingArc(providerID: slice.provider.id, start: cursor, end: cursor + width)
-        }
-    }
-
-    /// Quiet center — short primary on top, a unit underneath when it isn't obvious — so Cost/MTok
-    /// (and big token totals) never force a long one-liner into the hole. Cost has no unit line: the
-    /// `$` says it. Legend and tooltip still carry the exact one-line forms.
-    private var centerLabel: some View {
-        let center = MetricFormatter.totalSpendRingCenter(projection.centerValue, metric: projection.metric)
-        return VStack(spacing: 1) {
-            Text(center.primary)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.primary)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            if let unit = center.unit {
-                Text(unit)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-            }
-        }
-        .padding(.horizontal, 10)
-        .hoverTooltip(centerTooltip)
-    }
-
-    private var centerTooltip: String {
-        let exact = formatValue(projection.centerValue, style: .full)
-        if projection.isEstimated, projection.metric.usesDollarEstimateNote {
-            return "\(exact) · \(WidgetData.localEstimateNote)"
-        }
-        return exact
-    }
-
-    // MARK: - Legend
-
-    /// Rows in the ring's ranked order (largest first), so scanning the ring clockwise from
-    /// 12 o'clock matches reading the legend top-down.
-    private var legend: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            ForEach(projection.slices) { slice in
-                TotalSpendLegendRow(
-                    title: slice.title,
-                    account: slice.account,
-                    value: projection.formatted(slice.displayAmount, style: projection.legendValueStyle),
-                    color: TotalSpendPalette.color(for: slice.provider.id),
-                    fontSize: density.supportingPointSize
-                )
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func formatValue(_ value: Double, style: MetricFormatter.Style) -> String {
-        projection.formatted(value, style: style)
-    }
-}
-
-/// Stable per-provider brand tints for the Total Spend ring and legend — the one place the app maps
+/// Stable per-provider brand tints for the Total Spend bar and legend — the one place the app maps
 /// a provider to a color, so the chart, legend, and share card always agree. Colors are keyed by
 /// provider ID only (never by rank or position), so a provider keeps its color across period
 /// switches, re-sorts, and launches. Hexes come from the legacy edition's per-plugin `brandColor`

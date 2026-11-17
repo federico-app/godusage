@@ -177,35 +177,35 @@ final class TotalSpendAggregatorTests: XCTestCase {
         XCTAssertTrue(total.projection(for: .costPerMtok).isEmpty)
     }
 
-    // MARK: Single source
+    // MARK: Bar
 
-    func testExactlyOneSliceIsTheSoleSlice() {
+    func testOneSliceFillsTheBarAndHeadlinesExactCents() {
         let snapshots = ["claude": snapshot(claude, lines: [spendLine("Today", dollars: 26.26)])]
         let projection = TotalSpendAggregator.total(for: .today, providers: [claude, cursor], snapshots: snapshots)
             .projection(for: .cost)
-        XCTAssertEqual(projection.soleSlice?.provider.id, "claude")
+        XCTAssertEqual(projection.barSegments, [TotalSpendBarSegment(providerID: "claude", share: 1)])
         XCTAssertEqual(projection.headline(projection.centerValue), "$26.26")
     }
 
-    func testTwoSlicesOrNoneHaveNoSoleSlice() {
+    func testSeveralSlicesSplitTheBarInLegendOrderWithAVisibleSliver() {
         let snapshots = [
-            "claude": snapshot(claude, lines: [spendLine("Today", dollars: 2.50)]),
-            "cursor": snapshot(cursor, lines: [spendLine("Today", dollars: 7.25)])
+            "claude": snapshot(claude, lines: [spendLine("Today", dollars: 91.53)]),
+            "cursor": snapshot(cursor, lines: [spendLine("Today", dollars: 0.07)])
         ]
-        let total = TotalSpendAggregator.total(for: .today, providers: [claude, cursor], snapshots: snapshots)
-        XCTAssertNil(total.projection(for: .cost).soleSlice)
-        XCTAssertNil(TotalSpendAggregator.total(for: .today, providers: [claude], snapshots: [:]).projection(for: .cost).soleSlice)
+        let projection = TotalSpendAggregator.total(for: .today, providers: [claude, cursor], snapshots: snapshots)
+            .projection(for: .cost)
+        let segments = projection.barSegments
+        XCTAssertEqual(segments.map(\.providerID), projection.slices.map(\.provider.id))
+        XCTAssertEqual(segments.map(\.providerID), ["claude", "cursor"])
+        XCTAssertEqual(segments.reduce(0) { $0 + $1.share }, 1, accuracy: 1e-9)
+        // $0.07 next to $91.53 still gets the minimum sliver, renormalized.
+        XCTAssertGreaterThanOrEqual(segments[1].share, TotalSpendProjection.minimumBarShare * 0.9)
+        XCTAssertEqual(projection.headline(projection.centerValue), "$91.60")
     }
 
-    func testOneSourceWithMetricFilteringIsSoleUnderThatMetric() {
-        // Cursor has tokens but no dollars: two sources under Tokens, one under Cost.
-        let snapshots = [
-            "claude": snapshot(claude, lines: [spendLine("Today", dollars: 2.50)]),
-            "cursor": snapshot(cursor, lines: [spendLine("Today", dollars: nil, tokens: 400_000)])
-        ]
-        let total = TotalSpendAggregator.total(for: .today, providers: [claude, cursor], snapshots: snapshots)
-        XCTAssertEqual(total.projection(for: .cost).soleSlice?.provider.id, "claude")
-        XCTAssertNil(total.projection(for: .tokens).soleSlice)
+    func testNoDataHasNoSegments() {
+        let projection = TotalSpendAggregator.total(for: .today, providers: [claude], snapshots: [:]).projection(for: .cost)
+        XCTAssertTrue(projection.barSegments.isEmpty)
     }
 
     func testSlicesCarryTheAccountLabel() {

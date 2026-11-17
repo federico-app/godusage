@@ -120,11 +120,29 @@ struct TotalSpendProjection: Equatable {
 
     var isEmpty: Bool { slices.isEmpty }
 
-    /// The only slice, when exactly one source fed the total: the card swaps the ring for a big total
-    /// and one full bar, since a single-color ring says nothing.
-    var soleSlice: TotalSpendProjectedSlice? {
-        slices.count == 1 ? slices.first : nil
+    /// Every slice is guaranteed at least this share of the bar, so a tiny provider next to a
+    /// dominant one still shows a visible sliver. Presentation-only: the legend and total keep the
+    /// true amounts.
+    static let minimumBarShare = 0.025
+
+    /// The ranked slices as fractions of the bar's width, with the minimum-sliver floor applied and
+    /// renormalized so they always fill it exactly. One slice fills the whole bar.
+    var barSegments: [TotalSpendBarSegment] {
+        let total = slices.reduce(0) { $0 + $1.displayAmount }
+        guard total > 0 else { return [] }
+        let floored = slices.map { max($0.displayAmount / total, Self.minimumBarShare) }
+        let sum = floored.reduce(0, +)
+        return zip(slices, floored).map { TotalSpendBarSegment(providerID: $0.provider.id, share: $1 / sum) }
     }
+}
+
+/// One provider's piece of the Total Spend bar.
+struct TotalSpendBarSegment: Identifiable, Equatable {
+    let providerID: String
+    /// Fraction of the bar's width, 0...1; a projection's segments sum to 1.
+    let share: Double
+
+    var id: String { providerID }
 }
 
 /// A period's cross-provider raw totals: every spend-capable provider that contributed dollars and/or
