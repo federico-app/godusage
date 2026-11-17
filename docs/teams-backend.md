@@ -29,7 +29,7 @@ The backend used to run as a Cloudflare Worker on D1. D1's free plan (5M rows re
 - **Account exclusions:** for each Mac, which account fingerprints it leaves out of which of the user's teams (see [Accounts left out of a team](#accounts-left-out-of-a-team)).
 - **Working hours and time zone:** each member's working days and hours in each team if they set them (`team_work_schedules`, one per member per team, removed when they leave the team), and the IANA time zone their Mac sent with its latest upload (`users.time_zone`), for Live Pace.
 - **Quota readings:** each Mac's readings of its accounts' open weekly windows (`quota_readings`: account fingerprint, the window's reset, when it was read, the share used), kept 36 hours, for Live Pace's pace of the last working hour.
-- **Spend pulses:** for each Mac, how much its spend grew in each five-minute window of the last seven days, for [momentum](#momentum). The full history is kept: each upload replaces only the days in its window. No credentials, logs, prompts, project names, or account ids.
+- **Spend pulses:** for each Mac, how much its spend grew in each five-minute window of the last seven days (growth between two uploads spread over the time between them), for [momentum](#momentum). The full history is kept: each upload replaces only the days in its window. No credentials, logs, prompts, project names, or account ids.
 
 Deleting an account deletes its sessions, Macs, usage, memberships, and the teams it owns.
 
@@ -71,7 +71,9 @@ Day keys are each Mac's local calendar days. A stats request can pass the viewer
 
 ## Momentum
 
-The ⚡ on boards (`src/momentum.ts`). Each upload adds how much the Mac's recent days (yesterday and today, UTC) grew since its previous upload to `spend_pulses`, in five-minute buckets kept seven days. Device-scope rows grow from that Mac's stored row; account-scope rows from the largest any of the user's Macs stored, so two Macs reporting one Cursor account count once; shared accounts count for no one. A device's first upload records nothing, since its whole day would look just spent.
+The ⚡ on boards (`src/momentum.ts`). Each upload adds how much the member's today grew since the previous upload to `spend_pulses`, in five-minute buckets kept seven days. Today is the upload's `localDay` (the Mac's calendar day, the day its Today board counts; the UTC day from apps that don't send it); growth on any other day, such as yesterday's row still filling in after midnight, never counts. Device-scope rows grow from that Mac's stored row; account-scope rows from the largest any of the user's Macs stored, so two Macs reporting one Cursor account count once; shared accounts count for no one. A row with nothing stored to grow from records nothing, since its whole day would look just spent: a device's first upload, a provider's first row of the day, a row a full upload dropped and later brings back, an account moved to its own slot.
+
+The growth is spread evenly over the buckets between the baseline's upload (this Mac's previous upload; for an account row, the last upload of the Mac that stored the largest cost) and now, so a Mac that slept, went offline, or failed uploads for hours puts only its share of the gap in the last hour. A gap inside the current bucket stays in it, so a Mac uploading every few minutes counts as before. A gap longer than the seven days kept loses the older part. An upward re-pricing of today's row still counts as growth.
 
 `momentum` in the stats response maps each member with spend in the last 60 minutes to `{ lastHourUSD, level, reasons, typicalHourUSD }`. `level` (0–3) counts the `reasons` met once the last hour reaches $1: `fast` ($5 or more), `self` (at least twice `typicalHourUSD`, the average of the member's hours with spend in the previous seven days, the last hour left out), and `top` (nobody in the team spent more). It is cached per team like the other results, recomputed at most once a minute.
 

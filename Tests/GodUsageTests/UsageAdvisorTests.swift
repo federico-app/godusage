@@ -56,6 +56,7 @@ final class UsageAdvisorTests: XCTestCase {
         ])
         XCTAssertEqual(result.map(\.kind), [.switchProvider])
         XCTAssertEqual(result.first?.title, "Switch to Codex")
+        XCTAssertEqual(result.first?.targetProviderID, "codex", "the menu bar's green dot goes on the target")
     }
 
     func testRunningOutWithoutAnAlternativeSuggestsNothing() {

@@ -216,6 +216,16 @@ extension LayoutStore {
         }
     }
 
+    /// Every enabled provider in Customize order with its starred metrics, including providers with
+    /// no stars (empty metrics): the menu bar still shows those when their login needs renewing.
+    var menuBarGroups: [ProviderMetrics] {
+        let pinned = Dictionary(pinnedGroups.map { ($0.provider.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return orderedProviders().compactMap { provider in
+            guard isProviderEnabled(provider.id) else { return nil }
+            return pinned[provider.id] ?? ProviderMetrics(provider: provider, metrics: [])
+        }
+    }
+
     /// Reorder whole providers when `dragged`'s header is dropped onto `target`'s. Works on the currently
     /// shown (enabled) provider order; disabled providers keep their relative tail position.
     /// Returns whether the order actually changed — the drag gestures key haptics off it.

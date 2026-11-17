@@ -18,6 +18,20 @@ final class StatusItemImageUpdater {
     init(container: AppContainer, apply: @escaping (MenuBarStripPresentation) -> Bool) {
         self.container = container
         self.gate = StatusItemPresentationGate(apply: apply)
+        startMinuteTicker()
+    }
+
+    /// Countdowns ("↻38m", "·3d", "Upd 2h") move with the clock, not with any observed value, so
+    /// the strip re-renders once a minute. It doesn't re-arm observation (`update()` already did),
+    /// and the strip cache and the gate turn an unchanged minute into no work.
+    private func startMinuteTicker() {
+        Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                guard let self else { return }
+                self.gate.submit(self.renderButtonPresentation())
+            }
+        }
     }
 
     /// Render now and re-arm on the next observable change.
@@ -59,24 +73,23 @@ final class StatusItemImageUpdater {
                 ?? MenuBarStripRenderer.fallbackIcon
             return MenuBarStripPresentation(image: image, toolTipRegions: [])
         }
+        let now = Date()
         var content = MenuBarContentBuilder.build(
-            groups: container.layout.pinnedGroups,
+            groups: container.layout.menuBarGroups,
             data: { container.dataStore.data(for: $0) },
             title: { container.displayName(for: $0) },
             quotaDescriptors: { container.registry.descriptors(for: $0).filter(container.dataStore.isMetricApplicable) },
-            loginRequired: container.dataStore.loginRequired(for:)
+            loginRequired: container.dataStore.loginRequired(for:),
+            switchTargets: container.usageAdvice.switchTargets(now: now),
+            now: now
         )
-        // The team standing rides as one more group after the pinned providers: "#2 · 38%" (rank and
-        // share of the team's spend) over today's spend.
-        if let standing = container.teams.menuBarStanding {
-            let team = MenuBarContent.Group(
-                providerID: TeamsStore.menuBarGroupID,
-                displayName: "Team",
-                icon: .providerMark(TeamsStore.menuBarGroupID),
-                metrics: [
-                    .init(id: "team.rank", label: "Rank", value: standing.rank, fraction: 0, isBounded: false, hasData: true),
-                    .init(id: "team.today", label: "T", value: standing.spend, fraction: 0, isBounded: false, hasData: true),
-                ]
+        // The team standing rides as one more group after the providers: "#2 ▲1 · $37" over your
+        // pace on your team plan.
+        if let standing = container.teams.menuBarStanding, let teamID = container.teams.selectedTeamID {
+            let team = MenuBarContentBuilder.teamGroup(
+                standing: standing,
+                paces: container.teamPlans.menuBarPaces(teamID: teamID, now: now),
+                now: now
             )
             content = MenuBarContent(groups: content.groups + [team], bars: content.bars)
         }

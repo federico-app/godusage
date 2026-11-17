@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.8.1
+
+### New Features
+- feat(teams): redesign member detail ([#125](https://github.com/federico-app/godusage/pull/125)) by @andreaAppload
+- feat(menu-bar): labeled values, pace colours, badges and team plan pace ([#124](https://github.com/federico-app/godusage/pull/124)) by @andreaAppload
+- feat(teams): clearer Live Pace details ([#127](https://github.com/federico-app/godusage/pull/127)) by @andreaAppload
+
+### Bug Fixes
+- fix(backend): last-hour spend can't exceed today ([#126](https://github.com/federico-app/godusage/pull/126)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.8.0...v1.8.1](https://github.com/federico-app/godusage/compare/v1.8.0...v1.8.1)
+
+- [21270bb](https://github.com/federico-app/godusage/commit/21270bb21b6d45f4999973ff32f7f2962ed5c5b3) feat(teams): member detail with tiles, chips and model shares by @andreaAppload
+- [53987c6](https://github.com/federico-app/godusage/commit/53987c6f72bbcb2a9c125ff095a1d12a86db026a) feat(menu-bar): labeled values, pace colours, badges and team plan pace by @andreaAppload
+- [7f8caa9](https://github.com/federico-app/godusage/commit/7f8caa950d660863e5a1e47c484c9a1686c56854) fix(backend): last hour counts only today's real growth, spread over upload gaps by @andreaAppload
+- [64801d8](https://github.com/federico-app/godusage/commit/64801d8aa634cf8e75f09a2eaf6971342edb2af5) feat(teams): clearer Live Pace details with rate tiles and a labeled chart by @andreaAppload
+
 ## v1.8.0
 
 ### New Features
