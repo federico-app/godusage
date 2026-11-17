@@ -169,8 +169,8 @@ struct TeamLeaderboardMemberRow: View {
     }
 }
 
-/// One line in the Idle group: rank, name, when they last synced, an outdated version, reactions,
-/// and the value. No bar: nobody here is spending right now.
+/// One entry in the Idle group: rank, name and value, then when they last synced, an outdated
+/// version, and reactions on a small line under it. No bar: nobody here is spending right now.
 struct TeamLeaderboardIdleRow: View {
     @Environment(AppContainer.self) private var container
     let member: TeamStats.Member
@@ -199,25 +199,29 @@ struct TeamLeaderboardIdleRow: View {
         }
     }
 
+    /// Two lines so the name never fights the status marks for width: the name, You, the gold marks
+    /// and the value on top; when they last synced, an outdated version, and reactions under it.
     private var line: some View {
-        HStack(spacing: 6) {
-            Text(member.displayName)
-                .font(.callout)
-                .fontWeight(isMe ? .semibold : .regular)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .layoutPriority(1)
-            if isMe { YouChip() }
-            if let teamID { MemberBadges(teamID: teamID, userID: member.userID) }
-            Spacer(minLength: 6)
+        VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
-                OutdatedVersionChip(version: member.appVersion, newestVersion: newestVersion)
-                syncAge
-                reactionsView
+                Text(member.displayName)
+                    .font(.callout)
+                    .fontWeight(isMe ? .semibold : .regular)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .layoutPriority(1)
+                if isMe { YouChip() }
+                if let teamID { MemberBadges(teamID: teamID, userID: member.userID) }
+                Spacer(minLength: 6)
                 Text(metric.format(member.totals))
                     .font(.callout.monospacedDigit().weight(.semibold))
                     .foregroundStyle(metric.value(member.totals) > 0 ? .primary : .secondary)
-                    .frame(minWidth: 52, alignment: .trailing)
+                    .fixedSize()
+            }
+            HStack(spacing: 6) {
+                syncAge
+                OutdatedVersionChip(version: member.appVersion, newestVersion: newestVersion)
+                reactionsView
             }
             .fixedSize()
         }
