@@ -27,10 +27,10 @@ struct TotalSpendShareCardView: View {
 
     private var headerRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(metric.title)
+            Text(metric.displayTitle)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.primary)
-            Text(total.period.rawValue)
+            Text(total.period.title)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)

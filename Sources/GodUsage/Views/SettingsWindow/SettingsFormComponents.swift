@@ -7,18 +7,26 @@ import SwiftUI
 /// A caption header over a rounded card of rows. The header is inset 8pt so it aligns with the rows'
 /// content, matching how Customize lines its provider headers up with the card rows.
 struct SettingsSection<Rows: View>: View {
-    private let title: String
+    private let title: Text
     private let rows: Rows
     private let density = DensitySetting.compact
 
+    /// A literal title, localized.
+    init(_ title: LocalizedStringKey, @ViewBuilder rows: () -> Rows) {
+        self.title = Text(title)
+        self.rows = rows()
+    }
+
+    /// A runtime title (a team name, an already-localized string), shown as is.
+    @_disfavoredOverload
     init(_ title: String, @ViewBuilder rows: () -> Rows) {
-        self.title = title
+        self.title = Text(verbatim: title)
         self.rows = rows()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: density.headerToCardSpacing) {
-            Text(title)
+            title
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
@@ -33,18 +41,26 @@ struct SettingsSection<Rows: View>: View {
 /// One settings row: label on the leading edge, the control on the trailing edge — the System
 /// Settings shape, with the same insets as a Customize metric row.
 struct SettingsRow<Control: View>: View {
-    private let label: String
+    private let label: Text
     private let control: Control
     private let density = DensitySetting.compact
 
+    /// A literal label, localized.
+    init(_ label: LocalizedStringKey, @ViewBuilder control: () -> Control) {
+        self.label = Text(label)
+        self.control = control()
+    }
+
+    /// A runtime label (an account or device name, an already-localized string), shown as is.
+    @_disfavoredOverload
     init(_ label: String, @ViewBuilder control: () -> Control) {
-        self.label = label
+        self.label = Text(verbatim: label)
         self.control = control()
     }
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(label)
+            label
             Spacer(minLength: 8)
             control
         }
@@ -56,14 +72,21 @@ struct SettingsRow<Control: View>: View {
 /// An inline orange caption under a row — the shared notice idiom for error lines and "this setting
 /// is paused" captions.
 struct SettingsInlineNotice: View {
-    private let text: String
+    private let text: Text
 
+    /// A literal message, localized.
+    init(_ text: LocalizedStringKey) {
+        self.text = Text(text)
+    }
+
+    /// A runtime message (an error description, an already-localized string), shown as is.
+    @_disfavoredOverload
     init(_ text: String) {
-        self.text = text
+        self.text = Text(verbatim: text)
     }
 
     var body: some View {
-        Text(text)
+        text
             .font(.caption)
             .foregroundStyle(Theme.notice)
             .padding(.horizontal, 12)
@@ -74,14 +97,21 @@ struct SettingsInlineNotice: View {
 
 /// A quiet explanatory caption under a row (secondary, not a warning).
 struct SettingsCaption: View {
-    private let text: String
+    private let text: Text
 
+    /// A literal message, localized.
+    init(_ text: LocalizedStringKey) {
+        self.text = Text(text)
+    }
+
+    /// A runtime message (an error description, an already-localized string), shown as is.
+    @_disfavoredOverload
     init(_ text: String) {
-        self.text = text
+        self.text = Text(verbatim: text)
     }
 
     var body: some View {
-        Text(text)
+        text
             .font(.caption)
             .foregroundStyle(.secondary)
             .padding(.horizontal, 12)
@@ -118,11 +148,11 @@ struct SettingsMenuPicker<Value: Hashable>: View {
 /// label so the glass background stretches the full row width instead of hugging the text. (Glass on
 /// macOS 26+, bordered fallback on macOS 15.)
 struct SettingsCardButton: View {
-    private let title: String
+    private let title: LocalizedStringKey
     private let action: () -> Void
     private let density = DensitySetting.compact
 
-    init(_ title: String, action: @escaping () -> Void) {
+    init(_ title: LocalizedStringKey, action: @escaping () -> Void) {
         self.title = title
         self.action = action
     }

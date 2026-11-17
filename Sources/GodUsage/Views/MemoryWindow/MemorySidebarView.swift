@@ -78,7 +78,7 @@ struct MemorySidebarView: View {
         } else if source.instructionsUnreadable {
             // The file exists but could not be read — creating over it would destroy it.
             captionRow(
-                "The instruction file exists but could not be read. Check the log for details.",
+                String(localized: "The instruction file exists but could not be read. Check the log for details."),
                 style: Theme.notice
             )
         } else if canCreateInstructionFile(for: source) {
@@ -99,7 +99,7 @@ struct MemorySidebarView: View {
             captionRow(note, style: Theme.notice)
         }
         if case .empty = source.status {
-            captionRow("The instruction file is empty.", style: AnyShapeStyle(.secondary))
+            captionRow(String(localized: "The instruction file is empty."), style: AnyShapeStyle(.secondary))
         }
         ForEach(source.projects) { project in
             projectGroup(project, allowsNewFacts: source.id.hasPrefix("claude:"))
@@ -309,10 +309,10 @@ private struct MemoryStatusBadge: View {
 
     private var label: String {
         switch status {
-        case .ready: return "Ready"
-        case .empty: return "Empty"
-        case .missingFile: return "No File"
-        case .memoryDisabled: return "Memory Disabled"
+        case .ready: return String(localized: "Ready", comment: "Status badge: a memory source is set up")
+        case .empty: return String(localized: "Empty", comment: "Status badge: a memory source's instruction file is empty")
+        case .missingFile: return String(localized: "No File", comment: "Status badge: a memory source has no instruction file")
+        case .memoryDisabled: return String(localized: "Memory Disabled", comment: "Status badge: the agent's memory feature is off")
         }
     }
 

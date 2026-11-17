@@ -16,9 +16,9 @@ struct UpdateBannerCard: View {
     var body: some View {
         DismissableHintCard(
             systemImage: "arrow.down.circle",
-            title: "Update Available",
-            message: "GodUsage \(version) is ready to download.",
-            buttonTitle: "Install Update",
+            title: String(localized: "Update Available"),
+            message: String(localized: "GodUsage \(version) is ready to download."),
+            buttonTitle: String(localized: "Install Update"),
             action: { updater.installAvailableUpdate() },
             onDismiss: { withAnimation(Motion.spring) { updater.dismissAvailableUpdate() } }
         )

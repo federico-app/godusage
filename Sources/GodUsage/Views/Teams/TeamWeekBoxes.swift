@@ -151,15 +151,23 @@ struct TeamWeekBoxes: View {
     }
 
     private var accessibilityText: String {
-        "This week: " + boxes.map { day in
+        let days = boxes.map { day -> String in
+            let name = day.label
             switch day.kind {
-            case .off: "\(day.label) off"
-            case .empty: "\(day.label) no data"
-            case .past: "\(day.label) used"
-            case let .today(_, overflow): overflow > 0 ? "\(day.label) over budget" : "\(day.label) in progress"
-            case let .future(_, lowered, label): lowered ? "\(day.label) lowered\(label.map { " to \($0)" } ?? "")" : "\(day.label) planned"
+            case .off: return String(localized: "\(name) off", comment: "A day without working hours, in the week's boxes.")
+            case .empty: return String(localized: "\(name) no data", comment: "A day in the week's boxes.")
+            case .past: return String(localized: "\(name) used", comment: "A day gone by in the week's boxes.")
+            case let .today(_, overflow):
+                return overflow > 0
+                    ? String(localized: "\(name) over budget", comment: "Today in the week's boxes.")
+                    : String(localized: "\(name) in progress", comment: "Today in the week's boxes.")
+            case let .future(_, lowered, label):
+                guard lowered else { return String(localized: "\(name) planned", comment: "A working day left in the week's boxes.") }
+                return label.map { String(localized: "\(name) lowered to \($0)", comment: "A working day left, its budget lowered to a share.") }
+                    ?? String(localized: "\(name) lowered", comment: "A working day left, its budget lowered.")
             }
-        }.joined(separator: ", ")
+        }
+        return String(localized: "This week: \(AppLocale.list(days))", comment: "The week's boxes, day by day.")
     }
 }
 

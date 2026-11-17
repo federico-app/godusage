@@ -17,7 +17,7 @@ final class SakanaProvider: ProviderRuntime {
     let logUsageScanner: SakanaLogUsageScanner
     let now: @Sendable () -> Date
     private let localSourceNote =
-        "From your Fugu Codex logs; estimated API-rate value, not billed spend (orchestration may be omitted)"
+        String(localized: "From your Fugu Codex logs; estimated API-rate value, not billed spend (orchestration may be omitted)")
 
     init(
         authStore: SakanaAuthStore = SakanaAuthStore(),
@@ -129,7 +129,7 @@ final class SakanaProvider: ProviderRuntime {
             warning: subscriptionError.map {
                 isConnectPrompt
                     ? $0.localizedDescription
-                    : "Subscription meters unavailable: \($0.localizedDescription)"
+                    : String(localized: "Subscription meters unavailable: \($0.localizedDescription)")
             },
             warningIsConnectPrompt: isConnectPrompt,
             loginRequired: ProviderLoginStatus.requirement(after: subscriptionError)

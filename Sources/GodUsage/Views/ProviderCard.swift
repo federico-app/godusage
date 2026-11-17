@@ -57,6 +57,6 @@ struct DashboardMetricCardCaret: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isExpanded ? "Show less" : "Show more")
+        .accessibilityLabel(isExpanded ? Text("Show less") : Text("Show more"))
     }
 }

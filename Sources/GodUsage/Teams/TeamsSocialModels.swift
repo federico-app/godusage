@@ -17,9 +17,9 @@ enum TeamReaction: String, Codable, CaseIterable, Hashable, Sendable {
 
     var accessibilityName: String {
         switch self {
-        case .fire: "Fire"
-        case .clap: "Applause"
-        case .clown: "Clown"
+        case .fire: String(localized: "Fire", comment: "The 🔥 reaction, for VoiceOver")
+        case .clap: String(localized: "Applause", comment: "The 👏 reaction, for VoiceOver")
+        case .clown: String(localized: "Clown", comment: "The 🤡 reaction, for VoiceOver")
         }
     }
 }
@@ -61,7 +61,7 @@ struct TeamChampion: Codable, Hashable, Sendable, Identifiable {
     var costUSD: Double
     var id: String { month }
 
-    /// "September 2026". English like the rest of the UI (see `TeamsFormat.monthName`).
+    /// "September 2026" / "settembre 2026", in the app's language (see `TeamsFormat.monthName`).
     var monthLabel: String {
         guard let parts = monthParts else { return month }
         return "\(TeamsFormat.monthName(parts.month)) \(parts.year)"
@@ -87,19 +87,19 @@ enum ChallengeKind: String, Codable, CaseIterable, Hashable, Sendable {
 
     var title: String {
         switch self {
-        case .lowestSpend: "Lowest Spend"
-        case .mostModels: "Most Models"
-        case .mostTokens: "Most Tokens"
-        case .bestEfficiency: "Best Efficiency"
+        case .lowestSpend: String(localized: "Lowest Spend")
+        case .mostModels: String(localized: "Most Models")
+        case .mostTokens: String(localized: "Most Tokens")
+        case .bestEfficiency: String(localized: "Best Efficiency")
         }
     }
 
     var rule: String {
         switch self {
-        case .lowestSpend: "Spend the least. Only members who spend something count."
-        case .mostModels: "Use the most different models."
-        case .mostTokens: "Use the most tokens."
-        case .bestEfficiency: "Pay the least per million tokens, with at least 100K tokens."
+        case .lowestSpend: String(localized: "Spend the least. Only members who spend something count.")
+        case .mostModels: String(localized: "Use the most different models.")
+        case .mostTokens: String(localized: "Use the most tokens.")
+        case .bestEfficiency: String(localized: "Pay the least per million tokens, with at least 100K tokens.")
         }
     }
 
@@ -115,7 +115,7 @@ enum ChallengeKind: String, Codable, CaseIterable, Hashable, Sendable {
     func valueText(_ value: Double) -> String {
         switch self {
         case .lowestSpend: Formatters.currency(value)
-        case .mostModels: value == 1 ? "1 model" : "\(Int(value)) models"
+        case .mostModels: String(localized: "\(Int(value)) models")
         case .mostTokens: TeamsFormat.tokens(Int(value))
         case .bestEfficiency: "\(Formatters.currency(value)) / 1M"
         }
@@ -142,6 +142,6 @@ struct TeamChallenge: Codable, Hashable, Sendable, Identifiable {
     var winners: [ChallengeStanding]
 
     var daysLeftText: String {
-        daysLeft == 1 ? "Last day" : "\(daysLeft) days left"
+        daysLeft == 1 ? String(localized: "Last day") : String(localized: "\(daysLeft) days left")
     }
 }

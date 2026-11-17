@@ -30,12 +30,13 @@ final class ResetExpiryNotificationEvaluator {
             let hours = (minutes - days * 24 * 60) / 60
             let minutesPart = minutes % 60
             var parts: [String] = []
-            if days > 0 { parts.append("\(days) \(days == 1 ? "day" : "days")") }
-            if hours > 0 { parts.append("\(hours) \(hours == 1 ? "hour" : "hours")") }
-            if minutesPart > 0 { parts.append("\(minutesPart) \(minutesPart == 1 ? "minute" : "minutes")") }
-            let subject = count == 1 ? "An unused reset expires" : "\(count) unused resets expire"
+            if days > 0 { parts.append(String(localized: "\(days) days")) }
+            if hours > 0 { parts.append(String(localized: "\(hours) hours")) }
+            if minutesPart > 0 { parts.append(String(localized: "\(minutesPart) minutes")) }
+            let duration = parts.joined(separator: " ")
             let exact = expiry.formatted(date: .abbreviated, time: .shortened)
-            return "\(subject) in \(parts.joined(separator: " ")) (\(exact)). Use before expiry."
+            // One plural key: the catalog's "one" form reads "An unused reset expires in …".
+            return String(localized: "\(count) unused resets expire in \(duration) (\(exact)). Use before expiry.")
         }
     }
 
@@ -62,7 +63,7 @@ final class ResetExpiryNotificationEvaluator {
                 states = try JSONDecoder().decode([String: State].self, from: data)
             } catch {
                 AppLog.error(.notifications, "reset reminder history could not be read: \(error.localizedDescription)")
-                storageError = "Reset reminder history could not be read. A previous reminder may appear again."
+                storageError = String(localized: "Reset reminder history could not be read. A previous reminder may appear again.")
             }
         }
     }
@@ -126,8 +127,8 @@ final class ResetExpiryNotificationEvaluator {
             let reminder = Reminder(
                 metricKey: credit.key, expiry: credit.expiry, milestone: milestone, count: credit.count,
                 identifier: credit.id,
-                title: "Reset Expiring Soon",
-                subtitle: "\(credit.provider) · Rate Limit Resets"
+                title: String(localized: "Reset Expiring Soon"),
+                subtitle: "\(credit.provider) · \(LocalizedMetricTitle.string("Rate Limit Resets"))"
             )
             guard isCurrent(reminder) else { continue }
             let delivered = await post(reminder)
@@ -149,7 +150,7 @@ final class ResetExpiryNotificationEvaluator {
             }
         }
         deliveryError = failed
-            ? "Reset reminders could not be delivered. Check GodUsage’s notification permission in System Settings. GodUsage will retry."
+            ? String(localized: "Reset reminders could not be delivered. Check GodUsage’s notification permission in System Settings. GodUsage will retry.")
             : nil
     }
 
@@ -159,7 +160,7 @@ final class ResetExpiryNotificationEvaluator {
             storageError = nil
         } catch {
             AppLog.error(.notifications, "reset reminder history could not be saved: \(error.localizedDescription)")
-            storageError = "Reset reminder history could not be saved. Reminders may repeat after restarting GodUsage."
+            storageError = String(localized: "Reset reminder history could not be saved. Reminders may repeat after restarting GodUsage.")
         }
     }
 }

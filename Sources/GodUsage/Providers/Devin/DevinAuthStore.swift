@@ -11,7 +11,7 @@ enum DevinAuthError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notLoggedIn:
-            return "Run devin auth login or sign in to Devin and try again."
+            return String(localized: "Run devin auth login or sign in to Devin and try again.")
         }
     }
 }

@@ -11,6 +11,14 @@ struct TeamModelsOverTimeChart: View {
         case month = "Month"
         var id: String { rawValue }
 
+        var title: LocalizedStringResource {
+            switch self {
+            case .day: LocalizedStringResource("Day", comment: "Chart grouping: one bar per day")
+            case .week: LocalizedStringResource("Week", comment: "Chart grouping: one bar per week")
+            case .month: LocalizedStringResource("Month", comment: "Chart grouping: one bar per month")
+            }
+        }
+
         var unit: Calendar.Component {
             switch self {
             case .day: .day
@@ -26,7 +34,9 @@ struct TeamModelsOverTimeChart: View {
 
     @State private var selected: Date?
 
-    static let otherName = "Other"
+    /// The series of the models outside the eight largest. Localized: it's both the series key and
+    /// the legend label, and no model is named like it.
+    static let otherName = String(localized: "Other", comment: "Chart series: every model outside the largest ones")
 
     struct Segment: Identifiable {
         var start: Date
@@ -111,7 +121,7 @@ struct TeamModelsOverTimeChart: View {
 
         VStack(alignment: .trailing, spacing: 8) {
             Picker("Group By", selection: $bucket) {
-                ForEach(Bucket.allCases) { Text($0.rawValue).tag($0) }
+                ForEach(Bucket.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -120,7 +130,7 @@ struct TeamModelsOverTimeChart: View {
             Chart {
                 ForEach(bars) { bar in
                     ForEach(bar.models, id: \.name) { model in
-                        BarMark(x: .value("Period", bar.start, unit: bucket.unit), y: .value(sort == .cost ? "Spend" : "Tokens", model.totals.value(for: sort)))
+                        BarMark(x: .value("Period", bar.start, unit: bucket.unit), y: .value(sort == .cost ? String(localized: "Spend") : String(localized: "Tokens"), model.totals.value(for: sort)))
                             .foregroundStyle(by: .value("Model", model.name))
                             .cornerRadius(2)
                     }
@@ -167,9 +177,9 @@ struct TeamModelsOverTimeChart: View {
 
     private func label(_ start: Date) -> String {
         switch bucket {
-        case .day: start.formatted(.dateTime.day().month(.abbreviated))
-        case .week: "Week of \(start.formatted(.dateTime.day().month(.abbreviated)))"
-        case .month: start.formatted(.dateTime.month(.wide).year())
+        case .day: start.formatted(.dateTime.day().month(.abbreviated).locale(AppLocale.current))
+        case .week: String(localized: "Week of \(start.formatted(.dateTime.day().month(.abbreviated).locale(AppLocale.current)))")
+        case .month: start.formatted(.dateTime.month(.wide).year().locale(AppLocale.current))
         }
     }
 

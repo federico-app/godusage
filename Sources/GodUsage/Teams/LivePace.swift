@@ -128,13 +128,17 @@ struct LivePace: Equatable {
     /// "9 min ahead of pace." or "1h 05m behind pace.", with a turn when the pace points the other way.
     private var standing: String {
         let minutes = ahead ?? 0
-        if abs(minutes) < Self.onPaceMargin { return "On pace so far." }
+        if abs(minutes) < Self.onPaceMargin { return String(localized: "On pace so far.", comment: "Live Pace alert: today's use is where it should be") }
         let duration = LivePaceFormat.duration(minutes)
         switch (minutes > 0, state) {
-        case (true, .behind), (true, .onPace): return "\(duration) ahead of pace, but slowing down."
-        case (false, .ahead): return "\(duration) behind pace, but speeding up."
-        case (true, _): return "\(duration) ahead of pace."
-        case (false, _): return "\(duration) behind pace."
+        case (true, .behind), (true, .onPace):
+            return String(localized: "\(duration) ahead of pace, but slowing down.", comment: "Live Pace alert; the value is a duration, e.g. 9 min")
+        case (false, .ahead):
+            return String(localized: "\(duration) behind pace, but speeding up.", comment: "Live Pace alert; the value is a duration, e.g. 9 min")
+        case (true, _):
+            return String(localized: "\(duration) ahead of pace.", comment: "Live Pace alert; the value is a duration, e.g. 9 min")
+        case (false, _):
+            return String(localized: "\(duration) behind pace.", comment: "Live Pace alert; the value is a duration, e.g. 9 min")
         }
     }
 
@@ -247,63 +251,89 @@ extension LivePace {
         return nil
     }
 
+    /// The alert's title and body. The body is whole sentences, each its own catalog key, joined by spaces.
     func alertMessage(_ alert: Alert, plan: String, resetsAt: Date?, nextDays: String) -> (title: String, body: String) {
         let endTime = end.map { LivePaceFormat.time($0) } ?? ""
         let allowed = allowedRate.map { LivePaceFormat.rate($0) } ?? ""
+        var sentences = [standing]
         switch alert {
         case .slowDown:
-            var body = standing
-            if let runsOutAt { body += " At this rate today’s budget runs out at \(LivePaceFormat.time(runsOutAt))." }
-            body += " Stay under \(allowed) to last until \(endTime)."
-            return ("Slow Down on \(plan)", body)
-        case .roomToSpare:
-            var body = "\(standing) Up to \(allowed) still fits until \(endTime)."
-            if isLastDay {
-                let reset = resetsAt.map { " at the reset \(LivePaceFormat.weekdayTime($0))" } ?? " at the reset"
-                body += " At this rate \(LivePaceFormat.percent(projectedUnused)) of your weekly limit is lost\(reset)."
-            } else {
-                body += " At this rate \(LivePaceFormat.percent(projectedUnused)) of today’s budget moves to \(nextDays)."
+            if let runsOutAt {
+                let time = LivePaceFormat.time(runsOutAt)
+                sentences.append(String(localized: "At this rate today’s budget runs out at \(time).", comment: "Live Pace Slow Down alert; the value is a time"))
             }
-            return ("Room to Spare on \(plan)", body)
+            sentences.append(String(localized: "Stay under \(allowed) to last until \(endTime).", comment: "Live Pace Slow Down alert: a rate (10.0%/h), then the end of the working day"))
+            return (String(localized: "Slow Down on \(plan)", comment: "Live Pace alert title; the value is a plan name"), sentences.joined(separator: " "))
+        case .roomToSpare:
+            sentences.append(String(localized: "Up to \(allowed) still fits until \(endTime).", comment: "Live Pace Room to Spare alert: a rate (10.0%/h), then the end of the working day"))
+            let unused = LivePaceFormat.percent(projectedUnused)
+            if isLastDay {
+                if let resetsAt {
+                    let reset = LivePaceFormat.weekdayTime(resetsAt)
+                    sentences.append(String(localized: "At this rate \(unused) of your weekly limit is lost at the reset \(reset).", comment: "Live Pace Room to Spare alert: a percentage, then the reset's weekday and time (Mon 09:00)"))
+                } else {
+                    sentences.append(String(localized: "At this rate \(unused) of your weekly limit is lost at the reset.", comment: "Live Pace Room to Spare alert; the value is a percentage"))
+                }
+            } else {
+                sentences.append(String(localized: "At this rate \(unused) of today’s budget moves to \(nextDays).", comment: "Live Pace Room to Spare alert: a percentage, then the next working days (Fri and Mon)"))
+            }
+            return (String(localized: "Room to Spare on \(plan)", comment: "Live Pace alert title; the value is a plan name"), sentences.joined(separator: " "))
         }
     }
 }
 
+/// Live Pace's numbers, days and times, in the app's language (`AppLocale`): "10.0%/h" / "10,0%/h",
+/// "Wed" / "mer". Each takes the locale so tests can pin one.
 enum LivePaceFormat {
-    static func percent(_ value: Double) -> String { String(format: "%.1f%%", value) }
-    static func rate(_ value: Double) -> String { String(format: "%.1f%%/h", value) }
+    /// "6.3%" / "6,3%".
+    static func percent(_ value: Double, locale: Locale = AppLocale.current) -> String {
+        AppLocale.percent(value, locale: locale)
+    }
+
+    /// "10.0%/h" / "10,0%/h".
+    static func rate(_ value: Double, locale: Locale = AppLocale.current) -> String {
+        String(localized: "\(AppLocale.percent(value, locale: locale))/h", comment: "Live Pace: a rate of the weekly limit per hour, e.g. 10.0%/h")
+    }
 
     /// "44 min", "1h 05m"; the sign is the caller's.
     static func duration(_ seconds: TimeInterval) -> String {
         let minutes = Int((abs(seconds) / 60).rounded())
-        return minutes >= 60 ? String(format: "%dh %02dm", minutes / 60, minutes % 60) : "\(minutes) min"
+        guard minutes >= 60 else { return String(localized: "\(minutes) min", comment: "A duration in minutes, e.g. 44 min") }
+        let hours = minutes / 60
+        let rest = String(format: "%02d", minutes % 60)
+        return String(localized: "\(hours)h \(rest)m", comment: "A duration in hours and minutes, e.g. 1h 05m")
     }
 
     static func time(_ date: Date) -> String { date.formatted(date: .omitted, time: .shortened) }
-    /// "Mon 09:00": the weekday in English like the rest of the app, the time in the Mac's format.
-    static func weekdayTime(_ date: Date) -> String { "\(weekday(date)) \(time(date))" }
+    /// "Mon 09:00" / "lun 09:00": the weekday in the app's language, the time in the Mac's format.
+    static func weekdayTime(_ date: Date, locale: Locale = AppLocale.current) -> String {
+        "\(weekday(date, locale: locale)) \(time(date))"
+    }
 
-    /// "Mon", in English whatever the Mac's language, so it matches the app's own words ("Today").
-    static func weekday(_ day: String) -> String {
+    /// "Mon" / "lun", in the app's language whatever the Mac's, so it matches the app's own words.
+    static func weekday(_ day: String, locale: Locale = AppLocale.current) -> String {
         guard let date = TeamsFormat.date(day) else { return day }
-        return weekday(date)
+        return weekday(date, locale: locale)
     }
 
-    static func weekday(_ date: Date) -> String {
-        date.formatted(.dateTime.weekday(.abbreviated).locale(englishLocale))
+    static func weekday(_ date: Date, locale: Locale = AppLocale.current) -> String {
+        date.formatted(.dateTime.weekday(.abbreviated).locale(locale))
     }
 
-    /// A day's label in the week's strip: "Today", else its weekday.
-    static func dayLabel(_ day: String, today: String) -> String { day == today ? "Today" : weekday(day) }
+    /// A day's label in the week's strip: "Today" / "Oggi", else its weekday.
+    static func dayLabel(_ day: String, today: String, locale: Locale = AppLocale.current) -> String {
+        day == today ? String(localized: "Today") : weekday(day, locale: locale)
+    }
 
-    /// "Fri, Mon".
-    static func days(_ days: [String]) -> String { days.map(weekday).joined(separator: ", ") }
+    /// "Fri and Mon" / "ven e lun", as a list in the app's language.
+    static func days(_ days: [String], locale: Locale = AppLocale.current) -> String {
+        AppLocale.list(days.map { weekday($0, locale: locale) }, locale: locale)
+    }
 
-    /// The working days left as one span: "Wed", "Fri, Mon", or "Wed–Mon" for three or more.
-    static func dayRange(_ days: [String]) -> String {
+    /// The working days left as one span: "Wed", "Fri and Mon", or "Wed–Mon" for three or more.
+    static func dayRange(_ days: [String], locale: Locale = AppLocale.current) -> String {
         guard let first = days.first, let last = days.last else { return "" }
-        return days.count < 3 ? self.days(days) : "\(weekday(first))–\(weekday(last))"
+        guard days.count >= 3 else { return self.days(days, locale: locale) }
+        return String(localized: "\(weekday(first, locale: locale))–\(weekday(last, locale: locale))", comment: "A range of weekdays, e.g. Wed–Mon")
     }
-
-    private static let englishLocale = Locale(identifier: "en_US")
 }

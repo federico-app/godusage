@@ -28,10 +28,14 @@ extension TeamsStore {
 }
 
 extension TeamPlansStore {
-    /// Live Pace for the selected team's plans that cover you, for the menu bar's team segment.
-    func menuBarPaces(teamID: String, now: Date) -> [LivePace] {
-        (report(teamID: teamID)?.plans ?? [])
-            .filter(\.includesYou)
-            .compactMap { livePace(TeamPlanEntry(teamID: teamID, plan: $0), now: now) }
+    /// Live Pace for the menu bar's team segment: the same plans and values This Week's Limit shows
+    /// (the selected team's plans plus the plans that cover you in your other teams, `yourPlans`),
+    /// restricted to the plans that cover you.
+    func menuBarPaces(selectedTeamID: String?, teamIDs: [String], now: Date) -> [LivePace] {
+        Self.menuBarPaces(yourPlans(selectedTeamID: selectedTeamID, teamIDs: teamIDs)) { livePace($0, now: now) }
+    }
+
+    nonisolated static func menuBarPaces(_ entries: [TeamPlanEntry], livePace: (TeamPlanEntry) -> LivePace?) -> [LivePace] {
+        entries.filter(\.plan.includesYou).compactMap(livePace)
     }
 }

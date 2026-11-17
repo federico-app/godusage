@@ -16,7 +16,7 @@ struct MenuBarContent: Equatable {
         /// Spent or projected to run out before the reset (`MeterState.showsFlame`): the Text strip
         /// draws the value in orange, the Bars glyph draws its bar in orange.
         var isOverPace: Bool = false
-        /// The dimmed "S"/"W" in front of a stacked value (`MenuBarMetricLabel`).
+        /// The dimmed session/weekly letter ("S"/"W", Italian "H"/"S") in front of a stacked value (`MenuBarMetricLabel`).
         var prefix: String? = nil
         /// What the Text strip draws (`MenuBarValueText`); nil draws `value` plainly.
         var spans: [MenuBarSpan]? = nil
@@ -112,15 +112,25 @@ struct MenuBarContent: Equatable {
     var accessibilityText: String {
         groups.map { group in
             let name = group.detail ?? group.displayName
-            if group.loginRequired { return "\(name) Login Required" }
+            if group.loginRequired { return String(localized: "\(name) Login Required") }
             if group.isExhausted {
-                return "\(name) Usage Exhausted" + (group.resetText.map { ", Resets \($0)" } ?? "")
+                if let reset = group.resetText {
+                    return String(localized: "\(name) Usage Exhausted, Resets \(reset)", comment: "VoiceOver: account out of usage, then when the limit resets")
+                }
+                return String(localized: "\(name) Usage Exhausted")
             }
             let metrics = group.metrics
-                .map { "\($0.label) \($0.displayText)\($0.isOverPace ? " Over Pace" : "")" }
+                .map { metric in
+                    let label = LocalizedMetricTitle.string(metric.label)
+                    return metric.isOverPace
+                        ? String(localized: "\(label) \(metric.displayText) Over Pace", comment: "VoiceOver: metric, value, ahead of a sustainable pace")
+                        : "\(label) \(metric.displayText)"
+                }
                 .joined(separator: ", ")
-            let badge = group.badge == .useNow ? ", Use This Now" : ""
-            return "\(name) \(metrics)\(badge)"
+            if group.badge == .useNow {
+                return String(localized: "\(name) \(metrics), Use This Now", comment: "VoiceOver: account, its metrics, then a hint that this account should be used now")
+            }
+            return "\(name) \(metrics)"
         }
         .joined(separator: "; ")
     }
@@ -207,19 +217,21 @@ enum MenuBarContentBuilder {
     ) -> MenuBarContent.Group {
         var metrics = [
             MenuBarContent.Metric(
-                id: "team.rank", label: "Rank", value: "#\(standing.rank)", fraction: 0, isBounded: false,
+                id: "team.rank",
+                label: String(localized: "Rank", comment: "VoiceOver: the label before your rank in the team, read from the menu bar"), value: "#\(standing.rank)", fraction: 0, isBounded: false,
                 hasData: true, spans: MenuBarTeamSegment.topLine(standing)
             ),
         ]
         if let bottom = MenuBarTeamSegment.bottomLine(standing: standing, paces: paces, now: now) {
             metrics.append(MenuBarContent.Metric(
-                id: "team.pace", label: "Pace", value: bottom.map(\.text).joined(), fraction: 0,
+                id: "team.pace",
+                label: String(localized: "Pace", comment: "VoiceOver: the label before your spend versus your plan's pace, read from the menu bar"), value: bottom.map(\.text).joined(), fraction: 0,
                 isBounded: false, hasData: true, spans: bottom
             ))
         }
         return MenuBarContent.Group(
             providerID: TeamsStore.menuBarGroupID,
-            displayName: "Team",
+            displayName: String(localized: "Team"),
             icon: .providerMark(TeamsStore.menuBarGroupID),
             metrics: metrics,
             detail: MenuBarTeamSegment.detail(standing)
@@ -227,7 +239,7 @@ enum MenuBarContentBuilder {
     }
 
     private static func resolve(_ descriptor: WidgetDescriptor, _ data: WidgetData, now: Date) -> MenuBarContent.Metric {
-        let prefix = MenuBarMetricLabel.prefix(for: descriptor)
+        let window = MenuBarMetricLabel.window(for: descriptor)
         let value = data.menuBarValue
         return MenuBarContent.Metric(
             id: descriptor.id,
@@ -237,8 +249,8 @@ enum MenuBarContentBuilder {
             isBounded: data.isBounded,
             hasData: data.hasData,
             isOverPace: data.meterState(now: now).showsFlame,
-            prefix: prefix,
-            spans: MenuBarValueText.spans(value: value, prefix: prefix, data: data, now: now)
+            prefix: window?.letter,
+            spans: MenuBarValueText.spans(value: value, window: window, data: data, now: now)
         )
     }
 

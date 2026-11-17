@@ -164,6 +164,10 @@ for bundle in "$BUILD_DIR"/*.bundle; do
   cp -R "$bundle" "$APP_RESOURCES/$(basename "$bundle")"
 done
 shopt -u nullglob
+# en.lproj / it.lproj from the String Catalog go into the app's own Resources too (see the helper).
+# shellcheck source=lib/stage_localizations.sh
+source "$ROOT_DIR/script/lib/stage_localizations.sh"
+stage_localizations "$BUILD_DIR" "$APP_RESOURCES"
 
 # Install the app icon. Prefer the prebuilt compiled catalog: actool on GitHub's runners (Xcode 26.4.1
 # and 26.5) crashes on the Icon Composer `.icon` refractivity feature (Apple regression FB20183399), so
@@ -192,6 +196,8 @@ cat >"$APP_CONTENTS/Info.plist" <<PLIST
   <key>CFBundleName</key><string>$APP_DISPLAY_NAME</string>
   <key>CFBundleDisplayName</key><string>$APP_DISPLAY_NAME</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleLocalizations</key><array><string>en</string><string>it</string></array>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$BUILD</string>
   <key>LSMinimumSystemVersion</key><string>$MIN_SYSTEM_VERSION</string>

@@ -32,7 +32,7 @@ struct ProviderErrorCardView: View {
                     .font(.subheadline.weight(.medium))
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if showsRefreshAction {
-                    Button(style == .connect ? "Connect" : "Refresh", action: onRefresh)
+                    Button(style == .connect ? String(localized: "Connect") : String(localized: "Refresh"), action: onRefresh)
                         .controlSize(.small)
                         .disabled(isRefreshing)
                 }
@@ -58,10 +58,12 @@ struct ProviderErrorCardView: View {
             let description = String(trimmed[range.upperBound...])
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if !title.isEmpty, !description.isEmpty {
-                return Copy(title: titleCased(title), description: description)
+                // Title case is an English convention: Italian headings keep sentence case.
+                let heading = AppLocale.languageCode == "en" ? titleCased(title) : title
+                return Copy(title: heading, description: description)
             }
         }
-        return Copy(title: "Can't Load Usage", description: trimmed)
+        return Copy(title: String(localized: "Can't Load Usage"), description: trimmed)
     }
 
     /// Words kept lowercase mid-title (articles, short prepositions, conjunctions). The first and

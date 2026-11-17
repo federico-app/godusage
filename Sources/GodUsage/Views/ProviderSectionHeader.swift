@@ -170,7 +170,7 @@ struct ProviderSectionHeader: View {
         .overlay(alignment: .trailing) {
             if let onCopyScreenshot {
                 CopyFeedbackButton(
-                    accessibilityLabel: "Copy \(container.displayName(for: provider)) Screenshot",
+                    accessibilityLabel: String(localized: "Copy \(container.displayName(for: provider)) Screenshot", comment: "Accessibility: copy a screenshot of a card; the argument is its title"),
                     isRevealed: isHovered,
                     action: onCopyScreenshot,
                     onPresenceChange: { copyButtonPresent = $0 }
@@ -243,7 +243,10 @@ struct ProviderSectionHeader: View {
         let trimmed = warning.trimmingCharacters(in: .whitespacesAndNewlines)
         guard refreshable, !trimmed.isEmpty else { return trimmed }
         let terminated = trimmed.last.map { ".!?".contains($0) } ?? false
-        return "\(trimmed)\(terminated ? "" : ".") Click to \(connectPrompt ? "connect" : "refresh")."
+        let sentence = terminated ? trimmed : trimmed + "."
+        return connectPrompt
+            ? String(localized: "\(sentence) Click to connect.", comment: "Header notice tooltip; the argument is the notice sentence")
+            : String(localized: "\(sentence) Click to refresh.", comment: "Header notice tooltip; the argument is the notice sentence")
     }
 }
 

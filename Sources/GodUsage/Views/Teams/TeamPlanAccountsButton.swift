@@ -36,8 +36,8 @@ struct TeamPlanAccountsButton: View {
 
     /// "2 accounts", "1 account · 1 hidden".
     static func label(accounts: Int, hidden: Int) -> String {
-        let count = accounts == 1 ? "1 account" : "\(accounts) accounts"
-        return hidden == 0 ? count : "\(count) · \(hidden) hidden"
+        let count = String(localized: "\(accounts) accounts")
+        return hidden == 0 ? count : String(localized: "\(count) · \(hidden) hidden", comment: "Accounts of a plan, then how many an owner hid, e.g. 1 account · 1 hidden")
     }
 }
 
@@ -60,7 +60,7 @@ private struct TeamPlanAccountsList: View {
             Text("Accounts This Week").font(.caption.weight(.semibold))
             ForEach(Array(accounts.enumerated()), id: \.offset) { index, account in
                 // The last account left can't be hidden: the plan would have no week.
-                row(account, action: canEdit && accounts.count > 1 ? ("Hide", true) : nil)
+                row(account, action: canEdit && accounts.count > 1 ? (LocalizedStringKey("Hide"), true) : nil)
                 if index == 0, accounts.count > 1 {
                     Text("Resets first, so it sets the week.").font(.caption2).foregroundStyle(.tertiary)
                 }
@@ -69,12 +69,12 @@ private struct TeamPlanAccountsList: View {
                 Divider()
                 Text("Hidden From This Plan").font(.caption.weight(.semibold))
                 ForEach(Array(hiddenWeeks.enumerated()), id: \.offset) { _, account in
-                    row(account, action: ("Show", false))
+                    row(account, action: (LocalizedStringKey("Show"), false))
                 }
                 let withoutWeek = hiddenKeys.filter { key in !hiddenWeeks.contains { $0.account == key } }
                 if !withoutWeek.isEmpty {
                     HStack(spacing: 8) {
-                        Text(withoutWeek.count == 1 ? "1 more with no open week" : "\(withoutWeek.count) more with no open week")
+                        Text("\(withoutWeek.count) more with no open week")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Spacer(minLength: 8)
@@ -92,7 +92,7 @@ private struct TeamPlanAccountsList: View {
                     .foregroundStyle(.secondary)
             }
             if failed {
-                Text(store.errorMessage ?? "Couldn't change the plan's accounts. Try again.").font(.caption2).foregroundStyle(Theme.notice)
+                Text(store.errorMessage ?? String(localized: "Couldn't change the plan's accounts. Try again.")).font(.caption2).foregroundStyle(Theme.notice)
             }
         }
         .padding(12)
@@ -100,7 +100,7 @@ private struct TeamPlanAccountsList: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func row(_ account: TeamPlanBudget.AccountWeek, action: (title: String, hidden: Bool)?) -> some View {
+    private func row(_ account: TeamPlanBudget.AccountWeek, action: (title: LocalizedStringKey, hidden: Bool)?) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(TeamPlanAccountsButton.readBy(account.people)).font(.caption.weight(.semibold))
@@ -143,16 +143,14 @@ private struct TeamPlanAccountsList: View {
 }
 
 extension TeamPlanAccountsButton {
-    /// "You and Matteo Scoccia", or "Matteo Scoccia, Anna and Luca".
+    /// "You and Matteo Scoccia", or "Matteo Scoccia, Anna, and Luca".
     static func readBy(_ people: [String]) -> String {
-        guard let last = people.last else { return "Nobody" }
-        let rest = people.dropLast()
-        return rest.isEmpty ? last : "\(rest.joined(separator: ", ")) and \(last)"
+        people.isEmpty ? String(localized: "Nobody") : AppLocale.list(people)
     }
 
     /// "42.0% of the week · 6.0% today · resets Thu 09:00".
     static func usage(_ account: TeamPlanBudget.AccountWeek) -> String {
-        let reset = GodUsageISO8601.date(from: account.resetsAt).map(LivePaceFormat.weekdayTime) ?? account.resetsAt
-        return "\(TeamWeekStrip.percent(account.percent)) of the week · \(TeamWeekStrip.percent(account.todayPercent)) today · resets \(reset)"
+        let reset = GodUsageISO8601.date(from: account.resetsAt).map { LivePaceFormat.weekdayTime($0) } ?? account.resetsAt
+        return String(localized: "\(TeamWeekStrip.percent(account.percent)) of the week · \(TeamWeekStrip.percent(account.todayPercent)) today · resets \(reset)")
     }
 }

@@ -237,7 +237,10 @@ final class TeamSyncNoteTests: XCTestCase {
         XCTAssertEqual(TeamsFormat.syncNote("2026-10-05T11:59:30Z", now: now), .init(text: "Updated just now", stale: false))
         XCTAssertEqual(TeamsFormat.syncNote("2026-10-05T11:55:00.000Z", now: now), .init(text: "Updated 5m ago", stale: false))
         XCTAssertEqual(TeamsFormat.syncNote("2026-10-04T13:00:00.000Z", now: now), .init(text: "Updated 23h ago", stale: false))
-        XCTAssertEqual(TeamsFormat.syncNote("2026-10-04T11:00:00.000Z", now: now), .init(text: "Not synced for 1 day", stale: true))
+        // One day is a plural form ("1 day"), which only the app bundle's catalog resolves; `swift test`
+        // has none, so check the stale flag here and the plural on two days.
+        XCTAssertEqual(TeamsFormat.syncNote("2026-10-04T11:00:00.000Z", now: now)?.stale, true)
+        XCTAssertEqual(TeamsFormat.syncNote("2026-10-03T11:00:00.000Z", now: now), .init(text: "Not synced for 2 days", stale: true))
         XCTAssertEqual(TeamsFormat.syncNote("2026-10-01T12:00:00Z", now: now), .init(text: "Not synced for 4 days", stale: true))
         XCTAssertNil(TeamsFormat.syncNote(nil, now: now))
         XCTAssertEqual(TeamsFormat.syncNote("2026-10-05T11:55:00.000Z", now: now, appVersion: "1.0.8"), .init(text: "Updated 5m ago · v1.0.8", stale: false))

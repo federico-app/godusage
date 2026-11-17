@@ -46,7 +46,7 @@ struct TeamLeaderboardLayout: Equatable {
     /// The header's left side: "4 active now", or nil while nobody is active. The team total is
     /// already above the card, so the header leaves it out.
     static func activeSummary(activeCount: Int) -> String? {
-        activeCount > 0 ? "\(activeCount) active now" : nil
+        activeCount > 0 ? String(localized: "\(activeCount) active now", comment: "Leaderboard header: members spending fast right now") : nil
     }
 
     /// The providers the ranking's bars draw (members and shared accounts), largest first, so the

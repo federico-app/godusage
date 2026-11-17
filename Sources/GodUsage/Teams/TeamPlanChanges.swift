@@ -120,14 +120,23 @@ enum TeamPlanChanges {
     static func describe(_ change: TeamPlan.Change, renewalDay: Int, today: String, dayLabel: (String) -> String = TeamsFormat.dayLabel) -> String {
         let past = change.effectiveFrom <= today
         let delta = change.monthlyCostUSD - change.previousMonthlyCostUSD
-        let verb = delta < 0 ? (past ? "↓ Downgraded" : "↓ Downgrade")
-            : delta > 0 ? (past ? "↑ Upgraded" : "↑ Upgrade")
-            : (past ? "→ Changed" : "→ Change")
-        let price = "\(monthly(change.monthlyCostUSD))/mo"
-        let when = past
-            ? "on \(dayLabel(change.effectiveFrom))"
-            : "from \(dayLabel(change.effectiveFrom))" + (change.effectiveFrom == nextRenewal(renewalDay: renewalDay, today: today) ? " (next renewal)" : "")
-        return "\(verb) to \(change.name) · \(price) \(when)"
+        let name = change.name
+        let price = monthly(change.monthlyCostUSD)
+        let day = dayLabel(change.effectiveFrom)
+        // Whole sentences per direction and timing, so each language words them its own way.
+        if past {
+            if delta < 0 { return String(localized: "↓ Downgraded to \(name) · \(price)/mo on \(day)", comment: "Plan change: plan name, monthly price, day") }
+            if delta > 0 { return String(localized: "↑ Upgraded to \(name) · \(price)/mo on \(day)", comment: "Plan change: plan name, monthly price, day") }
+            return String(localized: "→ Changed to \(name) · \(price)/mo on \(day)", comment: "Plan change: plan name, monthly price, day")
+        }
+        if change.effectiveFrom == nextRenewal(renewalDay: renewalDay, today: today) {
+            if delta < 0 { return String(localized: "↓ Downgrade to \(name) · \(price)/mo from \(day) (next renewal)", comment: "Plan change to come: plan name, monthly price, day") }
+            if delta > 0 { return String(localized: "↑ Upgrade to \(name) · \(price)/mo from \(day) (next renewal)", comment: "Plan change to come: plan name, monthly price, day") }
+            return String(localized: "→ Change to \(name) · \(price)/mo from \(day) (next renewal)", comment: "Plan change to come: plan name, monthly price, day")
+        }
+        if delta < 0 { return String(localized: "↓ Downgrade to \(name) · \(price)/mo from \(day)", comment: "Plan change to come: plan name, monthly price, day") }
+        if delta > 0 { return String(localized: "↑ Upgrade to \(name) · \(price)/mo from \(day)", comment: "Plan change to come: plan name, monthly price, day") }
+        return String(localized: "→ Change to \(name) · \(price)/mo from \(day)", comment: "Plan change to come: plan name, monthly price, day")
     }
 
     /// The detected plans on the Macs of the members `memberIDs` covers (nil: everyone), deduplicated
@@ -157,7 +166,7 @@ enum TeamPlanChanges {
 
     /// "Detected Max 5x on Bea's Mac. This plan says Max 20x ($200/mo)."
     static func mismatchMessage(_ mismatch: TeamPlanMismatch, plan: TeamPlanReport) -> String {
-        "Detected \(mismatch.detectedPlan) on \(mismatch.displayName)’s Mac. \(plan.name) says \(plan.detectedPlan ?? plan.name) (\(monthly(plan.monthlyCostUSD))/mo)."
+        String(localized: "Detected \(mismatch.detectedPlan) on \(mismatch.displayName)’s Mac. \(plan.name) says \(plan.detectedPlan ?? plan.name) (\(monthly(plan.monthlyCostUSD))/mo).")
     }
 
     /// "$100", or "$19.99" when there are cents.

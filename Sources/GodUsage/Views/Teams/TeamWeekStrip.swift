@@ -147,10 +147,11 @@ struct TeamWeekStrip: View {
     private var overBudget: Bool { Self.isOverBudget(budget) }
 
     private var figure: some View {
-        (Text(Self.percent(budget.todayPercent))
+        let used = Text(Self.percent(budget.todayPercent))
             .fontWeight(.semibold)
             .foregroundStyle(overBudget ? AnyShapeStyle(WeekLimitColors.noticeText) : AnyShapeStyle(.primary))
-            + Text(" of \(Self.percent(budget.affordablePercent)) today").foregroundStyle(.secondary))
+        return Text("\(used) of \(Self.percent(budget.affordablePercent)) today", comment: "Today's use, bold, against today's budget.")
+            .foregroundStyle(.secondary)
             .font(.caption.monospacedDigit())
             .fixedSize()
     }
@@ -167,14 +168,16 @@ struct TeamWeekStrip: View {
     static func isOverBudget(_ budget: TeamPlanBudget) -> Bool { budget.todayPercent > budget.affordablePercent }
 
     static func note(_ budget: TeamPlanBudget) -> String {
-        let reset = GodUsageISO8601.date(from: budget.resetsAt).map(LivePaceFormat.weekdayTime) ?? budget.resetsAt
+        let reset = GodUsageISO8601.date(from: budget.resetsAt).map { LivePaceFormat.weekdayTime($0) } ?? budget.resetsAt
         if isOverBudget(budget) {
-            return "\(Self.percent(budget.todayPercent - budget.affordablePercent)) over today's budget · resets \(reset)"
+            let over = Self.percent(budget.todayPercent - budget.affordablePercent)
+            return String(localized: "\(over) over today's budget · resets \(reset)", comment: "Points over today's budget; when the weekly limit resets.")
         }
-        return "\(Self.percent(budget.affordablePercent - budget.todayPercent)) more today on budget · resets \(reset)"
+        let left = Self.percent(budget.affordablePercent - budget.todayPercent)
+        return String(localized: "\(left) more today on budget · resets \(reset)", comment: "Points left in today's budget; when the weekly limit resets.")
     }
 
     static func percent(_ value: Double) -> String {
-        String(format: "%.1f%%", value)
+        AppLocale.percent(value)
     }
 }

@@ -39,10 +39,14 @@ enum MemberDetailFormat {
     /// or "Quiet" without spend in the last hour.
     static func lastHourTile(_ momentum: TeamMomentum?) -> Tile {
         guard let momentum, momentum.lastHourUSD > 0 else {
-            return Tile(label: "LAST HOUR", value: Formatters.currency(0), context: "Quiet", accessibilityLabel: "Last hour: no spend")
+            return Tile(
+                label: lastHourLabel, value: Formatters.currency(0),
+                context: String(localized: "Quiet", comment: "Member detail, LAST HOUR tile: no spend in the last hour"),
+                accessibilityLabel: String(localized: "Last hour: no spend", comment: "Member detail, LAST HOUR tile, for VoiceOver")
+            )
         }
         return Tile(
-            label: "LAST HOUR",
+            label: lastHourLabel,
             value: "+\(Formatters.currency(momentum.lastHourUSD))",
             context: momentumContext(momentum),
             isNotice: momentum.level > 0,
@@ -50,50 +54,61 @@ enum MemberDetailFormat {
         )
     }
 
+    private static var lastHourLabel: String {
+        String(localized: "LAST HOUR", comment: "Member detail: uppercase tile label, spend in the last hour")
+    }
+
     /// "Fast · most in the team": the level's name, then "most in the team" only when they spent the
     /// most in the last hour. "Normal pace" for spend that earned no level.
     static func momentumContext(_ momentum: TeamMomentum) -> String {
-        guard momentum.level > 0 else { return "Normal pace" }
+        guard momentum.level > 0 else { return String(localized: "Normal pace", comment: "Member detail, LAST HOUR tile: spend that earned no momentum level") }
         let name = levelName(momentum.level)
-        return (momentum.reasons ?? []).contains("top") ? "\(name) · most in the team" : name
+        guard (momentum.reasons ?? []).contains("top") else { return name }
+        return String(localized: "\(name) · most in the team", comment: "Member detail, LAST HOUR tile: a momentum level (Fast), and they spent the most in the team")
     }
 
     /// Level 1, 2, 3 of the momentum, in a word or two.
     static func levelName(_ level: Int) -> String {
         switch min(level, 3) {
-        case ...1: "Picking up"
-        case 2: "Fast"
-        default: "Very fast"
+        case ...1: String(localized: "Picking up", comment: "Member momentum level 1 of 3: spending is picking up")
+        case 2: String(localized: "Fast", comment: "Member momentum level 2 of 3: spending fast")
+        default: String(localized: "Very fast", comment: "Member momentum level 3 of 3: spending very fast")
         }
     }
 
     /// "$18.40 in the last hour · spending fast, level 2 of 3: over $5, more than twice their usual
     /// hour ($3.10), the most in the team". The full story, for VoiceOver.
     static func momentumExplanation(_ momentum: TeamMomentum) -> String {
-        let spent = "\(Formatters.currency(momentum.lastHourUSD)) in the last hour"
+        let spent = String(localized: "\(Formatters.currency(momentum.lastHourUSD)) in the last hour")
         let reasons = (momentum.reasons ?? []).compactMap { reason -> String? in
             switch reason {
-            case "fast": "over $5"
-            case "self": momentum.typicalHourUSD.map { "more than twice their usual hour (\(Formatters.currency($0)))" }
-                ?? "more than twice their usual hour"
-            case "top": "the most in the team"
+            case "fast": String(localized: "over $5", comment: "Member momentum reason: spent over $5 in the last hour")
+            case "self": momentum.typicalHourUSD.map {
+                    String(localized: "more than twice their usual hour (\(Formatters.currency($0)))", comment: "Member momentum reason; the value is their typical hour's spend")
+                } ?? String(localized: "more than twice their usual hour", comment: "Member momentum reason")
+            case "top": String(localized: "the most in the team", comment: "Member momentum reason: spent the most in the team in the last hour")
             default: nil
             }
         }
         guard momentum.level > 0 else { return spent }
-        let level = "\(spent) · spending fast, level \(min(momentum.level, 3)) of 3"
+        let levelNumber = min(momentum.level, 3)
+        let level = String(localized: "\(spent) · spending fast, level \(levelNumber) of 3", comment: "Member momentum for VoiceOver: the spend in the last hour, then the level")
         return reasons.isEmpty ? level : "\(level): \(reasons.joined(separator: ", "))"
     }
 
     /// NOVEMBER PACE: the month's projection in whole dollars, with "13 days left" ("Last day" on it).
     static func paceTile(_ projection: TeamProjection) -> Tile {
         let value = Formatters.currency(projection.projected, fractionDigits: 0)
-        let left = projection.daysLeft == 1 ? "1 day left" : projection.daysLeft > 0 ? "\(projection.daysLeft) days left" : "Last day"
+        let left = projection.daysLeft == 1 ? String(localized: "1 day left", comment: "Member detail, month projection tile")
+            : projection.daysLeft > 0 ? String(localized: "\(projection.daysLeft) days left") : String(localized: "Last day")
+        let month = projection.monthName
+        let upperMonth = month.uppercased(with: AppLocale.current)
+        let lowerLeft = left.lowercased(with: AppLocale.current)
         return Tile(
-            label: "\(projection.monthName.uppercased()) PACE",
+            label: String(localized: "\(upperMonth) PACE", comment: "Member detail: uppercase tile label, the month's spend projection, e.g. NOVEMBER PACE"),
             value: value,
             context: left,
-            accessibilityLabel: "On pace for \(value) in \(projection.monthName), \(left.lowercased())"
+            accessibilityLabel: String(localized: "On pace for \(value) in \(month), \(lowerLeft)", comment: "Member detail, month projection for VoiceOver: a dollar amount, the month, the days left")
         )
     }
 
@@ -101,7 +116,12 @@ enum MemberDetailFormat {
     static func efficiencyTile(_ totals: UsageTotals) -> Tile? {
         guard let rate = totals.costPerMillionTokens else { return nil }
         let value = Formatters.currency(rate)
-        return Tile(label: "EFFICIENCY", value: value, context: "per million tokens", accessibilityLabel: "Efficiency: \(value) per million tokens")
+        return Tile(
+            label: String(localized: "EFFICIENCY", comment: "Member detail: uppercase tile label, dollars per million tokens"),
+            value: value,
+            context: String(localized: "per million tokens", comment: "Member detail, EFFICIENCY tile"),
+            accessibilityLabel: String(localized: "Efficiency: \(value) per million tokens", comment: "Member detail, EFFICIENCY tile for VoiceOver")
+        )
     }
 
     /// PLACE: "1st of 2" with its movement ("Same as yesterday").
@@ -109,32 +129,49 @@ enum MemberDetailFormat {
         let place = placeText(rank: rank, of: count)
         let movement = movementText(rankChange: rankChange, hasUsage: hasUsage, range: range)
         return Tile(
-            label: "PLACE",
+            label: String(localized: "PLACE", comment: "Member detail: uppercase tile label, the member's rank"),
             value: place,
             context: movement ?? " ",
-            accessibilityLabel: movement.map { "\(place), \($0.lowercased())" } ?? place
+            accessibilityLabel: movement.map { "\(place), \($0.lowercased(with: AppLocale.current))" } ?? place
         )
     }
 
     /// "1st of 6".
     static func placeText(rank: Int, of count: Int) -> String {
-        "\(ordinal(rank)) of \(count)"
+        let place = ordinal(rank)
+        return String(localized: "\(place) of \(count)", comment: "Member detail, PLACE tile: an ordinal rank and the member count, e.g. 1st of 6")
     }
 
     /// "Same as yesterday", "Up 2 since yesterday", "Down 1 since yesterday", or "New" for a member
     /// with usage now and none in the period before. Nil on the Year board, which has no movement.
     static func movementText(rankChange: Int?, hasUsage: Bool, range: StatsRange) -> String? {
         if range == .year { return nil }
-        guard let change = rankChange else { return hasUsage ? "New" : nil }
-        if change == 0 { return "Same as \(range.previousLabel)" }
-        return "\(change > 0 ? "Up" : "Down") \(abs(change)) since \(range.previousLabel)"
+        guard let change = rankChange else { return hasUsage ? String(localized: "New") : nil }
+        let places = abs(change)
+        // One whole sentence per range, so each language words the period its own way.
+        switch range {
+        case .today, .year:
+            if change == 0 { return String(localized: "Same as yesterday", comment: "Member rank movement") }
+            return change > 0 ? String(localized: "Up \(places) since yesterday", comment: "Member rank movement: places gained")
+                : String(localized: "Down \(places) since yesterday", comment: "Member rank movement: places lost")
+        case .week:
+            if change == 0 { return String(localized: "Same as the previous 7 days", comment: "Member rank movement") }
+            return change > 0 ? String(localized: "Up \(places) since the previous 7 days", comment: "Member rank movement: places gained")
+                : String(localized: "Down \(places) since the previous 7 days", comment: "Member rank movement: places lost")
+        case .month:
+            if change == 0 { return String(localized: "Same as the previous 30 days", comment: "Member rank movement") }
+            return change > 0 ? String(localized: "Up \(places) since the previous 30 days", comment: "Member rank movement: places gained")
+                : String(localized: "Down \(places) since the previous 30 days", comment: "Member rank movement: places lost")
+        case .monthToDate:
+            if change == 0 { return String(localized: "Same as the same days last month", comment: "Member rank movement") }
+            return change > 0 ? String(localized: "Up \(places) since the same days last month", comment: "Member rank movement: places gained")
+                : String(localized: "Down \(places) since the same days last month", comment: "Member rank movement: places lost")
+        }
     }
 
-    static func ordinal(_ rank: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .ordinal
-        formatter.locale = Locale(identifier: "en_US")
-        return formatter.string(from: NSNumber(value: rank)) ?? "#\(rank)"
+    /// "1st" / "1º", in the app's language.
+    static func ordinal(_ rank: Int, locale: Locale = AppLocale.current) -> String {
+        AppLocale.ordinal(rank, locale: locale)
     }
 
     // MARK: - Chips
@@ -143,13 +180,17 @@ enum MemberDetailFormat {
     static func awards(isTopToday: Bool, champion: TeamChampion?) -> [Award] {
         var awards: [Award] = []
         if isTopToday {
-            awards.append(Award(symbol: "crown.fill", title: "Top today", detail: "Top spender today"))
+            awards.append(Award(
+                symbol: "crown.fill",
+                title: String(localized: "Top today", comment: "Member detail chip: today's top spender"),
+                detail: String(localized: "Top spender today")
+            ))
         }
         if let champion {
             awards.append(Award(
                 symbol: "trophy.fill",
-                title: "\(champion.monthName) champion",
-                detail: "\(champion.monthLabel) champion: top spender of the month"
+                title: String(localized: "\(champion.monthName) champion"),
+                detail: String(localized: "\(champion.monthLabel) champion: top spender of the month", comment: "Member detail chip tooltip; the value is a month and year")
             ))
         }
         return awards
@@ -157,9 +198,9 @@ enum MemberDetailFormat {
 
     // MARK: - Shares
 
-    /// "MODELS TODAY", "PROVIDERS 7 DAYS".
-    static func listTitle(_ noun: String, range: StatsRange) -> String {
-        "\(noun) \(range.label)".uppercased()
+    /// "MODELS TODAY", "PROVIDERS 7 DAYS". `noun` is a catalog key, so literal call sites get extracted.
+    static func listTitle(_ noun: LocalizedStringResource, range: StatsRange) -> String {
+        "\(String(localized: noun)) \(range.label)".uppercased(with: AppLocale.current)
     }
 
     /// The member's providers with usage, largest first, as shares of their total. Empty with fewer
@@ -201,7 +242,7 @@ enum MemberDetailFormat {
             let totals = rest.reduce(UsageTotals(tokens: 0, costUSD: 0)) {
                 UsageTotals(tokens: $0.tokens + $1.totals.tokens, costUSD: $0.costUSD + $1.totals.costUSD)
             }
-            shown.append(Share(id: "other", title: "\(rest.count) more", provider: nil, totals: totals, fraction: weight(totals, metric: metric) / total))
+            shown.append(Share(id: "other", title: String(localized: "\(rest.count) more", comment: "Member detail: the row for every other model"), provider: nil, totals: totals, fraction: weight(totals, metric: metric) / total))
         }
         return shown
     }
@@ -224,10 +265,10 @@ enum MemberDetailFormat {
         for reaction in TeamReaction.allCases {
             let givers = reactions.from?[reaction.rawValue] ?? []
             guard !givers.isEmpty else { continue }
-            let full = givers.map { $0 == me ? "You" : names[$0] ?? "A former member" }
+            let full = givers.map { $0 == me ? String(localized: "You") : names[$0] ?? String(localized: "A former member", comment: "A reaction giver who left the team") }
             lines.append("\(reaction.emoji) \(full.joined(separator: ", "))")
             for (id, name) in zip(givers, full) where seen.insert(id).inserted {
-                short.append(id == me ? "You" : String(name.split(separator: " ").first ?? Substring(name)))
+                short.append(id == me ? String(localized: "You") : String(name.split(separator: " ").first ?? Substring(name)))
             }
         }
         guard !short.isEmpty else { return nil }
@@ -239,16 +280,17 @@ enum MemberDetailFormat {
     static func footerText(lastSyncAt: String?, appVersion: String?, isOutdated: Bool, now: Date) -> String {
         let version = isOutdated ? nil : appVersion
         if let note = TeamsFormat.syncNote(lastSyncAt, now: now, appVersion: version) { return note.text }
-        return version.map { "Not synced yet · \(TeamsFormat.versionLabel($0))" } ?? "Not synced yet"
+        guard let version else { return String(localized: "Not synced yet", comment: "Member detail footer: the member's Macs never uploaded") }
+        let label = TeamsFormat.versionLabel(version)
+        return String(localized: "Not synced yet · \(label)", comment: "Member detail footer: never uploaded, then the app version")
     }
 }
 
 extension TeamsFormat {
-    /// "November" for month 11. Fixed to English like the rest of the UI, whatever the Mac's
-    /// language; the localization work will switch this to the app's locale.
-    static func monthName(_ month: Int) -> String {
+    /// "November" / "novembre" for month 11, in the app's language whatever the Mac's.
+    static func monthName(_ month: Int, locale: Locale = AppLocale.current) -> String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US")
+        formatter.locale = locale
         let symbols = formatter.standaloneMonthSymbols ?? []
         return symbols.indices.contains(month - 1) ? symbols[month - 1] : "\(month)"
     }

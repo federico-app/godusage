@@ -65,9 +65,12 @@ struct TotalSpendBarContent: View {
         let total = projection.formatted(projection.centerValue, style: .full)
         let count = projection.slices.count
         switch projection.metric {
-        case .cost: return "Total cost \(total) across \(count) providers"
-        case .tokens: return "Total tokens \(total) across \(count) providers"
-        case .costPerMtok: return "Blended cost per megatoken \(total) across \(count) providers"
+        case .cost:
+            return String(localized: "Total cost \(total) across \(count) providers", comment: "Accessibility: the Total Spend bar")
+        case .tokens:
+            return String(localized: "Total tokens \(total) across \(count) providers", comment: "Accessibility: the Total Spend bar")
+        case .costPerMtok:
+            return String(localized: "Blended cost per million tokens \(total) across \(count) providers", comment: "Accessibility: the Total Spend bar")
         }
     }
 

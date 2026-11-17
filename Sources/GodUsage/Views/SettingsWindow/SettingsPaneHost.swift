@@ -12,11 +12,11 @@ enum SettingsPane: String, CaseIterable, Sendable {
 
     var title: String {
         switch self {
-        case .general: "General"
-        case .appearance: "Appearance"
-        case .notifications: "Notifications"
-        case .teams: "Teams"
-        case .advanced: "Advanced"
+        case .general: String(localized: "General")
+        case .appearance: String(localized: "Appearance")
+        case .notifications: String(localized: "Notifications")
+        case .teams: String(localized: "Teams")
+        case .advanced: String(localized: "Advanced")
         }
     }
 

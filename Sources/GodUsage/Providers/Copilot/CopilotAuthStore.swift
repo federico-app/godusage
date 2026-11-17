@@ -18,15 +18,15 @@ enum CopilotAuthError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notLoggedIn:
-            return "Sign in to GitHub Copilot in your editor, or run gh auth login, and try again."
+            return String(localized: "Sign in to GitHub Copilot in your editor, or run gh auth login, and try again.")
         case .tokenInvalid:
-            return "GitHub token invalid or expired. Re-authenticate (gh auth login) and try again."
+            return String(localized: "GitHub token invalid or expired. Re-authenticate (gh auth login) and try again.")
         case .keychainConnectRequired:
-            return "GitHub login found in Keychain. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs."
+            return String(localized: "GitHub login found in Keychain. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs.")
         case .keychainPermissionRequired:
-            return "Keychain access to the GitHub login was declined. Refresh and choose Always Allow when macOS asks."
+            return String(localized: "Keychain access to the GitHub login was declined. Refresh and choose Always Allow when macOS asks.")
         case .credentialStoreUnreadable:
-            return "GitHub login couldn’t be read. Unlock your login keychain and refresh."
+            return String(localized: "GitHub login couldn’t be read. Unlock your login keychain and refresh.")
         }
     }
 }

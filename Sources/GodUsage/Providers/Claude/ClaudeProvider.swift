@@ -90,7 +90,7 @@ final class ClaudeProvider: ProviderRuntime {
                 .exportingHistory(
                     scope: .machineLocal,
                     estimatedCost: true,
-                    sourceNote: "From your Claude usage history (estimated)"
+                    sourceNote: String(localized: "From your Claude usage history (estimated)")
                 )
         ] + WidgetDescriptor.spendTiles(provider: provider)
     }

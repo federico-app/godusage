@@ -22,10 +22,10 @@ struct TeamSchedule: Codable, Hashable, Sendable {
 
     /// What the server would refuse, said for the person fixing it; nil when it's fine.
     var problem: String? {
-        if days.isEmpty { return "Pick at least one working day." }
-        if end <= start { return "The working hours must end after they start." }
+        if days.isEmpty { return String(localized: "Pick at least one working day.") }
+        if end <= start { return String(localized: "The working hours must end after they start.") }
         if let breakStart, let breakEnd, breakStart <= start || breakEnd >= end || breakEnd <= breakStart {
-            return "The break must fall inside the working hours."
+            return String(localized: "The break must fall inside the working hours.")
         }
         return nil
     }

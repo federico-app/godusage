@@ -12,7 +12,7 @@ enum LivePaceDetails {
     /// today's budget, where no pace fits.
     static func rates(_ live: LivePace) -> (now: String?, allowed: String, until: String)? {
         guard [.ahead, .onPace, .behind, .warmingUp].contains(live.state), let allowed = live.allowedRate, let end = live.end else { return nil }
-        return (live.rate.map(LivePaceFormat.rate), LivePaceFormat.rate(allowed), LivePaceFormat.time(end))
+        return (live.rate.map { LivePaceFormat.rate($0) }, LivePaceFormat.rate(allowed), LivePaceFormat.time(end))
     }
 
     /// PACE NOW's color: the plan's own (orange running hot, green well under), so the tile and the
@@ -23,7 +23,7 @@ enum LivePaceDetails {
 
     /// "9:00–13:15 · 14:00–18:30", or "No working hours today".
     static func hours(_ spans: [DateInterval]) -> String {
-        guard !spans.isEmpty else { return "No working hours today" }
+        guard !spans.isEmpty else { return String(localized: "No working hours today", comment: "Live Pace Details: the hours line on a day off") }
         return spans.map { "\(LivePaceFormat.time($0.start))–\(LivePaceFormat.time($0.end))" }.joined(separator: " · ")
     }
 
@@ -51,7 +51,8 @@ enum LivePaceDetails {
 
     /// The circles' tooltip and accessibility label.
     static func sharedWith(_ names: [String]) -> String {
-        "Shared with \(names.joined(separator: ", "))"
+        let list = AppLocale.list(names)
+        return String(localized: "Shared with \(list)", comment: "Live Pace Details: whose working hours also count; the value is a list of names")
     }
 
     // MARK: - Chart
@@ -77,25 +78,29 @@ enum LivePaceDetails {
         let budget = LivePaceFormat.percent(live.budget)
         switch live.state {
         case .ahead, .onPace, .behind, .warmingUp:
-            let standing = switch shade(live) {
-            case .ahead: "ahead of"
-            case .behind: "behind"
-            case nil: "on"
+            if let runsOutAt = live.runsOutAt {
+                let time = LivePaceFormat.time(runsOutAt)
+                return switch shade(live) {
+                case .ahead: String(localized: "Today’s use is ahead of even pace; at this pace the budget runs out at \(time).", comment: "Live Pace chart summary; the value is a time")
+                case .behind: String(localized: "Today’s use is behind even pace; at this pace the budget runs out at \(time).", comment: "Live Pace chart summary; the value is a time")
+                case nil: String(localized: "Today’s use is on even pace; at this pace the budget runs out at \(time).", comment: "Live Pace chart summary; the value is a time")
+                }
             }
-            let next = if let runsOutAt = live.runsOutAt {
-                "at this pace the budget runs out at \(LivePaceFormat.time(runsOutAt))"
-            } else {
-                "at this pace today ends at \(LivePaceFormat.percent(live.projected)) of its \(budget) budget"
+            let projected = LivePaceFormat.percent(live.projected)
+            return switch shade(live) {
+            case .ahead: String(localized: "Today’s use is ahead of even pace; at this pace today ends at \(projected) of its \(budget) budget.", comment: "Live Pace chart summary: two percentages of the weekly limit")
+            case .behind: String(localized: "Today’s use is behind even pace; at this pace today ends at \(projected) of its \(budget) budget.", comment: "Live Pace chart summary: two percentages of the weekly limit")
+            case nil: String(localized: "Today’s use is on even pace; at this pace today ends at \(projected) of its \(budget) budget.", comment: "Live Pace chart summary: two percentages of the weekly limit")
             }
-            return "Today’s use is \(standing) even pace; \(next)."
         case .overBudget:
-            return "Today’s use is over its budget: \(used) of \(budget)."
+            return String(localized: "Today’s use is over its budget: \(used) of \(budget).", comment: "Live Pace chart summary: two percentages of the weekly limit")
         case .notStarted:
-            return "The working day starts at \(live.start.map(LivePaceFormat.time) ?? ""); today’s budget is \(budget)."
+            let start = live.start.map(LivePaceFormat.time) ?? ""
+            return String(localized: "The working day starts at \(start); today’s budget is \(budget).", comment: "Live Pace chart summary: a time, then a percentage")
         case .dayDone:
-            return "The working day is over; today used \(used) of its \(budget) budget."
+            return String(localized: "The working day is over; today used \(used) of its \(budget) budget.", comment: "Live Pace chart summary: two percentages of the weekly limit")
         case .dayOff:
-            return "No working hours today."
+            return String(localized: "No working hours today.", comment: "Live Pace chart summary on a day off")
         }
     }
 }

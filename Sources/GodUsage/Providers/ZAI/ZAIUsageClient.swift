@@ -51,7 +51,7 @@ enum ZAIUsageError: Error, LocalizedError, Equatable {
         case .requestFailed(let status):
             return ProviderUsageErrorText.requestFailed(statusCode: status)
         case .noCodingPlan:
-            return "No active GLM Coding Plan. Subscribe at z.ai/subscribe to see usage."
+            return String(localized: "No active GLM Coding Plan. Subscribe at z.ai/subscribe to see usage.")
         }
     }
 }

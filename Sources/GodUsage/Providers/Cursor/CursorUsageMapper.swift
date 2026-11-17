@@ -66,13 +66,13 @@ enum CursorUsageError: Error, LocalizedError, Equatable {
         case .requestFailed(let statusCode):
             return ProviderUsageErrorText.requestFailed(statusCode: statusCode)
         case .usageAfterRefreshFailed:
-            return "Usage request failed after refresh. Try again."
+            return String(localized: "Usage request failed after refresh. Try again.")
         case .requestBasedUnavailable(let message):
             return message
         case .totalUsageLimitMissing:
-            return "Total usage limit missing from API response."
+            return String(localized: "Total usage limit missing from API response.")
         case .noActiveSubscription:
-            return "No active Cursor subscription."
+            return String(localized: "No active Cursor subscription.")
         }
     }
 }
@@ -167,7 +167,7 @@ enum CursorUsageMapper {
                     periodDurationMs: cycle.periodDurationMs
                 ))
             } else {
-                throw CursorUsageError.requestBasedUnavailable("Cursor request-based usage data unavailable. Try again later.")
+                throw CursorUsageError.requestBasedUnavailable(String(localized: "Cursor request-based usage data unavailable. Try again later."))
             }
         } else {
             lines.append(.progress(
@@ -279,17 +279,17 @@ enum CursorUsageMapper {
 
         // A usable total percentage stays on the primary path even without a dollar limit.
         if facts.planUsageUnusable && !facts.hasTotalUsagePercent && normalizedPlan == "enterprise" {
-            return (true, "Enterprise usage data unavailable. Try again later.")
+            return (true, String(localized: "Enterprise usage data unavailable. Try again later."))
         }
         if facts.planUsageUnusable && !facts.hasTotalUsagePercent && normalizedPlan == "team" {
-            return (true, "Team request-based usage data unavailable. Try again later.")
+            return (true, String(localized: "Team request-based usage data unavailable. Try again later."))
         }
         if facts.planUsageUnusable && !facts.hasTotalUsagePercent && normalizedPlan.isEmpty && planInfoUnavailable {
-            return (true, "Cursor request-based usage data unavailable. Try again later.")
+            return (true, String(localized: "Cursor request-based usage data unavailable. Try again later."))
         }
 
         if facts.isTeamByShape && facts.planUsageLimitMissing {
-            return (true, "Cursor request-based usage data unavailable. Try again later.")
+            return (true, String(localized: "Cursor request-based usage data unavailable. Try again later."))
         }
 
         return (false, "")
@@ -366,11 +366,11 @@ enum CursorUsageMapper {
         SpendTileMapper.appendTokenUsage(series, to: &lines, now: now, estimated: true,
                                          unknownModelsByDay: unknownModelsByDay,
                                          modelUsage: modelUsage,
-                                         modelSourceNote: "From your Cursor usage history")
+                                         modelSourceNote: String(localized: "From your Cursor usage history"))
         // Cursor's tokens come from its server usage history, not a local CLI log, so the trend
         // note names that source rather than the "estimated from local logs" line the log-scanning
         // providers use. Tokens are measured either way.
-        SpendTileMapper.appendUsageTrend(series, to: &lines, now: now, note: "From your Cursor usage history")
+        SpendTileMapper.appendUsageTrend(series, to: &lines, now: now, note: String(localized: "From your Cursor usage history"))
         return ProviderUsageHistory(
             series: series,
             modelUsage: modelUsage,

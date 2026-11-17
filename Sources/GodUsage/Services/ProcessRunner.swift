@@ -232,7 +232,7 @@ enum ProcessRunnerError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .timedOut(let executable, let timeout):
-            return "\(executable) timed out after \(Int(timeout))s."
+            return String(localized: "\(executable) timed out after \(Int(timeout))s.")
         }
     }
 }

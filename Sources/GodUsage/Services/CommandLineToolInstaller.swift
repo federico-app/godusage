@@ -60,11 +60,11 @@ final class CommandLineToolInstaller {
         refreshStatus()
         guard status != .installed else { return }
         guard status != .conflict else {
-            errorMessage = "\(destinationPath) already exists and wasn't installed by GodUsage."
+            errorMessage = String(localized: "\(destinationPath) already exists and wasn't installed by GodUsage.")
             return
         }
         guard fileManager.isExecutableFile(atPath: sourcePath) else {
-            errorMessage = "The bundled terminal helper couldn't be found. Reinstall GodUsage and try again."
+            errorMessage = String(localized: "The bundled terminal helper couldn't be found. Reinstall GodUsage and try again.")
             return
         }
         handle(performPrivileged(.install, sourcePath, destinationPath), action: "install")
@@ -83,7 +83,9 @@ final class CommandLineToolInstaller {
         case .cancelled:
             break
         case .failure(let message):
-            errorMessage = "Couldn't \(action) the terminal helper: \(message)"
+            errorMessage = action == "install"
+                ? String(localized: "Couldn't install the terminal helper: \(message)")
+                : String(localized: "Couldn't remove the terminal helper: \(message)")
             AppLog.error(.config, "Terminal helper \(action) failed: \(message)")
         }
         refreshStatus()
@@ -125,7 +127,7 @@ final class CommandLineToolInstaller {
 
         let source = "do shell script \(appleScriptStringLiteral(command)) with administrator privileges"
         guard let script = NSAppleScript(source: source) else {
-            return .failure("macOS couldn't prepare the authorization request.")
+            return .failure(String(localized: "macOS couldn't prepare the authorization request."))
         }
         var errorInfo: NSDictionary?
         script.executeAndReturnError(&errorInfo)
@@ -135,7 +137,7 @@ final class CommandLineToolInstaller {
         }
         return .failure(
             (errorInfo[NSAppleScript.errorMessage] as? String)
-                ?? "macOS rejected the authorization request."
+                ?? String(localized: "macOS rejected the authorization request.")
         )
     }
 

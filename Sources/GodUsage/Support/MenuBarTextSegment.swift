@@ -118,11 +118,11 @@ struct MenuBarTextSegment: View {
 
     /// The small dimmed "S"/"W", or an empty run.
     private func prefixText(_ prefix: String?, size: CGFloat) -> Text {
-        guard let prefix else { return Text("") }
+        guard let prefix else { return Text(verbatim: "") }
         return Text(prefix)
             .font(.system(size: (size * 0.72).rounded(), weight: .semibold))
             .foregroundStyle(palette.dim)
-            + Text(" ").font(.system(size: (size * 0.5).rounded()))
+            + Text(verbatim: " ").font(.system(size: (size * 0.5).rounded()))
     }
 }
 

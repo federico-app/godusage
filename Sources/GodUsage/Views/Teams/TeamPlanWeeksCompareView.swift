@@ -75,7 +75,7 @@ struct TeamPlanWeeksCompareView: View {
     }
 
     private func teamName(_ id: String?) -> String {
-        container.teams.teams.first { $0.id == id }?.name ?? "Team"
+        container.teams.teams.first { $0.id == id }?.name ?? String(localized: "Team")
     }
 
     private func picker(binding: Binding<Side>, teamID: String?, picked: Picked, color: Color) -> some View {
@@ -198,25 +198,29 @@ struct TeamPlanWeeksCompareView: View {
 
     static func rows(_ a: TeamPlanHistory.Week, _ b: TeamPlanHistory.Week) -> [Row] {
         func used(_ week: TeamPlanHistory.Week) -> String {
-            (week.estimated ? "~" : "") + TeamPlanWeeklyHistory.number(week.percent) + "%" + (week.open ? " so far" : "")
+            let percent = (week.estimated ? "~" : "") + TeamPlanWeeklyHistory.number(week.percent) + "%"
+            return week.open ? String(localized: "\(percent) so far", comment: "A week's share of the limit while the week still runs") : percent
         }
         func busiest(_ week: TeamPlanHistory.Week) -> String {
             guard let day = week.days.filter({ $0.percent != nil }).max(by: { $0.percent! < $1.percent! }) else { return "—" }
             return "\(weekday(day.day)) · \(TeamPlanWeeklyHistory.number(day.percent!))%"
         }
         func sessions(_ week: TeamPlanHistory.Week) -> String {
-            week.sessions.map { "\($0.limitHits) of \($0.sessions)" } ?? "—"
+            week.sessions.map { String(localized: "\($0.limitHits) of \($0.sessions)", comment: "Sessions at the limit out of all sessions, e.g. 2 of 14") } ?? "—"
         }
         func peak(_ week: TeamPlanHistory.Week) -> String {
             week.sessions.map { TeamPlanWeeklyHistory.number($0.averagePeakPercent) + "%" } ?? "—"
         }
+        func reached(_ week: TeamPlanHistory.Week) -> String {
+            week.percent >= 100 ? String(localized: "Yes") : String(localized: "No")
+        }
         return [
-            Row(label: "Weekly limit used", left: used(a), right: used(b)),
-            Row(label: "Limit reached", left: a.percent >= 100 ? "Yes" : "No", right: b.percent >= 100 ? "Yes" : "No"),
-            Row(label: "Busiest day", left: busiest(a), right: busiest(b)),
-            Row(label: "Sessions at the limit", left: sessions(a), right: sessions(b)),
-            Row(label: "Average session peak", left: peak(a), right: peak(b)),
-            Row(label: "Accounts", left: "\(a.accounts)", right: "\(b.accounts)"),
+            Row(label: String(localized: "Weekly limit used"), left: used(a), right: used(b)),
+            Row(label: String(localized: "Limit reached"), left: reached(a), right: reached(b)),
+            Row(label: String(localized: "Busiest day"), left: busiest(a), right: busiest(b)),
+            Row(label: String(localized: "Sessions at the limit"), left: sessions(a), right: sessions(b)),
+            Row(label: String(localized: "Average session peak"), left: peak(a), right: peak(b)),
+            Row(label: String(localized: "Accounts"), left: "\(a.accounts)", right: "\(b.accounts)"),
         ]
     }
 
@@ -225,26 +229,31 @@ struct TeamPlanWeeksCompareView: View {
         let gap = a.percent - b.percent
         var text: String
         if abs(gap) < 0.5 {
-            text = "Both used about the same share of their weekly limit."
+            text = String(localized: "Both used about the same share of their weekly limit.")
         } else {
             let (more, less) = gap > 0 ? (aName, bName) : (bName, aName)
             let points = TeamPlanWeeklyHistory.number((abs(gap) * 10).rounded() / 10)
-            text = aName == bName
-                ? "The \(gap > 0 ? "first" : "second") week used \(points) points more of the weekly limit."
-                : "\(more) used \(points) points more of its weekly limit than \(less)."
+            if aName != bName {
+                text = String(localized: "\(more) used \(points) points more of its weekly limit than \(less).")
+            } else if gap > 0 {
+                text = String(localized: "The first week used \(points) points more of the weekly limit.")
+            } else {
+                text = String(localized: "The second week used \(points) points more of the weekly limit.")
+            }
         }
-        if a.open || b.open { text += " One of the weeks is still running." }
-        if !samePlan { text += " The plans differ, so the shares are of different limits." }
+        // Whole sentences, joined like any two sentences.
+        if a.open || b.open { text += " " + String(localized: "One of the weeks is still running.") }
+        if !samePlan { text += " " + String(localized: "The plans differ, so the shares are of different limits.") }
         return text
     }
 
     private static func range(_ week: TeamPlanHistory.Week) -> String {
-        let from = TeamsFormat.date(week.from)?.formatted(.dateTime.day().month(.abbreviated)) ?? week.from
-        let to = TeamsFormat.date(week.to)?.formatted(.dateTime.day().month(.abbreviated)) ?? week.to
-        return week.open ? "\(from) – \(to) (this week)" : "\(from) – \(to)"
+        let from = TeamsFormat.date(week.from)?.formatted(.dateTime.day().month(.abbreviated).locale(AppLocale.current)) ?? week.from
+        let to = TeamsFormat.date(week.to)?.formatted(.dateTime.day().month(.abbreviated).locale(AppLocale.current)) ?? week.to
+        return week.open ? String(localized: "\(from) – \(to) (this week)") : "\(from) – \(to)"
     }
 
     private static func weekday(_ day: String) -> String {
-        TeamsFormat.date(day)?.formatted(.dateTime.weekday(.abbreviated)) ?? day
+        TeamsFormat.date(day)?.formatted(.dateTime.weekday(.abbreviated).locale(AppLocale.current)) ?? day
     }
 }

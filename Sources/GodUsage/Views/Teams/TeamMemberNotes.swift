@@ -41,7 +41,7 @@ struct MemberStatusNote: View {
         if let momentum, momentum.level > 0 {
             HStack(spacing: 5) {
                 LiveDot()
-                Text("+\(Formatters.currency(momentum.lastHourUSD)) last hour")
+                Text("+\(Formatters.currency(momentum.lastHourUSD)) last hour", comment: "Spend in the last hour, under a member's bar.")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

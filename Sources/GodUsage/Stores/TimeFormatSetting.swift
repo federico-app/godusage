@@ -14,9 +14,9 @@ enum TimeFormatSetting: String, Hashable, Sendable, CaseIterable, UserDefaultsBa
 
     var label: String {
         switch self {
-        case .auto: return "Auto"
-        case .twelveHour: return "12-hour"
-        case .twentyFourHour: return "24-hour"
+        case .auto: return String(localized: "Auto", comment: "Time format option: follow the system")
+        case .twelveHour: return String(localized: "12-hour", comment: "Time format option")
+        case .twentyFourHour: return String(localized: "24-hour", comment: "Time format option")
         }
     }
 

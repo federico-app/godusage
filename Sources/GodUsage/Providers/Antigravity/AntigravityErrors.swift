@@ -25,19 +25,19 @@ enum AntigravityError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notSignedIn:
-            return "Start Antigravity or run `agy` and try again."
+            return String(localized: "Start Antigravity or run `agy` and try again.")
         case .credentialStoreUnreadable:
-            return "Couldn't read Antigravity credentials from Keychain. Unlock Keychain or sign in to Antigravity again."
+            return String(localized: "Couldn't read Antigravity credentials from Keychain. Unlock Keychain or sign in to Antigravity again.")
         case .keychainConnectRequired:
-            return "Antigravity login found in Keychain. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs."
+            return String(localized: "Antigravity login found in Keychain. Connect to load it; if macOS asks, choose Always Allow to avoid future dialogs.")
         case .keychainPermissionRequired:
-            return "Keychain access to the Antigravity login was declined. Refresh and choose Always Allow when macOS asks."
+            return String(localized: "Keychain access to the Antigravity login was declined. Refresh and choose Always Allow when macOS asks.")
         case .invalidCredentialData:
-            return "Antigravity credentials are invalid. Open Antigravity or run `agy` to sign in again."
+            return String(localized: "Antigravity credentials are invalid. Open Antigravity or run `agy` to sign in again.")
         case .authExpired:
-            return "Antigravity sign-in expired. Open Antigravity or run `agy` to refresh."
+            return String(localized: "Antigravity sign-in expired. Open Antigravity or run `agy` to refresh.")
         case .unavailable:
-            return "Antigravity usage is temporarily unavailable. Try again shortly."
+            return String(localized: "Antigravity usage is temporarily unavailable. Try again shortly.")
         }
     }
 }

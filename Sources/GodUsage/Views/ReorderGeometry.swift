@@ -152,7 +152,7 @@ struct ReorderLiftPreview: View {
     }
 
     private func customizeMetricPreview(_ title: String) -> some View {
-        CustomizeMetricRow(title: title,
+        CustomizeMetricRow(title: LocalizedMetricTitle.string(title),
             trailing: {
                 CustomizeStarPlaceholder()
                 CustomizeSwitchPlaceholder()

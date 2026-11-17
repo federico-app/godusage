@@ -28,7 +28,7 @@ struct TeamPlanUsageDetails: View {
     }
 
     static func percent(_ value: Double) -> String {
-        String(format: "%.1f%%", value)
+        AppLocale.percent(value)
     }
 }
 
@@ -121,21 +121,23 @@ private struct PlanDailyColumn: View {
     }
 
     private func label(_ day: TeamPlanDaily.Day) -> String {
-        if day.day == today { return "Today" }
+        if day.day == today { return String(localized: "Today") }
         guard let date = TeamsFormat.date(day.day) else { return day.day }
-        return date.formatted(.dateTime.weekday(.abbreviated).day())
+        return date.formatted(.dateTime.weekday(.abbreviated).day().locale(AppLocale.current))
     }
 
     /// Where the pace leads: when an account runs out of its week, or how much of it goes unused.
     private var note: String {
-        let accounts = daily.accounts == 1 ? "1 account" : "\(daily.accounts) accounts"
-        guard let average = daily.averagePercent, average > 0 else { return "No finished working day read yet · \(accounts)" }
+        let accounts = String(localized: "\(daily.accounts) accounts")
+        guard let average = daily.averagePercent, average > 0 else {
+            return String(localized: "No finished working day read yet · \(accounts)")
+        }
         if average >= daily.pacePercent {
-            let days = String(format: "%.1f", 100 / average)
-            return "Above pace: at this rate an account uses up its week in about \(days) working days · \(accounts)"
+            let days = AppLocale.decimal(100 / average)
+            return String(localized: "Above pace: at this rate an account uses up its week in about \(days) working days · \(accounts)")
         }
         let weekShare = Int((average * 100 / daily.pacePercent).rounded())
-        return "Below pace: at this rate an account uses about \(weekShare)% of its week · \(accounts)"
+        return String(localized: "Below pace: at this rate an account uses about \(weekShare)% of its week · \(accounts)")
     }
 }
 
@@ -162,7 +164,7 @@ private struct PlanSessionsColumn: View {
                 Text("\(sessions.limitHits)")
                     .font(.system(size: 18, weight: .semibold).monospacedDigit())
                     .foregroundStyle(sessions.limitHits > 0 ? Theme.notice : AnyShapeStyle(.primary))
-                Text("of \(sessions.sessions) \(sessions.sessions == 1 ? "session" : "sessions") hit the limit this cycle")
+                Text("of \(sessions.sessions) sessions hit the limit this cycle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -187,10 +189,12 @@ private struct PlanSessionsColumn: View {
 
     private var detail: String {
         var parts = [
-            "Average peak \(TeamPlansReportView.percent(sessions.averagePeakPercent))",
-            sessions.accounts == 1 ? "1 account" : "\(sessions.accounts) accounts",
+            String(localized: "Average peak \(TeamPlansReportView.percent(sessions.averagePeakPercent))"),
+            String(localized: "\(sessions.accounts) accounts"),
         ]
-        if sessions.peaks.count < sessions.sessions { parts.append("latest \(sessions.peaks.count) shown") }
+        if sessions.peaks.count < sessions.sessions {
+            parts.append(String(localized: "latest \(sessions.peaks.count) shown", comment: "How many of the cycle's sessions the squares show"))
+        }
         return parts.joined(separator: " · ")
     }
 }

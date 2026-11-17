@@ -90,8 +90,8 @@ enum MuseUsageError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .connectionFailed: return ProviderUsageErrorText.connectionFailed
-        case .invalidResponse: return "Muse dashboard usage couldn't be read. Open dev.meta.ai/usage/ and try again later."
-        case .quotaUnavailable: return "No Muse subscription quota is available on this dashboard. Check your account at dev.meta.ai/usage/."
+        case .invalidResponse: return String(localized: "Muse dashboard usage couldn't be read. Open dev.meta.ai/usage/ and try again later.")
+        case .quotaUnavailable: return String(localized: "No Muse subscription quota is available on this dashboard. Check your account at dev.meta.ai/usage/.")
         case .requestFailed(let status): return ProviderUsageErrorText.requestFailed(statusCode: status)
         }
     }

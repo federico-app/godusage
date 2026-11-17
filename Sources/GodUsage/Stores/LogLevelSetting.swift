@@ -23,13 +23,13 @@ enum LogLevelSetting: String, Hashable, Sendable, CaseIterable, UserDefaultsBack
     /// release default per issue #604; Debug is opt-in only and never the implicit default.
     static var fallback: LogLevelSetting { .info }
 
-    /// Title-case label for the Settings picker.
+    /// Title-case label for the Settings picker, in the app's language.
     var label: String {
         switch self {
-        case .error: "Error"
-        case .warn: "Warning"
-        case .info: "Info"
-        case .debug: "Debug"
+        case .error: String(localized: "Error", comment: "Log level option")
+        case .warn: String(localized: "Warning", comment: "Log level option")
+        case .info: String(localized: "Info", comment: "Log level option")
+        case .debug: String(localized: "Debug", comment: "Log level option")
         }
     }
 

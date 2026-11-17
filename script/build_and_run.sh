@@ -93,6 +93,10 @@ for bundle in "$BUILD_DIR"/*.bundle; do
   cp -R "$bundle" "$APP_RESOURCES/$(basename "$bundle")"
 done
 shopt -u nullglob
+# en.lproj / it.lproj from the String Catalog go into the app's own Resources too (see the helper).
+# shellcheck source=lib/stage_localizations.sh
+source "$ROOT_DIR/script/lib/stage_localizations.sh"
+stage_localizations "$BUILD_DIR" "$APP_RESOURCES"
 
 # Compile the Icon Composer source (assets/AppIcon.icon) into Assets.car so
 # Tahoe renders the real Liquid Glass icon. CFBundleIconName below must match
@@ -137,6 +141,13 @@ cat >"$INFO_PLIST" <<PLIST
   <string>$APP_DISPLAY</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>it</string>
+  </array>
   <key>CFBundleShortVersionString</key>
   <string>$APP_VERSION-dev</string>
   <key>CFBundleVersion</key>

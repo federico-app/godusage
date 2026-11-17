@@ -13,9 +13,9 @@ enum MemoryEditorError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noSavableDocument:
-            return "The memory to save is no longer available, so nothing was written."
+            return String(localized: "The memory to save is no longer available, so nothing was written.")
         case .conflictDetected:
-            return "This file changed on disk; choose Reload or Overwrite in the editor."
+            return String(localized: "This file changed on disk; choose Reload or Overwrite in the editor.")
         }
     }
 }

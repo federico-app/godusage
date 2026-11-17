@@ -14,7 +14,7 @@ struct UsageSuggestionBanner: View {
             title: suggestion.title,
             message: suggestion.message,
             tint: TotalSpendPalette.color(for: suggestion.family),
-            buttonTitle: suggestion.kind == .planUnderused ? "Open Plans" : nil,
+            buttonTitle: suggestion.kind == .planUnderused ? String(localized: "Open Plans", comment: "Button on a usage suggestion: opens the team's Plans tab") : nil,
             // The window opens on the team that set up the underused plan.
             action: { TeamsWindowLink.open(teamID: suggestion.teamID ?? container.teams.selectedTeamID) },
             onDismiss: onDismiss
