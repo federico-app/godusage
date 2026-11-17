@@ -27,9 +27,9 @@ struct SetupPromptCard: View {
             case .notifications:
                 DismissableHintCard(
                     systemImage: "bell.badge",
-                    title: "Enable Notifications",
-                    message: "Get alerted before a quota runs out or an unused reset expires. Change which alerts you get in Settings.",
-                    buttonTitle: "Allow Notifications",
+                    title: String(localized: "Enable Notifications"),
+                    message: String(localized: "Get alerted before a quota runs out or an unused reset expires. Change which alerts you get in Settings."),
+                    buttonTitle: String(localized: "Allow Notifications"),
                     action: allowNotifications,
                     onDismiss: { withAnimation(Motion.spring) { container.onboarding.dismissNotificationsPrompt() } }
                 )
@@ -38,10 +38,10 @@ struct SetupPromptCard: View {
             case .launchAtLogin:
                 DismissableHintCard(
                     systemImage: "power",
-                    title: "Launch at Login",
+                    title: String(localized: "Launch at Login"),
                     message: container.launchAtLogin.errorMessage
-                        ?? "Start GodUsage with your Mac so usage and alerts stay up to date.",
-                    buttonTitle: "Turn On",
+                        ?? String(localized: "Start GodUsage with your Mac so usage and alerts stay up to date."),
+                    buttonTitle: String(localized: "Turn On"),
                     action: { withAnimation(Motion.spring) { container.launchAtLogin.update(to: true) } },
                     onDismiss: { withAnimation(Motion.spring) { container.onboarding.dismissLaunchAtLoginPrompt() } }
                 )

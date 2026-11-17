@@ -108,25 +108,37 @@ enum UsageAdvisor {
     private static func credits(for credits: ResetCredits, now: Date) -> [UsageSuggestion] {
         guard credits.count > 0 else { return [] }
         let upcoming = credits.expiries.filter { $0 > now }.sorted()
-        let resetsWord = credits.count == 1 ? "1 reset" : "\(credits.count) resets"
+        let name = credits.providerName
+        let count = credits.count
+        let resetsWord = String(localized: "\(count) resets", comment: "Usage suggestion: how many reset credits you have, e.g. 2 resets")
         if credits.quotaSpent {
             return [UsageSuggestion(
                 id: "claim:\(credits.providerID):\(credits.count)",
                 kind: .claimReset, family: credits.family,
-                title: "Claim a \(credits.providerName) Reset",
-                message: "Your \(credits.providerName) limit is used up, but you have \(resetsWord). Claim one to start fresh.",
+                title: String(localized: "Claim a \(name) Reset", comment: "Usage suggestion title; the argument is a provider or account name"),
+                message: String(
+                    localized: "Your \(name) limit is used up, but you have \(resetsWord). Claim one to start fresh.",
+                    comment: "Usage suggestion: provider name, then a count of resets such as 2 resets"
+                ),
                 deadline: upcoming.first
             )]
         }
         if let soonest = upcoming.first, soonest.timeIntervalSince(now) <= expiryHorizon {
-            let lead = credits.count == 1
-                ? "Your reset expires in \(duration(soonest, now))"
-                : "You have \(resetsWord) and one expires in \(duration(soonest, now))"
+            let left = duration(soonest, now)
+            let message = credits.count == 1
+                ? String(
+                    localized: "Your reset expires in \(left). Use \(name) freely: if you hit the limit, claim it before it's gone.",
+                    comment: "Usage suggestion: a duration such as 5h 10m, then a provider name"
+                )
+                : String(
+                    localized: "You have \(resetsWord) and one expires in \(left). Use \(name) freely: if you hit the limit, claim it before it's gone.",
+                    comment: "Usage suggestion: a count of resets such as 2 resets, a duration such as 5h 10m, then a provider name"
+                )
             return [UsageSuggestion(
                 id: "expiring:\(credits.providerID):\(Int(soonest.timeIntervalSince1970))",
                 kind: .resetExpiring, family: credits.family,
-                title: "Use \(credits.providerName), a Reset Expires Soon",
-                message: "\(lead). Use \(credits.providerName) freely: if you hit the limit, claim it before it's gone.",
+                title: String(localized: "Use \(name), a Reset Expires Soon", comment: "Usage suggestion title; the argument is a provider or account name"),
+                message: message,
                 deadline: soonest
             )]
         }
@@ -134,8 +146,11 @@ enum UsageAdvisor {
             return [UsageSuggestion(
                 id: "resets:\(credits.providerID):\(credits.count)",
                 kind: .resetsAvailable, family: credits.family,
-                title: "Lean on \(credits.providerName)",
-                message: "You have \(resetsWord), so \(credits.providerName)'s limits stretch further. Prefer it for heavy work.",
+                title: String(localized: "Lean on \(name)", comment: "Usage suggestion title: prefer this provider for now"),
+                message: String(
+                    localized: "You have \(resetsWord), so \(name)'s limits stretch further. Prefer it for heavy work.",
+                    comment: "Usage suggestion: a count of resets such as 2 resets, then a provider name"
+                ),
                 deadline: upcoming.first
             )]
         }
@@ -148,11 +163,17 @@ enum UsageAdvisor {
         guard left >= minimumLeftAtReset, untilReset >= minimumTimeToReset,
               let period = period(quota.data), untilReset <= period * resetHorizonShare else { return nil }
         let percentLeft = Int((left * 100).rounded())
+        let name = quota.providerName
+        let metric = LocalizedMetricTitle.string(quota.metricTitle)
+        let untilResetText = duration(resetsAt, now)
         return UsageSuggestion(
             id: "use:\(quota.providerID):\(quota.metricTitle):\(Int(resetsAt.timeIntervalSince1970 / 3600))",
             kind: .useBeforeReset, family: quota.family,
-            title: "Use \(quota.providerName) Before It Resets",
-            message: "About \(percentLeft)% of your \(quota.metricTitle) will go unused: it resets in \(duration(resetsAt, now)). Use \(quota.providerName) first.",
+            title: String(localized: "Use \(name) Before It Resets", comment: "Usage suggestion title; the argument is a provider or account name"),
+            message: String(
+                localized: "About \(percentLeft)% of your \(metric) will go unused: it resets in \(untilResetText). Use \(name) first.",
+                comment: "Usage suggestion: a percentage, a limit name such as Weekly, a duration such as 1d 4h, then a provider name"
+            ),
             deadline: resetsAt
         )
     }
@@ -181,7 +202,7 @@ enum UsageAdvisor {
         return UsageSuggestion(
             id: "switch:\(quota.providerID):\(target.providerID):\(Int((quota.data.resetsAt ?? now).timeIntervalSince1970 / 3600))",
             kind: .switchProvider, family: target.family,
-            title: "Switch to \(target.providerName)",
+            title: String(localized: "Switch to \(target.providerName)", comment: "Usage suggestion title; the argument is a provider or account name"),
             message: switchMessage(
                 from: quota, spent: spent, to: target, left: left,
                 plan: roomyPlans.first { $0.family == target.family }
@@ -196,34 +217,87 @@ enum UsageAdvisor {
     /// limit before the reset. ChatGPT Plus is 2h 48m under pace." Otherwise it says what the
     /// alternative's own window has left.
     static func switchMessage(from quota: Quota, spent: Bool, to target: Quota, left: Double, plan: RoomyPlan?) -> String {
+        let name = quota.providerName
+        let metric = LocalizedMetricTitle.string(quota.metricTitle)
         guard let plan else {
-            let reason = spent
-                ? "Your \(quota.providerName) \(quota.metricTitle) is used up."
-                : "\(quota.providerName) is on pace to hit its \(quota.metricTitle) limit before it resets."
-            return "\(reason) \(target.providerName) has \(Int((left * 100).rounded()))% of its \(target.metricTitle) left."
+            let targetName = target.providerName
+            let targetMetric = LocalizedMetricTitle.string(target.metricTitle)
+            let percent = Int((left * 100).rounded())
+            return spent
+                ? String(
+                    localized: "Your \(name) \(metric) is used up. \(targetName) has \(percent)% of its \(targetMetric) left.",
+                    comment: "Usage suggestion: provider, its used-up limit such as Weekly, then another provider, the percentage it has left and its limit name"
+                )
+                : String(
+                    localized: "\(name) is on pace to hit its \(metric) limit before it resets. \(targetName) has \(percent)% of its \(targetMetric) left.",
+                    comment: "Usage suggestion: provider, its limit such as Weekly, then another provider, the percentage it has left and its limit name"
+                )
         }
-        let reason = spent
-            ? "Your \(quota.providerName) \(quota.metricTitle) is used up."
-            : "\(quota.providerName) will hit its \(quota.metricTitle) limit before the reset."
+        let planName = plan.name
         if let ahead = plan.ahead, ahead <= -LivePace.onPaceMargin {
-            return "\(reason) \(plan.name) is \(LivePaceFormat.duration(ahead)) under pace."
+            let under = LivePaceFormat.duration(ahead)
+            return spent
+                ? String(
+                    localized: "Your \(name) \(metric) is used up. \(planName) is \(under) under pace.",
+                    comment: "Usage suggestion: provider, its used-up limit such as Weekly, then a team plan name and how far under pace it is, e.g. 2h 48m"
+                )
+                : String(
+                    localized: "\(name) will hit its \(metric) limit before the reset. \(planName) is \(under) under pace.",
+                    comment: "Usage suggestion: provider, its limit such as Weekly, then a team plan name and how far under pace it is, e.g. 2h 48m"
+                )
         }
-        return "\(reason) \(plan.name) has \(LivePaceFormat.percent(plan.leftToday)) of today’s budget left."
+        let leftToday = LivePaceFormat.percent(plan.leftToday)
+        return spent
+            ? String(
+                localized: "Your \(name) \(metric) is used up. \(planName) has \(leftToday) of today’s budget left.",
+                comment: "Usage suggestion: provider, its used-up limit such as Weekly, then a team plan name and the share of today's budget it has left, e.g. 7.5%"
+            )
+            : String(
+                localized: "\(name) will hit its \(metric) limit before the reset. \(planName) has \(leftToday) of today’s budget left.",
+                comment: "Usage suggestion: provider, its limit such as Weekly, then a team plan name and the share of today's budget it has left, e.g. 7.5%"
+            )
     }
 
     private static func planUnderused(_ plan: Plan) -> UsageSuggestion? {
         guard plan.underused, plan.daysLeft <= planHorizonDays else { return nil }
-        let days = plan.daysLeft == 1 ? "tomorrow" : "in \(plan.daysLeft) days"
-        let pace = plan.quotaPercent.map { "\(Int($0.rounded()))% of its quota" }
-            ?? String(format: "%.1f× its cost", plan.projectedMultiple)
         return UsageSuggestion(
             id: "plan:\(plan.id):\(plan.cycleEnd)",
             kind: .planUnderused, family: plan.family,
-            title: "Use the Team's \(plan.providerName) Plan",
-            message: "\(plan.name) is on pace for \(pace) and renews \(days). Use \(plan.providerName) to get the team's money's worth.",
+            title: String(localized: "Use the Team's \(plan.providerName) Plan", comment: "Usage suggestion title; the argument is a provider name"),
+            message: planUnderusedMessage(plan),
             deadline: nil,
             teamID: plan.teamID
         )
+    }
+
+    /// "ChatGPT Plus is on pace for 40% of its quota and renews in 3 days. …", one full sentence per
+    /// variant (quota share or cost multiple, renewing tomorrow or in N days).
+    private static func planUnderusedMessage(_ plan: Plan) -> String {
+        let name = plan.name
+        let provider = plan.providerName
+        let days = plan.daysLeft
+        if let quota = plan.quotaPercent {
+            let percent = Int(quota.rounded())
+            return days == 1
+                ? String(
+                    localized: "\(name) is on pace for \(percent)% of its quota and renews tomorrow. Use \(provider) to get the team's money's worth.",
+                    comment: "Usage suggestion: a team plan name, the share of its quota on pace to be used, then a provider name"
+                )
+                : String(
+                    localized: "\(name) is on pace for \(percent)% of its quota and renews in \(days) days. Use \(provider) to get the team's money's worth.",
+                    comment: "Usage suggestion: a team plan name, the share of its quota on pace to be used, days until it renews, then a provider name"
+                )
+        }
+        let multiple = AppLocale.decimal(plan.projectedMultiple, digits: 1)
+        return days == 1
+            ? String(
+                localized: "\(name) is on pace for \(multiple)× its cost and renews tomorrow. Use \(provider) to get the team's money's worth.",
+                comment: "Usage suggestion: a team plan name, how many times its cost it is on pace to use (e.g. 0.4), then a provider name"
+            )
+            : String(
+                localized: "\(name) is on pace for \(multiple)× its cost and renews in \(days) days. Use \(provider) to get the team's money's worth.",
+                comment: "Usage suggestion: a team plan name, how many times its cost it is on pace to use (e.g. 0.4), days until it renews, then a provider name"
+            )
     }
 
     // MARK: - Helpers
@@ -253,6 +327,6 @@ enum UsageAdvisor {
     }
 
     private static func duration(_ date: Date, _ now: Date) -> String {
-        Formatters.compactDuration(date.timeIntervalSince(now)) ?? "moments"
+        Formatters.compactDuration(date.timeIntervalSince(now)) ?? String(localized: "moments", comment: "Usage suggestion: a duration too short to show, as in 'expires in moments'")
     }
 }

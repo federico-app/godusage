@@ -57,15 +57,14 @@ struct ClaudeResetGrantStatus: Equatable, Sendable {
     /// when the grant names no window GodUsage knows.
     var confirmDetail: String? {
         guard let id = claimableGrantID, let grant = grants.first(where: { $0.id == id }) else { return nil }
-        let names = grant.clears.compactMap { window -> String? in
-            switch window {
-            case "five_hour": "session"
-            case "seven_day": "weekly"
-            default: nil
-            }
+        let session = grant.clears.contains("five_hour")
+        let weekly = grant.clears.contains("seven_day")
+        switch (session, weekly) {
+        case (true, true): return String(localized: "Refills your session and weekly limits now. This can't be undone.")
+        case (true, false): return String(localized: "Refills your session limits now. This can't be undone.")
+        case (false, true): return String(localized: "Refills your weekly limits now. This can't be undone.")
+        case (false, false): return nil
         }
-        guard !names.isEmpty else { return nil }
-        return "Refills your \(names.joined(separator: " and ")) limits now. This can't be undone."
     }
 
     /// The row reads "N available" and each remaining reset's grant deadline rides along in

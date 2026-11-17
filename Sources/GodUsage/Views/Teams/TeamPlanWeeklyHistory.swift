@@ -125,7 +125,7 @@ struct TeamPlanWeeklyHistory: View {
         .font(.caption2.monospacedDigit().weight(.medium))
         .frame(maxWidth: .infinity, minHeight: 26)
         .accessibilityElement()
-        .accessibilityLabel("\(Self.weekday(day.day)) \(day.day): \(day.percent.map { (day.estimated ? "about " : "") + Self.number($0) + "%" } ?? "no reading")")
+        .accessibilityLabel(Text(verbatim: "\(Self.weekday(day.day)) \(day.day): \(Self.reading(day))"))
     }
 
     private func total(_ week: TeamPlanHistory.Week) -> some View {
@@ -172,17 +172,24 @@ struct TeamPlanWeeklyHistory: View {
 
     /// One decimal, like Per Day; whole numbers without it.
     static func number(_ value: Double) -> String {
-        value.rounded() == value ? String(format: "%.0f", value) : String(format: "%.1f", value)
+        AppLocale.decimal(value, digits: value.rounded() == value ? 0 : 1)
+    }
+
+    /// A day's reading for VoiceOver: "19.5%", "about 19.5%", "no reading".
+    private static func reading(_ day: TeamPlanHistory.Day) -> String {
+        guard let percent = day.percent else { return String(localized: "no reading", comment: "A day with no usage reading") }
+        let value = number(percent)
+        return day.estimated ? String(localized: "about \(value)%", comment: "An estimated percentage, e.g. about 19.5%") : value + "%"
     }
 
     private static func weekday(_ day: String) -> String {
         guard let date = TeamsFormat.date(day) else { return day }
-        return date.formatted(.dateTime.weekday(.abbreviated))
+        return date.formatted(.dateTime.weekday(.abbreviated).locale(AppLocale.current))
     }
 
     private static func shortDate(_ day: String) -> String {
         guard let date = TeamsFormat.date(day) else { return day }
-        return date.formatted(.dateTime.day().month(.abbreviated))
+        return date.formatted(.dateTime.day().month(.abbreviated).locale(AppLocale.current))
     }
 
 }

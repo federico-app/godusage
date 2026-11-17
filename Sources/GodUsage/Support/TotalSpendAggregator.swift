@@ -14,14 +14,25 @@ enum TotalSpendPeriod: String, CaseIterable, Identifiable, Sendable {
     /// but kept as its own accessor so the two meanings can diverge without a hunt).
     var lineLabel: String { rawValue }
 
+    /// The period's full name in the app's language ("Last 7 Days" / "Ultimi 7 giorni"). The raw
+    /// value stays English: it is the persisted selection and the spend line's match key.
+    var title: String {
+        switch self {
+        case .today: String(localized: "Today")
+        case .yesterday: String(localized: "Yesterday")
+        case .last7: String(localized: "Last 7 Days")
+        case .last30: String(localized: "Last 30 Days")
+        }
+    }
+
     /// Compact segment title for the period switcher — "Last 30 Days" doesn't fit four-across
     /// in the 320pt popover without shrinking every segment.
     var shortLabel: String {
         switch self {
-        case .today: "Today"
-        case .yesterday: "Yesterday"
-        case .last7: "7 Days"
-        case .last30: "30 Days"
+        case .today: String(localized: "Today")
+        case .yesterday: String(localized: "Yesterday")
+        case .last7: String(localized: "7 Days")
+        case .last30: String(localized: "30 Days")
         }
     }
 
@@ -29,10 +40,10 @@ enum TotalSpendPeriod: String, CaseIterable, Identifiable, Sendable {
     /// then sizes each segment to its text and names the period in full beside the card's title.
     var tinyLabel: String {
         switch self {
-        case .today: "Today"
-        case .yesterday: "Yesterday"
-        case .last7: "7d"
-        case .last30: "30d"
+        case .today: String(localized: "Today")
+        case .yesterday: String(localized: "Yesterday")
+        case .last7: String(localized: "7d", comment: "Total Spend period switcher, narrowest form of Last 7 Days")
+        case .last30: String(localized: "30d", comment: "Total Spend period switcher, narrowest form of Last 30 Days")
         }
     }
 }
@@ -48,6 +59,7 @@ enum TotalSpendMetric: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
+    /// English name, for text that must not change with the language (the share image's file name).
     var title: String {
         switch self {
         case .cost: "Cost"
@@ -56,12 +68,21 @@ enum TotalSpendMetric: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// The name shown in the card's title menu and the share card, in the app's language.
+    var displayTitle: String {
+        switch self {
+        case .cost: String(localized: "Cost", comment: "Total Spend card metric: dollars spent")
+        case .costPerMtok: String(localized: "Cost/MTok", comment: "Total Spend card metric: dollars per million tokens")
+        case .tokens: String(localized: "Tokens")
+        }
+    }
+
     /// Empty-state copy when no provider qualifies for this metric in the selected period.
     var emptyMessage: String {
         switch self {
-        case .cost: "No cost data for this period"
-        case .costPerMtok: "No cost-per-token data for this period"
-        case .tokens: "No token data for this period"
+        case .cost: String(localized: "No cost data for this period")
+        case .costPerMtok: String(localized: "No cost-per-token data for this period")
+        case .tokens: String(localized: "No token data for this period")
         }
     }
 

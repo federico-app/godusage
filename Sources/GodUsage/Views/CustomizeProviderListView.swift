@@ -32,8 +32,8 @@ struct CustomizeProviderListView: View {
             // who came here hunting for them once they've scanned past the provider list.
             ScreenCrossLinkRow(
                 systemImage: "gearshape",
-                title: "Settings",
-                subtitle: "Notifications, appearance and more",
+                title: String(localized: "Settings"),
+                subtitle: String(localized: "Notifications, appearance and more"),
                 action: { SettingsWindowLink.open() }
             )
         }

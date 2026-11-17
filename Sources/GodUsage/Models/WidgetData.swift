@@ -7,13 +7,19 @@ import Foundation
 struct WidgetData: Hashable {
     /// Hover note for locally-estimated spend tiles (Codex/Claude/Grok Today / Yesterday / Last 30
     /// Days), whose dollars are imputed from token counts rather than billed.
-    static let localEstimateNote = "Estimated locally, so it may be off"
+    static var localEstimateNote: String {
+        String(localized: "Estimated locally, so it may be off", comment: "Hover note on a spend estimated from local token counts")
+    }
     /// Hover note for Cursor spend tiles, whose spend comes from Cursor's usage-history export.
-    static let cursorUsageHistoryNote = "From your Cursor usage history."
+    static var cursorUsageHistoryNote: String {
+        String(localized: "From your Cursor usage history.", comment: "Hover note on Cursor spend rows")
+    }
     /// Headline shown on a placed tile with no real backing metric (em dash, U+2014).
     static let noDataHeadline = "—"
     /// Subtitle shown on a placed tile with no real backing metric. Copy is intentionally exact.
-    static let noDataSubtitle = "No data"
+    static var noDataSubtitle: String {
+        String(localized: "No data", comment: "A dashboard row with no metric behind it")
+    }
 
     let title: String          // "Claude 5h", "Cursor credits"
     let icon: IconSource
@@ -184,18 +190,21 @@ struct WidgetData: Hashable {
         var tooltip: String? {
             switch self {
             case .noData, .level: return nil
-            case .spent: return "Limit reached"
+            case .spent: return WidgetData.limitReachedText
             case .healthy(let projectedFraction):
                 let left = Int(((1 - projectedFraction) * 100).rounded())
-                return "~\(left)% left at reset"
+                return String(localized: "~\(left)% left at reset", comment: "Pace projection: share of the limit left when it resets")
             case .closeToLimit(_, let projectedFraction):
                 let used = Int((projectedFraction * 100).rounded())
-                return "~\(used)% used at reset"
+                return String(localized: "~\(used)% used at reset", comment: "Pace projection: share of the limit used when it resets")
             case .runningOut(_, let projectedFraction):
-                guard projectedFraction > 1 else { return "~100% used at reset" }
+                let used = 100
+                guard projectedFraction > 1 else {
+                    return String(localized: "~\(used)% used at reset", comment: "Pace projection: share of the limit used when it resets")
+                }
                 // Floored to 1% so a bar projected even slightly over never reads "~0% over limit".
                 let over = max(1, Int(((projectedFraction - 1) * 100).rounded()))
-                return "~\(over)% over limit at reset"
+                return String(localized: "~\(over)% over limit at reset", comment: "Pace projection: how far past the limit usage lands at the reset")
             }
         }
 
@@ -266,7 +275,7 @@ struct WidgetData: Hashable {
         }
         // The unit (e.g. "credits") belongs in boundedSubtitle; the headline carries the mode word.
         // `WidgetDisplayMode.label` is the single source for "Used"/"Left", so there's no second copy.
-        return "\(valueText) \(displayMode.label.lowercased())"
+        return Self.reading(valueText, mode: displayMode)
     }
 
     /// Subtitle under the bounded headline (reset timing or limit context).
@@ -280,7 +289,7 @@ struct WidgetData: Hashable {
         // Any cycle-based metric (e.g. requests) shows its reset cadence when no exact reset date exists.
         if let periodDurationMs,
            let duration = Formatters.compactDuration(TimeInterval(periodDurationMs) / 1000) {
-            return "Resets in \(duration)"
+            return String(localized: "Resets in \(duration)", comment: "A usage limit resets after a duration, e.g. in 2d 6h")
         }
         switch kind {
         case .percent:
@@ -291,7 +300,7 @@ struct WidgetData: Hashable {
             guard let limit else { return nil }
             let digits = limit.rounded() == limit ? 0 : 2
             let amount = Formatters.currency(limit, fractionDigits: digits)
-            return "\(amount) \(limitNoun ?? "limit")"
+            return Self.valueWithWord(amount, limitNoun ?? "limit")
         case .count:
             // The unit (e.g. "credits") shows whether the count is bounded or a plain balance.
             return countSuffix
@@ -319,18 +328,16 @@ struct WidgetData: Hashable {
             if selected.count == 1 {
                 let value = selected[0]
                 if value.kind == .dollars, let word = unboundedValueWord {
-                    return "\(MetricFormatter.number(value.number, kind: .dollars, style: .row)) \(word)"
+                    return Self.valueWithWord(MetricFormatter.number(value.number, kind: .dollars, style: .row), word)
                 }
                 return MetricFormatter.string(for: value, style: .row)
             }
             return selected.map { MetricFormatter.string(for: $0, style: .row) }.joined(separator: " · ")
         }
         // Fallback for an unbounded row without typed values: "<value> <suffix> <word>".
-        let word = unboundedValueWord ?? displayMode.label.lowercased()
-        if kind == .count, let countSuffix {
-            return "\(valueText) \(countSuffix) \(word)"
-        }
-        return "\(valueText) \(word)"
+        let value = kind == .count ? countSuffix.map { "\(valueText) \($0)" } ?? valueText : valueText
+        guard let word = unboundedValueWord else { return Self.reading(value, mode: displayMode) }
+        return Self.valueWithWord(value, word)
     }
 
     /// Color bands for reset-credit expiries: blue normally, amber under a week, red under 48 hours.
@@ -380,7 +387,9 @@ struct WidgetData: Hashable {
         guard !entries.isEmpty else { return nil }
         // The header carries the verb; "in" only fits the relative durations beneath it (absolute
         // entries already read "Feb 15 at 3:45 PM").
-        let header = resetDisplayMode == .relative ? "Resets expire in:" : "Resets expire:"
+        let header = resetDisplayMode == .relative
+            ? String(localized: "Resets expire in:", comment: "Header of a numbered list of reset credit expiries, each a duration")
+            : String(localized: "Resets expire:", comment: "Header of a numbered list of reset credit expiries, each a date and time")
         return ([header] + entries).joined(separator: "\n")
     }
 
@@ -395,7 +404,9 @@ struct WidgetData: Hashable {
     /// model it used (the common case), so the triangle and its tooltip stay off.
     var unknownModelTooltip: String? {
         guard hasUnknownModels else { return nil }
-        let header = unknownModels.count == 1 ? "Unknown model found" : "Unknown models found"
+        let header = unknownModels.count == 1
+            ? String(localized: "Unknown model found", comment: "Header above a model the pricing can't price")
+            : String(localized: "Unknown models found", comment: "Header above a list of models the pricing can't price")
         return ([header] + unknownModels.map { "- \($0)" }).joined(separator: "\n")
     }
 
@@ -430,7 +441,8 @@ struct WidgetData: Hashable {
         // hovering "2 available"); its tiny count never has a figures tooltip anyway.
         if let expiry = expiryTooltip { return expiry }
         if isZeroUsage && isUsagePeriod {
-            return (["No usage in this period"] + [unboundedTooltipNote].compactMap { $0 }).joined(separator: "\n")
+            let note = String(localized: "No usage in this period", comment: "Hover note on a spend row that reads zero")
+            return ([note] + [unboundedTooltipNote].compactMap { $0 }).joined(separator: "\n")
         }
         if let figures = unboundedTooltip {
             return ([figures] + [unboundedTooltipNote].compactMap { $0 }).joined(separator: "\n")
@@ -514,7 +526,10 @@ extension WidgetData {
                 let projected = result.projectedUsage / ctx.limit
                 let spare = Int(((1 - projected) * 100).rounded())
                 guard spare >= 1 else { return .runningOut(eta: nil, projectedFraction: projected) }
-                return .closeToLimit(spare: "~\(spare)% spare", projectedFraction: projected)
+                return .closeToLimit(
+                    spare: String(localized: "~\(spare)% spare", comment: "Pace: share of the limit projected to be left at reset, when it's tight"),
+                    projectedFraction: projected
+                )
             case .behind:
                 // Coarse whole-percent meters can read 1% used very early in a window; linear
                 // extrapolation then projects a bogus blow-out while the headline still shows ~99%
@@ -567,7 +582,9 @@ extension WidgetData {
     func boundedTrailingText(now: Date = Date()) -> String? {
         guard hasData else { return Self.noDataSubtitle }
         if let subtitleOverride { return subtitleOverride }
-        if isFreshSessionWindow(now: now) { return "Not started" }
+        if isFreshSessionWindow(now: now) {
+            return String(localized: "Not started", comment: "A session window that hasn't begun because no message was sent yet")
+        }
         if let resetsAt {
             return resetDisplayMode == .absolute
                 ? Formatters.resetAbsoluteLabel(at: resetsAt, now: now)
@@ -599,7 +616,14 @@ extension WidgetData {
 
     /// Hover copy explaining the "Not started" trailing label: the rolling session window only begins
     /// once you send your first message, so there's no live countdown to show yet.
-    static let freshSessionTooltip = "Sessions start after you send your first message."
+    static var freshSessionTooltip: String {
+        String(localized: "Sessions start after you send your first message.", comment: "Hover note on a session row that reads Not started")
+    }
+
+    /// The flame's copy on a spent meter.
+    static var limitReachedText: String {
+        String(localized: "Limit reached", comment: "A usage meter that is used up")
+    }
 
     /// Hover tooltip for the reset label: the *opposite* format from what's shown. A fresh
     /// ("Not started") session explains itself instead of showing a reset time, since the window
@@ -623,8 +647,8 @@ extension WidgetData {
     var meterStyleTooltip: String? {
         guard hasMeterStyleToggle, let limit else { return nil }
         let opposite = displayMode == .remaining ? used : max(0, limit - used)
-        let word = (displayMode == .remaining ? WidgetDisplayMode.used : .remaining).label.lowercased()
-        return "\((valuePrefix ?? "") + format(opposite)) \(word)"
+        let mode: WidgetDisplayMode = displayMode == .remaining ? .used : .remaining
+        return Self.reading((valuePrefix ?? "") + format(opposite), mode: mode)
     }
 }
 

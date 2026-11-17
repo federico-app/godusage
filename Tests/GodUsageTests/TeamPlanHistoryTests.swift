@@ -87,7 +87,7 @@ final class TeamPlanHistoryTests: XCTestCase {
         XCTAssertEqual(accounts.map(\.people), [["You", "Matteo Scoccia"], ["Maria Vitali"]])
         XCTAssertTrue(accounts[1].perDevice)
         XCTAssertEqual(TeamPlanAccountsButton.readBy(["You", "Matteo Scoccia"]), "You and Matteo Scoccia")
-        XCTAssertEqual(TeamPlanAccountsButton.readBy(["A", "B", "C"]), "A, B and C")
+        XCTAssertEqual(TeamPlanAccountsButton.readBy(["A", "B", "C"]), "A, B, and C")
         XCTAssertTrue(TeamPlanAccountsButton.usage(accounts[0]).hasPrefix("42.0% of the week · 6.0% today · resets "))
 
         // Servers before the list send none: the label stays plain text.
@@ -107,7 +107,8 @@ final class TeamPlanHistoryTests: XCTestCase {
         XCTAssertFalse(TeamPlanAccountsButton.isShown(budget: budget, plan: report))
         report.hiddenAccounts = ["bbb"]
         XCTAssertTrue(TeamPlanAccountsButton.isShown(budget: budget, plan: report), "one account left still lists the hidden one")
-        XCTAssertEqual(TeamPlanAccountsButton.label(accounts: 1, hidden: 1), "1 account · 1 hidden")
+        // Plural forms ("1 account") come from the catalog, which `swift test` has no app bundle for.
+        XCTAssertEqual(TeamPlanAccountsButton.label(accounts: 2, hidden: 1), "2 accounts · 1 hidden")
         XCTAssertEqual(TeamPlanAccountsButton.label(accounts: 2, hidden: 0), "2 accounts")
 
         // Saving the list leaves them out, so the server keeps them (an editor opened before a hide can't undo it).

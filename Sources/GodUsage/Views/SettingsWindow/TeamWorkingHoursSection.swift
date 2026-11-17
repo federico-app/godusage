@@ -35,8 +35,7 @@ struct TeamWorkingHoursSection: View {
                     .padding(.top, 8)
             }
             SettingsCaption(
-                "Live Pace spreads today's weekly-limit budget over these hours, in each person's own time zone. "
-                    + "A shared account uses everyone's hours combined. These hours apply to this team only."
+                "Live Pace spreads today's weekly-limit budget over these hours, in each person's own time zone. A shared account uses everyone's hours combined. These hours apply to this team only."
             )
             .padding(.top, 4)
         }
@@ -107,18 +106,25 @@ struct TeamWorkingHoursSection: View {
 private struct TeamWeekdayInitials: View {
     let days: [Int]
 
+    /// Weekday names in the app's language, not the Mac's.
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = AppLocale.current
+        return calendar
+    }
+
     var body: some View {
         HStack(spacing: 2) {
             ForEach(1...7, id: \.self) { day in
                 let works = days.contains(day)
-                Text(Calendar.current.veryShortWeekdaySymbols[day % 7])
+                Text(calendar.veryShortWeekdaySymbols[day % 7])
                     .font(.caption2.weight(works ? .semibold : .regular))
                     .foregroundStyle(works ? Color.accentColor : Color.secondary.opacity(0.6))
                     .frame(width: 11)
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(days.sorted().map { Calendar.current.weekdaySymbols[$0 % 7] }.joined(separator: ", "))
+        .accessibilityLabel(AppLocale.list(days.sorted().map { calendar.weekdaySymbols[$0 % 7] }))
     }
 }
 
@@ -170,7 +176,7 @@ struct TeamWorkingHoursEditor: View {
             if let problem = draft.schedule.problem {
                 Text(problem).font(.caption).foregroundStyle(Theme.notice)
             } else {
-                Text("\(draft.schedule.weeklyHours.formatted(.number.precision(.fractionLength(0...2)))) hours a week, in this person's own time zone.")
+                Text("\(AppLocale.decimal(draft.schedule.weeklyHours, maxDigits: 2)) hours a week, in this person's own time zone.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -201,7 +207,7 @@ struct TeamWorkingHoursEditor: View {
         }
     }
 
-    private func timePicker(_ label: String, _ minutes: Binding<Int>) -> some View {
+    private func timePicker(_ label: LocalizedStringKey, _ minutes: Binding<Int>) -> some View {
         Picker(label, selection: minutes) {
             ForEach(Self.quarterHours, id: \.self) { value in
                 Text(TeamSchedule.clock(value)).tag(value)

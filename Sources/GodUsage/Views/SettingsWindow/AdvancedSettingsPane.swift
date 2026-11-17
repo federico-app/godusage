@@ -50,7 +50,7 @@ struct AdvancedSettingsPane: View {
                     let pasteboard = NSPasteboard.general
                     pasteboard.clearContents()
                     guard pasteboard.setString(LogFile.url.path, forType: .string) else {
-                        logActionError = "Couldn't copy the log path to the clipboard."
+                        logActionError = String(localized: "Couldn't copy the log path to the clipboard.")
                         AppLog.warn(.config, "Copy log path failed")
                         return
                     }

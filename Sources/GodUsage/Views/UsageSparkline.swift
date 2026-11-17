@@ -26,7 +26,7 @@ struct UsageSparkline: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Text(data.title)
+            Text(LocalizedMetricTitle.string(data.title))
                 .font(.system(size: density.supportingPointSize, weight: .semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
@@ -55,7 +55,7 @@ struct UsageSparkline: View {
                 // future hides — reset the whole hover state instead.
                 .popover(isPresented: Binding(get: { hover.isPresented }, set: { if !$0 { hover.dismiss() } }),
                          arrowEdge: .top) {
-                    UsageTrendDetail(title: data.title, points: points, note: data.chartNote) { inside in
+                    UsageTrendDetail(title: LocalizedMetricTitle.string(data.title), points: points, note: data.chartNote) { inside in
                         hover.detailHover(inside)
                     }
                 }
@@ -100,7 +100,8 @@ struct UsageSparkline: View {
 
     private var accessibilityLabel: String {
         guard let peak = points.max(by: { $0.value < $1.value }),
-              let first = points.first, let last = points.last else { return data.title }
-        return "\(data.title): \(points.count) days, \(first.label) to \(last.label), peak \(peak.readout)."
+              let first = points.first, let last = points.last else { return LocalizedMetricTitle.string(data.title) }
+        let title = LocalizedMetricTitle.string(data.title)
+        return String(localized: "\(title): \(points.count) days, \(first.label) to \(last.label), peak \(peak.readout).")
     }
 }

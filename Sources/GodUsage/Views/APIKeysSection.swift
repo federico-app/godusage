@@ -60,7 +60,7 @@ struct APIKeysSection: View {
             Text(provider.provider.displayName)
             Spacer(minLength: 8)
             statusDot
-            Button(isOpen ? "Done" : (status == .notSet ? "Add" : "Edit")) {
+            Button(editButtonTitle) {
                 toggleExpand()
             }
             .buttonStyle(.bordered)
@@ -68,6 +68,11 @@ struct APIKeysSection: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, density.controlRowPadding)
+    }
+
+    private var editButtonTitle: String {
+        if isOpen { return String(localized: "Done") }
+        return status == .notSet ? String(localized: "Add") : String(localized: "Edit")
     }
 
     /// The dot is binary, never a palette: red when no key is set, green when a key is usable (from
@@ -85,14 +90,14 @@ struct APIKeysSection: View {
             if status == .notSet {
                 // No key anywhere: the field is editable from the start.
                 keyField(editable: true)
-                primaryButton("Save", disabled: !hasInput) { save() }
+                primaryButton(String(localized: "Save"), disabled: !hasInput) { save() }
             } else if status == .fromEnvironment {
                 // Env key, no custom key yet: read-only until "Override" is checked, then editable.
                 keyField(editable: overrideChecked)
                 if overrideChecked {
                     HStack(spacing: 8) {
-                        primaryButton("Save", disabled: !hasInput) { save() }
-                        ghostButton("Cancel") { overrideChecked = false; input = "" }
+                        primaryButton(String(localized: "Save"), disabled: !hasInput) { save() }
+                        ghostButton(String(localized: "Cancel")) { overrideChecked = false; input = "" }
                     }
                 } else {
                     Toggle("Override With a Custom Key", isOn: $overrideChecked)
@@ -159,9 +164,9 @@ struct APIKeysSection: View {
     /// declutter, living inside the field instead of as a label beside it.
     private var sourceHint: String {
         switch status {
-        case .fromEnvironment: "From Your Environment"
-        case .saved: "Saved in App"
-        case .overrideActive: "Custom Key"
+        case .fromEnvironment: String(localized: "From Your Environment")
+        case .saved: String(localized: "Saved in App")
+        case .overrideActive: String(localized: "Custom Key")
         case .notSet: ""
         }
     }
@@ -266,7 +271,7 @@ private struct APIKeyField: View {
     var body: some View {
         HStack(spacing: 4) {
             if let onClear {
-                fieldIcon("xmark.circle.fill", action: onClear, label: "Clear")
+                fieldIcon("xmark.circle.fill", action: onClear, label: String(localized: "Clear", comment: "Accessibility: remove the saved API key"))
             }
             Group {
                 if readOnly {
@@ -279,7 +284,9 @@ private struct APIKeyField: View {
                 }
             }
             .textFieldStyle(.roundedBorder)
-            fieldIcon(reveal ? "eye.slash" : "eye", action: onReveal, label: reveal ? "Hide" : "Show")
+            fieldIcon(reveal ? "eye.slash" : "eye", action: onReveal, label: reveal
+                ? String(localized: "Hide", comment: "Accessibility: mask the API key")
+                : String(localized: "Show", comment: "Accessibility: reveal the API key"))
         }
     }
 

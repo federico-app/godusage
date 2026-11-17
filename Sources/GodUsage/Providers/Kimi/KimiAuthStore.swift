@@ -51,19 +51,19 @@ enum KimiAuthError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notLoggedIn:
-            return "Not logged in to Kimi Code. Run `kimi`, then use `/login`."
+            return String(localized: "Not logged in to Kimi Code. Run `kimi`, then use `/login`.")
         case .credentialsUnreadable:
-            return "Kimi Code credentials couldn't be read."
+            return String(localized: "Kimi Code credentials couldn't be read.")
         case .invalidCredentials:
-            return "Kimi Code credentials are invalid. Run `/login` in Kimi Code again."
+            return String(localized: "Kimi Code credentials are invalid. Run `/login` in Kimi Code again.")
         case .sessionExpired:
-            return "Kimi Code session expired. Run `/login` in Kimi Code again."
+            return String(localized: "Kimi Code session expired. Run `/login` in Kimi Code again.")
         case .invalidEndpoint(let variable):
-            return "\(variable) is not a secure Kimi endpoint."
+            return String(localized: "\(variable) is not a secure Kimi endpoint.")
         case .refreshLockFailed:
-            return "Couldn't safely refresh Kimi Code credentials. Try again after Kimi Code finishes refreshing."
+            return String(localized: "Couldn't safely refresh Kimi Code credentials. Try again after Kimi Code finishes refreshing.")
         case .saveFailed:
-            return "Couldn't save refreshed Kimi Code credentials."
+            return String(localized: "Couldn't save refreshed Kimi Code credentials.")
         }
     }
 }

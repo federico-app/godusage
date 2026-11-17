@@ -87,7 +87,7 @@ final class DevicePairingStore {
             let code = try await api.createPairingCode(token: token)
             guard let expiresAt = Self.date(code.expiresAt) else {
                 AppLog.error(.teams, "pairing code has an unreadable expiry: \(code.expiresAt)")
-                throw TeamsAPIError(kind: .server, message: "The teams server sent a response GodUsage couldn’t read. Update GodUsage and try again.")
+                throw TeamsAPIError(kind: .server, message: String(localized: "The teams server sent a response GodUsage couldn’t read. Update GodUsage and try again."))
             }
             activeCode = ActiveCode(url: DevicePairingLink.url(code: code.code, server: server), expiresAt: expiresAt)
         }

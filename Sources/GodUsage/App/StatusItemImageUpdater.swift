@@ -85,10 +85,14 @@ final class StatusItemImageUpdater {
         )
         // The team standing rides as one more group after the providers: "#2 ▲1 · $37" over your
         // pace on your team plan.
-        if let standing = container.teams.menuBarStanding, let teamID = container.teams.selectedTeamID {
+        // The pace comes from the plans This Week's Limit shows, your other teams' included.
+        if let standing = container.teams.menuBarStanding {
+            let teams = container.teams
             let team = MenuBarContentBuilder.teamGroup(
                 standing: standing,
-                paces: container.teamPlans.menuBarPaces(teamID: teamID, now: now),
+                paces: container.teamPlans.menuBarPaces(
+                    selectedTeamID: teams.selectedTeamID, teamIDs: teams.teams.map(\.id), now: now
+                ),
                 now: now
             )
             content = MenuBarContent(groups: content.groups + [team], bars: content.bars)

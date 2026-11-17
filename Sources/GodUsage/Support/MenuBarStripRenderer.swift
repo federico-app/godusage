@@ -234,7 +234,10 @@ enum MenuBarStripRenderer {
             size: NSSize(width: CGFloat(cgImage.width) / renderer.scale, height: CGFloat(cgImage.height) / renderer.scale)
         )
         image.isTemplate = true
-        image.accessibilityDescription = "GodUsage, usage hidden while the screen is shared"
+        image.accessibilityDescription = String(
+            localized: "GodUsage, usage hidden while the screen is shared",
+            comment: "VoiceOver: the menu bar item while screen sharing hides the usage numbers"
+        )
         return image
     }()
 

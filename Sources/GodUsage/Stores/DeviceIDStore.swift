@@ -93,7 +93,7 @@ struct OwnedDeviceIDStore: DeviceIDStoring {
         case false:
             break
         case nil:
-            throw KeychainError.readFailed("Keychain could not be checked for this Mac's previous device identity.")
+            throw KeychainError.readFailed(String(localized: "Keychain could not be checked for this Mac's previous device identity."))
         case true?:
             switch legacyKeychain.readGenericPasswordWithoutUserInteraction(
                 service: legacyOwnedService,
@@ -106,7 +106,7 @@ struct OwnedDeviceIDStore: DeviceIDStoring {
                 break
             case .unavailable:
                 throw KeychainError.readFailed(
-                    "This Mac's previous device identity needs your approval. Choose Recover Identity in Teams settings."
+                    String(localized: "This Mac's previous device identity needs your approval. Choose Recover Identity in Teams settings.")
                 )
             }
         }
@@ -120,7 +120,7 @@ struct OwnedDeviceIDStore: DeviceIDStoring {
         case false:
             return nil
         case nil:
-            throw KeychainError.readFailed("Keychain could not be checked for this Mac's previous device identity.")
+            throw KeychainError.readFailed(String(localized: "Keychain could not be checked for this Mac's previous device identity."))
         case true?:
             break
         }
@@ -135,7 +135,7 @@ struct OwnedDeviceIDStore: DeviceIDStoring {
             return nil
         case .unavailable:
             throw KeychainError.readFailed(
-                "This Mac's previous device identity needs your approval. Choose Recover Identity in Teams settings."
+                String(localized: "This Mac's previous device identity needs your approval. Choose Recover Identity in Teams settings.")
             )
         }
         try ownedStore.write(service: service, value: legacy)

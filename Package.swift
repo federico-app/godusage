@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "GodUsage",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v15)
     ],
@@ -29,7 +30,10 @@ let package = Package(
                 .copy("Resources/ProviderIcons"),
                 .copy("Resources/pricing_supplement.json"),
                 .copy("Resources/pricing_litellm_snapshot.json"),
-                .copy("Resources/pricing_models_dev_snapshot.json")
+                .copy("Resources/pricing_models_dev_snapshot.json"),
+                // English is the base language; Italian lives beside it. Compiled to *.lproj in the
+                // resource bundle; the packaging scripts copy those into the .app's Contents/Resources.
+                .process("Resources/Localizable.xcstrings")
             ],
             swiftSettings: [
                 .swiftLanguageMode(.v6)

@@ -546,7 +546,7 @@ final class WidgetDataStore {
         // Timed out: the deadline won the race. Surface it like any failed refresh — error card +
         // backoff — and keep the last-good snapshot on screen.
         guard var snapshot = timedOutSnapshot else {
-            let message = "Refresh timed out after \(Int(refreshTimeout))s"
+            let message = String(localized: "Refresh timed out after \(Int(refreshTimeout))s")
             providerErrors[providerID] = message
             providerConnectPrompts.remove(providerID)
             failureRetryAfter[providerID] = now().addingTimeInterval(Self.failureRetryBackoff)
@@ -769,7 +769,7 @@ final class WidgetDataStore {
     private static func errorMessage(in snapshot: ProviderSnapshot) -> String? {
         guard !snapshot.lines.isEmpty, snapshot.lines.allSatisfy(\.isError) else { return nil }
         if case .badge(_, let text, _, _) = snapshot.lines[0] { return text }
-        return "Refresh failed"
+        return String(localized: "Refresh failed")
     }
 
     func data(for descriptor: WidgetDescriptor) -> WidgetData {
@@ -828,7 +828,10 @@ final class WidgetDataStore {
         guard age >= Self.stalenessThreshold, let duration = Formatters.compactDuration(age) else {
             return nil
         }
-        return StalenessHint(label: "Outdated", tooltip: "Last updated \(duration) ago")
+        return StalenessHint(
+            label: String(localized: "Outdated", comment: "Header hint: this provider's data is stale"),
+            tooltip: String(localized: "Last updated \(duration) ago", comment: "The argument is a compact duration, e.g. 3h 12m")
+        )
     }
 
     private func resolve(_ line: MetricLine, descriptor: WidgetDescriptor) -> WidgetData? {

@@ -22,10 +22,10 @@ enum TeamEvents {
 
     static func overtakeMessage(_ overtakers: [TeamStats.Member], team: String) -> (title: String, body: String) {
         let names = overtakers.map(\.displayName)
-        let who = names.count == 1 ? names[0] : names.dropLast().joined(separator: ", ") + " and " + names.last!
+        let who = names.count == 1 ? names[0] : String(localized: "\(names.dropLast().joined(separator: ", ")) and \(names.last!)")
         return (
-            "\(who) Passed You",
-            "\(who) moved ahead of you in \(team) by spend over the last 7 days."
+            String(localized: "\(who) Passed You", comment: "Overtake alert title; the value is one or more names"),
+            String(localized: "\(who) moved ahead of you in \(team) by spend over the last 7 days.", comment: "Overtake alert: one or more names, then the team")
         )
     }
 
@@ -56,24 +56,31 @@ enum TeamEvents {
         guard let mine = stats.members.first(where: { $0.userID == me }) else { return nil }
         var parts: [String] = []
         if mine.totals.value(for: .cost) > 0 || mine.tokens > 0 {
-            var standing = "You were #\(mine.rank) of \(stats.members.count) with \(TeamsFormat.value(mine.totals, sort: .cost))"
-            if let change = mine.rankChange, change != 0 {
-                standing += change > 0 ? ", up \(change)" : ", down \(-change)"
+            let value = TeamsFormat.value(mine.totals, sort: .cost)
+            let rank = mine.rank
+            let count = stats.members.count
+            let standing: String
+            if let change = mine.rankChange, change > 0 {
+                standing = String(localized: "You were #\(rank) of \(count) with \(value), up \(change).")
+            } else if let change = mine.rankChange, change < 0 {
+                standing = String(localized: "You were #\(rank) of \(count) with \(value), down \(-change).")
+            } else {
+                standing = String(localized: "You were #\(rank) of \(count) with \(value).")
             }
-            parts.append(standing + ".")
+            parts.append(standing)
         } else {
-            parts.append("You had no usage.")
+            parts.append(String(localized: "You had no usage."))
         }
         if let leader = stats.members.first, leader.userID != me, leader.totals.costUSD > 0 {
-            parts.append("\(leader.displayName) led with \(TeamsFormat.value(leader.totals, sort: .cost)).")
+            parts.append(String(localized: "\(leader.displayName) led with \(TeamsFormat.value(leader.totals, sort: .cost))."))
         }
         let myTopModel = stats.models
             .compactMap { model in model.members.first { $0.userID == me }.map { (model.model, $0.costUSD) } }
             .max { $0.1 < $1.1 }
         if let myTopModel, myTopModel.1 > 0 {
-            parts.append("Your top model: \(myTopModel.0).")
+            parts.append(String(localized: "Your top model: \(myTopModel.0)."))
         }
-        return ("Last Week in \(team)", parts.joined(separator: " "))
+        return (String(localized: "Last Week in \(team)"), parts.joined(separator: " "))
     }
 
     // MARK: - Reactions
@@ -107,9 +114,9 @@ enum TeamEvents {
             if emojis[item.fromUserID] == nil { givers.append(item.fromUserID) }
             emojis[item.fromUserID, default: []].append(item.reaction.emoji)
         }
-        let name = { (id: String) in names[id] ?? "Someone" }
-        let body = givers.map { "\(name($0)) gave you \(emojis[$0, default: []].joined(separator: " "))." }
-        let title = givers.count == 1 ? "\(name(givers[0])) Reacted to You" : "\(givers.count) Teammates Reacted to You"
+        let name = { (id: String) in names[id] ?? String(localized: "Someone") }
+        let body = givers.map { String(localized: "\(name($0)) gave you \(emojis[$0, default: []].joined(separator: " ")).") }
+        let title = givers.count == 1 ? String(localized: "\(name(givers[0])) Reacted to You") : String(localized: "\(givers.count) Teammates Reacted to You")
         return (title, body.joined(separator: " "))
     }
 }

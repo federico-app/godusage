@@ -34,7 +34,7 @@ struct MemoryNewFactSheet: View {
                 TextField("Description", text: $descriptionText)
                 Picker("Type", selection: $factType) {
                     ForEach(Self.factTypes, id: \.self) { type in
-                        Text(type.capitalized).tag(type)
+                        Text(Self.label(forFactType: type)).tag(type)
                     }
                 }
                 .pickerStyle(.menu)
@@ -58,6 +58,17 @@ struct MemoryNewFactSheet: View {
         }
         .padding(20)
         .frame(width: 380)
+    }
+
+    /// The picker's name for a fact type; the stored value stays the lowercase frontmatter word.
+    private static func label(forFactType type: String) -> String {
+        switch type {
+        case "user": String(localized: "User", comment: "Memory fact type")
+        case "feedback": String(localized: "Feedback", comment: "Memory fact type")
+        case "project": String(localized: "Project", comment: "Memory fact type")
+        case "reference": String(localized: "Reference", comment: "Memory fact type")
+        default: type.capitalized
+        }
     }
 
     private var trimmedName: String {

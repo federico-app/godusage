@@ -33,7 +33,7 @@ struct GeneralSettingsPane: View {
                 // Click-to-record field; its ⓧ clears the combo and disables the shortcut.
                 SettingsRow("Global Shortcut") {
                     ShortcutRecorderField(name: .togglePopover)
-                        .hoverTooltip("Open GodUsage from anywhere")
+                        .hoverTooltip(String(localized: "Open GodUsage from anywhere"))
                 }
             }
             SettingsSection("Privacy") {

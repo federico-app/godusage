@@ -66,7 +66,7 @@ struct TeamCompareView: View {
                 Text("#\(member.rank)").font(.callout.weight(.semibold))
                 RankChangeBadge(member: member, range: stats.range.name, sort: sort)
             }
-            Text(TeamsFormat.perMillion(member.totals) ?? "No tokens yet")
+            Text(TeamsFormat.perMillion(member.totals) ?? String(localized: "No tokens yet"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -189,7 +189,7 @@ struct TeamCompareView: View {
         }
     }
 
-    private func section(_ title: String, subtitle: String, @ViewBuilder content: () -> some View) -> some View {
+    private func section(_ title: LocalizedStringKey, subtitle: LocalizedStringKey, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(.headline)

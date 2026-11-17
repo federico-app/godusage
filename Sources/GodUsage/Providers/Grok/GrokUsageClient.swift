@@ -22,11 +22,11 @@ enum GrokUsageError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .connectionFailed:
-            return "Grok billing request failed. Check your connection."
+            return String(localized: "Grok billing request failed. Check your connection.")
         case .invalidResponse:
-            return "Grok billing response changed."
+            return String(localized: "Grok billing response changed.")
         case .requestFailed(let statusCode):
-            return "Grok billing request failed (HTTP \(statusCode)). Try again later."
+            return String(localized: "Grok billing request failed (HTTP \(statusCode)). Try again later.")
         }
     }
 }

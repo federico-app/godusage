@@ -59,7 +59,7 @@ final class CursorProvider: ProviderRuntime {
                 .exportingHistory(
                     scope: .accountWide,
                     estimatedCost: true,
-                    sourceNote: "From your Cursor usage history"
+                    sourceNote: String(localized: "From your Cursor usage history")
                 )
         ] + WidgetDescriptor.spendTiles(
             provider: provider,
@@ -228,7 +228,7 @@ final class CursorProvider: ProviderRuntime {
                 var mapped = try await requestBasedResult(
                     accessToken: currentToken,
                     planName: displayPlanName,
-                    unavailableMessage: "Cursor request-based usage data unavailable. Try again later."
+                    unavailableMessage: String(localized: "Cursor request-based usage data unavailable. Try again later.")
                 )
                 await appendGrokBotUsage(to: &mapped.lines, accessToken: currentToken)
                 return snapshot(mapped)

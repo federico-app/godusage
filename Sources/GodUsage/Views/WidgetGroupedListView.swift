@@ -358,7 +358,7 @@ struct WidgetGroupedListView: View {
             layout.setMetricEnabled(descriptor.id, false)
         }
         if descriptor.pinnable {
-            Button(layout.isPinned(descriptor.id) ? "Unstar" : "Star for menu bar") {
+            Button(layout.isPinned(descriptor.id) ? String(localized: "Unstar") : String(localized: "Star for menu bar")) {
                 if layout.isPinned(descriptor.id) {
                     layout.setPinned(false, for: descriptor.id)
                 } else if layout.canPin(descriptor.id, matching: dataStore.isMetricApplicable) {

@@ -51,8 +51,8 @@ struct CustomizeProviderDetailView: View {
 
     private func metricSections(_ group: ProviderMetrics) -> some View {
         VStack(alignment: .leading, spacing: density.sectionSpacing) {
-            metricSection("Always Visible", metrics: group.alwaysShownMetrics, providerID: group.provider.id)
-            metricSection("On Demand", metrics: group.expandedMetrics, providerID: group.provider.id)
+            metricSection(String(localized: "Always Visible"), metrics: group.alwaysShownMetrics, providerID: group.provider.id)
+            metricSection(String(localized: "On Demand"), metrics: group.expandedMetrics, providerID: group.provider.id)
         }
     }
 
@@ -99,7 +99,7 @@ struct CustomizeProviderDetailView: View {
     private func metricRow(_ metric: WidgetDescriptor, in providerID: String) -> some View {
         let isActive = activeMetricID == metric.id
         return CustomizeMetricRow(
-            title: metric.title,
+            title: LocalizedMetricTitle.string(metric.title),
             // The grip is visual-only and publishes its frame (id "grip:<metric>") so the container
             // gesture can tell which row a drag started on. The drag gesture itself is on the section
             // stack, not the grip — see `metricDragGesture`.
@@ -252,12 +252,14 @@ private struct StarButton: View {
             Button {
                 if layout.canPin(metric.id, matching: dataStore.isMetricApplicable) {
                     layout.togglePin(metric.id, matching: dataStore.isMetricApplicable)
-                    layout.presentCustomizationNotice(pinned ? "Removed from menu bar" : "Starred for menu bar")
+                    layout.presentCustomizationNotice(
+                        pinned ? String(localized: "Removed from menu bar") : String(localized: "Starred for menu bar")
+                    )
                 } else {
                     shakeTrigger += 1
                     layout.presentCustomizationNotice(
                         layout.pinDenialReason(metric.id, matching: dataStore.isMetricApplicable)
-                            ?? "Up to 2 stars per provider",
+                            ?? String(localized: "Up to 2 stars per provider"),
                         tone: .notice
                     )
                 }

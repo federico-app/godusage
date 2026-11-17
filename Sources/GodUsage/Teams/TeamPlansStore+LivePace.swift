@@ -34,10 +34,11 @@ extension TeamPlansStore {
         return LivePace(pace: pace, now: now, previous: previous)
     }
 
-    /// After an upload, reloads your teams' plans (at most once a minute) so Live Pace and its alerts
-    /// follow your use while the popover is closed.
+    /// After an upload, reloads your teams' plans (at most once a minute) so Live Pace, its alerts and
+    /// the menu bar's team segment follow your use while the popover is closed.
     func reloadForLivePace(now: Date = Date()) async {
-        guard Self.livePaceShown || paceAlertAllowed(.slowDown) || paceAlertAllowed(.roomToSpare) else { return }
+        guard Self.livePaceShown || teams.showRankInMenuBar || paceAlertAllowed(.slowDown) || paceAlertAllowed(.roomToSpare)
+        else { return }
         if let lastPaceReload, now.timeIntervalSince(lastPaceReload) < Self.livePaceReloadInterval { return }
         lastPaceReload = now
         for team in teams.teams { await load(teamID: team.id) }

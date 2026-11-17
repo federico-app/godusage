@@ -44,7 +44,11 @@ struct PopoverTopBar: View {
     private var customizeTitle: String {
         layout.customizeProviderID.flatMap { id in
             layout.provider(id: id).map { container.displayName(for: $0) }
-        } ?? "Customize"
+        } ?? String(localized: "Customize")
+    }
+
+    private func providerName(_ providerID: String) -> String {
+        layout.provider(id: providerID).map { container.displayName(for: $0) } ?? providerID
     }
 
     private func customizeBack() {
@@ -87,7 +91,7 @@ struct PopoverTopBar: View {
         .glassButtonStyle()
         .buttonBorderShape(.circle)
         .controlSize(.large)
-        .hoverTooltip("Back")
+        .hoverTooltip(String(localized: "Back"))
         .accessibilityLabel("Back")
     }
 
@@ -103,8 +107,8 @@ struct PopoverTopBar: View {
         .glassButtonStyle()
         .buttonBorderShape(.circle)
         .controlSize(.large)
-        .hoverTooltip("Reset \(layout.provider(id: providerID).map { container.displayName(for: $0) } ?? providerID)")
-        .accessibilityLabel("Reset")
+        .hoverTooltip(String(localized: "Reset \(providerName(providerID))", comment: "Tooltip: reset one provider's customization; %@ is the provider name"))
+        .accessibilityLabel(Text("Reset", comment: "Accessibility: reset this provider's customization"))
     }
 
     private var resetAllButton: some View {
@@ -119,7 +123,7 @@ struct PopoverTopBar: View {
         .glassButtonStyle()
         .buttonBorderShape(.circle)
         .controlSize(.large)
-        .hoverTooltip("Reset All Customization")
+        .hoverTooltip(String(localized: "Reset All Customization"))
         .accessibilityLabel("Reset All Customization")
     }
 }

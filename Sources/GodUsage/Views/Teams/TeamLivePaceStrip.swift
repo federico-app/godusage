@@ -65,34 +65,42 @@ struct TeamLivePaceStrip: View {
     /// What the pill means, in words: the minutes are working time against the pace that uses
     /// exactly today's budget by the end of the working day.
     private var pillTooltip: String {
-        let end = live.end.map { " until \(LivePaceFormat.time($0))" } ?? ""
-        let even = "An even pace spreads today’s budget (\(LivePaceFormat.percent(live.budget))) over the working hours\(end)."
+        let budget = LivePaceFormat.percent(live.budget)
         let duration = LivePaceFormat.duration(live.ahead ?? 0)
         switch live.state {
         case .ahead, .onPace, .behind, .warmingUp:
             let ahead = live.ahead ?? 0
-            var text = abs(ahead) < LivePace.onPaceMargin
-                ? "You’re right on pace."
-                : ahead > 0
-                    ? "You’re \(duration) ahead of pace: you’ve already used what an even pace would reach only in \(duration) more of working time."
-                    : "You’re \(duration) under pace: an even pace would have reached your use \(duration) of working time ago, so you have room to spare."
-            text += " \(even) Now \(LivePaceFormat.percent(live.used)), expected \(LivePaceFormat.percent(live.expected)) (the dark tick on today’s bar)."
-            if useThisNow { text += " Another provider’s plan is running hot: this one has room." }
-            if live.state == .warmingUp { text += " It’s too early in the day to color it." }
+            let used = LivePaceFormat.percent(live.used), expected = LivePaceFormat.percent(live.expected)
+            let projected = LivePaceFormat.percent(live.projected)
+            // Whole sentences, joined with spaces.
+            var sentences = [
+                abs(ahead) < LivePace.onPaceMargin
+                    ? String(localized: "You’re right on pace.")
+                    : ahead > 0
+                        ? String(localized: "You’re \(duration) ahead of pace: you’ve already used what an even pace would reach only in \(duration) more of working time.")
+                        : String(localized: "You’re \(duration) under pace: an even pace would have reached your use \(duration) of working time ago, so you have room to spare."),
+                live.end.map {
+                    String(localized: "An even pace spreads today’s budget (\(budget)) over the working hours until \(LivePaceFormat.time($0)).")
+                } ?? String(localized: "An even pace spreads today’s budget (\(budget)) over the working hours."),
+                String(localized: "Now \(used), expected \(expected) (the dark tick on today’s bar).", comment: "Today's use now and the use an even pace expects now."),
+            ]
+            if useThisNow { sentences.append(String(localized: "Another provider’s plan is running hot: this one has room.")) }
+            if live.state == .warmingUp { sentences.append(String(localized: "It’s too early in the day to color it.")) }
             if ahead >= LivePace.onPaceMargin, [.behind, .onPace].contains(live.state) {
-                text += " At the current pace, though, you’ll end the day at \(LivePaceFormat.percent(live.projected)), under the budget."
+                sentences.append(String(localized: "At the current pace, though, you’ll end the day at \(projected), under the budget."))
             } else if ahead <= -LivePace.onPaceMargin, live.state == .ahead {
-                text += " At the current pace, though, you’ll end the day at \(LivePaceFormat.percent(live.projected)), over the budget."
+                sentences.append(String(localized: "At the current pace, though, you’ll end the day at \(projected), over the budget."))
             }
-            return text
+            return sentences.joined(separator: " ")
         case .overBudget:
-            return "Today’s budget is used up: \(LivePaceFormat.percent(live.used - live.budget)) over. The working days until the reset get less."
+            let over = LivePaceFormat.percent(live.used - live.budget)
+            return String(localized: "Today’s budget is used up: \(over) over. The working days until the reset get less.")
         case .notStarted:
-            return "Your working day hasn’t started yet. Today’s budget is \(LivePaceFormat.percent(live.budget))."
+            return String(localized: "Your working day hasn’t started yet. Today’s budget is \(budget).")
         case .dayDone:
-            return "Your working day is over. What today left, or took over its budget, moves to the working days until the reset."
+            return String(localized: "Your working day is over. What today left, or took over its budget, moves to the working days until the reset.")
         case .dayOff:
-            return "No working hours today: the weekly limit is spread over the working days until the reset."
+            return String(localized: "No working hours today: the weekly limit is spread over the working days until the reset.")
         }
     }
 
@@ -104,14 +112,13 @@ struct TeamLivePaceStrip: View {
             TeamTodayBar(geometry: TodayBarGeometry(live), color: color)
             HStack(spacing: 6) {
                 if collapsible {
-                    (Text(LivePaceFormat.percent(live.used)).fontWeight(.semibold).foregroundStyle(.primary)
-                        + Text(" of \(LivePaceFormat.percent(live.budget)) today"))
+                    Text("\(usedToday) of \(LivePaceFormat.percent(live.budget)) today", comment: "Today's use, bold, against today's budget.")
                     Spacer(minLength: 4)
                     weekToggle
                 } else {
-                    (Text(LivePaceFormat.percent(live.used)).fontWeight(.semibold).foregroundStyle(.primary) + Text(" used today"))
+                    Text("\(usedToday) used today", comment: "Today's use, bold.")
                     Spacer(minLength: 4)
-                    Text("budget \(LivePaceFormat.percent(live.budget))")
+                    Text("budget \(LivePaceFormat.percent(live.budget))", comment: "Today's budget, as a share of the weekly limit.")
                 }
             }
             .font(.caption2.monospacedDigit())
@@ -124,6 +131,10 @@ struct TeamLivePaceStrip: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    private var usedToday: Text {
+        Text(LivePaceFormat.percent(live.used)).fontWeight(.semibold).foregroundStyle(.primary)
     }
 
     /// "› Week": opens the week's boxes and Details of a plan that's fine.
@@ -141,7 +152,7 @@ struct TeamLivePaceStrip: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(showsWeek ? "Hide Week" : "Show Week")
+        .accessibilityLabel(showsWeek ? Text("Hide Week") : Text("Show Week"))
     }
 
     private func noteStyle(_ style: LivePaceDisplay.NoteStyle) -> AnyShapeStyle {
@@ -170,14 +181,14 @@ struct TeamLivePaceStrip: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(showsDetails ? "Hide Details" : "Show Details")
+            .accessibilityLabel(showsDetails ? Text("Hide Details") : Text("Show Details"))
             Spacer(minLength: 4)
             if let summary = LivePaceDisplay.futureSummary(live) {
-                (Text("\(summary.days): \(summary.planned) → ") + Text(summary.budget).fontWeight(.semibold).foregroundStyle(WeekLimitColors.noticeText))
+                Text("\(summary.days): \(summary.planned) → \(Text(summary.budget).fontWeight(.semibold).foregroundStyle(WeekLimitColors.noticeText))", comment: "The working days left: their planned budget, then the lowered one.")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .accessibilityLabel("\(summary.days) drop from \(summary.planned) to \(summary.budget) a day")
+                    .accessibilityLabel(Text("\(summary.days) drop from \(summary.planned) to \(summary.budget) a day", comment: "The working days left: their planned budget, then the lowered one."))
             }
         }
         if showsDetails {

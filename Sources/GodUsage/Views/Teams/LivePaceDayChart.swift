@@ -56,15 +56,15 @@ struct LivePaceDayChart: View {
         let ideal = { (date: Date) in live.budget * LivePace.overlap(spans, until: date) / total }
         let working = live.state.isWorking && now >= start && now <= end
         let nowX = x(min(max(now, start), end))
-        func label(_ text: String, _ style: Color, weight: Font.Weight = .regular) -> GraphicsContext.ResolvedText {
-            context.resolve(Text(text).font(Self.labelFont.weight(weight)).foregroundStyle(style))
+        func label(_ text: Text, _ style: Color, weight: Font.Weight = .regular) -> GraphicsContext.ResolvedText {
+            context.resolve(text.font(Self.labelFont.weight(weight)).foregroundStyle(style))
         }
 
         // Breaks, labeled at the top.
         for (index, span) in spans.enumerated().dropFirst() {
             let from = x(spans[index - 1].end), to = x(span.start)
             context.fill(Path(CGRect(x: from, y: plotTop, width: to - from, height: plotBottom - plotTop)), with: .color(.secondary.opacity(0.12)))
-            let text = label("Break", .secondary)
+            let text = label(Text("Break", comment: "A break in the working hours, on the day chart."), .secondary)
             if text.measure(in: size).width <= to - from + 16 {
                 context.draw(text, at: CGPoint(x: (from + to) / 2, y: plotTop - 1), anchor: .bottom)
             }
@@ -138,12 +138,12 @@ struct LivePaceDayChart: View {
 
         // The lines' names at their right ends, nudged apart when they'd overlap.
         var names: [(text: GraphicsContext.ResolvedText, center: CGFloat)] = [
-            (label("Budget \(LivePaceFormat.percent(live.budget))", .secondary), y(live.budget) - 7),
-            (label("Even pace", .secondary), y(live.budget) + 7),
+            (label(Text("Budget \(LivePaceFormat.percent(live.budget))", comment: "Chart line label: today's budget."), .secondary), y(live.budget) - 7),
+            (label(Text("Even pace", comment: "Chart line label: the pace that uses exactly today's budget."), .secondary), y(live.budget) + 7),
         ]
         if let projectedEnd {
             let endY = y(projectedEnd)
-            names.append((label("At this pace", projectionText), projectedEnd >= live.budget ? endY - 7 : endY + 7))
+            names.append((label(Text("At this pace", comment: "Chart line label: where the current pace leads."), projectionText), projectedEnd >= live.budget ? endY - 7 : endY + 7))
         }
         let centers = LivePaceChartLayout.nudge(names.map(\.center), height: Self.labelHeight, within: 0...plotBottom)
         for (name, center) in zip(names, centers) {
@@ -152,11 +152,11 @@ struct LivePaceDayChart: View {
 
         // Under the axis: the day's start and end, now, and when the budget runs out.
         let rowY = plotBottom + 3
-        let nowLabel = working ? label("Now \(LivePaceFormat.time(now))", .primary, weight: .semibold) : nil
+        let nowLabel = working ? label(Text("Now \(LivePaceFormat.time(now))", comment: "Chart axis label: the current time."), .primary, weight: .semibold) : nil
         let nowWidth = nowLabel?.measure(in: size).width ?? 0
         let nowCenter = LivePaceChartLayout.clampedCenter(nowX, labelWidth: nowWidth, in: width)
-        let startLabel = label(LivePaceFormat.time(start), .secondary)
-        let endLabel = label(LivePaceFormat.time(end), .secondary)
+        let startLabel = label(Text(verbatim: LivePaceFormat.time(start)), .secondary)
+        let endLabel = label(Text(verbatim: LivePaceFormat.time(end)), .secondary)
         let startWidth = startLabel.measure(in: size).width, endWidth = endLabel.measure(in: size).width
         if nowLabel == nil || !LivePaceChartLayout.overlap((nowCenter, nowWidth), (startWidth / 2, startWidth)) {
             context.draw(startLabel, at: CGPoint(x: 0, y: rowY), anchor: .topLeading)
@@ -168,7 +168,7 @@ struct LivePaceDayChart: View {
             context.draw(nowLabel, at: CGPoint(x: nowCenter, y: rowY), anchor: .top)
         }
         if let crossX, let runsOutAt = live.runsOutAt {
-            let text = label("Budget ends \(LivePaceFormat.time(runsOutAt))", projectionText, weight: .semibold)
+            let text = label(Text("Budget ends \(LivePaceFormat.time(runsOutAt))", comment: "Chart axis label: when today's budget runs out at the current pace (a time)."), projectionText, weight: .semibold)
             let center = LivePaceChartLayout.clampedCenter(crossX, labelWidth: text.measure(in: size).width, in: width)
             context.draw(text, at: CGPoint(x: center, y: rowY + Self.axisRow), anchor: .top)
         }

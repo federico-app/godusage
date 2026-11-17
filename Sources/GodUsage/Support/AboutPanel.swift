@@ -26,23 +26,26 @@ enum AboutPanel {
             .paragraphStyle: paragraph,
         ]
 
-        let credits = NSMutableAttributedString()
-        credits.append(NSAttributedString(string: "Created by ", attributes: base))
-        credits.append(link("Robin Ebers", "https://itsbyrob.in/x", base: base))
-        credits.append(NSAttributedString(string: "\nMaintained also by ", attributes: base))
-        credits.append(link("Mert", "https://github.com/validatedev", base: base))
-        credits.append(NSAttributedString(string: " & ", attributes: base))
-        credits.append(link("David", "https://github.com/davidarny", base: base))
-        credits.append(NSAttributedString(string: "\n\nOpen source on ", attributes: base))
-        credits.append(link("GitHub", "https://github.com/federico-app/godusage", base: base))
+        // Whole localized sentences; the names are then linked wherever the translation put them.
+        let author = "Robin Ebers", mert = "Mert", david = "David", github = "GitHub"
+        let text = [
+            String(localized: "Created by \(author)", comment: "About panel credits; the argument is a person's name"),
+            String(localized: "Maintained also by \(mert) & \(david)", comment: "About panel credits; the arguments are people's names"),
+            "",
+            String(localized: "Open source on \(github)", comment: "About panel credits; the argument is GitHub"),
+        ].joined(separator: "\n")
+        let credits = NSMutableAttributedString(string: text, attributes: base)
+        link(author, "https://itsbyrob.in/x", in: credits)
+        link(mert, "https://github.com/validatedev", in: credits)
+        link(david, "https://github.com/davidarny", in: credits)
+        link(github, "https://github.com/federico-app/godusage", in: credits)
         return credits
     }
 
-    private static func link(_ text: String, _ urlString: String, base: [NSAttributedString.Key: Any]) -> NSAttributedString {
-        var attributes = base
-        if let url = URL(string: urlString) {
-            attributes[.link] = url
-        }
-        return NSAttributedString(string: text, attributes: attributes)
+    /// Links the first occurrence of `name` in `credits`.
+    private static func link(_ name: String, _ urlString: String, in credits: NSMutableAttributedString) {
+        let range = (credits.string as NSString).range(of: name)
+        guard range.location != NSNotFound, let url = URL(string: urlString) else { return }
+        credits.addAttribute(.link, value: url, range: range)
     }
 }

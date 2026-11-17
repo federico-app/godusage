@@ -137,7 +137,7 @@ enum SQLiteError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .queryFailed(let message):
-            return message.isEmpty ? "SQLite query failed." : message
+            return message.isEmpty ? String(localized: "SQLite query failed.") : message
         }
     }
 }
@@ -575,7 +575,7 @@ struct SecurityKeychainAccessor: KeychainReading {
         case .missing:
             return nil
         case .unavailable:
-            throw KeychainError.readFailed("The keychain item could not be read without asking you.")
+            throw KeychainError.readFailed(String(localized: "The keychain item could not be read without asking you."))
         }
     }
 
@@ -631,14 +631,14 @@ struct SecurityKeychainAccessor: KeychainReading {
             // the item as the neutral deferral (Connect state), never a permission warning whose
             // Always Allow advice this build cannot honor.
             coordinator.recordContention(ticket)
-            throw KeychainError.readFailed("This build can't hold keychain approvals (ad-hoc signature). Use a signed build to connect.")
+            throw KeychainError.readFailed(String(localized: "This build can't hold keychain approvals (ad-hoc signature). Use a signed build to connect."))
         }
         if status != errSecSuccess && status != errSecItemNotFound && gateTurn != .available {
             // The refresh was cancelled before this read reached Security.framework. A synthetic
             // failure says nothing about the item's ACL and must not trip its breaker.
             coordinator.recordContention(ticket)
             AppLog.warn(.keychain, "interactive read for service '\(service)' was cancelled before reaching Security.framework")
-            throw KeychainError.readFailed("The keychain was busy. Try refreshing again.")
+            throw KeychainError.readFailed(String(localized: "The keychain was busy. Try refreshing again."))
         }
         switch status {
         case errSecSuccess:
@@ -660,7 +660,7 @@ struct SecurityKeychainAccessor: KeychainReading {
                 || status == errAuthorizationDenied
             coordinator.recordFailureCategory(ticket, category: denied ? .permissionDenied : .unreadable)
             let message = SecCopyErrorMessageString(status, nil) as String?
-                ?? "Keychain read failed with status \(status)."
+                ?? String(localized: "Keychain read failed with status \(status).")
             AppLog.warn(.keychain, "in-process read failed for service '\(service)' (status \(status))")
             throw KeychainError.readFailed(message)
         }
@@ -923,9 +923,9 @@ enum KeychainError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .writeFailed(let message):
-            return message.isEmpty ? "Keychain write failed." : message
+            return message.isEmpty ? String(localized: "Keychain write failed.") : message
         case .readFailed(let message):
-            return message.isEmpty ? "Keychain read failed." : message
+            return message.isEmpty ? String(localized: "Keychain read failed.") : message
         }
     }
 }

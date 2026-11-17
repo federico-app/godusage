@@ -17,12 +17,13 @@ enum MetricFormatter {
         case full
     }
 
-    /// Pinned to en_US so USD-denominated values render identically regardless of system locale, which
-    /// matches the menu bar's long-standing behavior.
-    private static let locale = Locale(identifier: "en_US")
+    /// Dollars stay en_US in every language ("$72.55", an owner decision). Counts follow the app's
+    /// language ("12,9K" in Italian) unless the caller passes `AppLocale.stable`, as the local HTTP
+    /// API does so its output stays machine-stable.
+    private static let locale = AppLocale.stable
 
-    /// A bare number in the given kind and style (no unit label).
-    static func number(_ value: Double, kind: MetricKind, style: Style) -> String {
+    /// A bare number in the given kind and style (no unit label). `countLocale` formats counts only.
+    static func number(_ value: Double, kind: MetricKind, style: Style, countLocale: Locale = AppLocale.current) -> String {
         switch kind {
         case .percent:
             // Percent is a bounded 0...100 domain, so clamp defensively: a bad sample (a provider
@@ -49,16 +50,16 @@ enum MetricFormatter {
             // form keeps every digit for the tooltip. Below 1,000 keeps up to one decimal either way, so
             // a fractional balance (e.g. 820.6) survives.
             if style != .full, abs(value) >= 1000 {
-                return value.formatted(.number.notation(.compactName).precision(.fractionLength(0...1)).locale(locale))
+                return AppLocale.compact(value, locale: countLocale)
             }
-            return value.formatted(.number.precision(.fractionLength(0...1)).locale(locale))
+            return value.formatted(.number.precision(.fractionLength(0...1)).locale(countLocale))
         }
     }
 
     /// A value with its unit label appended, e.g. "772 credits". Token, dollar, and percent values
     /// carry no label and render bare ("56.9M", "$4.08", "95%") — those rows show no unit, by design.
-    static func string(for value: MetricValue, style: Style) -> String {
-        let text = number(value.number, kind: value.kind, style: style)
+    static func string(for value: MetricValue, style: Style, countLocale: Locale = AppLocale.current) -> String {
+        let text = number(value.number, kind: value.kind, style: style, countLocale: countLocale)
         guard let label = value.label, !label.isEmpty else { return text }
         return "\(text) \(label)"
     }
@@ -105,27 +106,27 @@ enum MetricFormatter {
         if magnitude >= 1_000_000_000 {
             let scaled = value / 1_000_000_000
             return TotalSpendRingCenter(
-                primary: scaled.formatted(.number.precision(.fractionLength(0...1)).locale(locale)),
-                unit: "billion"
+                primary: AppLocale.decimal(scaled, maxDigits: 1),
+                unit: String(localized: "billion", comment: "Unit under a token total in the spend ring, e.g. 1.2 billion")
             )
         }
         if magnitude >= 1_000_000 {
             let scaled = value / 1_000_000
             return TotalSpendRingCenter(
-                primary: scaled.formatted(.number.precision(.fractionLength(0...1)).locale(locale)),
-                unit: "million"
+                primary: AppLocale.decimal(scaled, maxDigits: 1),
+                unit: String(localized: "million", comment: "Unit under a token total in the spend ring, e.g. 461.8 million")
             )
         }
         if magnitude >= 1_000 {
             let scaled = value / 1_000
             return TotalSpendRingCenter(
-                primary: scaled.formatted(.number.precision(.fractionLength(0...1)).locale(locale)),
-                unit: "thousand"
+                primary: AppLocale.decimal(scaled, maxDigits: 1),
+                unit: String(localized: "thousand", comment: "Unit under a token total in the spend ring, e.g. 12.4 thousand")
             )
         }
         return TotalSpendRingCenter(
-            primary: value.formatted(.number.precision(.fractionLength(0...1)).locale(locale)),
-            unit: "tokens"
+            primary: value.formatted(.number.precision(.fractionLength(0...1)).locale(AppLocale.current)),
+            unit: String(localized: "tokens", comment: "Unit under a small token total in the spend ring")
         )
     }
 }

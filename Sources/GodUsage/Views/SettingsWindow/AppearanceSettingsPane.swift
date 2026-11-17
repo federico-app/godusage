@@ -78,7 +78,7 @@ struct AppearanceSettingsPane: View {
                 SettingsRow("Always Show Pacing") {
                     Toggle("", isOn: $store.alwaysShowPacing)
                         .settingsSwitchStyle()
-                        .hoverTooltip("Show how you're pacing on every metric, not just ones near their limit")
+                        .hoverTooltip(String(localized: "Show how you're pacing on every metric, not just ones near their limit"))
                 }
             }
         }

@@ -10,8 +10,8 @@ enum ResetDisplayMode: String, Hashable, Sendable, CaseIterable {
 
     var label: String {
         switch self {
-        case .relative: return "Countdown"
-        case .absolute: return "Exact Time"
+        case .relative: return String(localized: "Countdown", comment: "Reset display option: time remaining")
+        case .absolute: return String(localized: "Exact Time", comment: "Reset display option: clock time")
         }
     }
 

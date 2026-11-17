@@ -2,7 +2,7 @@ import XCTest
 @testable import GodUsage
 
 /// The menu bar's team segment: the top line (rank, movement, spend) and the bottom line (your plan's
-/// pace, the most urgent plan winning, staleness, and the share fallback). Same working day as
+/// pace, the most urgent plan winning, staleness; the top line alone otherwise). Same working day as
 /// `LivePaceDisplayTests`: Thursday 2026-11-05, 07:00–11:00 and 12:00–16:00 UTC, a 20% budget.
 final class MenuBarTeamSegmentTests: XCTestCase {
     private func at(_ time: String) -> Date { GodUsageISO8601.date(from: "2026-11-05T\(time):00Z")! }
@@ -69,14 +69,44 @@ final class MenuBarTeamSegmentTests: XCTestCase {
 
     // MARK: - Bottom line
 
-    func testBottomLineFallsBackToTheShareWithoutPace() {
+    func testNoBottomLineWithoutPace() {
         let now = at("09:00")
-        XCTAssertEqual(MenuBarTeamSegment.bottomLine(standing: standing(syncedAt: now), paces: [], now: now), [MenuBarSpan("30%")])
+        // The share no longer fills the bottom line: it lives in the tooltip only.
+        XCTAssertNil(MenuBarTeamSegment.bottomLine(standing: standing(syncedAt: now), paces: [], now: now))
         XCTAssertNil(MenuBarTeamSegment.bottomLine(standing: standing(share: nil), paces: [], now: now))
         let ahead = live(used: 12, rate: 4, at: "11:30")
         XCTAssertEqual(
             MenuBarTeamSegment.bottomLine(standing: standing(syncedAt: at("11:20")), paces: [ahead], now: at("11:30")),
             [MenuBarSpan("+48m", .warning)]
+        )
+    }
+
+    /// Regression: the selected team has no plans, and a plan of another team covers you and runs ahead
+    /// of pace. This Week's Limit showed it ("2h 51m ahead of pace") while the menu bar fell back to the
+    /// share, because it only looked at the selected team's report.
+    func testBottomLineUsesAnotherTeamsPlanThatCoversYou() {
+        var ahead = live(used: 12, rate: 4, at: "11:30")
+        ahead.ahead = 2 * 3600 + 51 * 60
+        func plan(_ id: String, includesYou: Bool) -> TeamPlanReport {
+            TeamPlanReport(
+                id: id, provider: "claude", name: "Claude Max 100", monthlyCostUSD: 100, renewalDay: 1, memberIDs: nil,
+                includesYou: includesYou,
+                cycle: .init(from: "2026-11-01", to: "2026-11-30", daysElapsed: 5, daysTotal: 30, daysLeft: 25),
+                valueUSD: 0, projectedValueUSD: 0, projectedMultiple: 0, underused: false
+            )
+        }
+        func report(_ plans: [TeamPlanReport]) -> TeamPlansReport {
+            TeamPlansReport(plans: plans, totals: .init(monthlyCostUSD: 0, valueUSD: 0, projectedValueUSD: 0), canEdit: false)
+        }
+        let entries = YourTeamPlans.merge(selectedTeamID: "tutti", reports: [
+            (teamID: "tutti", report: report([])),
+            (teamID: "dev", report: report([plan("max", includesYou: true), plan("other", includesYou: false)])),
+        ])
+        let paces = TeamPlansStore.menuBarPaces(entries) { $0.plan.id == "max" ? ahead : nil }
+        XCTAssertEqual(paces.count, 1)
+        XCTAssertEqual(
+            MenuBarTeamSegment.bottomLine(standing: standing(syncedAt: at("11:20")), paces: paces, now: at("11:30")),
+            [MenuBarSpan("+2h 51m", .warning)]
         )
     }
 
@@ -87,11 +117,11 @@ final class MenuBarTeamSegmentTests: XCTestCase {
             MenuBarTeamSegment.bottomLine(standing: standing(syncedAt: at("12:00")), paces: [ahead], now: now),
             [MenuBarSpan("Upd 2h", .dim)]
         )
-        // Within the hour the live figure stays.
+        // Within the hour the live figure stays, and without a pace there is no bottom line.
         XCTAssertEqual(
-            MenuBarTeamSegment.bottomLine(standing: standing(syncedAt: at("13:01")), paces: [], now: now),
-            [MenuBarSpan("30%")]
+            MenuBarTeamSegment.bottomLine(standing: standing(syncedAt: at("13:01")), paces: [ahead], now: at("13:30"))?.count, 1
         )
+        XCTAssertNil(MenuBarTeamSegment.bottomLine(standing: standing(syncedAt: at("13:01")), paces: [], now: now))
     }
 
     func testShareMovesIntoTheTooltip() {
@@ -110,5 +140,19 @@ final class MenuBarTeamSegmentTests: XCTestCase {
         let content = MenuBarContent(groups: [group], bars: [])
         XCTAssertTrue(content.needsColor(style: .text))
         XCTAssertNotNil(MenuBarStripRenderer.image(for: content, style: .text))
+    }
+
+    @MainActor
+    func testTeamGroupWithoutPaceIsOneLineWithTheShareInTheTooltip() {
+        let group = MenuBarContentBuilder.teamGroup(standing: standing(syncedAt: at("13:50")), paces: [], now: at("14:00"))
+        XCTAssertEqual(group.metrics.map(\.displayText), ["#2 · $37"])
+        XCTAssertEqual(group.toolTip, "Team: 30% of the team’s spend today")
+        XCTAssertTrue(group.accessibilityTextIncludesShare)
+    }
+}
+
+private extension MenuBarContent.Group {
+    var accessibilityTextIncludesShare: Bool {
+        MenuBarContent(groups: [self], bars: []).accessibilityText.contains("30% of the team’s spend today")
     }
 }

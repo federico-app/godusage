@@ -418,14 +418,14 @@ final class StatusItemController: NSObject {
         if panel.isVisible { hidePanel() }
 
         let menu = NSMenu()
-        menu.addItem(ClosureMenuItem(title: "Settings", systemSymbol: "gearshape", keyEquivalent: ",") { [weak self] in
+        menu.addItem(ClosureMenuItem(title: String(localized: "Settings"), systemSymbol: "gearshape", keyEquivalent: ",") { [weak self] in
             self?.openSettings()
         })
-        menu.addItem(ClosureMenuItem(title: "Memory", systemSymbol: "brain", keyEquivalent: "m") { [weak self] in
+        menu.addItem(ClosureMenuItem(title: String(localized: "Memory"), systemSymbol: "brain", keyEquivalent: "m") { [weak self] in
             self?.openMemory()
         })
         menu.addItem(.separator())
-        menu.addItem(ClosureMenuItem(title: "Quit GodUsage", systemSymbol: "power", keyEquivalent: "q") {
+        menu.addItem(ClosureMenuItem(title: String(localized: "Quit GodUsage"), systemSymbol: "power", keyEquivalent: "q") {
             NSApplication.shared.terminate(nil)
         })
 

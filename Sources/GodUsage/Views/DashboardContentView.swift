@@ -76,7 +76,7 @@ struct DashboardContentView: View {
         // The team ranking sits right under Total Spend (above the provider cards) once you're
         // signed in and in a team; Advanced Stats inside it opens the Teams window.
         if showTeamSection, container.teams.isSignedIn, !container.teams.teams.isEmpty {
-            DashboardSectionDivider(title: "Team")
+            DashboardSectionDivider(title: String(localized: "Team", comment: "Dashboard section divider above the team cards"))
             TeamDashboardSection()
                 .padding(.bottom, density.sectionSpacing)
         }
@@ -90,7 +90,7 @@ struct DashboardContentView: View {
                 .padding(.horizontal, 16)
         } else {
             // Your own provider cards, labeled apart from the team's numbers above.
-            DashboardSectionDivider(title: "You")
+            DashboardSectionDivider(title: String(localized: "You", comment: "Dashboard section divider above your own provider cards"))
             WidgetGroupedListView(
                 groups: displayGroups,
                 reorderSpaceName: reorderSpaceName,

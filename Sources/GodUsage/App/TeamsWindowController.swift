@@ -87,7 +87,7 @@ final class TeamsWindowController: NSObject, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.isRestorable = false
         window.delegate = self
-        window.title = "Teams"
+        window.title = String(localized: "Teams", comment: "Window title")
         window.contentMinSize = Self.minimumContentSize
         window.contentViewController = hosting
         window.setContentSize(Self.defaultContentSize)

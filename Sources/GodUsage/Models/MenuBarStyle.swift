@@ -9,8 +9,8 @@ enum MenuBarStyle: String, Hashable, Sendable, CaseIterable {
 
     var label: String {
         switch self {
-        case .text: return "Text"
-        case .bars: return "Bars"
+        case .text: return String(localized: "Text", comment: "Menu bar style option: show numbers")
+        case .bars: return String(localized: "Bars", comment: "Menu bar style option: show meter bars")
         }
     }
 }

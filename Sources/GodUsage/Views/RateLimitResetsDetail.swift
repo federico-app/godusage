@@ -284,7 +284,7 @@ struct RateLimitResetsDetail: View {
                 Button("Use") { beginConfirm(entry.date) }
                     .controlSize(.small)
                     .disabled(nothingToReset)
-                    .hoverTooltip(nothingToReset ? "Nothing to reset right now" : nil)
+                    .hoverTooltip(nothingToReset ? String(localized: "Nothing to reset right now") : nil)
                     .transition(.opacity)
             } else if let countdown = entry.countdown {
                 Text(countdown)
@@ -306,13 +306,13 @@ struct RateLimitResetsDetail: View {
             Text("Use this reset?")
                 .font(.system(size: density.supportingPointSize, weight: .medium))
                 .foregroundStyle(.primary)
-            Text(confirmDetail ?? "Immediately reset your usage limits. This can't be undone.")
+            Text(confirmDetail ?? String(localized: "Immediately reset your usage limits. This can't be undone."))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
                 Button { runClaim(entry.date) } label: {
-                    Text("Reset").frame(maxWidth: .infinity)
+                    Text("Reset", comment: "Button: confirm using a rate-limit reset").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)

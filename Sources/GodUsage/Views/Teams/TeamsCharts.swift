@@ -18,7 +18,7 @@ struct TeamsCharts: View {
         VStack(alignment: .leading, spacing: 20) {
             chartSection(
                 "Who Uses What",
-                subtitle: "\(metricName) per member, split by provider."
+                subtitle: sort == .cost ? "Spend per member, split by provider." : "Tokens per member, split by provider."
             ) { memberChart }
             if efficiencyRows.count > 0 {
                 chartSection(
@@ -29,13 +29,17 @@ struct TeamsCharts: View {
             if stats.daily.count > 1 {
                 chartSection(
                     "By Day",
-                    subtitle: "Team \(metricName.lowercased()) per day, split by provider. Hover a day for its numbers."
+                    subtitle: sort == .cost
+                        ? "Team spend per day, split by provider. Hover a day for its numbers."
+                        : "Team tokens per day, split by provider. Hover a day for its numbers."
                 ) { dailyChart }
             }
             if stats.daily.contains(where: { !($0.models ?? []).isEmpty || $0.otherModels != nil }) {
                 chartSection(
                     "By Model",
-                    subtitle: "Team \(metricName.lowercased()) per day, week, or month, split by model. Hover a bar for its numbers."
+                    subtitle: sort == .cost
+                        ? "Team spend per day, week, or month, split by model. Hover a bar for its numbers."
+                        : "Team tokens per day, week, or month, split by model. Hover a bar for its numbers."
                 ) {
                     TeamModelsOverTimeChart(
                         stats: stats, sort: sort,
@@ -55,9 +59,10 @@ struct TeamsCharts: View {
         }
     }
 
-    private var metricName: String { sort == .cost ? "Spend" : "Tokens" }
+    /// The value axis's name, as the charts' accessibility label.
+    private var metricName: String { sort == .cost ? String(localized: "Spend") : String(localized: "Tokens") }
 
-    private func chartSection(_ title: String, subtitle: String, @ViewBuilder chart: () -> some View) -> some View {
+    private func chartSection(_ title: LocalizedStringKey, subtitle: LocalizedStringKey, @ViewBuilder chart: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(.headline)
@@ -121,7 +126,7 @@ struct TeamsCharts: View {
     }
 
     private func sharedRowName(_ account: TeamStats.SharedAccount) -> String {
-        "Shared \(providerName(account.provider))"
+        String(localized: "Shared \(providerName(account.provider))", comment: "Chart row: a provider account shared by the team, e.g. Shared Claude")
     }
 
     private var memberChart: some View {
@@ -366,14 +371,9 @@ enum TeamsFormat {
         Formatters.currency(value, fractionDigits: value == 0 || value >= 10 ? 0 : 2)
     }
 
+    /// "950", "12.9K" / "12,9K", "1.2M".
     static func tokens(_ value: Int) -> String {
-        let number = Double(value)
-        switch number {
-        case 1e9...: return String(format: "%.1fB", number / 1e9)
-        case 1e6...: return String(format: "%.1fM", number / 1e6)
-        case 1e3...: return String(format: "%.1fK", number / 1e3)
-        default: return "\(value)"
-        }
+        value >= 1000 ? AppLocale.compact(Double(value)) : "\(value)"
     }
 
     /// Day keys are calendar days with no time zone; parse them as local midnight.
@@ -384,7 +384,7 @@ enum TeamsFormat {
     }
 
     static func dayLabel(_ dayKey: String) -> String {
-        date(dayKey).map(Formatters.monthDayLabel) ?? dayKey
+        date(dayKey)?.formatted(.dateTime.month(.abbreviated).day().locale(AppLocale.current)) ?? dayKey
     }
 }
 
@@ -408,14 +408,15 @@ struct RankChangeBadge: View {
                 }
                 .font(.caption2.monospacedDigit().weight(.semibold))
                 .foregroundStyle(change > 0 ? AnyShapeStyle(Theme.positive) : AnyShapeStyle(.secondary))
-                .accessibilityLabel(change > 0
-                    ? "Up \(change) since \(range.previousLabel)"
-                    : "Down \(-change) since \(range.previousLabel)")
+                .accessibilityLabel(MemberDetailFormat.movementText(rankChange: change, hasUsage: true, range: range) ?? "")
             }
         } else if member.totals.value(for: sort) > 0 {
             Text("New")
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
+                // The rank column is narrow: Italian "Nuovo" would wrap.
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .accessibilityLabel("No usage in \(range.previousLabel)")
         }
     }

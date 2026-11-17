@@ -112,7 +112,7 @@ enum DevinUsageError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidResponse, .quotaUnavailable:
-            return "Devin quota data unavailable. Try again later."
+            return String(localized: "Devin quota data unavailable. Try again later.")
         }
     }
 }

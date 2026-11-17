@@ -21,7 +21,7 @@ struct ReactionButtons: View {
                 } label: {
                     HStack(spacing: 2) {
                         Text(reaction.emoji)
-                        if count > 0 { Text("\(count)").monospacedDigit() }
+                        if count > 0 { Text(verbatim: "\(count)").monospacedDigit() }
                     }
                     .font(compact ? .caption2 : .caption)
                     .padding(.horizontal, 6)
@@ -34,7 +34,7 @@ struct ReactionButtons: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(isMe)
-                .accessibilityLabel("\(reaction.accessibilityName), \(count)")
+                .accessibilityLabel(Text(verbatim: "\(reaction.accessibilityName), \(count)"))
                 .accessibilityAddTraits(mine ? .isSelected : [])
             }
         }
@@ -49,7 +49,7 @@ struct ReactionCounts: View {
         if reactions.total > 0 {
             HStack(spacing: 3) {
                 ForEach(TeamReaction.allCases.filter { reactions.count($0) > 0 }, id: \.self) { reaction in
-                    Text("\(reaction.emoji)\(reactions.count(reaction))").monospacedDigit()
+                    Text(verbatim: "\(reaction.emoji)\(reactions.count(reaction))").monospacedDigit()
                 }
             }
             .font(.caption2)
@@ -77,12 +77,12 @@ struct MemberBadges: View {
             if social.kingOfTheDay(teamID: teamID)?.userID == userID {
                 Image(systemName: "crown.fill")
                     .accessibilityLabel("Top spender today")
-                    .hoverTooltip("Top spender today")
+                    .hoverTooltip(String(localized: "Top spender today"))
             }
             if let champion = social.lastMonthChampion(teamID: teamID), champion.userID == userID {
                 Image(systemName: "trophy.fill")
                     .accessibilityLabel("\(champion.monthLabel) champion")
-                    .hoverTooltip("\(champion.monthLabel) champion: top spender of the month")
+                    .hoverTooltip(String(localized: "\(champion.monthLabel) champion: top spender of the month"))
             }
         }
         .font(.system(size: 10, weight: .semibold))
@@ -91,14 +91,23 @@ struct MemberBadges: View {
     }
 }
 
-/// "On pace for $412 in October · 26 days left".
+/// "On pace for $412 in October · 26 days left", or "Team on pace for …" for the team's.
 struct ProjectionText: View {
     let projection: TeamProjection
-    var prefix = "On pace for"
+    /// The team's projection rather than one member's.
+    var isTeam = false
 
     var body: some View {
-        Text("\(prefix) \(Formatters.currency(projection.projected)) in \(projection.monthName)")
-            + Text(projection.daysLeft > 0 ? " · \(projection.daysLeft) days left" : "").foregroundStyle(.secondary)
+        let amount = Formatters.currency(projection.projected)
+        let month = projection.monthName
+        let head = isTeam
+            ? Text("Team on pace for \(amount) in \(month)", comment: "The team's month-end spend projection: amount, month.")
+            : Text("On pace for \(amount) in \(month)", comment: "A month-end spend projection: amount, month.")
+        if projection.daysLeft > 0 {
+            head + Text(" · \(projection.daysLeft) days left").foregroundStyle(.secondary)
+        } else {
+            head
+        }
     }
 }
 
@@ -115,7 +124,7 @@ struct ChallengeSummaryRow: View {
                 Text(leaderText).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 6)
-            Text(challenge.finished ? "Ended" : challenge.daysLeftText)
+            Text(challenge.finished ? String(localized: "Ended", comment: "A finished challenge.") : challenge.daysLeftText)
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
         }
@@ -123,10 +132,14 @@ struct ChallengeSummaryRow: View {
 
     private var leaderText: String {
         let people = challenge.finished ? challenge.winners : challenge.standings.filter { $0.rank == 1 }
-        guard let first = people.first else { return challenge.finished ? "No winner" : "Nobody qualifies yet" }
-        let name = first.userID == me ? "You" : first.displayName
+        guard let first = people.first else {
+            return challenge.finished ? String(localized: "No winner") : String(localized: "Nobody qualifies yet")
+        }
+        let name = first.userID == me ? String(localized: "You") : first.displayName
         let value = challenge.kind.valueText(first.value)
-        return challenge.finished ? "🏅 \(name) won · \(value)" : "Leading: \(name) · \(value)"
+        return challenge.finished
+            ? String(localized: "🏅 \(name) won · \(value)", comment: "A finished challenge: winner, their value.")
+            : String(localized: "Leading: \(name) · \(value)", comment: "A running challenge: leader, their value.")
     }
 }
 
@@ -210,8 +223,8 @@ struct TeamChallengesSection: View {
             Text(challenge.kind.rule).font(.caption2).foregroundStyle(.secondary)
             ForEach(challenge.standings.prefix(5)) { standing in
                 HStack(spacing: 6) {
-                    Text("\(standing.rank)").font(.caption.monospacedDigit().weight(.semibold)).frame(width: 16, alignment: .trailing)
-                    Text(standing.userID == me ? "You" : standing.displayName).font(.caption).lineLimit(1)
+                    Text(verbatim: "\(standing.rank)").font(.caption.monospacedDigit().weight(.semibold)).frame(width: 16, alignment: .trailing)
+                    Text(standing.userID == me ? String(localized: "You") : standing.displayName).font(.caption).lineLimit(1)
                     Spacer()
                     Text(challenge.kind.valueText(standing.value)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 }
@@ -248,7 +261,7 @@ struct HallOfFameSection: View {
                 ForEach(Array(champions.enumerated()), id: \.element.id) { index, champion in
                     if index > 0 { Divider() }
                     HStack(spacing: 8) {
-                        Text("🏆")
+                        Text(verbatim: "🏆")
                         Text(champion.monthLabel).frame(width: 130, alignment: .leading)
                         Text(champion.displayName).fontWeight(.medium).lineLimit(1)
                         Spacer()

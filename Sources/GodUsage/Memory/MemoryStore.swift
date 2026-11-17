@@ -118,7 +118,7 @@ final class MemoryStore {
         // time budget) — surface that instead of the generic "nothing on this Mac" empty state.
         // With sources present the notes are informational and the log already has them.
         if scanned.isEmpty, !notes.isEmpty {
-            loadError = "The memory scan ran into problems and may have missed files. Check the log for details."
+            loadError = String(localized: "The memory scan ran into problems and may have missed files. Check the log for details.")
         }
         // A truncated or partially failed scan beside a non-empty inventory gets its own visible
         // warning — the sidebar must not present a partial list as the complete picture. Listing
@@ -127,9 +127,9 @@ final class MemoryStore {
         let budgetHit = notes.contains { $0.contains("hit its") && $0.contains("budget") }
         let readOrListFailed = notes.contains { $0.contains("could not list") || $0.contains("could not read") }
         scanWarning = if budgetHit {
-            "The scan ran out of time and this list may be incomplete. Refresh to rescan."
+            String(localized: "The scan ran out of time and this list may be incomplete. Refresh to rescan.")
         } else if readOrListFailed {
-            "Some files or folders could not be read, so this list may be incomplete. Check the log for details."
+            String(localized: "Some files or folders could not be read, so this list may be incomplete. Check the log for details.")
         } else {
             nil
         }
@@ -201,7 +201,7 @@ final class MemoryStore {
                 }
             case .failure(let error):
                 AppLog.error(.memory, "listing \(job.dbPath) failed: \(error.localizedDescription)")
-                result[job.index].footnote = "The memory database could not be read: \(error.localizedDescription)"
+                result[job.index].footnote = String(localized: "The memory database could not be read: \(error.localizedDescription)")
             }
         }
         return (result, refreshedCache)
@@ -506,13 +506,13 @@ enum MemoryStoreError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .documentIsReadOnly:
-            return "This memory is read-only and cannot be saved."
+            return String(localized: "This memory is read-only and cannot be saved.")
         case .notAFact:
-            return "Only memory fact files can be deleted."
+            return String(localized: "Only memory fact files can be deleted.")
         case .unknownInstructionsPath:
-            return "GodUsage does not know where this harness keeps its instruction file."
+            return String(localized: "GodUsage does not know where this harness keeps its instruction file.")
         case .indexContention:
-            return "MEMORY.md is being rewritten by a live session right now. Try again in a moment."
+            return String(localized: "MEMORY.md is being rewritten by a live session right now. Try again in a moment.")
         }
     }
 }

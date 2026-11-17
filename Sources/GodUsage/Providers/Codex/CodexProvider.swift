@@ -70,7 +70,7 @@ final class CodexProvider: ProviderRuntime {
                 .exportingHistory(
                     scope: .machineLocal,
                     estimatedCost: true,
-                    sourceNote: "From your Codex logs (estimated)"
+                    sourceNote: String(localized: "From your Codex logs (estimated)")
                 )
         ] + WidgetDescriptor.spendTiles(provider: provider)
     }
@@ -284,13 +284,12 @@ final class CodexProvider: ProviderRuntime {
     }
 
     static func localUsageSourceNote(hasPi: Bool, hasOpenCode: Bool) -> String {
-        var sources = ["Codex logs"]
-        if hasPi { sources.append("pi") }
-        if hasOpenCode { sources.append("OpenCode") }
-        let joined = sources.count > 2
-            ? sources.dropLast().joined(separator: ", ") + ", and " + sources[sources.count - 1]
-            : sources.joined(separator: " and ")
-        return "From your \(joined) (estimated)"
+        switch (hasPi, hasOpenCode) {
+        case (false, false): String(localized: "From your Codex logs (estimated)")
+        case (true, false): String(localized: "From your Codex logs and pi (estimated)")
+        case (false, true): String(localized: "From your Codex logs and OpenCode (estimated)")
+        case (true, true): String(localized: "From your Codex logs, pi, and OpenCode (estimated)")
+        }
     }
 
     /// Fetches the on-demand reset-credit balance (and per-credit expiry) without ever failing the

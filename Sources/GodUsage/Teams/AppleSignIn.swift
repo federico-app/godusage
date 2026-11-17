@@ -14,9 +14,9 @@ enum AppleSignInError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .cancelled:
-            "Sign in was cancelled."
+            String(localized: "Sign in was cancelled.")
         case .failed(let message):
-            "Sign in with Apple failed: \(message)"
+            String(localized: "Sign in with Apple failed: \(message)")
         }
     }
 }
@@ -60,7 +60,7 @@ final class AppleWebSignIn: AppleSignInProviding {
         let state = Self.randomToken()
         let verifier = Self.randomToken()
         guard let url = Self.startURL(baseURL: baseURL, state: state, codeVerifier: verifier, scheme: scheme) else {
-            throw AppleSignInError.failed("The sign-in address is invalid.")
+            throw AppleSignInError.failed(String(localized: "The sign-in address is invalid."))
         }
         do {
             let callbackURL: URL = try await withCheckedThrowingContinuation { continuation in
@@ -73,7 +73,7 @@ final class AppleWebSignIn: AppleSignInProviding {
                         return
                     }
                     try? await Task.sleep(for: Self.timeout)
-                    Self.finish(state: state, with: .failure(AppleSignInError.failed("The sign-in took too long. Try again.")))
+                    Self.finish(state: state, with: .failure(AppleSignInError.failed(String(localized: "The sign-in took too long. Try again."))))
                 }
             }
             return try Self.result(from: callbackURL, expectedState: state, codeVerifier: verifier, scheme: scheme)
@@ -109,14 +109,14 @@ final class AppleWebSignIn: AppleSignInProviding {
 
     static func openInSafari(_ url: URL) async throws {
         guard let safari = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Safari") else {
-            throw AppleSignInError.failed("Safari isn't available on this Mac.")
+            throw AppleSignInError.failed(String(localized: "Safari isn't available on this Mac."))
         }
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             NSWorkspace.shared.open([url], withApplicationAt: safari, configuration: configuration) { _, error in
                 if let error {
-                    continuation.resume(throwing: AppleSignInError.failed("Safari couldn't open the sign-in page: \(error.localizedDescription)"))
+                    continuation.resume(throwing: AppleSignInError.failed(String(localized: "Safari couldn't open the sign-in page: \(error.localizedDescription)")))
                 } else {
                     continuation.resume()
                 }
@@ -140,7 +140,7 @@ final class AppleWebSignIn: AppleSignInProviding {
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let value = { (name: String) in items.first { $0.name == name }?.value }
         guard url.scheme == scheme, url.host() == "auth", value("state") == expectedState else {
-            throw AppleSignInError.failed("The sign-in response didn't match this sign-in. Try again.")
+            throw AppleSignInError.failed(String(localized: "The sign-in response didn't match this sign-in. Try again."))
         }
         switch value("error") {
         case nil:
@@ -148,12 +148,12 @@ final class AppleWebSignIn: AppleSignInProviding {
         case "cancelled":
             throw AppleSignInError.cancelled
         case "invalid_token":
-            throw AppleSignInError.failed("Apple's response couldn't be verified. Try again.")
+            throw AppleSignInError.failed(String(localized: "Apple's response couldn't be verified. Try again."))
         default:
-            throw AppleSignInError.failed("Apple couldn't complete the sign-in. Try again.")
+            throw AppleSignInError.failed(String(localized: "Apple couldn't complete the sign-in. Try again."))
         }
         guard let code = value("code"), !code.isEmpty else {
-            throw AppleSignInError.failed("The sign-in response had no code. Try again.")
+            throw AppleSignInError.failed(String(localized: "The sign-in response had no code. Try again."))
         }
         return AppleSignInResult(code: code, codeVerifier: codeVerifier)
     }
