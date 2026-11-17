@@ -66,6 +66,10 @@ extension ClaudeProvider {
         } else {
             AppLog.error(tag, "reset claim: \(outcome) (\(response.statusCode)): \(preview)")
         }
+        if outcome == .success {
+            let grantClears = check.status?.grants.first(where: { $0.id == grantID })?.clears ?? []
+            lastResetClaimCleared = Self.clearedWindows(from: response, grantClears: grantClears)
+        }
         switch outcome {
         case .success, .unconfirmed:
             forgetGrantsAfterResetClaim()
@@ -185,6 +189,18 @@ extension ClaudeProvider {
         return outcome(result) ?? .failed
     }
 
+    /// The windows a successful claim refilled: the answer's `cleared` list (e.g. `five_hour`, `seven_day`,
+    /// `seven_day_overage_included`), else the grant's `clears` read before the claim. Empty when neither
+    /// names one (logged): the Teams quota log then infers the claim from the drop in the share used.
+    nonisolated static func clearedWindows(from response: HTTPResponse, grantClears: [String]) -> [String] {
+        let cleared = (ProviderParse.jsonObject(response.body)?["cleared"] as? [Any])?.compactMap { $0 as? String } ?? []
+        if !cleared.isEmpty { return cleared }
+        if grantClears.isEmpty {
+            AppLog.warn(LogTag.plugin("claude"), "reset claim: the answer and the grant name no cleared window")
+        }
+        return grantClears
+    }
+
     private static let grantIDPattern = "^[a-z0-9_-]{1,40}$"
     private static let requestIDPattern = "^[A-Za-z0-9_-]{1,64}$"
 
@@ -199,10 +215,18 @@ extension ClaudeProvider {
 final class ClaudeResetClaimService: ResetClaimService {
     private let provider: ClaudeProvider
     private let refreshAfterClaim: () async -> Void
+    private let recordClaim: (_ at: Date, _ cleared: [String]) -> Void
 
-    init(provider: ClaudeProvider, refreshAfterClaim: @escaping () async -> Void = {}) {
+    /// `recordClaim` notes a successful claim for the Teams quota log before the refresh after it, so
+    /// the upload that refresh triggers already counts the claim (see `ResetClaimLedger`).
+    init(
+        provider: ClaudeProvider,
+        refreshAfterClaim: @escaping () async -> Void = {},
+        recordClaim: @escaping (_ at: Date, _ cleared: [String]) -> Void = { _, _ in }
+    ) {
         self.provider = provider
         self.refreshAfterClaim = refreshAfterClaim
+        self.recordClaim = recordClaim
     }
 
     var isClaimable: Bool { provider.resetGrantsCheck?.status?.claimableGrantID != nil }
@@ -211,6 +235,9 @@ final class ClaudeResetClaimService: ResetClaimService {
     /// Claude always spends `next_grant_id`, so the picked node's expiry is ignored.
     func claim(creditExpiringAt expiry: Date, redeemRequestID: String) async -> ResetClaimOutcome {
         let outcome = await provider.claimResetGrant(redeemRequestID: redeemRequestID)
+        if outcome == .success, let cleared = provider.lastResetClaimCleared, !cleared.isEmpty {
+            recordClaim(provider.now(), cleared)
+        }
         if outcome != .failed { await refreshAfterClaim() }
         return outcome
     }

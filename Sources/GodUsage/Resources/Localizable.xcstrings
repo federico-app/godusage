@@ -62,6 +62,28 @@
         }
       }
     },
+    "%@ %@ of %@ this week" : {
+      "comment" : "A week with a claimed limit reset: the use (each stretch between resets, added up), then the week's capacity, e.g. ↻ 95% + 40% of 200% this week",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@ su %3$@ questa settimana"
+          }
+        }
+      }
+    },
+    "%@ %@ this week · %@ today · resets %@" : {
+      "comment" : "An account's week after a claimed limit reset, e.g. ↻ 135% of 200% this week · 6.0% today · resets Thu 09:00",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@ questa settimana · %3$@ oggi · reset %4$@"
+          }
+        }
+      }
+    },
     "%@ %@, Use This Now" : {
       "comment" : "VoiceOver: account, its metrics, then a hint that this account should be used now",
       "localizations" : {
@@ -619,6 +641,17 @@
         }
       }
     },
+    "%@ of %@" : {
+      "comment" : "A week's use against its capacity after a claimed limit reset, e.g. 135% of 200%",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ su %2$@"
+          }
+        }
+      }
+    },
     "%@ of %@ today" : {
       "comment" : "Today's use, bold, against today's budget.",
       "localizations" : {
@@ -777,6 +810,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ acquistati"
+          }
+        }
+      }
+    },
+    "%@ reset claimed" : {
+      "comment" : "Weekly History legend: a limit reset was claimed that day; the week counts against one more limit.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ reset usato"
           }
         }
       }
@@ -1047,6 +1091,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@, si apre nel browser"
+          }
+        }
+      }
+    },
+    "%@, reset claimed" : {
+      "comment" : "A day in the week's boxes on which a limit reset was claimed.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, reset usato"
           }
         }
       }
@@ -12420,6 +12475,47 @@
         }
       }
     },
+    "incl. %lld resets" : {
+      "comment" : "Quota used counts windows with claimed limit resets against their larger capacity, e.g. incl. 1 reset",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "incl. %lld reset"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "incl. %lld resets"
+                }
+              }
+            }
+          }
+        },
+        "it" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "incl. %lld reset"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "incl. %lld reset"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "just now" : {
       "comment" : "A member synced less than a minute ago.",
       "localizations" : {
@@ -12564,6 +12660,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "nessuna lettura"
+          }
+        }
+      }
+    },
+    "of %@%% %@" : {
+      "comment" : "Under a week's use in Weekly History: the week's capacity after a claimed limit reset, e.g. of 200% ↻",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "su %1$@%% %2$@"
           }
         }
       }
@@ -12721,6 +12828,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "rinnovo dopo %@"
+          }
+        }
+      }
+    },
+    "reset claimed" : {
+      "comment" : "A day on which a limit reset was claimed.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reset usato"
           }
         }
       }

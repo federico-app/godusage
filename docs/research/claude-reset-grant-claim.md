@@ -75,3 +75,9 @@ After Success or Unconfirmed, GodUsage drops its hourly grants answer, the cache
    A successful claim also starts a short `cooldown_until`, about two minutes here. `cooldown_until` carries fractional seconds.
 
 GodUsage's mocked tests: `Tests/GodUsageTests/ClaudeResetClaimTests.swift`.
+
+## What a claim does to the windows
+
+The upstream claim above cleared `five_hour`, `seven_day`, and `seven_day_overage_included` at 2026-10-18 and answered `weekly_resets_at` 2026-10-20: the weekly window keeps its reset time, so the same week holds another full limit (the share drops to 0 with the same `resets_at`). Codex differs: its reset starts a new weekly window from the claim. Teams counts both (see [Teams](../teams.md) and `backend/src/quotaClaims.ts`).
+
+A reset that clears only Fable's weekly limit has not been seen live. Fable's weekly window comes from the usage response's `limits[]` (`kind: "weekly_scoped"`, `scope.model.display_name: "Fable"`), not from a `seven_day_<model>` key, and no grant or claim answer naming it has been captured. GodUsage therefore counts a claim for the general weekly limit only when `cleared` (else the grant's `clears`) names `seven_day` or `seven_day_overage_included`; any `seven_day_<model>` name, or one containing `fable`, counts for that model's window only, and unknown names are logged and ignored.

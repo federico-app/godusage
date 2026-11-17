@@ -446,7 +446,7 @@ final class TeamsStore {
         }
         log.record(readings, perDeviceKey: { reading in
             TeamAccountKey.make(provider: reading.provider, accountID: Self.localAccountID(cardID: reading.cardID, deviceID: deviceID))
-        }, now: now())
+        }, now: now(), recordedClaims: ResetClaimLedger.claims(defaults: defaults, now: now()))
         do {
             defaults.set(try JSONEncoder().encode(log), forKey: Self.quotaLogKey)
         } catch {
