@@ -74,21 +74,56 @@ enum MenuBarStripRenderer {
     }
 
     private static func textPresentation(for content: MenuBarContent) -> MenuBarStripPresentation? {
-        guard !content.isEmpty else { return nil }
-        let renderer = ImageRenderer(content: MenuBarTextStrip(content: content))
-        renderer.scale = 2
-        guard let rendered = renderer.cgImage else { return nil }
-        let cgImage = trimmedToVisibleContent(rendered) ?? rendered
-        let image = NSImage(
-            cgImage: cgImage,
-            size: NSSize(width: CGFloat(cgImage.width) / renderer.scale, height: CGFloat(cgImage.height) / renderer.scale)
-        )
-        image.isTemplate = true
+        guard !content.isEmpty,
+              let image = stripImage(colored: content.needsColor(style: .text), trim: true, view: { palette in
+                  MenuBarTextStrip(content: content, palette: palette)
+              })
+        else { return nil }
         image.accessibilityDescription = content.accessibilityText
         return MenuBarStripPresentation(
             image: image,
             toolTipRegions: textToolTipRegions(for: content, imageSize: image.size)
         )
+    }
+
+    /// Renders a strip view. Without color it is one template image. With color it is drawn once
+    /// per menu-bar appearance, and the image draws the variant matching the appearance it is drawn
+    /// in, so it follows a light or dark menu bar (and a wallpaper change) without re-rendering.
+    private static func stripImage<V: View>(
+        colored: Bool, trim: Bool, @ViewBuilder view: (MenuBarPalette) -> V
+    ) -> NSImage? {
+        let scale: CGFloat = 2
+        func render(_ palette: MenuBarPalette) -> CGImage? {
+            let renderer = ImageRenderer(content: view(palette))
+            renderer.scale = scale
+            return renderer.cgImage
+        }
+        guard colored else {
+            guard let rendered = render(.template) else { return nil }
+            let cgImage = trim ? (trimmedToVisibleContent(rendered) ?? rendered) : rendered
+            let image = NSImage(cgImage: cgImage, size: pointSize(cgImage, scale: scale))
+            image.isTemplate = true
+            return image
+        }
+        guard let lightRender = render(.light), let darkRender = render(.dark) else { return nil }
+        // Both variants share one layout, so one crop fits both.
+        let bounds = trim ? visibleBounds(of: lightRender) : nil
+        let light = bounds.flatMap { lightRender.cropping(to: $0) } ?? lightRender
+        let dark = bounds.flatMap { darkRender.cropping(to: $0) } ?? darkRender
+        let image = NSImage(size: pointSize(light, scale: scale), flipped: false) { rect in
+            let drawing = NSAppearance.currentDrawing()
+            let match = drawing.bestMatch(from: [.aqua, .darkAqua, .vibrantLight, .vibrantDark])
+            let isDark = match == .darkAqua || match == .vibrantDark
+            NSGraphicsContext.current?.cgContext.draw(isDark ? dark : light, in: rect)
+            return true
+        }
+        // Draw on every pass: a cached bitmap would keep the appearance it was first drawn in.
+        image.cacheMode = .never
+        return image
+    }
+
+    private static func pointSize(_ image: CGImage, scale: CGFloat) -> NSSize {
+        NSSize(width: CGFloat(image.width) / scale, height: CGFloat(image.height) / scale)
     }
 
     /// Measures each segment using the exact view shared by the flattened strip, then partitions the
@@ -101,7 +136,7 @@ enum MenuBarStripRenderer {
     ) -> [MenuBarToolTipRegion] {
         guard !content.groups.isEmpty, imageSize.width > 0 else { return [] }
         let widths = content.groups.compactMap { group -> CGFloat? in
-            let renderer = ImageRenderer(content: MenuBarTextSegment(group: group))
+            let renderer = ImageRenderer(content: MenuBarTextSegment(group: group, palette: .template))
             renderer.scale = 2
             return renderer.cgImage.map { CGFloat($0.width) / renderer.scale }
         }
@@ -123,7 +158,7 @@ enum MenuBarStripRenderer {
                 : (segmentX + width + spacing / 2) * scale
             segmentX += width + spacing
             return MenuBarToolTipRegion(
-                displayName: group.displayName,
+                displayName: group.toolTip,
                 rect: CGRect(x: minX, y: 0, width: max(0, maxX - minX), height: imageSize.height)
             )
         }
@@ -167,27 +202,21 @@ enum MenuBarStripRenderer {
     /// The compact Bars glyph (≤4 bounded-metric bars), or `nil` when no pinned metric has a fill.
     static func barsImage(for content: MenuBarContent) -> NSImage? {
         let fractions = content.bars.map(\.fraction)
+        let warnings = content.bars.map(\.isOverPace)
         let exhausted = content.groups.filter(\.isDimmed)
         guard !fractions.isEmpty || !exhausted.isEmpty else { return nil }
-        let renderer = ImageRenderer(content: HStack(spacing: 8) {
-            if !fractions.isEmpty {
-                HStack(spacing: 2) {
-                    MenuBarBars(fractions: fractions, side: 18)
-                    // The bars flatten providers, so one flame flags that any bar is over pace.
-                    if content.bars.contains(where: \.isOverPace) {
-                        Image(systemName: "flame.fill").font(.system(size: 10, weight: .bold))
-                    }
+        let image = stripImage(colored: content.needsColor(style: .bars), trim: false) { palette in
+            HStack(spacing: 8) {
+                if !fractions.isEmpty {
+                    // A bar over pace fills in orange.
+                    MenuBarBars(fractions: fractions, warnings: warnings, side: 18, palette: palette)
                 }
-                .foregroundStyle(.black)
+                ForEach(exhausted, id: \.providerID) { group in
+                    MenuBarTextSegment(group: group, palette: palette)
+                }
             }
-            ForEach(exhausted, id: \.providerID) { group in
-                MenuBarTextSegment(group: group)
-            }
-        })
-        renderer.scale = 2
-        guard let image = renderer.nsImage else { return nil }
-        image.isTemplate = true
-        image.accessibilityDescription = content.accessibilityText
+        }
+        image?.accessibilityDescription = content.accessibilityText
         return image
     }
 
@@ -243,98 +272,15 @@ private struct MenuBarPrivacyLabel: View {
     }
 }
 
-private struct MenuBarTextStrip: View {
-    let content: MenuBarContent
-    static let segmentSpacing: CGFloat = 11
-
-    var body: some View {
-        HStack(spacing: Self.segmentSpacing) {
-            ForEach(content.groups, id: \.providerID) { group in
-                MenuBarTextSegment(group: group)
-            }
-        }
-        .foregroundStyle(.black)
-        .padding(.horizontal, 2)
-        .padding(.vertical, 1)
-        .fixedSize()
-    }
-}
-
-/// One provider/account segment shared by the flattened strip and its tooltip-width measurement.
-private struct MenuBarTextSegment: View {
-    let group: MenuBarContent.Group
-
-    var body: some View {
-        HStack(spacing: 4) {
-            glyph(group.icon)
-                .opacity(group.isDimmed ? 0.4 : 1)
-            if !group.metrics.isEmpty { metricsView(group.metrics) }
-        }
-        .monospacedDigit()
-        .fixedSize()
-    }
-
-    /// A provider's pinned values, no labels: one metric as a single large number, two stacked on two
-    /// tight lines (much narrower than side-by-side), read positionally.
-    @ViewBuilder
-    private func metricsView(_ metrics: [MenuBarContent.Metric]) -> some View {
-        if metrics.count <= 1, let metric = metrics.first {
-            HStack(spacing: 2) {
-                if metric.isOverPace { flame(size: 10) }
-                Text(metric.value)
-            }
-            .font(.system(size: 12, weight: .bold))
-        } else {
-            VStack(alignment: .trailing, spacing: -2) {
-                ForEach(metrics, id: \.id) { metric in
-                    HStack(spacing: 1) {
-                        if metric.isOverPace { flame(size: 7) }
-                        Text(metric.value)
-                    }
-                }
-            }
-            .font(.system(size: 9, weight: .semibold))
-            .fixedSize()
-        }
-    }
-
-    /// The dashboard's over-pace flame, shrunk to the value's line height and placed before it.
-    private func flame(size: CGFloat) -> some View {
-        Image(systemName: "flame.fill")
-            .font(.system(size: size, weight: .bold))
-    }
-
-    /// Side length of the glyph box. Sized to fill the strip's height so the mark reads at the same
-    /// scale as the dual-line metric block beside it (the single number is shorter), instead of
-    /// floating small in the middle. `ProviderIconShape` already normalizes every mark to its true
-    /// bounding box, so a near-zero `inset` here makes each provider fill this box uniformly.
-    private static let glyphSide: CGFloat = 16
-
-    @ViewBuilder
-    private func glyph(_ icon: IconSource) -> some View {
-        if let mark = ProviderMarks.mark(for: icon.providerID) {
-            ProviderIconShape(mark: mark, inset: 0.04)
-                .fill(Color.black)
-                .frame(width: Self.glyphSide, height: Self.glyphSide)
-        } else if icon.providerID == TeamsStore.menuBarGroupID {
-            Image(systemName: ProviderMarks.symbolFallback(for: icon.providerID))
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(Color.black)
-                .frame(width: Self.glyphSide - 2, height: Self.glyphSide - 2)
-        } else {
-            Circle().fill(Color.black).frame(width: Self.glyphSide - 1, height: Self.glyphSide - 1)
-        }
-    }
-}
-
 /// Draws up to four horizontal usage bars into a compact square — a 1:1 port of the Tauri edition's
-/// tray bars: track 0.16 / fill 1.0 / remainder 0.24 opacity (black, so the template tints them), a
-/// rounded leading edge with a small rounded moving edge, and near-full quantization so a 97% bar still
-/// shows a visible tail.
+/// tray bars: track 0.16 / fill 1.0 / remainder 0.24 opacity of the strip color (black in a template,
+/// so macOS tints it), a rounded leading edge with a small rounded moving edge, and near-full
+/// quantization so a 97% bar still shows a visible tail. A bar over pace fills in orange.
 private struct MenuBarBars: View {
     let fractions: [Double]
+    let warnings: [Bool]
     let side: CGFloat
+    let palette: MenuBarPalette
 
     var body: some View {
         Canvas { context, size in
@@ -362,7 +308,7 @@ private struct MenuBarBars: View {
 
             context.fill(
                 bar(x: trackX, y: y, w: trackW, h: trackH, leading: rx, trailing: rx),
-                with: .color(.black.opacity(0.16))
+                with: .color(palette.primary.opacity(0.16))
             )
 
             let fill = MenuBarBarGeometry.fill(trackW: trackW, fraction: i < fractions.count ? fractions[i] : 0)
@@ -370,14 +316,14 @@ private struct MenuBarBars: View {
                 let trailing = fill.fillW >= trackW ? rx : max(0, (rx * 0.35).rounded(.down))
                 context.fill(
                     bar(x: trackX, y: y, w: fill.fillW, h: trackH, leading: rx, trailing: trailing),
-                    with: .color(.black)
+                    with: .color(i < warnings.count && warnings[i] ? palette.warning : palette.primary)
                 )
             }
             if fill.fillW > 0, fill.remainderW > 0, let dividerX = fill.dividerX {
                 context.fill(
                     bar(x: trackX + dividerX, y: y, w: fill.remainderW, h: trackH,
                         leading: max(0, (rx * 0.2).rounded(.down)), trailing: rx),
-                    with: .color(.black.opacity(0.24))
+                    with: .color(palette.primary.opacity(0.24))
                 )
             }
         }
