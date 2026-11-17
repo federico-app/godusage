@@ -5110,6 +5110,17 @@
     "GodUsage %@" : {
       "shouldTranslate" : false
     },
+    "GodUsage %@ available" : {
+      "comment" : "Menu bar: VoiceOver and tooltip for the update arrow; the argument is the new version, e.g. 1.9.1",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GodUsage %@ disponibile"
+          }
+        }
+      }
+    },
     "GodUsage %@ is ready to download." : {
       "localizations" : {
         "it" : {

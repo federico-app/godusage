@@ -56,10 +56,13 @@ struct MenuBarContent: Equatable {
     let groups: [Group]
     /// Bounded metrics (those with a fill) for the Bars style, flattened in order and capped to four.
     let bars: [Metric]
+    /// The version of a pending update, drawn as the trailing blue arrow (`MenuBarUpdateIndicator`).
+    /// `nil` when there is none, or while screen-share privacy conceals the strip.
+    var updateVersion: String? = nil
 
-    /// Nothing is pinned, every pinned provider is disabled, or no pinned metric has data yet — the
-    /// menu bar falls back to the app icon.
-    var isEmpty: Bool { groups.isEmpty }
+    /// Nothing to draw: nothing is pinned, every pinned provider is disabled, or no pinned metric
+    /// has data yet, and no update is pending — the menu bar falls back to the app icon.
+    var isEmpty: Bool { groups.isEmpty && updateVersion == nil }
 
     /// Whether two contents render identically under `style` — the strip cache's memo predicate.
     /// The Text style draws each metric's text but never its `fraction`. Comparing only what the
@@ -68,7 +71,7 @@ struct MenuBarContent: Equatable {
     /// from paying a full re-render: N+1 `ImageRenderer` passes plus a per-pixel bounds scan.
     func isRenderEquivalent(to other: MenuBarContent, style: MenuBarStyle) -> Bool {
         // Both styles bake `accessibilityText` — group names, labels, values — into the image.
-        guard groups.count == other.groups.count else { return false }
+        guard groups.count == other.groups.count, updateVersion == other.updateVersion else { return false }
         let groupTextMatches = zip(groups, other.groups).allSatisfy { mine, theirs in
             mine.providerID == theirs.providerID
                 && mine.displayName == theirs.displayName
@@ -94,9 +97,10 @@ struct MenuBarContent: Equatable {
         }
     }
 
-    /// Whether any part of the strip is drawn in color (orange, green, or a badge), so the image
-    /// can't be a template.
+    /// Whether any part of the strip is drawn in color (orange, green, a badge, or the blue update
+    /// arrow), so the image can't be a template.
     func needsColor(style: MenuBarStyle) -> Bool {
+        if updateVersion != nil { return true }
         let shownGroups = style == .text ? groups : groups.filter(\.isDimmed)
         if shownGroups.contains(where: { $0.badge != nil }) { return true }
         switch style {
@@ -110,6 +114,12 @@ struct MenuBarContent: Equatable {
     /// VoiceOver summary for the rendered strip image, e.g.
     /// "Claude Session 41%, Weekly 12%; Cursor Credits $12".
     var accessibilityText: String {
+        var parts = groupsAccessibilityText
+        if let updateVersion { parts.append(MenuBarUpdateIndicator.text(version: updateVersion)) }
+        return parts.joined(separator: "; ")
+    }
+
+    private var groupsAccessibilityText: [String] {
         groups.map { group in
             let name = group.detail ?? group.displayName
             if group.loginRequired { return String(localized: "\(name) Login Required") }
@@ -132,7 +142,6 @@ struct MenuBarContent: Equatable {
             }
             return "\(name) \(metrics)"
         }
-        .joined(separator: "; ")
     }
 }
 
