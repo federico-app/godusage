@@ -163,6 +163,8 @@ struct TotalSpendLegendRow: View {
             .monospacedDigit()
             .lineLimit(1)
             .minimumScaleFactor(0.7)
+            // Digits roll to the new amount on a period or metric switch, like the meter headlines.
+            .contentTransition(.numericText())
     }
 }
 

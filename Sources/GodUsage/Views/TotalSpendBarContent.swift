@@ -19,6 +19,8 @@ struct TotalSpendBarContent: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
+                // Digits roll up or down to the new total on a period or metric switch.
+                .contentTransition(.numericText(value: projection.centerValue))
                 .hoverTooltip(tooltip)
             bar
             legend
