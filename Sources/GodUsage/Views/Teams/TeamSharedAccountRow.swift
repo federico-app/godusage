@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// A shared account on the ranking: unranked, below the members, with who shares it. Its usage is in
-/// the team total but in no member's, because the provider does not split it per person.
+/// the team total but in no member's, because the provider does not split it per person. It lines up
+/// with the member rows: an icon in the rank column, the value alone on the right of the name line.
 struct TeamSharedAccountRow: View {
     let account: TeamStats.SharedAccount
     let stats: TeamStats
@@ -11,11 +12,12 @@ struct TeamSharedAccountRow: View {
     var barHeight: CGFloat = 5
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .top, spacing: TeamLeaderboardRowStyle.columnSpacing) {
             Image(systemName: "person.2.fill")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.secondary)
-                .frame(width: 18, alignment: .trailing)
+                .frame(width: TeamLeaderboardRowStyle.rankColumnWidth, alignment: .trailing)
+                .padding(.top, 3)
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
                     Text("Shared \(providerName(account.provider))").lineLimit(1)
@@ -46,8 +48,8 @@ struct TeamSharedAccountRow: View {
 }
 
 /// When a member last synced: "Updated 5m ago" within a day, then "Not synced for 3 days" with a
-/// warning icon, so stale numbers aren't read as no usage. Followed by their GodUsage version
-/// ("· v1.0.8") when known. Shows nothing if they never synced.
+/// warning icon, so stale numbers aren't read as no usage. An outdated GodUsage version follows as a
+/// small orange chip (`OutdatedVersionChip`). Shows nothing if they never synced.
 struct TeamSyncNote: View {
     let member: TeamStats.Member
     /// The newest version in the team: the member's version shows only when it is older.
@@ -55,19 +57,45 @@ struct TeamSyncNote: View {
     var now = Date()
 
     var body: some View {
-        let outdated = TeamsFormat.isOutdated(member.appVersion, newest: newestVersion)
-        if let note = TeamsFormat.syncNote(member.lastSyncAt, now: now, appVersion: outdated ? member.appVersion.map { "\($0), outdated" } : nil) {
-            Group {
-                if note.stale {
-                    Label(note.text, systemImage: "exclamationmark.arrow.triangle.2.circlepath")
-                        .labelStyle(.titleAndIcon)
-                } else {
-                    Text(note.text)
+        HStack(spacing: 6) {
+            if let note = TeamsFormat.syncNote(member.lastSyncAt, now: now) {
+                Group {
+                    if note.stale {
+                        Label(note.text, systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                            .labelStyle(.titleAndIcon)
+                    } else {
+                        Text(note.text)
+                    }
                 }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
             }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
+            OutdatedVersionChip(version: member.appVersion, newestVersion: newestVersion)
+        }
+    }
+}
+
+/// "⚠ v1.7.1" in a small orange capsule, for a member whose GodUsage is older than the team's
+/// newest. Nothing otherwise.
+struct OutdatedVersionChip: View {
+    let version: String?
+    let newestVersion: String?
+
+    var body: some View {
+        if let version, TeamsFormat.isOutdated(version, newest: newestVersion) {
+            HStack(spacing: 3) {
+                Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 8, weight: .semibold))
+                Text(TeamsFormat.versionLabel(version)).lineLimit(1)
+            }
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(Theme.notice)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(Theme.noticeColor.opacity(0.14), in: Capsule())
+            .fixedSize()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("GodUsage \(TeamsFormat.versionLabel(version)), outdated")
         }
     }
 }
@@ -83,9 +111,8 @@ extension TeamsFormat {
     /// `lastSyncAt` is more than 24 hours old, followed by " · v1.0.8" when `appVersion` is known;
     /// nil when the sync time is unknown.
     static func syncNote(_ lastSyncAt: String?, now: Date, appVersion: String? = nil) -> SyncNote? {
-        guard let lastSyncAt, let date = syncDate(lastSyncAt) else { return nil }
+        guard let minutes = syncMinutes(lastSyncAt, now: now) else { return nil }
         let version = appVersion.map { " · \(versionLabel($0))" } ?? ""
-        let minutes = Int(max(0, now.timeIntervalSince(date)) / 60)
         if minutes < 1 { return SyncNote(text: "Updated just now\(version)", stale: false) }
         if minutes < 60 { return SyncNote(text: "Updated \(minutes)m ago\(version)", stale: false) }
         if minutes <= 24 * 60 { return SyncNote(text: "Updated \(minutes / 60)h ago\(version)", stale: false) }
@@ -93,9 +120,24 @@ extension TeamsFormat {
         return SyncNote(text: "Not synced for \(days) \(days == 1 ? "day" : "days")\(version)", stale: true)
     }
 
+    /// The Idle group's short sync time: "just now", "5m ago", "3h ago", then "3d ago" (stale) once
+    /// it is more than 24 hours old; nil when the sync time is unknown.
+    static func syncAge(_ lastSyncAt: String?, now: Date) -> SyncNote? {
+        guard let minutes = syncMinutes(lastSyncAt, now: now) else { return nil }
+        if minutes < 1 { return SyncNote(text: "just now", stale: false) }
+        if minutes < 60 { return SyncNote(text: "\(minutes)m ago", stale: false) }
+        if minutes <= 24 * 60 { return SyncNote(text: "\(minutes / 60)h ago", stale: false) }
+        return SyncNote(text: "\(minutes / (24 * 60))d ago", stale: true)
+    }
+
     /// "v1.0.8" for a release version; anything else (a "dev" build) as it is.
     static func versionLabel(_ version: String) -> String {
         version.first?.isNumber == true ? "v\(version)" : version
+    }
+
+    private static func syncMinutes(_ lastSyncAt: String?, now: Date) -> Int? {
+        guard let lastSyncAt, let date = syncDate(lastSyncAt) else { return nil }
+        return Int(max(0, now.timeIntervalSince(date)) / 60)
     }
 
     private static func syncDate(_ value: String) -> Date? {
