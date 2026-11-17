@@ -15,20 +15,27 @@ struct TeamLivePaceStrip: View {
     let today: String
 
     @State private var showsDetails = false
+    /// A plan that's fine opens its week here; view state only, never saved.
+    @State private var showsWeek = false
     private var color: Color { TotalSpendPalette.color(for: plan.provider) }
+    private var collapsible: Bool { LivePaceDisplay.collapses(live.state) }
+    private var expanded: Bool { !collapsible || showsWeek }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             TeamPlanTitle(teamID: teamID, plan: plan, budget: budget) { pill }
             todayBar
-            TeamWeekBoxes(
-                boxes: WeekBox.boxes(
-                    days: budget.days, today: today, used: live.used, budget: live.budget,
-                    future: live.futureDays, labelsLowered: live.state == .overBudget
-                ),
-                color: color
-            )
-            details
+            if expanded {
+                TeamWeekBoxes(
+                    boxes: WeekBox.boxes(
+                        days: budget.days, today: today, used: live.used, budget: live.budget,
+                        future: live.futureDays, labelsLowered: live.state == .overBudget
+                    ),
+                    color: color
+                )
+                .transition(.opacity)
+                details
+            }
         }
     }
 
@@ -96,20 +103,45 @@ struct TeamLivePaceStrip: View {
         VStack(alignment: .leading, spacing: 3) {
             TeamTodayBar(geometry: TodayBarGeometry(live), color: color)
             HStack(spacing: 6) {
-                (Text(LivePaceFormat.percent(live.used)).fontWeight(.semibold).foregroundStyle(.primary) + Text(" used today"))
-                Spacer(minLength: 4)
-                Text("budget \(LivePaceFormat.percent(live.budget))")
+                if collapsible {
+                    (Text(LivePaceFormat.percent(live.used)).fontWeight(.semibold).foregroundStyle(.primary)
+                        + Text(" of \(LivePaceFormat.percent(live.budget)) today"))
+                    Spacer(minLength: 4)
+                    weekToggle
+                } else {
+                    (Text(LivePaceFormat.percent(live.used)).fontWeight(.semibold).foregroundStyle(.primary) + Text(" used today"))
+                    Spacer(minLength: 4)
+                    Text("budget \(LivePaceFormat.percent(live.budget))")
+                }
             }
             .font(.caption2.monospacedDigit())
             .foregroundStyle(.secondary)
-            if let note = LivePaceDisplay.note(live) {
+            if expanded, let note = LivePaceDisplay.note(live) {
                 Text(note.text)
                     .font(.caption2)
                     .foregroundStyle(noteStyle(note.style))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+    }
+
+    /// "› Week": opens the week's boxes and Details of a plan that's fine.
+    private var weekToggle: some View {
+        Button {
+            withAnimation(Motion.spring) { showsWeek.toggle() }
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .bold))
+                    .rotationEffect(.degrees(showsWeek ? 90 : 0))
+                Text("Week").font(.caption2.weight(.semibold))
+            }
+            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(showsWeek ? "Hide Week" : "Show Week")
     }
 
     private func noteStyle(_ style: LivePaceDisplay.NoteStyle) -> AnyShapeStyle {

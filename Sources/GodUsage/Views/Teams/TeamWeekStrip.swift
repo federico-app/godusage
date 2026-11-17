@@ -106,7 +106,7 @@ struct TeamWeekStripCard: View {
     }
 
     /// Plans with room while another provider's plan runs hot (over today's budget or well ahead of
-    /// pace): their pill says "Use this now". Room means on pace or behind, with at least
+    /// pace): their pill is tinted green. Room means on pace or behind, with at least
     /// `roomForOthers` points of today's budget left.
     static func useThisNow(_ entries: [TeamPlanEntry], paces: [String: LivePace]) -> Set<String> {
         let hot = Set(entries.filter { [.ahead, .overBudget].contains(paces[$0.id]?.state) }.map(\.plan.provider))

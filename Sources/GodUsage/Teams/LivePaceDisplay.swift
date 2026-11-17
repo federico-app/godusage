@@ -14,8 +14,15 @@ enum LivePaceDisplay {
         case muted
     }
 
-    /// The one figure per plan, in words: "22 min ahead of pace", "Use this now · 2h 40m under",
-    /// "On pace", "6.3% over today", "Starts 9:00", "Day Done", "Day Off".
+    /// A plan that's fine (not ahead of pace, not over today's budget) shows only its title and
+    /// today's bar; its week and Details open with "Week".
+    static func collapses(_ state: LivePace.State) -> Bool {
+        ![.ahead, .overBudget].contains(state)
+    }
+
+    /// The one figure per plan, in words: "22 min ahead of pace", "2h 40m under pace", "On pace",
+    /// "6.3% over today", "Starts 9:00", "Day Done", "Day Off". The plan to use while another runs
+    /// hot (`useThisNow`) is tinted green; the banner says why.
     static func pill(_ live: LivePace, useThisNow: Bool) -> (text: String, style: PillStyle) {
         let tone: PillStyle = switch live.tone {
         case .hot: .hot
@@ -26,11 +33,9 @@ enum LivePaceDisplay {
         case .ahead, .behind, .onPace, .warmingUp:
             let ahead = live.ahead ?? 0
             let duration = LivePaceFormat.duration(ahead)
-            if useThisNow {
-                return (ahead <= -LivePace.onPaceMargin ? "Use this now · \(duration) under" : "Use this now", .cool)
-            }
-            if abs(ahead) < LivePace.onPaceMargin { return ("On pace", tone) }
-            return (ahead > 0 ? "\(duration) ahead of pace" : "\(duration) under pace", tone)
+            let style = useThisNow ? .cool : tone
+            if abs(ahead) < LivePace.onPaceMargin { return ("On pace", style) }
+            return (ahead > 0 ? "\(duration) ahead of pace" : "\(duration) under pace", style)
         case .overBudget:
             return ("\(LivePaceFormat.percent(max(0, live.used - live.budget))) over today", .over)
         case .notStarted:

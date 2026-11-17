@@ -28,13 +28,25 @@ final class LivePaceDisplayTests: XCTestCase {
         let behind = live(used: 7, rate: 1, at: "12:30")
         XCTAssertEqual(LivePaceDisplay.pill(behind, useThisNow: false).text, "1h 42m under pace")
         XCTAssertEqual(LivePaceDisplay.pill(behind, useThisNow: false).style, .cool)
-        XCTAssertEqual(LivePaceDisplay.pill(behind, useThisNow: true).text, "Use this now · 1h 42m under")
+        // The plan to use while another runs hot: same words, green; the banner says why.
+        XCTAssertEqual(LivePaceDisplay.pill(behind, useThisNow: true).text, "1h 42m under pace")
         XCTAssertEqual(LivePaceDisplay.pill(behind, useThisNow: true).style, .cool)
 
         // 09:00: 5% expected, 5% used.
         let onPace = live(used: 5, rate: 2.5, at: "09:00")
         XCTAssertEqual(LivePaceDisplay.pill(onPace, useThisNow: false).text, "On pace")
-        XCTAssertEqual(LivePaceDisplay.pill(onPace, useThisNow: true).text, "Use this now")
+        XCTAssertEqual(LivePaceDisplay.pill(onPace, useThisNow: false).style, .neutral)
+        XCTAssertEqual(LivePaceDisplay.pill(onPace, useThisNow: true).text, "On pace")
+        XCTAssertEqual(LivePaceDisplay.pill(onPace, useThisNow: true).style, .cool)
+    }
+
+    func testOnlyPlansAheadOrOverBudgetStayExpanded() {
+        let expanded: [LivePace.State] = [.ahead, .overBudget]
+        let collapsed: [LivePace.State] = [.onPace, .behind, .warmingUp, .notStarted, .dayDone, .dayOff]
+        XCTAssertTrue(expanded.allSatisfy { !LivePaceDisplay.collapses($0) })
+        XCTAssertTrue(collapsed.allSatisfy { LivePaceDisplay.collapses($0) })
+        XCTAssertFalse(LivePaceDisplay.collapses(live(used: 12, rate: 4, at: "11:30").state))
+        XCTAssertTrue(LivePaceDisplay.collapses(live(used: 7, rate: 1, at: "12:30").state))
     }
 
     func testOverTheBudgetThePillIsSolidAndSaysHowFarOver() {
