@@ -35,7 +35,7 @@ While Settings is open, GodUsage briefly appears in the Dock, the same as during
 |---|---|---|
 | Show Usage As | Used / Left | Whether bounded metrics read "48% used" or "52% left". Same toggle as clicking a headline. |
 | Reset Times | Countdown / Exact time | "Resets in 3h 25m" vs "Resets today at 6:38 PM". Same toggle as clicking a reset label. |
-| Always Show Pacing | Off / On | Off by default shows pacing only when a metric is close to or over its limit. On shows it on every metric with a reset window: on-track rows gain their projection ("~33% left at reset") and an even-pace tick. Metrics without a reset window have no pace to show. A metric with nothing used yet stays plain. |
+| Always Show Pacing | Off / On | On by default. Off shows pacing only when a metric is close to or over its limit. On shows it on every metric with a reset window: on-track rows gain their projection ("~33% left at reset") and an even-pace tick. Metrics without a reset window have no pace to show. A metric with nothing used yet stays plain. |
 
 ## Notifications
 
