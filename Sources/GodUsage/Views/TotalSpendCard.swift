@@ -45,7 +45,8 @@ struct TotalSpendCard: View {
             for: period,
             providers: providers,
             snapshots: dataStore.snapshots,
-            title: { container.displayName(for: $0) }
+            title: { container.displayParts(for: $0).name },
+            account: { container.displayParts(for: $0).account }
         )
     }
 
@@ -268,9 +269,14 @@ struct TotalSpendRingContent: View {
     private static let ringDiameter: CGFloat = 104
 
     var body: some View {
-        HStack(spacing: 18) {
-            ring
-            legend
+        // One source makes a one-color ring: show its total and a full bar instead.
+        if let sole = projection.soleSlice {
+            TotalSpendSingleSourceContent(projection: projection, slice: sole)
+        } else {
+            HStack(spacing: 18) {
+                ring
+                legend
+            }
         }
     }
 
@@ -334,9 +340,9 @@ struct TotalSpendRingContent: View {
         }
     }
 
-    /// Quiet two-line center — short primary on top, unit underneath — so Cost/MTok (and big token
-    /// totals) never force a long one-liner into the hole. Legend and tooltip still carry the
-    /// exact one-line forms.
+    /// Quiet center — short primary on top, a unit underneath when it isn't obvious — so Cost/MTok
+    /// (and big token totals) never force a long one-liner into the hole. Cost has no unit line: the
+    /// `$` says it. Legend and tooltip still carry the exact one-line forms.
     private var centerLabel: some View {
         let center = MetricFormatter.totalSpendRingCenter(projection.centerValue, metric: projection.metric)
         return VStack(spacing: 1) {
@@ -346,10 +352,12 @@ struct TotalSpendRingContent: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Text(center.unit)
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
+            if let unit = center.unit {
+                Text(unit)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
         }
         .padding(.horizontal, 10)
         .hoverTooltip(centerTooltip)
@@ -372,7 +380,8 @@ struct TotalSpendRingContent: View {
             ForEach(projection.slices) { slice in
                 TotalSpendLegendRow(
                     title: slice.title,
-                    value: formatValue(slice.displayAmount, style: legendValueStyle),
+                    account: slice.account,
+                    value: projection.formatted(slice.displayAmount, style: projection.legendValueStyle),
                     color: TotalSpendPalette.color(for: slice.provider.id),
                     fontSize: density.supportingPointSize
                 )
@@ -381,23 +390,8 @@ struct TotalSpendRingContent: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Legend amounts: tokens always abbreviated; dollar modes keep exact cents like before.
-    private var legendValueStyle: MetricFormatter.Style {
-        switch projection.metric {
-        case .tokens: .row
-        case .cost, .costPerMtok: .full
-        }
-    }
-
     private func formatValue(_ value: Double, style: MetricFormatter.Style) -> String {
-        switch projection.metric {
-        case .cost:
-            return MetricFormatter.number(value, kind: .dollars, style: style)
-        case .tokens:
-            return MetricFormatter.number(value, kind: .count, style: style)
-        case .costPerMtok:
-            return MetricFormatter.costPerMtok(value, style: style)
-        }
+        projection.formatted(value, style: style)
     }
 }
 

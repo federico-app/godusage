@@ -176,4 +176,43 @@ final class TotalSpendAggregatorTests: XCTestCase {
         XCTAssertTrue(total.projection(for: .tokens).isEmpty)
         XCTAssertTrue(total.projection(for: .costPerMtok).isEmpty)
     }
+
+    // MARK: Single source
+
+    func testExactlyOneSliceIsTheSoleSlice() {
+        let snapshots = ["claude": snapshot(claude, lines: [spendLine("Today", dollars: 26.26)])]
+        let projection = TotalSpendAggregator.total(for: .today, providers: [claude, cursor], snapshots: snapshots)
+            .projection(for: .cost)
+        XCTAssertEqual(projection.soleSlice?.provider.id, "claude")
+        XCTAssertEqual(projection.headline(projection.centerValue), "$26.26")
+    }
+
+    func testTwoSlicesOrNoneHaveNoSoleSlice() {
+        let snapshots = [
+            "claude": snapshot(claude, lines: [spendLine("Today", dollars: 2.50)]),
+            "cursor": snapshot(cursor, lines: [spendLine("Today", dollars: 7.25)])
+        ]
+        let total = TotalSpendAggregator.total(for: .today, providers: [claude, cursor], snapshots: snapshots)
+        XCTAssertNil(total.projection(for: .cost).soleSlice)
+        XCTAssertNil(TotalSpendAggregator.total(for: .today, providers: [claude], snapshots: [:]).projection(for: .cost).soleSlice)
+    }
+
+    func testOneSourceWithMetricFilteringIsSoleUnderThatMetric() {
+        // Cursor has tokens but no dollars: two sources under Tokens, one under Cost.
+        let snapshots = [
+            "claude": snapshot(claude, lines: [spendLine("Today", dollars: 2.50)]),
+            "cursor": snapshot(cursor, lines: [spendLine("Today", dollars: nil, tokens: 400_000)])
+        ]
+        let total = TotalSpendAggregator.total(for: .today, providers: [claude, cursor], snapshots: snapshots)
+        XCTAssertEqual(total.projection(for: .cost).soleSlice?.provider.id, "claude")
+        XCTAssertNil(total.projection(for: .tokens).soleSlice)
+    }
+
+    func testSlicesCarryTheAccountLabel() {
+        let snapshots = ["claude": snapshot(claude, lines: [spendLine("Today", dollars: 1)])]
+        let total = TotalSpendAggregator.total(
+            for: .today, providers: [claude], snapshots: snapshots, account: { _ in "Appload" }
+        )
+        XCTAssertEqual(total.projection(for: .cost).slices.first?.account, "Appload")
+    }
 }
