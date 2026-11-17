@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.8.0
+
+### New Features
+- feat(settings): turn Always Show Pacing on by default ([#119](https://github.com/federico-app/godusage/pull/119)) by @andreaAppload
+- feat(teams): redesign leaderboard rows ([#120](https://github.com/federico-app/godusage/pull/120)) by @andreaAppload
+- feat(teams): redesign This Week's Limit card ([#121](https://github.com/federico-app/godusage/pull/121)) by @andreaAppload
+- feat(dashboard): panel polish for 1.8.0 ([#122](https://github.com/federico-app/godusage/pull/122)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.7.4...v1.8.0](https://github.com/federico-app/godusage/compare/v1.7.4...v1.8.0)
+
+- [bb31537](https://github.com/federico-app/godusage/commit/bb31537844d33faf6d3c5edd46f93dc4f56b6f40) feat(settings): turn Always Show Pacing on by default by @andreaAppload
+- [614b435](https://github.com/federico-app/godusage/commit/614b4352ee07d2213510893fb2cecc36a3fec3c6) feat(teams): redesign leaderboard rows by @andreaAppload
+- [a06b669](https://github.com/federico-app/godusage/commit/a06b6696e02ab8a5ec816c8e7cadc614abed27b1) feat(teams): redesign This Week's Limit card by @andreaAppload
+- [23453c0](https://github.com/federico-app/godusage/commit/23453c0cc5ccc8ecad6dad1417eb7d49836bb5aa) feat(dashboard): panel polish for 1.8.0 by @andreaAppload
+
 ## v1.7.4
 
 ### New Features
