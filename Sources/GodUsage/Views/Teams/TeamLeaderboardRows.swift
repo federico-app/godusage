@@ -126,7 +126,9 @@ struct TeamLeaderboardMemberRow: View {
                 HStack(spacing: 6) {
                     Text(member.displayName)
                         .fontWeight(isMe ? .semibold : .regular)
-                        .lineLimit(1)
+                        // Names wrap rather than truncate: the full name matters more than one line.
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                         .layoutPriority(1)
                     if isMe { YouChip() }
                     if let teamID { MemberBadges(teamID: teamID, userID: member.userID) }
@@ -184,7 +186,8 @@ struct TeamLeaderboardIdleRow: View {
                 Text(member.displayName)
                     .font(.callout)
                     .fontWeight(isMe ? .semibold : .regular)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .layoutPriority(1)
                 if isMe { YouChip() }
                 if let teamID { MemberBadges(teamID: teamID, userID: member.userID) }
