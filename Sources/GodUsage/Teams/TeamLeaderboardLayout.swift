@@ -1,31 +1,52 @@
 import Foundation
 
-/// How a leaderboard card lays out its members: the rank labels ("6=" for ties), who is active right
-/// now and who folds into the compact Idle group, the header's summary, and which providers the
-/// legend names. Shared by the dashboard's Team section and the Teams window.
+/// How a leaderboard card lays out its members: always in ranking order, each with a row style (full
+/// while they spent something in the last hour, compact otherwise), the rank labels ("6=" for ties),
+/// the header's summary, and which providers the legend names. Shared by the dashboard's Team section
+/// and the Teams window.
 struct TeamLeaderboardLayout: Equatable {
-    /// Members with momentum (⚡ level above 0), in ranking order. All members when nobody is active.
-    let active: [TeamStats.Member]
-    /// Members without momentum, in ranking order; empty when nobody is active (no split then).
-    let idle: [TeamStats.Member]
+    /// How a member's row is drawn. The style never moves a member: the list stays in rank order.
+    enum RowStyle: Equatable {
+        /// Bar, live last hour and momentum: the member spent something in the last hour.
+        case full
+        /// Two short lines, no bar: nothing spent in the last hour.
+        case compact
+    }
+
+    struct Row: Equatable, Identifiable {
+        let member: TeamStats.Member
+        let style: RowStyle
+        var id: String { member.userID }
+    }
+
+    /// Every member, in the order given (ranking order), with its row style.
+    let rows: [Row]
     /// "6" or "6=" by user id.
     let rankLabels: [String: String]
-    /// How many members have momentum right now.
+    /// How many members spent something in the last hour: the header's "N active now". They get
+    /// the full row; when there are none, every member does.
     let activeCount: Int
 
     /// `members` must already be in ranking order (see `TeamMetric.ranked`).
     init(members: [TeamStats.Member], momentum: [String: TeamMomentum]) {
-        let isActive = { (member: TeamStats.Member) in (momentum[member.userID]?.level ?? 0) > 0 }
-        let activeMembers = members.filter(isActive)
-        activeCount = activeMembers.count
-        if activeMembers.isEmpty {
-            active = members
-            idle = []
-        } else {
-            active = activeMembers
-            idle = members.filter { !isActive($0) }
-        }
+        let styles = members.map { Self.rowStyle(momentum[$0.userID]) }
+        let active = styles.filter { $0 == .full }.count
+        activeCount = active
+        // Nobody spent anything in the last hour: everyone keeps the full row, so a quiet team keeps
+        // its bars.
+        rows = zip(members, styles).map { Row(member: $0, style: active == 0 ? .full : $1) }
         rankLabels = Self.rankLabels(members)
+    }
+
+    /// Full when the member spent something in the last hour (or has momentum), compact otherwise.
+    static func rowStyle(_ momentum: TeamMomentum?) -> RowStyle {
+        guard let momentum else { return .compact }
+        return momentum.lastHourUSD > 0 || momentum.level > 0 ? .full : .compact
+    }
+
+    /// The first `limit` rows in rank order: the popover's Members Shown collapse.
+    func visibleRows(limit: Int) -> [Row] {
+        Array(rows.prefix(max(0, limit)))
     }
 
     /// The rank, with "=" when the member before or after shares it.

@@ -254,8 +254,9 @@ struct TeamDashboardSection: View {
         }
     }
 
-    /// Active members get the full row, then the shared accounts, then the Idle group. The caret
-    /// folds the list to the first members Customize → Team shows, counting active ones first.
+    /// Members in rank order (full row while they spent something in the last hour, compact
+    /// otherwise), then the shared accounts. The caret folds the list to the first members
+    /// Customize → Team shows, in rank order.
     private func ranking(_ stats: TeamStats) -> some View {
         let top = stats.rankingTop(for: metric)
         let ranked = metric.ranked(stats.members)
@@ -265,8 +266,8 @@ struct TeamDashboardSection: View {
         let collapsedCount = (TeamMembersShown(rawValue: membersShown) ?? .default).visibleCount(of: ranked.count)
         let isCollapsible = collapsedCount < ranked.count
         let limit = isCollapsible && !showsAllMembers ? collapsedCount : ranked.count
-        let visibleActive = Array(layout.active.prefix(limit))
-        let visibleIdle = Array(layout.idle.prefix(max(0, limit - layout.active.count)))
+        let visibleRows = layout.visibleRows(limit: limit)
+        let newest = TeamsFormat.newestVersion(stats.members)
         let header = TeamLeaderboardHeader(
             activeSummary: TeamLeaderboardLayout.activeSummary(activeCount: layout.activeCount),
             providers: TeamLeaderboardLayout.legendProviders(members: ranked, shared: shared, metric: metric),
@@ -279,19 +280,15 @@ struct TeamDashboardSection: View {
                     .padding(.vertical, 8)
                 Divider()
             }
-            ForEach(Array(visibleActive.enumerated()), id: \.element.id) { index, member in
+            ForEach(Array(visibleRows.enumerated()), id: \.element.id) { index, row in
                 if index > 0 { Divider().padding(.leading, 12 + TeamLeaderboardRowStyle.contentInset) }
-                memberRow(member, layout: layout, top: top, stats: stats, momentum: momentum[member.userID])
+                memberRow(row, layout: layout, top: top, stats: stats, newestVersion: newest, momentum: momentum[row.member.userID])
             }
             ForEach(shared) { account in
                 Divider().padding(.leading, 12)
                 TeamSharedAccountRow(account: account, stats: stats, metric: metric, top: top, providerName: providerName)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
-            }
-            if !visibleIdle.isEmpty {
-                Divider()
-                idleGroup(visibleIdle, total: layout.idle.count, layout: layout, stats: stats)
             }
             if isCollapsible {
                 Divider()
@@ -301,45 +298,6 @@ struct TeamDashboardSection: View {
             advancedStatsRow
         }
         .cardSurface()
-    }
-
-    private func idleGroup(_ members: [TeamStats.Member], total: Int, layout: TeamLeaderboardLayout, stats: TeamStats) -> some View {
-        let newest = TeamsFormat.newestVersion(stats.members)
-        return VStack(alignment: .leading, spacing: 0) {
-            TeamLeaderboardIdleHeader(count: total)
-                .padding(.horizontal, 12)
-                .padding(.top, 9)
-                .padding(.bottom, 3)
-            ForEach(members) { member in
-                let isExpanded = expandedMemberID == member.userID
-                let isMe = member.userID == container.teams.user?.id
-                VStack(alignment: .leading, spacing: 6) {
-                    Button {
-                        withAnimation(Motion.spring) { expandedMemberID = isExpanded ? nil : member.userID }
-                    } label: {
-                        TeamLeaderboardIdleRow(
-                            member: member, rankLabel: layout.rankLabel(member), isMe: isMe, metric: metric,
-                            newestVersion: newest, teamID: container.teams.selectedTeamID, isExpanded: isExpanded
-                        )
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    if isExpanded {
-                        TeamMemberDetail(
-                            member: member, stats: stats, metric: metric, range: range,
-                            teamID: container.teams.selectedTeamID, providerName: providerName
-                        )
-                        .padding(.leading, TeamLeaderboardRowStyle.contentInset)
-                        .padding(.bottom, 4)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background(isMe ? TeamLeaderboardRowStyle.youTint : .clear)
-            }
-        }
-        .padding(.bottom, 4)
-        .background(TeamLeaderboardRowStyle.idleBackground)
     }
 
     /// The centered caret under the ranking, like a provider card's: unfolds or folds the members past
@@ -387,8 +345,10 @@ struct TeamDashboardSection: View {
     }
 
     private func memberRow(
-        _ member: TeamStats.Member, layout: TeamLeaderboardLayout, top: Double, stats: TeamStats, momentum: TeamMomentum?
+        _ row: TeamLeaderboardLayout.Row, layout: TeamLeaderboardLayout, top: Double, stats: TeamStats,
+        newestVersion: String?, momentum: TeamMomentum?
     ) -> some View {
+        let member = row.member
         let isExpanded = expandedMemberID == member.userID
         let isMe = member.userID == container.teams.user?.id
         let teamID = container.teams.selectedTeamID
@@ -396,11 +356,21 @@ struct TeamDashboardSection: View {
             Button {
                 withAnimation(Motion.spring) { expandedMemberID = isExpanded ? nil : member.userID }
             } label: {
-                TeamLeaderboardMemberRow(
-                    member: member, rankLabel: layout.rankLabel(member), isMe: isMe, top: top, metric: metric,
-                    range: range, momentum: momentum, newestVersion: TeamsFormat.newestVersion(stats.members), teamID: teamID,
-                    isExpanded: isExpanded
-                )
+                Group {
+                    switch row.style {
+                    case .full:
+                        TeamLeaderboardMemberRow(
+                            member: member, rankLabel: layout.rankLabel(member), isMe: isMe, top: top, metric: metric,
+                            range: range, momentum: momentum, newestVersion: newestVersion, teamID: teamID,
+                            isExpanded: isExpanded
+                        )
+                    case .compact:
+                        TeamLeaderboardCompactRow(
+                            member: member, rankLabel: layout.rankLabel(member), isMe: isMe, metric: metric, range: range,
+                            newestVersion: newestVersion, teamID: teamID, isExpanded: isExpanded
+                        )
+                    }
+                }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -411,7 +381,7 @@ struct TeamDashboardSection: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 9)
+        .padding(.vertical, row.style == .full ? 9 : 7)
         .background(isMe ? TeamLeaderboardRowStyle.youTint : .clear)
     }
 
