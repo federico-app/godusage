@@ -85,6 +85,8 @@ struct YouChip: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
             .background(.secondary.opacity(0.12), in: Capsule())
+            // Never compress: a long name truncates instead of the chip wrapping one letter per line.
+            .fixedSize()
     }
 }
 
