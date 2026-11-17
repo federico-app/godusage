@@ -118,8 +118,16 @@ struct TeamMemberDetail: View {
             rank: member.rank, of: stats.members.count, rankChange: member.rankChange,
             hasUsage: member.costUSD > 0 || member.tokens > 0, range: range
         ))
-        return LazyVGrid(columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)], spacing: 6) {
-            ForEach(tiles, id: \.label) { MemberDetailTile(tile: $0) }
+        // Two equal columns; each row is as tall as its taller tile, so a wrapped context keeps the pair even.
+        let rows = stride(from: 0, to: tiles.count, by: 2).map { Array(tiles[$0..<min($0 + 2, tiles.count)]) }
+        return VStack(spacing: 6) {
+            ForEach(rows, id: \.first?.label) { row in
+                HStack(spacing: 6) {
+                    ForEach(row, id: \.label) { MemberDetailTile(tile: $0) }
+                    if row.count == 1 { Color.clear.frame(maxWidth: .infinity) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -161,7 +169,8 @@ struct TeamMemberDetail: View {
     }
 }
 
-/// One tile: a small uppercase label, a big number, one line of context.
+/// One tile: a small uppercase label, a big number, up to two lines of context. Tiles in a row share
+/// the taller one's height.
 struct MemberDetailTile: View {
     let tile: MemberDetailFormat.Tile
 
@@ -171,6 +180,7 @@ struct MemberDetailTile: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
             Text(tile.value)
                 .font(.system(size: 15, weight: .bold).monospacedDigit())
                 .foregroundStyle(tile.isNotice ? Theme.notice : AnyShapeStyle(.primary))
@@ -179,9 +189,10 @@ struct MemberDetailTile: View {
             Text(tile.context)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 9)
         .padding(.vertical, 7)
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))

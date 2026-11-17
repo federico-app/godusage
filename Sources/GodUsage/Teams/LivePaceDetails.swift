@@ -94,6 +94,8 @@ enum LivePaceDetails {
             }
         case .overBudget:
             return String(localized: "Today’s use is over its budget: \(used) of \(budget).", comment: "Live Pace chart summary: two percentages of the weekly limit")
+        case .atBudget:
+            return String(localized: "Today’s use has reached its budget: \(budget).", comment: "Live Pace chart summary: today's budget, a percentage of the weekly limit")
         case .notStarted:
             let start = live.start.map(LivePaceFormat.time) ?? ""
             return String(localized: "The working day starts at \(start); today’s budget is \(budget).", comment: "Live Pace chart summary: a time, then a percentage")
