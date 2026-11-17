@@ -1,19 +1,35 @@
 import SwiftUI
 
-/// One ⚡ per momentum level (1–3): a member spending fast right now. Nothing at level 0.
+/// A member spending fast right now: a bolt and a three-step meter filled up to the momentum level
+/// (1–3), in one fixed-width orange chip. Nothing at level 0.
 struct MomentumBolts: View {
     let momentum: TeamMomentum?
 
     var body: some View {
         if let level = momentum?.level, level > 0 {
-            Text(String(repeating: "⚡", count: min(level, 3)))
-                .font(.caption)
-                .accessibilityLabel("Spending fast: level \(min(level, 3)) of 3")
+            let filled = min(level, 3)
+            HStack(spacing: 3) {
+                Image(systemName: "bolt.fill").font(.system(size: 8, weight: .bold))
+                HStack(alignment: .bottom, spacing: 1) {
+                    ForEach(1...3, id: \.self) { step in
+                        RoundedRectangle(cornerRadius: 1)
+                            .frame(width: 3, height: CGFloat(2 + 2 * step))
+                            .opacity(step <= filled ? 1 : 0.25)
+                    }
+                }
+            }
+            .foregroundStyle(Theme.notice)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Theme.noticeColor.opacity(0.14), in: Capsule())
+            .fixedSize()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Spending fast: level \(filled) of 3")
         }
     }
 }
 
-/// The line under a member's bar: "+$12.40/h" (spent in the last hour) while they have momentum,
+/// The line under a member's bar: a green live dot and "+$12.40 last hour" while they have momentum,
 /// otherwise when they last synced, plus their version only when it is outdated. The member's
 /// detail explains everything in full.
 struct MemberStatusNote: View {
@@ -23,14 +39,32 @@ struct MemberStatusNote: View {
 
     var body: some View {
         if let momentum, momentum.level > 0 {
-            Text("+\(Formatters.currency(momentum.lastHourUSD))/h")
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(Theme.notice)
-                .lineLimit(1)
-                .accessibilityLabel("\(Formatters.currency(momentum.lastHourUSD)) in the last hour")
+            HStack(spacing: 5) {
+                LiveDot()
+                Text("+\(Formatters.currency(momentum.lastHourUSD)) last hour")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Active now: \(Formatters.currency(momentum.lastHourUSD)) in the last hour")
         } else {
             TeamSyncNote(member: member, newestVersion: newestVersion)
         }
+    }
+}
+
+/// A small green dot that pulses gently: the member is spending right now. Still with Reduce Motion.
+struct LiveDot: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        // A symbol effect runs in Core Animation, so the pulse doesn't redraw the row.
+        Image(systemName: "circle.fill")
+            .font(.system(size: 6))
+            .foregroundStyle(Theme.positive)
+            .symbolEffect(.pulse, options: .repeating, isActive: !reduceMotion)
+            .accessibilityHidden(true)
     }
 }
 
@@ -50,7 +84,7 @@ struct MemberDetailNotes: View {
         VStack(alignment: .leading, spacing: 3) {
             note(placeText)
             if let momentum, momentum.lastHourUSD > 0 {
-                note(momentumText(momentum), emphasized: momentum.level > 0)
+                note(momentumText(momentum))
             }
             if social.kingOfTheDay(teamID: teamID)?.userID == member.userID {
                 note("👑 Top spender today")
@@ -65,10 +99,10 @@ struct MemberDetailNotes: View {
         }
     }
 
-    private func note(_ text: String, emphasized: Bool = false) -> some View {
+    private func note(_ text: String) -> some View {
         Text(text)
             .font(.caption)
-            .foregroundStyle(emphasized ? AnyShapeStyle(Theme.notice) : AnyShapeStyle(.secondary))
+            .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -84,7 +118,7 @@ struct MemberDetailNotes: View {
         return "\(place) · \(change > 0 ? "up" : "down") \(places) since \(range.previousLabel)"
     }
 
-    /// "⚡⚡ $18.40 in the last hour: over $5, more than twice their usual hour ($3.10), the most in the team".
+    /// "$18.40 in the last hour · spending fast, level 2 of 3: over $5, more than twice their usual hour ($3.10), the most in the team".
     private func momentumText(_ momentum: TeamMomentum) -> String {
         let spent = "\(Formatters.currency(momentum.lastHourUSD)) in the last hour"
         let reasons = (momentum.reasons ?? []).compactMap { reason -> String? in
@@ -97,8 +131,8 @@ struct MemberDetailNotes: View {
             }
         }
         guard momentum.level > 0 else { return spent }
-        let bolts = String(repeating: "⚡", count: min(momentum.level, 3))
-        return reasons.isEmpty ? "\(bolts) \(spent)" : "\(bolts) \(spent): \(reasons.joined(separator: ", "))"
+        let level = "\(spent) · spending fast, level \(min(momentum.level, 3)) of 3"
+        return reasons.isEmpty ? level : "\(level): \(reasons.joined(separator: ", "))"
     }
 
     /// "🔥 Lorenzo, You", one line per reaction someone gave today.

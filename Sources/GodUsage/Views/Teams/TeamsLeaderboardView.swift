@@ -326,49 +326,62 @@ private struct TeamsRankingList: View {
 
     private func momentum(_ member: TeamStats.Member) -> TeamMomentum? { momentum[member.userID] }
 
+    private var metric: TeamMetric { TeamMetric(sort) }
+
+    /// Active members get the full row; the rest fold into the Idle group under the shared accounts.
     var body: some View {
-        let top = stats.rankingTop(for: TeamMetric(sort))
+        let top = stats.rankingTop(for: metric)
+        let layout = TeamLeaderboardLayout(members: stats.members, momentum: momentum)
+        let shared = stats.sharedAccounts(for: metric)
+        let newest = TeamsFormat.newestVersion(stats.members)
+        let header = TeamLeaderboardHeader(
+            activeSummary: TeamLeaderboardLayout.activeSummary(activeCount: layout.activeCount),
+            providers: TeamLeaderboardLayout.legendProviders(members: stats.members, shared: shared, metric: metric),
+            providerName: providerName
+        )
         VStack(spacing: 0) {
-            ForEach(Array(stats.members.enumerated()), id: \.element.id) { index, member in
-                if index > 0 { Divider() }
-                HStack(alignment: .center, spacing: 10) {
-                    Text("\(member.rank)")
-                        .font(.body.monospacedDigit().weight(.semibold))
-                        .foregroundStyle(member.rank <= 3 ? .primary : .secondary)
-                        .frame(width: 24, alignment: .trailing)
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 6) {
-                            Text(member.displayName).lineLimit(1)
-                            if member.userID == currentUserID {
-                                Text("You")
-                                    .font(.caption2.weight(.medium))
-                                    .foregroundStyle(.secondary)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 1)
-                                    .background(.secondary.opacity(0.12), in: Capsule())
-                            }
-                            RankChangeBadge(member: member, range: stats.range.name, sort: sort)
-                            MomentumBolts(momentum: momentum(member))
-                            if let teamID { MemberBadges(teamID: teamID, userID: member.userID) }
-                            MemberStatusNote(member: member, momentum: momentum(member), newestVersion: TeamsFormat.newestVersion(stats.members))
-                        }
-                        ProviderSplitBar(providers: member.providers, top: top, sort: sort, height: 6)
-                    }
-                    if let teamID {
-                        ReactionButtons(teamID: teamID, member: member, compact: true)
-                    }
-                    Text(TeamsFormat.value(member.totals, sort: sort))
-                        .font(.body.monospacedDigit().weight(.semibold))
-                        .frame(minWidth: 70, alignment: .trailing)
-                }
+            if !header.isEmpty {
+                header
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+            }
+            ForEach(Array(layout.active.enumerated()), id: \.element.id) { index, member in
+                if index > 0 || !header.isEmpty { Divider() }
+                TeamLeaderboardMemberRow(
+                    member: member, rankLabel: layout.rankLabel(member), isMe: member.userID == currentUserID, top: top,
+                    metric: metric, range: stats.range.name, momentum: momentum(member), newestVersion: newest,
+                    teamID: teamID, reactions: .buttons, valueFont: .body, barHeight: 6
+                )
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
+                .background(member.userID == currentUserID ? TeamLeaderboardRowStyle.youTint : .clear)
             }
-            ForEach(stats.sharedAccounts(for: TeamMetric(sort))) { account in
+            ForEach(shared) { account in
                 Divider()
-                TeamSharedAccountRow(account: account, stats: stats, metric: TeamMetric(sort), top: top, providerName: providerName, barHeight: 6)
+                TeamSharedAccountRow(account: account, stats: stats, metric: metric, top: top, providerName: providerName, barHeight: 6)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
+            }
+            if !layout.idle.isEmpty {
+                Divider()
+                VStack(spacing: 0) {
+                    TeamLeaderboardIdleHeader(count: layout.idle.count)
+                        .padding(.bottom, 4)
+                    ForEach(layout.idle) { member in
+                        TeamLeaderboardIdleRow(
+                            member: member, rankLabel: layout.rankLabel(member), isMe: member.userID == currentUserID,
+                            metric: metric, newestVersion: newest, teamID: teamID, reactions: .buttons
+                        )
+                        .padding(.vertical, 5)
+                        .padding(.horizontal, 6)
+                        .background(member.userID == currentUserID ? TeamLeaderboardRowStyle.youTint : .clear, in: RoundedRectangle(cornerRadius: 6))
+                        .padding(.horizontal, -6)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
+                .background(TeamLeaderboardRowStyle.idleBackground)
             }
         }
         .cardSurface()
