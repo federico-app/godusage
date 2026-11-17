@@ -101,7 +101,7 @@ final class StatusItemController: NSObject {
         // Captures the status item, not `self` — no retain cycle, and no optional property just to
         // work around `[weak self]` being unavailable before `super.init()`. The button is resolved
         // lazily at each apply, so a not-yet-configured button is harmless (same as before the split).
-        self.imageUpdater = StatusItemImageUpdater(container: container) { presentation in
+        self.imageUpdater = StatusItemImageUpdater(container: container, updater: updater) { presentation in
             guard let button = statusItem.button else { return false }
             button.image = presentation.image
             toolTipCoordinator.apply(

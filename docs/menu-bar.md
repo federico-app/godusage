@@ -55,6 +55,12 @@ With **Show Rank in Menu Bar** on (Settings → Teams → You), the strip ends w
 
 Your share of the team's spend today ("30% of the team's spend today") is only in the segment's tooltip and VoiceOver label, never on the strip. The segment updates with each team upload, at most every 15 minutes, and whenever the dashboard's Team section loads Today. See [Teams](teams.md).
 
+## Update available
+
+While the popover shows the **Update Available** banner (see [Updates](updates.md)), the strip ends with a small blue down-arrow, after the team segment, in both Text and Bars styles. With no other segment to show, the GodUsage icon comes first. Hover the arrow, or listen with VoiceOver, for "GodUsage 1.9.1 available". Clicking the item opens the popover as usual, where the banner's **Install Update** button is.
+
+The arrow goes away when the banner does: once the update installs, when you open Sparkle's update window (and you skip the version or choose Remind Me Later there), or when you close the banner. Like the rest of the strip, it hides while Hide From Screen Share shows the wordmark.
+
 ## Login unavailable
 
 An account with an expired, invalid, missing, or unreadable login shows in the menu bar as a faded provider icon with a small orange dot and no values, even when no usage has loaded. This applies to every enabled account, starred or not, and also when a login failure leaves cached usage or local spend history available. Both Text and Bars styles restore the normal icon and values after a successful refresh. Open the dashboard for the login notice and recovery steps. Disabled accounts stay hidden. Temporary network failures do not count as login failures and cannot clear an already-known login failure.

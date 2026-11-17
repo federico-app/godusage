@@ -38,9 +38,9 @@ enum MenuBarStripRenderer {
         presentation(for: content, style: style)?.image
     }
 
-    /// The flattened strip image and its Text-only account tooltip regions. Bars deliberately carry
-    /// no regions: they flatten metrics across providers and therefore have no segment-to-account
-    /// geometry to label.
+    /// The flattened strip image and its tooltip regions. Text carries one per account plus the update
+    /// arrow's. Bars carry only the arrow's: they flatten metrics across providers and therefore have
+    /// no segment-to-account geometry to label.
     static func presentation(for content: MenuBarContent, style: MenuBarStyle) -> MenuBarStripPresentation? {
         if let lastRender, lastRender.style == style,
            lastRender.content.isRenderEquivalent(to: content, style: style)
@@ -54,9 +54,7 @@ enum MenuBarStripRenderer {
         case .text:
             presentation = textPresentation(for: content)
         case .bars:
-            presentation = barsImage(for: content).map {
-                MenuBarStripPresentation(image: $0, toolTipRegions: [])
-            }
+            presentation = barsPresentation(for: content)
         }
         lastRender = (content, style, presentation)
         return presentation
@@ -127,38 +125,58 @@ enum MenuBarStripRenderer {
     }
 
     /// Measures each segment using the exact view shared by the flattened strip, then partitions the
-    /// final trimmed image at the midpoint of each 11-point inter-segment gap. Scaling the natural
-    /// widths back onto the trimmed image absorbs the small transparent edge crop without changing the
-    /// strip renderer or leaving dead hover gaps between adjacent accounts.
+    /// final trimmed image at the midpoint of each inter-segment gap. Scaling the natural widths back
+    /// onto the trimmed image absorbs the small transparent edge crop without changing the strip
+    /// renderer or leaving dead hover gaps between adjacent accounts. The update arrow is one more
+    /// region at the end ("GodUsage 1.9.1 available"); with no account segment before it, the whole
+    /// strip (app mark plus arrow) is that one region.
     private static func textToolTipRegions(
         for content: MenuBarContent,
         imageSize: NSSize
     ) -> [MenuBarToolTipRegion] {
-        guard !content.groups.isEmpty, imageSize.width > 0 else { return [] }
-        let widths = content.groups.compactMap { group -> CGFloat? in
-            let renderer = ImageRenderer(content: MenuBarTextSegment(group: group, palette: .template))
+        guard imageSize.width > 0 else { return [] }
+        let updateText = content.updateVersion.map(MenuBarUpdateIndicator.text(version:))
+        if content.groups.isEmpty {
+            guard let updateText else { return [] }
+            return [MenuBarToolTipRegion(
+                displayName: updateText, rect: CGRect(origin: .zero, size: imageSize)
+            )]
+        }
+        var segments = content.groups.map { group in
+            (toolTip: group.toolTip, view: AnyView(MenuBarTextSegment(group: group, palette: .template)))
+        }
+        if let updateText {
+            segments.append((toolTip: updateText, view: AnyView(MenuBarUpdateGlyph(palette: .template))))
+        }
+        let widths = segments.compactMap { segment -> CGFloat? in
+            let renderer = ImageRenderer(content: segment.view)
             renderer.scale = 2
             return renderer.cgImage.map { CGFloat($0.width) / renderer.scale }
         }
-        guard widths.count == content.groups.count else { return [] }
+        guard widths.count == segments.count else { return [] }
 
-        let spacing = MenuBarTextStrip.segmentSpacing
-        let naturalWidth = widths.reduce(0, +) + spacing * CGFloat(max(0, widths.count - 1))
+        // The gap before each segment: the arrow sits closer than the account segments do.
+        let gaps = segments.indices.map { index -> CGFloat in
+            if index == 0 { return 0 }
+            return updateText != nil && index == segments.count - 1
+                ? MenuBarUpdateIndicator.leadingSpacing
+                : MenuBarTextStrip.segmentSpacing
+        }
+        let naturalWidth = widths.reduce(0, +) + gaps.reduce(0, +)
         guard naturalWidth > 0 else { return [] }
         let scale = imageSize.width / naturalWidth
 
         var segmentX: CGFloat = 0
-        return zip(content.groups.indices, zip(content.groups, widths)).map { index, pair in
-            let (group, width) = pair
-            let minX = index == content.groups.startIndex
-                ? 0
-                : (segmentX - spacing / 2) * scale
-            let maxX = index == content.groups.index(before: content.groups.endIndex)
+        return segments.indices.map { index in
+            segmentX += gaps[index]
+            let width = widths[index]
+            let minX = index == 0 ? 0 : (segmentX - gaps[index] / 2) * scale
+            let maxX = index == segments.count - 1
                 ? imageSize.width
-                : (segmentX + width + spacing / 2) * scale
-            segmentX += width + spacing
+                : (segmentX + width + gaps[index + 1] / 2) * scale
+            segmentX += width
             return MenuBarToolTipRegion(
-                displayName: group.toolTip,
+                displayName: segments[index].toolTip,
                 rect: CGRect(x: minX, y: 0, width: max(0, maxX - minX), height: imageSize.height)
             )
         }
@@ -199,25 +217,56 @@ enum MenuBarStripRenderer {
         return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
     }
 
-    /// The compact Bars glyph (≤4 bounded-metric bars), or `nil` when no pinned metric has a fill.
+    /// The compact Bars glyph (≤4 bounded-metric bars), or `nil` when no pinned metric has a fill
+    /// and no update is pending.
     static func barsImage(for content: MenuBarContent) -> NSImage? {
+        barsPresentation(for: content)?.image
+    }
+
+    /// The Bars glyph plus, when the update arrow ends it, one tooltip region over the arrow. The
+    /// bars themselves carry no regions: they flatten metrics across providers.
+    private static func barsPresentation(for content: MenuBarContent) -> MenuBarStripPresentation? {
         let fractions = content.bars.map(\.fraction)
         let warnings = content.bars.map(\.isOverPace)
         let exhausted = content.groups.filter(\.isDimmed)
-        guard !fractions.isEmpty || !exhausted.isEmpty else { return nil }
+        let hasUsage = !fractions.isEmpty || !exhausted.isEmpty
+        guard hasUsage || content.updateVersion != nil else { return nil }
         let image = stripImage(colored: content.needsColor(style: .bars), trim: false) { palette in
-            HStack(spacing: 8) {
-                if !fractions.isEmpty {
-                    // A bar over pace fills in orange.
-                    MenuBarBars(fractions: fractions, warnings: warnings, side: 18, palette: palette)
+            HStack(spacing: MenuBarUpdateIndicator.leadingSpacing) {
+                HStack(spacing: 8) {
+                    if !fractions.isEmpty {
+                        // A bar over pace fills in orange.
+                        MenuBarBars(fractions: fractions, warnings: warnings, side: 18, palette: palette)
+                    }
+                    ForEach(exhausted, id: \.providerID) { group in
+                        MenuBarTextSegment(group: group, palette: palette)
+                    }
+                    if !hasUsage {
+                        MenuBarAppMarkGlyph(palette: palette)
+                    }
                 }
-                ForEach(exhausted, id: \.providerID) { group in
-                    MenuBarTextSegment(group: group, palette: palette)
+                if content.updateVersion != nil {
+                    MenuBarUpdateGlyph(palette: palette)
                 }
             }
         }
-        image?.accessibilityDescription = content.accessibilityText
-        return image
+        guard let image else { return nil }
+        image.accessibilityDescription = content.accessibilityText
+        return MenuBarStripPresentation(image: image, toolTipRegions: barsToolTipRegions(for: content, imageSize: image.size))
+    }
+
+    /// The arrow's region: its glyph plus half the gap before it, at the untrimmed image's end (or the
+    /// whole image when only the app mark precedes it).
+    private static func barsToolTipRegions(for content: MenuBarContent, imageSize: NSSize) -> [MenuBarToolTipRegion] {
+        guard let version = content.updateVersion, imageSize.width > 0 else { return [] }
+        let hasUsage = !content.bars.isEmpty || content.groups.contains(where: \.isDimmed)
+        let width = hasUsage
+            ? min(imageSize.width, MenuBarUpdateGlyph.side + MenuBarUpdateIndicator.leadingSpacing / 2)
+            : imageSize.width
+        return [MenuBarToolTipRegion(
+            displayName: MenuBarUpdateIndicator.text(version: version),
+            rect: CGRect(x: imageSize.width - width, y: 0, width: width, height: imageSize.height)
+        )]
     }
 
     /// The screen-share privacy stand-in: the wordmark instead of usage values, shown while
