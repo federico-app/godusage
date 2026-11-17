@@ -82,6 +82,8 @@ struct TotalSpendSlice: Identifiable, Equatable {
     /// legend, the ranking tie-break, and the share-card export (which renders outside the SwiftUI
     /// environment and can't resolve for itself) all show the same live name.
     let title: String
+    /// The account's short label after the title ("Claude" + "Appload"), when the card has one.
+    var account: String? = nil
     let amountUSD: Double
     let tokenCount: Double
     let estimated: Bool
@@ -101,6 +103,8 @@ struct TotalSpendProjectedSlice: Identifiable, Equatable {
     let provider: Provider
     /// The already-resolved card title (see `TotalSpendSlice.title`) — what the legend renders.
     let title: String
+    /// The account's short label (see `TotalSpendSlice.account`).
+    var account: String? = nil
     let displayAmount: Double
     let estimated: Bool
 
@@ -115,6 +119,30 @@ struct TotalSpendProjection: Equatable {
     let isEstimated: Bool
 
     var isEmpty: Bool { slices.isEmpty }
+
+    /// Every slice is guaranteed at least this share of the bar, so a tiny provider next to a
+    /// dominant one still shows a visible sliver. Presentation-only: the legend and total keep the
+    /// true amounts.
+    static let minimumBarShare = 0.025
+
+    /// The ranked slices as fractions of the bar's width, with the minimum-sliver floor applied and
+    /// renormalized so they always fill it exactly. One slice fills the whole bar.
+    var barSegments: [TotalSpendBarSegment] {
+        let total = slices.reduce(0) { $0 + $1.displayAmount }
+        guard total > 0 else { return [] }
+        let floored = slices.map { max($0.displayAmount / total, Self.minimumBarShare) }
+        let sum = floored.reduce(0, +)
+        return zip(slices, floored).map { TotalSpendBarSegment(providerID: $0.provider.id, share: $1 / sum) }
+    }
+}
+
+/// One provider's piece of the Total Spend bar.
+struct TotalSpendBarSegment: Identifiable, Equatable {
+    let providerID: String
+    /// Fraction of the bar's width, 0...1; a projection's segments sum to 1.
+    let share: Double
+
+    var id: String { providerID }
 }
 
 /// A period's cross-provider raw totals: every spend-capable provider that contributed dollars and/or
@@ -155,6 +183,7 @@ struct TotalSpend: Equatable {
             TotalSpendProjectedSlice(
                 provider: $0.slice.provider,
                 title: $0.slice.title,
+                account: $0.slice.account,
                 displayAmount: $0.display,
                 estimated: $0.slice.estimated
             )
@@ -189,12 +218,13 @@ enum TotalSpendAggregator {
     /// Slices keep provider display order input only as a stable traversal; metric projection re-ranks.
     /// `title` resolves each provider's card title — the live card passes the account-registry
     /// resolver so slices carry renames; the default is the baked derived name for callers without
-    /// registry access (tests).
+    /// registry access (tests). `account` adds the account's short label shown after the title.
     static func total(
         for period: TotalSpendPeriod,
         providers: [Provider],
         snapshots: [String: ProviderSnapshot],
-        title: (Provider) -> String = { $0.displayName }
+        title: (Provider) -> String = { $0.displayName },
+        account: (Provider) -> String? = { _ in nil }
     ) -> TotalSpend {
         let slices = providers.compactMap { provider -> TotalSpendSlice? in
             guard let snapshot = snapshots[provider.id],
@@ -211,6 +241,7 @@ enum TotalSpendAggregator {
             return TotalSpendSlice(
                 provider: provider,
                 title: title(provider),
+                account: account(provider),
                 amountUSD: max(amount, 0),
                 tokenCount: max(tokens, 0),
                 estimated: dollars.contains(where: \.estimated)

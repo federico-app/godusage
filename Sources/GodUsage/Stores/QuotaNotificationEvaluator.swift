@@ -170,6 +170,7 @@ final class QuotaNotificationEvaluator {
             switch severity {
             case .normal: return "level.normal"
             case .warning: return "level.warning"
+            case .atRisk: return "level.atRisk"
             case .critical: return "level.critical"
             }
         }

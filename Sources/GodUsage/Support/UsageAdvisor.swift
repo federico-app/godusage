@@ -65,6 +65,17 @@ enum UsageAdvisor {
         var teamID: String? = nil
     }
 
+    /// A team plan that covers you and that Live Pace says to "use this now" (another provider's plan
+    /// runs hot while this one has room today). It names the alternative in the switch suggestion.
+    struct RoomyPlan {
+        let family: String
+        let name: String
+        /// How far today's use is ahead of pace, in working time (negative when under). Nil without a budget.
+        let ahead: TimeInterval?
+        /// Points of today's budget left.
+        let leftToday: Double
+    }
+
     /// A window is worth spending when at least this share is still projected to be left at reset…
     static let minimumLeftAtReset = 0.3
     /// …and the reset is within this share of the window (about 2 days of a week, 9 of a month).
@@ -77,12 +88,14 @@ enum UsageAdvisor {
     static let manyResets = 2
 
     static func suggestions(
-        quotas: [Quota], resets: [ResetCredits], plans: [Plan], now: Date
+        quotas: [Quota], resets: [ResetCredits], plans: [Plan], roomyPlans: [RoomyPlan] = [], now: Date
     ) -> [UsageSuggestion] {
         var result: [UsageSuggestion] = []
         result += resets.flatMap { credits(for: $0, now: now) }
         result += quotas.compactMap { useBeforeReset($0, now: now) }
-        result += quotas.compactMap { switchProvider(from: $0, quotas: quotas, resets: resets, now: now) }
+        result += quotas.compactMap {
+            switchProvider(from: $0, quotas: quotas, resets: resets, roomyPlans: roomyPlans, now: now)
+        }
         result += plans.compactMap(planUnderused)
         return result.sorted { lhs, rhs in
             if lhs.kind != rhs.kind { return lhs.kind < rhs.kind }
@@ -147,7 +160,7 @@ enum UsageAdvisor {
     /// A window running out before its reset, with a roomier provider to move to. Without an
     /// alternative the red bar already says everything.
     private static func switchProvider(
-        from quota: Quota, quotas: [Quota], resets: [ResetCredits], now: Date
+        from quota: Quota, quotas: [Quota], resets: [ResetCredits], roomyPlans: [RoomyPlan], now: Date
     ) -> UsageSuggestion? {
         let state = quota.data.meterState(now: now)
         switch state {
@@ -164,16 +177,38 @@ enum UsageAdvisor {
             .filter { $0.1 >= minimumLeftAtReset }
             .max { $0.1 < $1.1 }
         guard let (target, left) = alternative else { return nil }
-        var reason = "\(quota.providerName) is on pace to hit its \(quota.metricTitle) limit before it resets."
-        if case .spent = state { reason = "Your \(quota.providerName) \(quota.metricTitle) is used up." }
+        let spent: Bool = if case .spent = state { true } else { false }
         return UsageSuggestion(
             id: "switch:\(quota.providerID):\(target.providerID):\(Int((quota.data.resetsAt ?? now).timeIntervalSince1970 / 3600))",
             kind: .switchProvider, family: target.family,
             title: "Switch to \(target.providerName)",
-            message: "\(reason) \(target.providerName) has \(Int((left * 100).rounded()))% of its \(target.metricTitle) left.",
+            message: switchMessage(
+                from: quota, spent: spent, to: target, left: left,
+                plan: roomyPlans.first { $0.family == target.family }
+            ),
             deadline: quota.data.resetsAt,
             targetProviderID: target.providerID
         )
+    }
+
+    /// The switch suggestion's text. With a team plan for the alternative that Live Pace says to use
+    /// now, it names that plan and how far under pace it is: "Claude (Appload) will hit its Weekly
+    /// limit before the reset. ChatGPT Plus is 2h 48m under pace." Otherwise it says what the
+    /// alternative's own window has left.
+    static func switchMessage(from quota: Quota, spent: Bool, to target: Quota, left: Double, plan: RoomyPlan?) -> String {
+        guard let plan else {
+            let reason = spent
+                ? "Your \(quota.providerName) \(quota.metricTitle) is used up."
+                : "\(quota.providerName) is on pace to hit its \(quota.metricTitle) limit before it resets."
+            return "\(reason) \(target.providerName) has \(Int((left * 100).rounded()))% of its \(target.metricTitle) left."
+        }
+        let reason = spent
+            ? "Your \(quota.providerName) \(quota.metricTitle) is used up."
+            : "\(quota.providerName) will hit its \(quota.metricTitle) limit before the reset."
+        if let ahead = plan.ahead, ahead <= -LivePace.onPaceMargin {
+            return "\(reason) \(plan.name) is \(LivePaceFormat.duration(ahead)) under pace."
+        }
+        return "\(reason) \(plan.name) has \(LivePaceFormat.percent(plan.leftToday)) of today’s budget left."
     }
 
     private static func planUnderused(_ plan: Plan) -> UsageSuggestion? {

@@ -76,6 +76,7 @@ struct DashboardContentView: View {
         // The team ranking sits right under Total Spend (above the provider cards) once you're
         // signed in and in a team; Advanced Stats inside it opens the Teams window.
         if showTeamSection, container.teams.isSignedIn, !container.teams.teams.isEmpty {
+            DashboardSectionDivider(title: "Team")
             TeamDashboardSection()
                 .padding(.bottom, density.sectionSpacing)
         }
@@ -88,11 +89,38 @@ struct DashboardContentView: View {
                 .padding(.vertical, 24)
                 .padding(.horizontal, 16)
         } else {
+            // Your own provider cards, labeled apart from the team's numbers above.
+            DashboardSectionDivider(title: "You")
             WidgetGroupedListView(
                 groups: displayGroups,
                 reorderSpaceName: reorderSpaceName,
                 reorderLift: $reorderLift
             )
         }
+    }
+}
+
+/// A small uppercase label with a hairline, separating the dashboard's sections ("TEAM", "YOU").
+/// Each one is shown only with its section.
+struct DashboardSectionDivider: View {
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.6)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Rectangle()
+                .fill(.quaternary)
+                .frame(height: 1)
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 2)
+        .padding(.bottom, 6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isHeader)
     }
 }

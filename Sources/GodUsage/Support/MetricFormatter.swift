@@ -69,18 +69,19 @@ enum MetricFormatter {
         number(value, kind: .dollars, style: style) + "/MTok"
     }
 
-    /// The Total Spend ring's two-line center: a short primary on top and a quiet unit underneath so
-    /// Cost/MTok doesn't cram `/MTok` into the hole. Shared by the live card and the share PNG.
+    /// The Total Spend ring's center: a short primary on top and a quiet unit underneath so
+    /// Cost/MTok doesn't cram `/MTok` into the hole. Cost has no unit line, the `$` says it. Shared by
+    /// the live card and the share PNG.
     struct TotalSpendRingCenter: Equatable {
         let primary: String
-        let unit: String
+        let unit: String?
     }
 
     static func totalSpendRingCenter(_ value: Double, metric: TotalSpendMetric) -> TotalSpendRingCenter {
         switch metric {
         case .cost:
-            // Keep the `$` — unit line still says "dollars" for clarity in the hole.
-            return TotalSpendRingCenter(primary: number(value, kind: .dollars, style: .tray), unit: "dollars")
+            // The `$` names the unit, so no second line.
+            return TotalSpendRingCenter(primary: number(value, kind: .dollars, style: .tray), unit: nil)
         case .tokens:
             return tokenRingCenter(value)
         case .costPerMtok:

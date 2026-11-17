@@ -26,6 +26,7 @@ enum Theme {
         switch severity {
         case .normal: return Color(nsColor: .systemBlue)
         case .warning: return Color(nsColor: .systemYellow)
+        case .atRisk: return Color(nsColor: .systemOrange)
         case .critical: return Color(nsColor: .systemRed)
         }
     }

@@ -176,4 +176,43 @@ final class TotalSpendAggregatorTests: XCTestCase {
         XCTAssertTrue(total.projection(for: .tokens).isEmpty)
         XCTAssertTrue(total.projection(for: .costPerMtok).isEmpty)
     }
+
+    // MARK: Bar
+
+    func testOneSliceFillsTheBarAndHeadlinesExactCents() {
+        let snapshots = ["claude": snapshot(claude, lines: [spendLine("Today", dollars: 26.26)])]
+        let projection = TotalSpendAggregator.total(for: .today, providers: [claude, cursor], snapshots: snapshots)
+            .projection(for: .cost)
+        XCTAssertEqual(projection.barSegments, [TotalSpendBarSegment(providerID: "claude", share: 1)])
+        XCTAssertEqual(projection.headline(projection.centerValue), "$26.26")
+    }
+
+    func testSeveralSlicesSplitTheBarInLegendOrderWithAVisibleSliver() {
+        let snapshots = [
+            "claude": snapshot(claude, lines: [spendLine("Today", dollars: 91.53)]),
+            "cursor": snapshot(cursor, lines: [spendLine("Today", dollars: 0.07)])
+        ]
+        let projection = TotalSpendAggregator.total(for: .today, providers: [claude, cursor], snapshots: snapshots)
+            .projection(for: .cost)
+        let segments = projection.barSegments
+        XCTAssertEqual(segments.map(\.providerID), projection.slices.map(\.provider.id))
+        XCTAssertEqual(segments.map(\.providerID), ["claude", "cursor"])
+        XCTAssertEqual(segments.reduce(0) { $0 + $1.share }, 1, accuracy: 1e-9)
+        // $0.07 next to $91.53 still gets the minimum sliver, renormalized.
+        XCTAssertGreaterThanOrEqual(segments[1].share, TotalSpendProjection.minimumBarShare * 0.9)
+        XCTAssertEqual(projection.headline(projection.centerValue), "$91.60")
+    }
+
+    func testNoDataHasNoSegments() {
+        let projection = TotalSpendAggregator.total(for: .today, providers: [claude], snapshots: [:]).projection(for: .cost)
+        XCTAssertTrue(projection.barSegments.isEmpty)
+    }
+
+    func testSlicesCarryTheAccountLabel() {
+        let snapshots = ["claude": snapshot(claude, lines: [spendLine("Today", dollars: 1)])]
+        let total = TotalSpendAggregator.total(
+            for: .today, providers: [claude], snapshots: snapshots, account: { _ in "Appload" }
+        )
+        XCTAssertEqual(total.projection(for: .cost).slices.first?.account, "Appload")
+    }
 }

@@ -95,15 +95,26 @@ struct ProviderSectionHeader: View {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     // Name + plan keep their width and stay on one line; under width pressure it's the
                     // name that gives (the stale tag below stays whole — see its comment). A name that
-                    // truncates (long account labels like "Claude — demo@example.com") marquees to its
-                    // ending while the header is hovered — the same reveal the Total Spend legend uses.
+                    // truncates (a long rename) marquees to its ending while the header is hovered —
+                    // the same reveal the Total Spend legend uses. An account card follows the name
+                    // with its short label ("Claude" + "Appload"); the full label, email included,
+                    // is its tooltip.
+                    let parts = container.displayParts(for: provider)
                     HoverMarqueeText(
-                        text: container.displayName(for: provider),
+                        text: parts.name,
                         font: .system(size: density.headerPointSize, weight: .semibold),
                         isHovered: isHovered
                     )
                     .foregroundStyle(.primary)
                     .layoutPriority(1)
+                    if let account = parts.account {
+                        Text(account)
+                            .font(.system(size: density.headerPointSize - 2))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .hoverTooltip(parts.detail)
+                    }
                     if let plan {
                         ProviderPlanBadge(plan: plan)
                             .layoutPriority(1)
