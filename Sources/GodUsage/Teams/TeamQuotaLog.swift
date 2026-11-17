@@ -18,6 +18,8 @@ struct TeamQuotaReading: Hashable, Sendable {
     var percent: Double
     var observedAt: Date
     var kind: Kind = .limit
+    /// The plan the card detected with this reading ("Max 20x"), so a plan change isn't taken for a claimed reset.
+    var plan: String? = nil
 
     /// The quota row each provider's plan is limited by. Other providers send none.
     static let limitingLabels = ["claude": "Weekly", "codex": "Weekly", "cursor": "Total usage"]
@@ -60,7 +62,8 @@ struct TeamQuotaReading: Hashable, Sendable {
                 periodHours: max(1, Int((Double(periodMs) / 3_600_000).rounded())),
                 percent: max(0, used / limit * 100),
                 observedAt: snapshot.refreshedAt,
-                kind: kind
+                kind: kind,
+                plan: snapshot.plan
             )
         }
         return nil
@@ -97,10 +100,15 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
         /// Resets claimed in the window that kept its reset time, oldest first. `percent` is the share
         /// used since the last one.
         var claims: [Claim] = []
+        /// This Mac's first reading of the window. Nil in logs saved before claims.
+        var firstObservedAt: Date?
+        /// The plan detected with the last reading, so a plan change isn't taken for a claimed reset.
+        var plan: String?
 
         init(
             provider: String, account: String, endsAt: Date, periodHours: Int, percent: Double, observedAt: Date,
-            kind: TeamQuotaReading.Kind = .limit, days: [Day] = [], perDevice: Bool = false, claims: [Claim] = []
+            kind: TeamQuotaReading.Kind = .limit, days: [Day] = [], perDevice: Bool = false, claims: [Claim] = [],
+            firstObservedAt: Date? = nil, plan: String? = nil
         ) {
             self.provider = provider
             self.account = account
@@ -112,6 +120,8 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
             self.days = days
             self.perDevice = perDevice
             self.claims = claims
+            self.firstObservedAt = firstObservedAt
+            self.plan = plan
         }
 
         /// Logs saved before sessions and daily readings have neither key.
@@ -128,6 +138,8 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
             // Claude's and Codex's windows were all named per Mac before account ids.
             perDevice = try container.decodeIfPresent(Bool.self, forKey: .perDevice) ?? (provider != "cursor")
             claims = try container.decodeIfPresent([Claim].self, forKey: .claims) ?? []
+            firstObservedAt = try container.decodeIfPresent(Date.self, forKey: .firstObservedAt)
+            plan = try container.decodeIfPresent(String.self, forKey: .plan)
         }
 
         /// A day's share of the week only means something for a window of a week or less.
@@ -187,18 +199,13 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
             for index in mine where windows[index].endsAt > reading.observedAt && windows[index].endsAt < endsAt {
                 windows[index].endsAt = Self.roundedToHour(reading.observedAt)
             }
+            // Claims GodUsage made before this Mac's first reading of the window don't count here: the
+            // share before them is unknown, and a Mac that read it reports them.
             var window = Window(
                 provider: reading.provider, account: key, endsAt: endsAt,
                 periodHours: reading.periodHours, percent: reading.percent, observedAt: reading.observedAt, kind: reading.kind,
-                perDevice: reading.accountKey == nil
+                perDevice: reading.accountKey == nil, firstObservedAt: reading.observedAt, plan: reading.plan
             )
-            if window.tracksClaims {
-                // Claims made before this window's first reading: the reading is already after them.
-                let percent = window.percent
-                window.percent = 0
-                window.applyRecorded(claimed, until: reading.observedAt, dayKey: dayKey)
-                window.percent = percent
-            }
             window.recordDay(day, percent: window.used)
             windows.append(window)
         }
@@ -218,10 +225,7 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
                 $0.provider == provider && $0.kind == kind && $0.account == new
                     && abs($0.endsAt.timeIntervalSince(window.endsAt)) <= Self.sameWindowTolerance
             }) {
-                windows[existing].percent = max(windows[existing].percent, window.percent)
-                windows[existing].observedAt = max(windows[existing].observedAt, window.observedAt)
-                windows[existing].mergeClaims(window.claims)
-                for day in window.days { windows[existing].recordDay(day.day, percent: day.percent) }
+                windows[existing].merge(window)
             } else {
                 windows.append(window)
             }
@@ -245,7 +249,8 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
                 observedAt: TeamUsageUpload.instant(Self.flooredToHour(window.observedAt)),
                 days: window.days.isEmpty ? nil : window.days.map { Day(day: $0.day, percent: Self.tenth($0.percent)) },
                 perDevice: window.perDevice ? true : nil,
-                claims: window.wireClaims
+                claims: window.wireClaims,
+                since: window.tracksClaims ? window.stretchSince.map { TeamUsageUpload.instant($0) } : nil
             )
         }
     }

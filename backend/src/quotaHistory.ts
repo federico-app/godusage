@@ -1,6 +1,7 @@
 import { ESTIMATE_GAP_MS, type QuotaRow } from "./quota";
-import { accountWindows, latestClaimSince, shareOfCapacity, type MergedWindow } from "./quotaClaims";
+import { accountWindows, latestClaimBetween, shareOfCapacity, type MergedWindow } from "./quotaClaims";
 import { accountDailyUse, dayShare, round1, sessionsBetween, type Plan } from "./quotaDaily";
+import { zonedTime } from "./schedules";
 import { daysBetween } from "./stats";
 import { addDays } from "./usagePayload";
 import { isWorkingDay, type WorkingDays } from "./workingDays";
@@ -211,15 +212,22 @@ export function todayUse(window: Window, today: string): { today: number; left: 
   return { today: current - before, left: Math.max(0, window.capacity - before), before };
 }
 
+/** The viewer's day `day` in `timeZone` as an absolute span (UTC without a zone). */
+export function dayBounds(day: string, timeZone: string | null): { from: number; to: number } {
+  const zone = timeZone ?? "UTC";
+  return { from: zonedTime(day, 0, zone), to: zonedTime(addDays(day, 1), 0, zone) };
+}
+
 /**
  * A reset claimed today restarts today's budget from the claim: the use before it counts as spent, and
- * what's left after it (capacity minus the share used at the claim) is spread from then on. Null without
- * a claim on `today` (the claiming Mac's day).
+ * what's left after it (capacity minus the share used at the claim) is spread from then on. "Today" is
+ * the viewer's day up to now, by the claim's time; Live Pace uses the same rule. Null without one.
  */
-export function claimToday(window: Window, today: string, before: number): { at: number; usedBefore: number; leftAfter: number } | null {
-  const index = window.claims.findLastIndex((claim) => claim.day === today);
-  if (index < 0) return null;
-  const claim = latestClaimSince(window, window.claims[index]!.at)!;
+export function claimToday(
+  window: Window, day: { from: number; to: number }, now: number, before: number,
+): { at: number; usedBefore: number; leftAfter: number } | null {
+  const claim = latestClaimBetween(window, day.from, Math.min(day.to, now));
+  if (claim === null) return null;
   return { at: claim.claim.at, usedBefore: Math.max(0, claim.usedAt - before), leftAfter: Math.max(0, window.capacity - claim.usedAt) };
 }
 
@@ -241,7 +249,10 @@ function weekCapacity(open: Window[]): WeekCapacity | undefined {
  * for its last day). A reset claimed today restarts the budget at the claim (see `claimToday`). The
  * plan takes the mean over its accounts. Null when no covered account has an open weekly window.
  */
-export function planBudget(rows: QuotaRow[], plan: Plan, today: string, now: Date, workingDays: WorkingDays): PlanBudget | null {
+export function planBudget(
+  rows: QuotaRow[], plan: Plan, today: string, now: Date, workingDays: WorkingDays, timeZone: string | null = null,
+): PlanBudget | null {
+  const day = dayBounds(today, timeZone);
   const open = [...coveredWindows(rows, plan).values()]
     .map((windows) => windows.find((window) => window.endsAt > now.getTime()))
     .filter((window): window is Window => window !== undefined);
@@ -256,7 +267,7 @@ export function planBudget(rows: QuotaRow[], plan: Plan, today: string, now: Dat
   };
   const budgets = open.map((window) => {
     const { today: used, left, before } = todayUse(window, today);
-    const claim = claimToday(window, today, before);
+    const claim = claimToday(window, day, now.getTime(), before);
     const affordable = claim === null ? left / workingLeft(window) : claim.usedBefore + claim.leftAfter / workingLeft(window);
     return { today: used, left, affordable };
   });

@@ -1,6 +1,6 @@
 import type { QuotaReading, QuotaRow } from "./quota";
-import { deviceKey, latestClaimSince } from "./quotaClaims";
-import { coveredWindows, todayUse, type Window } from "./quotaHistory";
+import { deviceKey } from "./quotaClaims";
+import { claimToday, coveredWindows, todayUse, type Window } from "./quotaHistory";
 import type { Plan } from "./quotaDaily";
 import { defaultSchedule, overlap, union, workingIntervals, zonedTime, type Interval, type MemberHours } from "./schedules";
 import { addDays } from "./usagePayload";
@@ -151,11 +151,10 @@ export function planPace(rows: QuotaRow[], plan: Plan, today: string, now: Date,
     const { today: used, left, before } = todayUse(window, today);
     // A reset claimed today restarts the budget at the claim: the use before it is spent, and what's
     // left after it is spread over the working hours from then to the reset.
-    const claimed = latestClaimSince(window, day.from);
-    const claim = claimed !== null && claimed.claim.at <= time ? claimed : null;
-    const from = claim?.claim.at ?? day.from;
-    const usedBefore = claim === null ? 0 : Math.max(0, claim.usedAt - before);
-    const share = claim === null ? left : Math.max(0, window.capacity - claim.usedAt);
+    const claim = claimToday(window, day, time, before);
+    const from = claim?.at ?? day.from;
+    const usedBefore = claim?.usedBefore ?? 0;
+    const share = claim === null ? left : claim.leftAfter;
     const todayHours = overlap(intervals, from, Math.min(day.to, window.endsAt));
     const totalHours = overlap(intervals, from, window.endsAt);
     return {
@@ -163,7 +162,7 @@ export function planPace(rows: QuotaRow[], plan: Plan, today: string, now: Date,
       left,
       budget: usedBefore + (todayHours === 0 ? 0 : (share * todayHours) / totalHours),
       rate: accountRate(window, context.readings, intervals, day, time),
-      rebase: claim === null ? null : { at: new Date(claim.claim.at).toISOString(), usedPercent: round1(usedBefore) },
+      rebase: claim === null ? null : { at: new Date(claim.at).toISOString(), usedPercent: round1(usedBefore) },
     };
   });
   const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;

@@ -61,6 +61,8 @@ export interface QuotaWindowInput {
    * none), `percent` is the share used since the last claim and `days` count every claim's share too.
    */
   claims: QuotaClaim[] | null;
+  /** When the Mac's stretch since its last claim began (its first reading of it). Null when not sent. */
+  stretchSince: string | null;
 }
 
 /** How much of a plan's quota its covered accounts use in the plan's cycle. */
@@ -71,8 +73,13 @@ export interface PlanQuota {
   windows: number;
   /** Windows the Mac last read well before they reset, so their share is a lower bound. */
   estimatedWindows: number;
-  /** What the cycle costs times the share left unused. */
+  /**
+   * What the cycle costs times the paid share left unused. A claimed reset is free, so a window counts
+   * at most its one paid limit here: 135 of 200 used is the limit fully used, nothing wasted.
+   */
   wastedUSD: number;
+  /** With claimed resets: the mean share of the paid limit used (each window at most 100), which `underused` and `wastedUSD` read. Omitted without (it equals `usedPercent`). */
+  paidPercent?: number;
   /** Limit resets claimed in the counted windows, each adding a limit to its window. Omitted when none. */
   resets?: number;
 }
@@ -122,6 +129,8 @@ export function parseQuotaWindows(value: unknown, now: Date): QuotaWindowInput[]
       provider, kind, accountKey: account, endsAt: roundToHour(endsAt), periodHours, percent,
       observedAt: new Date(observedAt).toISOString(), days: parseDays(entry.days), perDevice,
       claims: kind === "limit" ? parseClaims(entry.claims) : null,
+      stretchSince: kind === "limit" && entry.since !== undefined && entry.since !== null
+        ? new Date(parseInstant(entry.since, "since")).toISOString() : null,
     };
     const key = `${provider}|${kind}|${account}|${window.endsAt}`;
     if (seen.has(key)) throw badRequest(`Duplicate quota window for ${provider}.`);
@@ -167,6 +176,7 @@ export async function storeQuotaWindows(
       days: window.days.length === 0 ? null : window.days,
       per_device: window.perDevice,
       claims: window.claims,
+      stretch_since: window.stretchSince,
     })),
   );
   const removed = await tx.run(
@@ -178,17 +188,20 @@ export async function storeQuotaWindows(
     [userID, deviceID, rows, since(HISTORY_DAYS), since(OWNED_DAYS.session), since(OWNED_DAYS.limit)],
   );
   const upserted = await tx.run(
-    `INSERT INTO quota_windows (user_id, device_id, provider, kind, account_key, ends_at, period_hours, percent, observed_at, days, per_device, claims)
-     SELECT $1, $2, r.provider, r.kind, r.account_key, r.ends_at, r.period_hours, r.percent, r.observed_at, r.days, r.per_device, r.claims
+    `INSERT INTO quota_windows (user_id, device_id, provider, kind, account_key, ends_at, period_hours, percent, observed_at, days, per_device, claims,
+                                stretch_since)
+     SELECT $1, $2, r.provider, r.kind, r.account_key, r.ends_at, r.period_hours, r.percent, r.observed_at, r.days, r.per_device, r.claims,
+            r.stretch_since
      FROM jsonb_to_recordset($3::jsonb)
        AS r(provider text, kind text, account_key text, ends_at text, period_hours integer, percent double precision, observed_at text,
-            days jsonb, per_device boolean, claims jsonb)
+            days jsonb, per_device boolean, claims jsonb, stretch_since text)
      ON CONFLICT (user_id, device_id, provider, kind, account_key, ends_at) DO UPDATE SET
        period_hours = excluded.period_hours, percent = excluded.percent, observed_at = excluded.observed_at, days = excluded.days,
-       per_device = excluded.per_device, claims = excluded.claims
+       per_device = excluded.per_device, claims = excluded.claims, stretch_since = excluded.stretch_since
      WHERE (quota_windows.period_hours, quota_windows.percent, quota_windows.observed_at, quota_windows.days, quota_windows.per_device,
-            quota_windows.claims)
-       IS DISTINCT FROM (excluded.period_hours, excluded.percent, excluded.observed_at, excluded.days, excluded.per_device, excluded.claims)`,
+            quota_windows.claims, quota_windows.stretch_since)
+       IS DISTINCT FROM (excluded.period_hours, excluded.percent, excluded.observed_at, excluded.days, excluded.per_device, excluded.claims,
+                         excluded.stretch_since)`,
     [userID, deviceID, rows],
   );
   await storeReadings(tx, userID, deviceID, windows, now);
@@ -260,6 +273,7 @@ export interface QuotaRow {
   per_device: boolean;
   /** Null from apps before claims (see `QuotaWindowInput.claims`). */
   claims: QuotaClaim[] | null;
+  stretch_since: string | null;
 }
 
 /**
@@ -269,7 +283,7 @@ export interface QuotaRow {
 export async function teamQuotaWindows(db: Queryable, teamID: string, from: string): Promise<QuotaRow[]> {
   return db.query<QuotaRow>(
     `SELECT q.user_id, q.device_id, q.provider, q.kind, q.account_key, q.ends_at, q.period_hours, q.percent, q.observed_at, q.days,
-            q.per_device, q.claims
+            q.per_device, q.claims, q.stretch_since
      FROM quota_windows q JOIN team_members m ON m.user_id = q.user_id AND m.team_id = $1 AND m.counts_usage
      WHERE q.ends_at >= $2
      AND NOT EXISTS (SELECT 1 FROM account_exclusions x WHERE x.team_id = $1 AND x.user_id = q.user_id AND x.account_key = q.account_key)`,
@@ -294,23 +308,24 @@ export function planQuota(
   workingDays: WorkingDays,
 ): PlanQuota | null {
   const shares = new Map<string, number[]>();
+  const paid = new Map<string, number[]>();
   let count = 0;
   let estimated = 0;
   let resets = 0;
   for (const [account, windows] of accountWindows(rows, plan)) {
     for (const window of windows) {
       if (window.endsAt < Date.parse(`${plan.cycleFrom}T00:00:00Z`)) continue;
-      let share: number;
+      let pace = 1;
       if (window.endsAt <= now.getTime()) {
-        share = shareOfCapacity(window);
         if (window.endsAt - window.observedAt > ESTIMATE_GAP_MS) estimated += 1;
       } else {
         // Paced from the last reading, so a Mac that has been off doesn't drag the projection down.
         const passed = workingShare(window.endsAt - window.periodMs, window.observedAt, window.endsAt, workingDays);
         if (passed < MIN_PROJECTION_SHARE) continue;
-        share = shareOfCapacity(window) / Math.min(passed, 1);
+        pace = Math.min(passed, 1);
       }
-      shares.set(account, [...(shares.get(account) ?? []), Math.min(share, 100)]);
+      shares.set(account, [...(shares.get(account) ?? []), Math.min(shareOfCapacity(window) / pace, 100)]);
+      paid.set(account, [...(paid.get(account) ?? []), Math.min(window.used / pace, 100)]);
       count += 1;
       resets += window.claims.length;
     }
@@ -318,12 +333,14 @@ export function planQuota(
   if (shares.size === 0) return null;
   const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
   const used = mean([...shares.values()].map(mean));
+  const paidUsed = mean([...paid.values()].map(mean));
   return {
     usedPercent: Math.round(used * 10) / 10,
     accounts: shares.size,
     windows: count,
     estimatedWindows: estimated,
-    wastedUSD: Math.round(plan.cycleCostUSD * (100 - used)) / 100,
+    wastedUSD: Math.round(plan.cycleCostUSD * (100 - paidUsed)) / 100,
+    ...(resets > 0 ? { paidPercent: Math.round(paidUsed * 10) / 10 } : {}),
     ...(resets > 0 ? { resets } : {}),
   };
 }

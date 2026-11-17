@@ -94,7 +94,7 @@ describe("plan quota", () => {
       {
         device_id: "device-aaaa-0001", provider: "claude", kind: "limit", account_key: A, ends_at: "2026-10-04T12:00:00.000Z",
         period_hours: 168, percent: 90, observed_at: "2026-10-04T12:00:00.000Z", days: null, per_device: true,
-        claims: null,
+        claims: null, stretch_since: null,
       },
     ]);
 

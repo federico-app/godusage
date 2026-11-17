@@ -3,10 +3,10 @@ import type { QuotaRow } from "./quota";
 import { isValidDay } from "./usagePayload";
 
 const HOUR_MS = 3_600_000;
-/** At most this many claimed resets per window in an upload. */
-const MAX_CLAIMS = 20;
-/** Two Macs' claims whose times come this close (or overlap) are the same claim. */
-export const SAME_CLAIM_SLACK_MS = 15 * 60_000;
+/** At most this many claimed resets per window are kept (the latest); more are dropped and logged. */
+export const MAX_CLAIMS = 20;
+/** Two Macs' claims whose times come this close (or overlap) are the same claim; allows for clocks off by minutes. */
+export const SAME_CLAIM_SLACK_MS = 30 * 60_000;
 /**
  * Ends this close name the same window: ends are rounded to the hour, and Codex counts a reset from
  * the reading, so two Macs can name one window an hour apart.
@@ -33,8 +33,10 @@ export interface QuotaClaim {
 /** Validates a window's claims (the system boundary). Missing: an app from before claims, null. */
 export function parseClaims(value: unknown): QuotaClaim[] | null {
   if (value === undefined || value === null) return null;
-  if (!Array.isArray(value) || value.length > MAX_CLAIMS) throw badRequest(`claims must be a list of at most ${MAX_CLAIMS}.`);
-  return value.map((entry) => {
+  if (!Array.isArray(value)) throw badRequest("claims must be a list.");
+  // Far more claims than a week can hold is a client bug, not a reason to refuse the whole upload.
+  if (value.length > MAX_CLAIMS) console.warn(JSON.stringify({ event: "quota_claims_truncated", sent: value.length, kept: MAX_CLAIMS }));
+  return value.slice(-MAX_CLAIMS).map((entry) => {
     if (!isRecord(entry)) throw badRequest("Each claim must be an object.");
     const at = instant(entry.at, "A claim's at");
     const after = instant(entry.after ?? entry.at, "A claim's after");
@@ -114,6 +116,13 @@ interface Cluster extends Claim {
  * in it. Rows from apps before claims (`claims` null) know no claims: they only set a floor.
  */
 export function mergeRows(rows: QuotaRow[]): Pick<MergedWindow, "claims" | "segments" | "used" | "capacity" | "days" | "correct"> {
+  // Whether the row's stretch since its last claim began before `claim`, which it didn't see: its share
+  // may then be from before the claim. Without a start (no stretch_since), any claim it missed counts.
+  const spans = (row: QuotaRow, claim: Cluster) => {
+    if (claim.members.has(deviceKey(row))) return false;
+    const since = row.stretch_since === null ? Number.NEGATIVE_INFINITY : Date.parse(row.stretch_since);
+    return since < claim.at;
+  };
   const entries = rows.flatMap((row) =>
     (row.claims ?? []).map((claim) => ({
       device: deviceKey(row), at: Date.parse(claim.at), after: Date.parse(claim.after), percent: claim.percent, day: claim.day, recorded: claim.recorded,
@@ -155,15 +164,20 @@ export function mergeRows(rows: QuotaRow[]): Pick<MergedWindow, "claims" | "segm
     }
     const device = deviceKey(row);
     const known = clusters.reduce((last, claim, index) => (claim.members.has(device) ? index + 1 : last), 0);
-    const index = Math.max(stretch(observedAt), known);
+    // A Mac whose stretch began before a claim it never saw may still hold the share from before that
+    // claim, so its share counts in the stretch where its own began (never twice).
+    const spanned = clusters.findIndex((claim, index) => index >= known && spans(row, claim));
+    const index = spanned >= 0 ? spanned : Math.max(stretch(observedAt), known);
     segments[index] = Math.max(segments[index]!, row.percent);
   }
 
-  const aware = new Set(rows.filter((row) => row.claims !== null).map(deviceKey));
+  const aware = new Map(rows.filter((row) => row.claims !== null).map((row) => [deviceKey(row), row]));
   const missed = (claim: Cluster, device: string) => claim.percent - (claim.members.get(device) ?? 0);
+  // Only a claim a Mac missed while it wasn't reading (its stretch began after it) is added to its readings.
+  const adds = (claim: Cluster, device: string) => !spans(aware.get(device)!, claim);
   const correct = (device: string, at: number, value: number) => {
     if (!aware.has(device)) return value;
-    return clusters.reduce((total, claim) => (claim.at <= at ? total + missed(claim, device) : total), value);
+    return clusters.reduce((total, claim) => (claim.at <= at && adds(claim, device) ? total + missed(claim, device) : total), value);
   };
   const days = new Map<string, number>();
   for (const row of rows) {
@@ -173,6 +187,7 @@ export function mergeRows(rows: QuotaRow[]): Pick<MergedWindow, "claims" | "segm
       if (aware.has(device)) {
         for (const claim of clusters) {
           // A day's reading of a claim's own day may come from before it, unless the Mac saw the claim.
+          if (!adds(claim, device)) continue;
           if (claim.day < reading.day || (claim.day === reading.day && claim.members.has(device))) value += missed(claim, device);
         }
       }
@@ -258,10 +273,13 @@ export function shareOfCapacity(window: Pick<MergedWindow, "used" | "capacity">)
   return (window.used / window.capacity) * 100;
 }
 
-/** The share used so far at the moment of the window's latest claim on or after `from` (epoch ms), with that claim. */
-export function latestClaimSince(window: MergedWindow, from: number): { claim: Claim; usedAt: number } | null {
+/**
+ * The window's latest claim from `from` to `to` (epoch ms), with the share used so far at it. Every
+ * "claimed today" check uses this with the viewer's day, so a claim's time decides it, not a Mac's day.
+ */
+export function latestClaimBetween(window: MergedWindow, from: number, to: number): { claim: Claim; usedAt: number } | null {
   let index = -1;
-  window.claims.forEach((claim, at) => { if (claim.at >= from) index = at; });
+  window.claims.forEach((claim, at) => { if (claim.at >= from && claim.at <= to) index = at; });
   if (index < 0) return null;
   return { claim: window.claims[index]!, usedAt: window.segments.slice(0, index + 1).reduce((sum, value) => sum + value, 0) };
 }

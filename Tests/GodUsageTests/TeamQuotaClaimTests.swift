@@ -46,6 +46,7 @@ final class TeamQuotaClaimTests: XCTestCase {
         XCTAssertEqual(wire.percent, 40)
         XCTAssertEqual(wire.days, [TeamQuotaLog.Day(day: "2026-10-05", percent: 135)], "today counts the use before the claim and after it")
         XCTAssertEqual(wire.claims, [TeamUsageUpload.QuotaClaim(at: "2026-10-05T12:00:00Z", after: "2026-10-05T10:00:00Z", percent: 95, day: "2026-10-05", recorded: false)])
+        XCTAssertEqual(wire.since, "2026-10-05T12:00:00Z", "the stretch since the claim began with it")
     }
 
     func testRoundingDipsAndSmallRepricingAreNotClaims() throws {
@@ -130,12 +131,90 @@ final class TeamQuotaClaimTests: XCTestCase {
         XCTAssertEqual(log.windows.first?.used, 100)
     }
 
-    func testCountsAClaimMadeBeforeTheWindowsFirstReading() throws {
+    func testSkipsAClaimMadeBeforeThisMacFirstReadTheWindow() throws {
         var log = TeamQuotaLog()
         record(&log, reading(4, at: 0), claims: [claim(at: -1)])
+        record(&log, reading(5, at: 0.5), claims: [claim(at: -1)])
         let window = try XCTUnwrap(log.windows.first)
-        XCTAssertEqual(window.claims.map(\.percent), [0], "the share before it is for another Mac to know")
-        XCTAssertEqual(window.percent, 4)
+        XCTAssertEqual(window.claims, [], "no share before it to count; a Mac that read it reports it")
+        XCTAssertEqual(window.used, 5)
+    }
+
+    func testAStaleRefreshThatLandsRightAfterAClaimIsNotASecondClaim() throws {
+        // A periodic refresh read 95% before the claim and landed after it; then the real reading.
+        var log = TeamQuotaLog()
+        record(&log, reading(95, at: -1))
+        record(&log, reading(95, at: -0.1), claims: [claim(at: -0.2)])
+        record(&log, reading(1, at: 0), claims: [claim(at: -0.2)])
+        let window = try XCTUnwrap(log.windows.first)
+        XCTAssertEqual(window.claims.map(\.percent), [95])
+        XCTAssertEqual(window.claims.map(\.recorded), [true])
+        XCTAssertEqual(window.used, 96)
+    }
+
+    func testAPlanUpgradeOrARaisedLimitIsNotAClaim() throws {
+        // Pro to Max: the plan changed with the drop.
+        var log = TeamQuotaLog()
+        var pro = reading(80, at: -6)
+        pro.plan = "Pro"
+        var max = reading(16, at: 0)
+        max.plan = "Max 5x"
+        record(&log, pro)
+        record(&log, max)
+        XCTAssertEqual(log.windows.first?.claims, [])
+        // A raised limit halves the share between two readings 15 minutes apart: too much use to be fresh.
+        log = TeamQuotaLog()
+        record(&log, reading(60, at: -0.25))
+        record(&log, reading(30, at: 0))
+        XCTAssertEqual(log.windows.first?.claims, [])
+        XCTAssertEqual(log.windows.first?.used, 60)
+    }
+
+    func testAZeroReadOnceBeforeTheMacSleptIsUndoneWhenTheShareComesBack() throws {
+        var log = TeamQuotaLog()
+        record(&log, reading(95, at: -5))
+        record(&log, reading(0, at: -4.9))
+        XCTAssertEqual(log.windows.first?.claims.count, 1)
+        record(&log, reading(95, at: 0))
+        XCTAssertEqual(log.windows.first?.claims, [])
+        XCTAssertEqual(log.windows.first?.used, 95)
+    }
+
+    func testMergingACardsPerMacCopyPutsItsOldShareBeforeTheClaim() throws {
+        var log = TeamQuotaLog()
+        let perDevice = { (reading: TeamQuotaReading) in "dev-\(reading.cardID)" }
+        func read(_ percent: Double, at hours: Double, card: String, account: String?) {
+            var reading = reading(percent, at: hours)
+            reading.cardID = card
+            reading.accountKey = account
+            log.record([reading], perDeviceKey: perDevice, now: now) { DailyUsageAccumulator.dayKey(from: $0, calendar: self.utc) }
+        }
+        read(95, at: -3, card: "claude@b", account: "key")
+        read(10, at: -1, card: "claude@b", account: "key")
+        // This card's copy, named per Mac, last read before the claim.
+        read(95, at: -2.5, card: "claude", account: nil)
+        read(12, at: 0, card: "claude", account: "key")
+        let window = try XCTUnwrap(log.windows.first { $0.account == "key" })
+        XCTAssertEqual(log.windows.count, 1)
+        XCTAssertEqual(window.claims.map(\.percent), [95])
+        XCTAssertEqual(window.used, 107)
+
+        // A claim GodUsage made with an unknown share never hides the real one.
+        var recorded = window
+        recorded.claims = [TeamQuotaLog.Claim(at: now, after: now, percent: 0, day: "2026-10-05", recorded: true)]
+        recorded.mergeClaims([TeamQuotaLog.Claim(at: now.addingTimeInterval(600), after: now.addingTimeInterval(-3_600), percent: 95, day: "2026-10-05", recorded: false)])
+        XCTAssertEqual(recorded.claims.map(\.percent), [95])
+        XCTAssertEqual(recorded.claims.map(\.recorded), [true])
+        XCTAssertEqual(recorded.claims.first?.at, now)
+    }
+
+    func testKeepsTheLatestClaimsWithoutLosingTheirUse() throws {
+        var window = TeamQuotaLog.Window(provider: "claude", account: "acct", endsAt: now, periodHours: 168, percent: 3, observedAt: now)
+        window.claims = (0..<25).map { TeamQuotaLog.Claim(at: now.addingTimeInterval(Double($0) * 60), after: now, percent: 1, day: "2026-10-05", recorded: false) }
+        window.trimClaims()
+        XCTAssertEqual(window.claims.count, TeamQuotaLog.maxClaims)
+        XCTAssertEqual(window.claims.first?.percent, 6)
+        XCTAssertEqual(window.used, 28)
     }
 
     func testCodexStartsANewWeekInsteadOfAddingAClaim() throws {
@@ -149,7 +228,7 @@ final class TeamQuotaClaimTests: XCTestCase {
         XCTAssertEqual(log.windows.first?.endsAt, now)
     }
 
-    func testOnlyClaudeAndCodexLimitWindowsSendClaims() throws {
+    func testOnlyClaudeLimitWindowsSendClaims() throws {
         var log = TeamQuotaLog()
         var session = reading(60, at: 0)
         session.kind = .session
