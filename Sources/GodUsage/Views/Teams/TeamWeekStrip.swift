@@ -1,16 +1,18 @@
 import SwiftUI
 
 /// In the dashboard's Team section, above the ranking: for each plan with an open weekly limit, its
-/// week so far, one bar per day, with today's use against what today can afford (what's left of the
-/// week spread over the working days until the reset) and the days left drawn at that budget. Plans
-/// from your other teams (see `YourTeamPlans`) name their team. With Live Pace on (Customize → Team),
-/// plans the server sends a pace for show it instead (see `TeamLivePaceStrip`).
+/// week so far as a row of small boxes, one per day, with today's use against what today can afford
+/// (what's left of the week spread over the working days until the reset) and the working days left
+/// drawn at that budget. Plans are grouped under their team's name: in the card's title when they all
+/// come from one team other than the selected one, else above each team's plans (see `YourTeamPlans`).
+/// With Live Pace on (Customize → Team), plans the server sends a pace for show it instead (see
+/// `TeamLivePaceStrip`).
 struct TeamWeekStripCard: View {
     @Environment(AppContainer.self) private var container
     @AppStorage(TeamDashboardPreferences.showLivePaceKey) private var showLivePace = true
 
     let plans: [TeamPlanEntry]
-    /// The team a row names; nil for the selected team's own plans.
+    let selectedTeamID: String?
     let teamName: (String) -> String?
     let today: String
 
@@ -25,21 +27,26 @@ struct TeamWeekStripCard: View {
             TimelineView(.periodic(from: .now, by: 60)) { context in
                 let paces = showLivePace ? livePaces(rows.map(\.0), now: context.date) : [:]
                 let roomFor = Self.useThisNow(rows.map(\.0), paces: paces)
+                let groups = Self.groups(rows) { $0.0.teamID }
+                let headers = Self.headers(groups.map(\.teamID), selectedTeamID: selectedTeamID)
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("This Week's Limit")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    ForEach(rows, id: \.0.id) { entry, budget in
-                        if let live = paces[entry.id], let pace = budget.pace {
-                            TeamLivePaceStrip(
-                                teamID: entry.teamID, plan: entry.plan, budget: budget, pace: pace, live: live, useThisNow: roomFor.contains(entry.id),
-                                today: today, teamName: teamName(entry.teamID)
-                            )
-                        } else {
-                            // Three plans or more drop the line under each strip to stay short.
-                            TeamWeekStrip(
-                                teamID: entry.teamID, plan: entry.plan, budget: budget, today: today, showsNote: rows.count < 3, teamName: teamName(entry.teamID)
-                            )
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("This Week's Limit")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer(minLength: 6)
+                        if case let .title(teamID) = headers, let name = teamName(teamID) {
+                            Text(name).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                    ForEach(Array(groups.enumerated()), id: \.element.teamID) { index, group in
+                        if index > 0 { Divider() }
+                        if headers == .perGroup, let name = teamName(group.teamID) {
+                            Text(name).font(.caption2.weight(.semibold)).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        ForEach(Array(group.rows.enumerated()), id: \.element.0.id) { rowIndex, row in
+                            if rowIndex > 0 { Divider() }
+                            strip(row.0, budget: row.1, paces: paces, roomFor: roomFor, count: rows.count)
                         }
                     }
                 }
@@ -47,6 +54,18 @@ struct TeamWeekStripCard: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .cardSurface()
+        }
+    }
+
+    @ViewBuilder
+    private func strip(_ entry: TeamPlanEntry, budget: TeamPlanBudget, paces: [String: LivePace], roomFor: Set<String>, count: Int) -> some View {
+        if let live = paces[entry.id], let pace = budget.pace {
+            TeamLivePaceStrip(
+                teamID: entry.teamID, plan: entry.plan, budget: budget, pace: pace, live: live, useThisNow: roomFor.contains(entry.id), today: today
+            )
+        } else {
+            // Three plans or more drop the line under each strip to stay short.
+            TeamWeekStrip(teamID: entry.teamID, plan: entry.plan, budget: budget, today: today, showsNote: count < 3)
         }
     }
 
@@ -58,8 +77,36 @@ struct TeamWeekStripCard: View {
         return paces
     }
 
+    /// The rows by team, each team once, in the order its first plan comes.
+    static func groups<Row>(_ rows: [Row], teamID: (Row) -> String) -> [(teamID: String, rows: [Row])] {
+        var groups: [(teamID: String, rows: [Row])] = []
+        for row in rows {
+            let id = teamID(row)
+            if let index = groups.firstIndex(where: { $0.teamID == id }) {
+                groups[index].rows.append(row)
+            } else {
+                groups.append((id, [row]))
+            }
+        }
+        return groups
+    }
+
+    enum Headers: Equatable {
+        /// Only the selected team's plans: the dashboard already says which team.
+        case none
+        /// One other team: its name sits in the card's title.
+        case title(String)
+        /// Several teams: each one's name above its plans.
+        case perGroup
+    }
+
+    static func headers(_ teamIDs: [String], selectedTeamID: String?) -> Headers {
+        guard teamIDs.count == 1, let only = teamIDs.first else { return teamIDs.isEmpty ? .none : .perGroup }
+        return only == selectedTeamID ? .none : .title(only)
+    }
+
     /// Plans with room while another provider's plan runs hot (over today's budget or well ahead of
-    /// pace): their row says "use this now". Room means on pace or behind, with at least
+    /// pace): their pill says "Use this now". Room means on pace or behind, with at least
     /// `roomForOthers` points of today's budget left.
     static func useThisNow(_ entries: [TeamPlanEntry], paces: [String: LivePace]) -> Set<String> {
         let hot = Set(entries.filter { [.ahead, .overBudget].contains(paces[$0.id]?.state) }.map(\.plan.provider))
@@ -73,29 +120,25 @@ struct TeamWeekStripCard: View {
     static let roomForOthers = 5.0
 }
 
+/// One plan in This Week's Limit without Live Pace: today's use against today's budget, the week's
+/// boxes, and a line with what's left today and when the limit resets.
 struct TeamWeekStrip: View {
     let teamID: String
     let plan: TeamPlanReport
     let budget: TeamPlanBudget
     let today: String
     let showsNote: Bool
-    /// Set for a plan from another of your teams.
-    var teamName: String?
 
-    private static let height: CGFloat = 40
     private var color: Color { TotalSpendPalette.color(for: plan.provider) }
-    private var pace: Double { plan.daily?.pacePercent ?? 20 }
-    private var scale: Double {
-        max(pace * 1.5, budget.affordablePercent * 1.2, budget.days.compactMap(\.percent).max() ?? 0)
-    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Self.teamLine(teamName)
-            header
-            bars
+        VStack(alignment: .leading, spacing: 8) {
+            TeamPlanTitle(teamID: teamID, plan: plan, budget: budget) { figure }
+            TeamWeekBoxes(boxes: Self.boxes(budget, today: today), color: color)
             if showsNote {
-                Text(Self.note(budget)).font(.caption2).foregroundStyle(overBudget ? Theme.notice : AnyShapeStyle(.secondary))
+                Text(Self.note(budget))
+                    .font(.caption2)
+                    .foregroundStyle(overBudget ? AnyShapeStyle(WeekLimitColors.noticeText) : AnyShapeStyle(.secondary))
             }
         }
         .accessibilityElement(children: .combine)
@@ -103,111 +146,28 @@ struct TeamWeekStrip: View {
 
     private var overBudget: Bool { Self.isOverBudget(budget) }
 
-    /// Nothing in the header is ever cut off: on one line when it fits, else the figure moves under
-    /// the name (which may wrap), still right-aligned.
-    private var header: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                title.fixedSize()
-                Spacer(minLength: 4)
-                figure
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                title.fixedSize(horizontal: false, vertical: true)
-                HStack {
-                    Spacer(minLength: 0)
-                    figure
-                }
-            }
-        }
-    }
-
-    /// The team of a plan from another of yours, on its own line above the plan so the name and the
-    /// account count never push it out.
-    @ViewBuilder
-    static func teamLine(_ teamName: String?) -> some View {
-        if let teamName {
-            Text(teamName).font(.caption2).foregroundStyle(.secondary).lineLimit(1).padding(.bottom, -2)
-        }
-    }
-
-    /// The dot, the plan's name, and how many accounts it mixes.
-    private var title: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 5) {
-            Circle().fill(color).frame(width: 7, height: 7)
-            Text(plan.name).font(.caption.weight(.semibold))
-            if TeamPlanAccountsButton.isShown(budget: budget, plan: plan) {
-                TeamPlanAccountsButton(teamID: teamID, plan: plan, budget: budget)
-            }
-        }
-    }
-
     private var figure: some View {
         (Text(Self.percent(budget.todayPercent))
             .fontWeight(.semibold)
-            .foregroundStyle(overBudget ? Theme.notice : AnyShapeStyle(.primary))
+            .foregroundStyle(overBudget ? AnyShapeStyle(WeekLimitColors.noticeText) : AnyShapeStyle(.primary))
             + Text(" of \(Self.percent(budget.affordablePercent)) today").foregroundStyle(.secondary))
             .font(.caption.monospacedDigit())
             .fixedSize()
     }
 
+    /// The week's boxes: the working days left all at today's budget.
+    static func boxes(_ budget: TeamPlanBudget, today: String) -> [WeekBox] {
+        let future = budget.days.filter { $0.day > today && $0.working }
+            .map { (day: $0.day, budget: budget.affordablePercent, planned: budget.affordablePercent) }
+        return WeekBox.boxes(
+            days: budget.days, today: today, used: budget.todayPercent, budget: budget.affordablePercent, future: future, labelsLowered: false
+        )
+    }
+
     static func isOverBudget(_ budget: TeamPlanBudget) -> Bool { budget.todayPercent > budget.affordablePercent }
 
-    private var bars: some View {
-        VStack(spacing: 2) {
-            HStack(alignment: .bottom, spacing: 3) {
-                ForEach(budget.days, id: \.day) { day in bar(day).frame(maxWidth: .infinity) }
-            }
-            .frame(height: Self.height, alignment: .bottom)
-            .overlay(alignment: .bottom) {
-                PaceLine()
-                    .stroke(Color.secondary.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .frame(height: 1)
-                    .offset(y: -height(pace))
-            }
-            .overlay(alignment: .bottom) { Rectangle().fill(.secondary.opacity(0.3)).frame(height: 1) }
-            HStack(spacing: 3) {
-                ForEach(budget.days, id: \.day) { day in
-                    Text(day.day == today ? "Today" : Self.weekday(day.day))
-                        .font(.system(size: 9, weight: day.day == today ? .semibold : .regular))
-                        .foregroundStyle(day.day == today ? .primary : .secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func bar(_ day: TeamPlanBudget.Day) -> some View {
-        let shape = UnevenRoundedRectangle(topLeadingRadius: 2, topTrailingRadius: 2)
-        if day.day > today {
-            // Days left: the working ones at today's budget, the rest empty.
-            if day.working {
-                shape.strokeBorder(color.opacity(0.8), style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
-                    .frame(height: height(budget.affordablePercent))
-            } else {
-                Color.clear.frame(height: 0)
-            }
-        } else if day.day == today {
-            ZStack(alignment: .bottom) {
-                shape.strokeBorder(color, style: StrokeStyle(lineWidth: 1, dash: [2, 2])).frame(height: height(budget.affordablePercent))
-                shape.fill(color.opacity(0.8)).frame(height: max(height(day.percent ?? 0), 2))
-            }
-        } else if let percent = day.percent {
-            shape.fill(day.estimated ? color.opacity(0.4) : color).frame(height: max(height(percent), 2))
-        } else {
-            Color.clear.frame(height: 0)
-        }
-    }
-
-    private func height(_ percent: Double) -> CGFloat {
-        CGFloat(min(percent / scale, 1)) * Self.height
-    }
-
     static func note(_ budget: TeamPlanBudget) -> String {
-        let reset = Self.resetDay(budget.resetsAt)
+        let reset = GodUsageISO8601.date(from: budget.resetsAt).map(LivePaceFormat.weekdayTime) ?? budget.resetsAt
         if isOverBudget(budget) {
             return "\(Self.percent(budget.todayPercent - budget.affordablePercent)) over today's budget · resets \(reset)"
         }
@@ -216,25 +176,5 @@ struct TeamWeekStrip: View {
 
     static func percent(_ value: Double) -> String {
         String(format: "%.1f%%", value)
-    }
-
-    private static func weekday(_ day: String) -> String {
-        guard let date = TeamsFormat.date(day) else { return day }
-        return date.formatted(.dateTime.weekday(.abbreviated))
-    }
-
-    private static func resetDay(_ instant: String) -> String {
-        guard let date = try? Date(instant, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true)) else { return instant }
-        return date.formatted(.dateTime.weekday(.abbreviated).hour().minute())
-    }
-}
-
-/// The full-pace line across the strip.
-private struct PaceLine: Shape {
-    func path(in rect: CGRect) -> Path {
-        Path { path in
-            path.move(to: CGPoint(x: rect.minX, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
-        }
     }
 }
