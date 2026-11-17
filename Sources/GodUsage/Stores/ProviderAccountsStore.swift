@@ -221,16 +221,24 @@ final class ProviderAccountsStore {
     /// through the bare-id default-badge special case (after a login swap that lands on a
     /// different account).
     private func derivedDisplayName(for record: ProviderAccountRecord) -> String {
+        let context = labelContext(for: record)
+        let derived = record.derivedDisplayName(disambiguating: context.disambiguating)
+        guard context.duplicateLabel else { return derived }
+        return "\(derived) · \(ProviderAccountID.hash8(record.identityKey))"
+    }
+
+    /// Whether the record's card must carry its account (active siblings of the same family), and
+    /// whether another active sibling shares its label, so a short hash has to tell them apart.
+    private func labelContext(for record: ProviderAccountRecord) -> (disambiguating: Bool, duplicateLabel: Bool) {
         let activeSiblingCount = records.lazy.filter {
             $0.family == record.family && self.activeRecordIDs.contains($0.id)
         }.count
         let disambiguating = activeRecordIDs.contains(record.id) && activeSiblingCount > 1
-        let derived = record.derivedDisplayName(disambiguating: disambiguating)
         let normalizedLabel = record.label?
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
         guard disambiguating, let normalizedLabel, !normalizedLabel.isEmpty else {
-            return derived
+            return (disambiguating, false)
         }
         let duplicateLabelCount = records.lazy.filter {
             $0.family == record.family
@@ -238,8 +246,23 @@ final class ProviderAccountsStore {
                 && $0.label?.trimmingCharacters(in: .whitespacesAndNewlines)
                     .lowercased() == normalizedLabel
         }.count
-        guard duplicateLabelCount > 1 else { return derived }
-        return "\(derived) · \(ProviderAccountID.hash8(record.identityKey))"
+        return (true, duplicateLabelCount > 1)
+    }
+
+    /// The dashboard's split form of `resolvedDisplayName(cardID:)`: the provider name, then the
+    /// account's short label ("Claude" + "Appload") with the full label kept for the tooltip. A
+    /// rename, a lone account, or an account without a label is a single name. `nil` without a record.
+    func resolvedDisplayParts(cardID: String) -> AccountDisplayName? {
+        guard let record = record(backingCardID: cardID) else { return nil }
+        if let custom = record.customLabel?.nilIfEmpty { return AccountDisplayName(name: custom) }
+        let context = labelContext(for: record)
+        guard context.disambiguating, let label = record.label?.nilIfEmpty else {
+            return AccountDisplayName(name: derivedDisplayName(for: record))
+        }
+        return .labeled(
+            record.family.capitalized, label: label,
+            suffix: context.duplicateLabel ? ProviderAccountID.hash8(record.identityKey) : nil
+        )
     }
 
     /// The resolved card title for a card id, or `nil` when the card has no account record (a
