@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.9.0
+
+### New Features
+- feat(i18n): Italian localization ([#129](https://github.com/federico-app/godusage/pull/129)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.8.1...v1.9.0](https://github.com/federico-app/godusage/compare/v1.8.1...v1.9.0)
+
+- [2468fd5](https://github.com/federico-app/godusage/commit/2468fd58c8d884b8a2ddac4a1e9c28b2d1b2fe8b) feat(i18n): Italian localization by @andreaAppload
+
 ## v1.8.1
 
 ### New Features
