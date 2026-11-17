@@ -244,6 +244,7 @@ struct TeamPlansReportView: View {
                 ? String(localized: "\(quota.estimatedWindows) cycles estimated")
                 : String(localized: "\(quota.estimatedWindows) weeks estimated"))
         }
+        if let note = ResetCapacityFormat.quotaNote(resets: quota.resets) { parts.insert(note, at: 1) }
         return parts.joined(separator: " · ")
     }
 }

@@ -21,8 +21,15 @@ struct TeamPlanHistory: Decodable, Hashable, Sendable {
         var endsAt: String
         /// Still running.
         var open: Bool
-        /// The share of the weekly limit used in the window, the mean over its accounts.
+        /// The share of the window's capacity used, the mean over its accounts. Without a claimed reset
+        /// the capacity is the weekly limit.
         var percent: Double
+        /// With a claimed reset that kept the reset time: the share of the weekly limit used in all
+        /// (135), the capacity (200: a limit per claim plus one), and how many were claimed. Nil otherwise
+        /// and from older servers.
+        var usedPercent: Double?
+        var capacityPercent: Double?
+        var resets: Int?
         var estimated: Bool
         var accounts: Int
         var days: [Day]
@@ -36,6 +43,8 @@ struct TeamPlanHistory: Decodable, Hashable, Sendable {
         var working: Bool
         var estimated: Bool
         var accounts: Int
+        /// Resets claimed that day. Nil when none.
+        var resets: Int?
     }
 
     struct Sessions: Decodable, Hashable, Sendable {
@@ -63,13 +72,31 @@ struct TeamPlanBudget: Decodable, Hashable, Sendable {
         var percent: Double?
         var working: Bool
         var estimated: Bool
+        /// Resets claimed that day. Nil when none.
+        var resets: Int?
+    }
+
+    /// An open week with a claimed reset that kept the reset time: what it used of its capacity.
+    struct WeekCapacity: Decodable, Hashable, Sendable {
+        /// The share of the weekly limit used in all, every stretch between claims counted (135).
+        var usedPercent: Double
+        /// 100 per limit: 100 plus 100 per claim (200).
+        var capacityPercent: Double
+        /// With one account: the share used before each claim, then since the last ([95, 40]).
+        var segments: [Double]?
+        var resets: Int
     }
 
     /// One account in the open week, from the server's names: who reads it ("You" first), how much
     /// of its week it used, and when it resets.
     struct AccountWeek: Decodable, Hashable, Sendable {
         var people: [String]
+        /// The share of its week's capacity used (the weekly limit, plus one per claimed reset).
         var percent: Double
+        /// With a claimed reset: the share of the weekly limit used in all, the capacity, and each stretch.
+        var usedPercent: Double?
+        var capacityPercent: Double?
+        var segments: [Double]?
         var todayPercent: Double
         var resetsAt: String
         /// A Mac names it per Mac, so it may be the same login as another account here.
@@ -92,6 +119,8 @@ struct TeamPlanBudget: Decodable, Hashable, Sendable {
     var perAccount: [AccountWeek]?
     /// The open week, day by day.
     var days: [Day]
+    /// Set when a reset was claimed in an open week that kept its reset time. Nil otherwise and from older servers.
+    var week: WeekCapacity?
     /// Today's budget over working hours, for Live Pace. Nil from servers before it, and on days the
     /// server can't tell (no time zone sent).
     var pace: TeamPlanPace?

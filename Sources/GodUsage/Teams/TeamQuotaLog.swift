@@ -71,7 +71,10 @@ struct TeamQuotaReading: Hashable, Sendable {
 /// when it was last read. The share at the reset is what the plan's quota got used; the gap between
 /// the last reading and the reset says how sure that is. A weekly (or shorter) limit window also keeps
 /// the share seen at the end of each local day it was read, which gives the share used each day.
-/// Limit windows are kept 40 days, like the upload window; sessions as long as a billing cycle.
+/// A Claude or Codex limit window also keeps the resets claimed in it that kept its reset time (see
+/// `TeamQuotaLog+Claims.swift`): its share is then the share since the last claim, and its days count
+/// every claim's share too, so they only grow. Limit windows are kept 40 days, like the upload window;
+/// sessions as long as a billing cycle.
 struct TeamQuotaLog: Codable, Hashable, Sendable {
     struct Day: Codable, Hashable, Sendable {
         var day: String
@@ -86,14 +89,18 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
         var percent: Double
         var observedAt: Date
         var kind: TeamQuotaReading.Kind = .limit
+        /// The share used so far at the end of each local day, every claim's share included.
         var days: [Day] = []
         /// Named by this Mac and its card (the login names no account), so the same account on
         /// another Mac goes up as another account.
         var perDevice = false
+        /// Resets claimed in the window that kept its reset time, oldest first. `percent` is the share
+        /// used since the last one.
+        var claims: [Claim] = []
 
         init(
             provider: String, account: String, endsAt: Date, periodHours: Int, percent: Double, observedAt: Date,
-            kind: TeamQuotaReading.Kind = .limit, days: [Day] = [], perDevice: Bool = false
+            kind: TeamQuotaReading.Kind = .limit, days: [Day] = [], perDevice: Bool = false, claims: [Claim] = []
         ) {
             self.provider = provider
             self.account = account
@@ -104,6 +111,7 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
             self.kind = kind
             self.days = days
             self.perDevice = perDevice
+            self.claims = claims
         }
 
         /// Logs saved before sessions and daily readings have neither key.
@@ -119,6 +127,7 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
             days = try container.decodeIfPresent([Day].self, forKey: .days) ?? []
             // Claude's and Codex's windows were all named per Mac before account ids.
             perDevice = try container.decodeIfPresent(Bool.self, forKey: .perDevice) ?? (provider != "cursor")
+            claims = try container.decodeIfPresent([Claim].self, forKey: .claims) ?? []
         }
 
         /// A day's share of the week only means something for a window of a week or less.
@@ -147,8 +156,10 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
     /// Readings of one window can name its reset a little differently (Codex counts it from now).
     static let sameWindowTolerance: TimeInterval = 3_600
 
-    /// Folds readings in. A reading of a known window raises its share; a new window for an account
-    /// whose window hasn't reset yet means it reset early (a claimed reset), so that one ends now.
+    /// Folds readings in. A reading of a known window raises its share, or after a sharp drop starts a
+    /// new stretch of it (a claimed reset that kept the reset time, see `Window.fold`); `recordedClaims`
+    /// are the resets GodUsage claimed itself. A new window for an account whose window hasn't reset yet
+    /// means it reset early (a claimed reset that starts a new week, as Codex does), so that one ends now.
     /// A reading names its account by `accountKey`; without one, by `perDeviceKey` (this Mac and its
     /// card). Once a card's account is known, its windows named per Mac move to the account's key, so
     /// the open week isn't sent twice. `dayKey` gives the local day of an instant.
@@ -156,6 +167,7 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
         _ readings: [TeamQuotaReading],
         perDeviceKey: (TeamQuotaReading) -> String,
         now: Date,
+        recordedClaims: [RecordedResetClaim] = [],
         dayKey: (Date) -> String = { DailyUsageAccumulator.dayKey(from: $0) }
     ) {
         for reading in readings {
@@ -167,10 +179,9 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
             let mine = windows.indices.filter {
                 windows[$0].provider == reading.provider && windows[$0].kind == reading.kind && windows[$0].account == key
             }
+            let claimed = recordedClaims.filter { $0.cardID == reading.cardID }
             if let index = mine.first(where: { abs(windows[$0].endsAt.timeIntervalSince(endsAt)) <= Self.sameWindowTolerance }) {
-                windows[index].percent = max(windows[index].percent, reading.percent)
-                windows[index].observedAt = max(windows[index].observedAt, reading.observedAt)
-                windows[index].recordDay(day, percent: reading.percent)
+                windows[index].fold(reading, day: day, recorded: claimed, dayKey: dayKey)
                 continue
             }
             for index in mine where windows[index].endsAt > reading.observedAt && windows[index].endsAt < endsAt {
@@ -181,7 +192,14 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
                 periodHours: reading.periodHours, percent: reading.percent, observedAt: reading.observedAt, kind: reading.kind,
                 perDevice: reading.accountKey == nil
             )
-            window.recordDay(day, percent: reading.percent)
+            if window.tracksClaims {
+                // Claims made before this window's first reading: the reading is already after them.
+                let percent = window.percent
+                window.percent = 0
+                window.applyRecorded(claimed, until: reading.observedAt, dayKey: dayKey)
+                window.percent = percent
+            }
+            window.recordDay(day, percent: window.used)
             windows.append(window)
         }
         windows.removeAll { now.timeIntervalSince($0.endsAt) > ($0.kind == .session ? Self.sessionRetention : Self.retention) }
@@ -202,6 +220,7 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
             }) {
                 windows[existing].percent = max(windows[existing].percent, window.percent)
                 windows[existing].observedAt = max(windows[existing].observedAt, window.observedAt)
+                windows[existing].mergeClaims(window.claims)
                 for day in window.days { windows[existing].recordDay(day.day, percent: day.percent) }
             } else {
                 windows.append(window)
@@ -225,7 +244,8 @@ struct TeamQuotaLog: Codable, Hashable, Sendable {
                 percent: Self.tenth(window.percent),
                 observedAt: TeamUsageUpload.instant(Self.flooredToHour(window.observedAt)),
                 days: window.days.isEmpty ? nil : window.days.map { Day(day: $0.day, percent: Self.tenth($0.percent)) },
-                perDevice: window.perDevice ? true : nil
+                perDevice: window.perDevice ? true : nil,
+                claims: window.wireClaims
             )
         }
     }

@@ -1,4 +1,5 @@
 import type { QuotaReading, QuotaRow } from "./quota";
+import { deviceKey, latestClaimSince } from "./quotaClaims";
 import { coveredWindows, todayUse, type Window } from "./quotaHistory";
 import type { Plan } from "./quotaDaily";
 import { defaultSchedule, overlap, union, workingIntervals, zonedTime, type Interval, type MemberHours } from "./schedules";
@@ -53,6 +54,11 @@ export interface PlanPace {
   people: string[];
   /** When the soonest-resetting account's week resets. */
   resetsAt: string;
+  /**
+   * A reset claimed today (one account only): today's budget restarts at `at`, where today's use was
+   * `usedPercent`, and the rest of the budget is spread from then on. Omitted otherwise.
+   */
+  rebase?: { at: string; usedPercent: number };
 }
 
 /** The viewer's day `day` as an absolute span. */
@@ -81,32 +87,44 @@ function workingTimeBefore(intervals: Interval[], now: number, span: number, sin
   return null;
 }
 
+/**
+ * The window's readings up to `now`, oldest first, each the share used so far with the claimed resets
+ * its Mac missed added (see `MergedWindow.correct`).
+ */
+function windowReadings(window: Window, readings: QuotaReading[], now: number): { at: number; percent: number }[] {
+  return readings
+    .filter((reading) => reading.account_key === window.account && window.keys.has(reading.ends_at) && Date.parse(reading.observed_at) <= now)
+    .map((reading) => {
+      const at = Date.parse(reading.observed_at);
+      return { at, percent: window.correct(deviceKey(reading), at, reading.percent) };
+    });
+}
+
 /** An account's growth over the last working hour, from its readings, in points per hour. */
 function accountRate(window: Window, readings: QuotaReading[], intervals: Interval[], day: Interval, now: number): number | null {
   const start = workingTimeBefore(intervals, now, PACE_WINDOW_MS, day.from);
   if (start === null) return null;
-  const endsAt = new Date(window.endsAt).toISOString();
-  const own = readings.filter((reading) => reading.account_key === window.account && reading.ends_at === endsAt && Date.parse(reading.observed_at) <= now);
-  const before = own.filter((reading) => Date.parse(reading.observed_at) <= start);
+  const own = windowReadings(window, readings, now);
+  const before = own.filter((reading) => reading.at <= start);
   if (before.length === 0) return null;
   const then = Math.max(...before.map((reading) => reading.percent));
-  const latest = Math.max(window.percent, ...own.map((reading) => reading.percent));
+  const latest = Math.max(window.used, ...own.map((reading) => reading.percent));
   return Math.max(0, latest - then) / (PACE_WINDOW_MS / HOUR_MS);
 }
 
 /** Today's use over time across `open` accounts (see `PlanPace.today`). */
 function todaySeries(open: Window[], readings: QuotaReading[], today: string, day: Interval, now: number): PlanPace["today"] {
-  const before = new Map(open.map((window) => [window.account, todayUse(window, today)]));
+  const before = new Map(open.map((window) => [window.account, todayUse(window, today).before]));
   const latest = new Map(open.map((window) => [window.account, 0]));
-  const endsAt = new Map(open.map((window) => [window.account, new Date(window.endsAt).toISOString()]));
   const points: PlanPace["today"] = [];
-  for (const reading of readings) {
-    const time = Date.parse(reading.observed_at);
-    if (time < day.from || time > now || endsAt.get(reading.account_key) !== reading.ends_at) continue;
-    const use = before.get(reading.account_key)!;
-    const used = Math.max(0, reading.percent - (100 - use.left));
-    latest.set(reading.account_key, Math.max(latest.get(reading.account_key)!, used));
-    points.push({ at: reading.observed_at, percent: round1([...latest.values()].reduce((sum, value) => sum + value, 0) / latest.size) });
+  const timeline = open
+    .flatMap((window) => windowReadings(window, readings, now).map((reading) => ({ ...reading, account: window.account })))
+    .filter((reading) => reading.at >= day.from)
+    .sort((a, b) => a.at - b.at);
+  for (const reading of timeline) {
+    const used = Math.max(0, reading.percent - before.get(reading.account)!);
+    latest.set(reading.account, Math.max(latest.get(reading.account)!, used));
+    points.push({ at: new Date(reading.at).toISOString(), percent: round1([...latest.values()].reduce((sum, value) => sum + value, 0) / latest.size) });
   }
   if (points.length <= MAX_SERIES) return points;
   const step = points.length / MAX_SERIES;
@@ -130,14 +148,22 @@ export function planPace(rows: QuotaRow[], plan: Plan, today: string, now: Date,
   const intervals = unionHours(people, context, day.from, latestReset);
 
   const paces = open.map((window) => {
-    const { today: used, left } = todayUse(window, today);
-    const todayHours = overlap(intervals, day.from, Math.min(day.to, window.endsAt));
-    const totalHours = overlap(intervals, day.from, window.endsAt);
+    const { today: used, left, before } = todayUse(window, today);
+    // A reset claimed today restarts the budget at the claim: the use before it is spent, and what's
+    // left after it is spread over the working hours from then to the reset.
+    const claimed = latestClaimSince(window, day.from);
+    const claim = claimed !== null && claimed.claim.at <= time ? claimed : null;
+    const from = claim?.claim.at ?? day.from;
+    const usedBefore = claim === null ? 0 : Math.max(0, claim.usedAt - before);
+    const share = claim === null ? left : Math.max(0, window.capacity - claim.usedAt);
+    const todayHours = overlap(intervals, from, Math.min(day.to, window.endsAt));
+    const totalHours = overlap(intervals, from, window.endsAt);
     return {
       used,
       left,
-      budget: todayHours === 0 ? 0 : (left * todayHours) / totalHours,
+      budget: usedBefore + (todayHours === 0 ? 0 : (share * todayHours) / totalHours),
       rate: accountRate(window, context.readings, intervals, day, time),
+      rebase: claim === null ? null : { at: new Date(claim.claim.at).toISOString(), usedPercent: round1(usedBefore) },
     };
   });
   const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -164,6 +190,7 @@ export function planPace(rows: QuotaRow[], plan: Plan, today: string, now: Date,
     today: todaySeries(open, context.readings, today, day, time),
     people,
     resetsAt: new Date(soonest).toISOString(),
+    ...(paces.length === 1 && paces[0]!.rebase !== null ? { rebase: paces[0]!.rebase } : {}),
   };
 }
 

@@ -151,6 +151,10 @@ extension TeamPlanAccountsButton {
     /// "42.0% of the week · 6.0% today · resets Thu 09:00".
     static func usage(_ account: TeamPlanBudget.AccountWeek) -> String {
         let reset = GodUsageISO8601.date(from: account.resetsAt).map { LivePaceFormat.weekdayTime($0) } ?? account.resetsAt
+        if let capacity = ResetCapacityFormat.usedOfCapacity(used: account.usedPercent, capacity: account.capacityPercent) {
+            // A claimed reset gave the week another limit: its use against all of them.
+            return String(localized: "\(ResetCapacityFormat.mark) \(capacity) this week · \(TeamWeekStrip.percent(account.todayPercent)) today · resets \(reset)", comment: "An account's week after a claimed limit reset, e.g. ↻ 135% of 200% this week · 6.0% today · resets Thu 09:00")
+        }
         return String(localized: "\(TeamWeekStrip.percent(account.percent)) of the week · \(TeamWeekStrip.percent(account.todayPercent)) today · resets \(reset)")
     }
 }

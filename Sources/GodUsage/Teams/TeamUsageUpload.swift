@@ -48,6 +48,19 @@ struct TeamUsageUpload: Encodable, Hashable, Sendable {
         var days: [TeamQuotaLog.Day]?
         /// True when the account is named per Mac; omitted otherwise.
         var perDevice: Bool?
+        /// The resets claimed in a Claude or Codex limit window that kept its reset time ([] when none;
+        /// omitted for other windows). With it, `percent` is the share since the last claim and `days`
+        /// count every claim's share too.
+        var claims: [QuotaClaim]?
+    }
+
+    /// A claimed reset in a quota window (see `TeamQuotaLog.Claim`).
+    struct QuotaClaim: Encodable, Hashable, Sendable {
+        var at: String
+        var after: String
+        var percent: Double
+        var day: String
+        var recorded: Bool
     }
 
     struct Provider: Encodable, Hashable, Sendable {

@@ -24,6 +24,12 @@ struct TeamPlanPace: Decodable, Hashable, Sendable {
         var percent: Double
     }
 
+    /// A reset claimed today: today's budget restarts at `at`, where today's use was `usedPercent`.
+    struct Rebase: Decodable, Hashable, Sendable {
+        var at: String
+        var usedPercent: Double
+    }
+
     /// What was left at the start of today times today's share of the working hours until the reset.
     var budgetPercent: Double
     var usedPercent: Double
@@ -40,6 +46,8 @@ struct TeamPlanPace: Decodable, Hashable, Sendable {
     /// The other people whose hours are in `hours`.
     var sharedWith: [String]
     var resetsAt: String
+    /// Nil without a claim today, from servers before claims, and for plans of several accounts.
+    var rebase: Rebase?
 }
 
 /// Live Pace: where today's use stands against where it should be at this hour of the working day,
@@ -96,6 +104,10 @@ struct LivePace: Equatable {
     var workLeft: TimeInterval
     /// Each working day after today until the reset, at what's left once today ends (`futureBudget`).
     var futureDays: [(day: String, budget: Double, planned: Double)]
+    /// Today's working hours.
+    var spans: [DateInterval] = []
+    /// A reset claimed today: the even pace restarts at it, from today's use then.
+    var rebase: (at: Date, used: Double)?
 
     static func == (a: LivePace, b: LivePace) -> Bool {
         a.state == b.state && a.budget == b.budget && a.used == b.used && a.expected == b.expected && a.ahead == b.ahead
@@ -160,10 +172,13 @@ struct LivePace: Equatable {
         start = spans.first?.start
         end = spans.last?.end
         let total = spans.reduce(0) { $0 + $1.duration }
+        self.spans = spans
+        rebase = pace.rebase.flatMap { rebase in GodUsageISO8601.date(from: rebase.at).map { ($0, rebase.usedPercent) } }
         workedSoFar = Self.overlap(spans, until: now)
         workLeft = max(0, total - workedSoFar)
-        expected = total > 0 ? budget * workedSoFar / total : 0
-        ahead = budget > 0 && total > 0 ? (used - expected) / (budget / total) : nil
+        expected = Self.evenPace(spans: spans, budget: pace.budgetPercent, rebase: rebase, at: now)
+        let slope = Self.evenPaceSlope(spans: spans, budget: pace.budgetPercent, rebase: rebase, at: now)
+        ahead = budget > 0 && slope > 0 ? (used - expected) / slope : nil
         let averageRate = workedSoFar >= Self.warmUp ? used / (workedSoFar / 3600) : nil
         rate = pace.ratePerHour ?? averageRate
         projected = used + (rate ?? 0) * workLeft / 3600
@@ -216,6 +231,35 @@ struct LivePace: Equatable {
     static func shownOvershoot(used: Double, budget: Double) -> Double {
         let shown = AppLocale.decimal(used - budget, digits: 1, locale: AppLocale.stable)
         return Double(shown) ?? used - budget
+    }
+
+    /// Where today's use should be at `date` on an even pace. With a reset claimed today, the even pace
+    /// reaches the use at the claim when the claim came, then restarts from there to the budget over
+    /// the working time after it.
+    func evenPace(at date: Date) -> Double {
+        Self.evenPace(spans: spans, budget: budget, rebase: rebase, at: date)
+    }
+
+    static func evenPace(spans: [DateInterval], budget: Double, rebase: (at: Date, used: Double)?, at date: Date) -> Double {
+        let total = spans.reduce(0) { $0 + $1.duration }
+        guard total > 0 else { return 0 }
+        let worked = overlap(spans, until: date)
+        guard let rebase else { return budget * worked / total }
+        let atClaim = overlap(spans, until: rebase.at)
+        if date < rebase.at { return atClaim > 0 ? rebase.used * worked / atClaim : rebase.used }
+        let after = total - atClaim
+        return after > 0 ? rebase.used + (budget - rebase.used) * (worked - atClaim) / after : budget
+    }
+
+    /// The even pace in points per second of working time at `date`.
+    static func evenPaceSlope(spans: [DateInterval], budget: Double, rebase: (at: Date, used: Double)?, at date: Date) -> Double {
+        let total = spans.reduce(0) { $0 + $1.duration }
+        guard total > 0 else { return 0 }
+        guard let rebase else { return budget / total }
+        let atClaim = overlap(spans, until: rebase.at)
+        if date < rebase.at { return atClaim > 0 ? rebase.used / atClaim : 0 }
+        let after = total - atClaim
+        return after > 0 ? max(0, budget - rebase.used) / after : 0
     }
 
     /// How much of `spans` passed before `date`.

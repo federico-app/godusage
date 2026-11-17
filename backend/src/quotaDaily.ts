@@ -1,11 +1,9 @@
 import type { QuotaRow } from "./quota";
+import { accountWindows } from "./quotaClaims";
 import { daysBetween } from "./stats";
 import { addDays } from "./usagePayload";
 import { isWorkingDay, type WorkingDays } from "./workingDays";
 
-const HOUR_MS = 3_600_000;
-/** Only weekly windows give a daily share of the weekly limit. */
-const WEEK_HOURS = 168;
 /** The daily chart's days, today included. */
 const CHART_DAYS = 7;
 /** A session used at least this share (percent) hit its limit. */
@@ -60,19 +58,14 @@ export type AccountDailyUse = Map<string, Map<string, { percent: number; estimat
  * the end of each day. A day's use is the growth since the window's previous reading; when the Macs
  * skipped days, the growth is spread evenly over them (estimated). A window that the Macs first read
  * on the day it started or the day after counts from 0; otherwise its first reading only sets the
- * baseline. A window reported by several Macs counts once, at the highest share each day.
+ * baseline. A window reported by several Macs counts once, at the highest share each day (see
+ * `accountWindows`). A day's share counts every stretch between claimed resets, so a day with a claim
+ * counts the use before it and the use after it.
  */
 export function accountDailyUse(rows: QuotaRow[], plan: Plan): AccountDailyUse {
-  const windows = new Map<string, { account: string; startDay: string; covered: boolean; days: Map<string, number> }>();
-  for (const row of rows) {
-    if (row.provider !== plan.provider || row.kind !== "limit" || row.period_hours !== WEEK_HOURS || !row.days?.length) continue;
-    const key = `${row.account_key}|${row.ends_at}`;
-    const start = new Date(Date.parse(row.ends_at) - row.period_hours * HOUR_MS).toISOString().slice(0, 10);
-    const window = windows.get(key) ?? { account: row.account_key, startDay: start, covered: false, days: new Map<string, number>() };
-    window.covered = window.covered || plan.covered(row.user_id);
-    for (const reading of row.days) window.days.set(reading.day, Math.max(window.days.get(reading.day) ?? 0, reading.percent));
-    windows.set(key, window);
-  }
+  const windows = [...accountWindows(rows, plan, { weekly: true }).values()].flat()
+    .filter((window) => window.days.size > 0)
+    .map((window) => ({ account: window.account, startDay: new Date(window.startsAt).toISOString().slice(0, 10), covered: window.covered, days: window.days }));
 
   const used: AccountDailyUse = new Map();
   const add = (account: string, day: string, percent: number, estimated: boolean) => {
@@ -81,7 +74,7 @@ export function accountDailyUse(rows: QuotaRow[], plan: Plan): AccountDailyUse {
     days.set(day, { percent: entry.percent + percent, estimated: entry.estimated || estimated });
     used.set(account, days);
   };
-  for (const window of windows.values()) {
+  for (const window of windows) {
     if (!window.covered) continue;
     const readings = [...window.days.entries()].sort(([a], [b]) => (a < b ? -1 : 1));
     // The Mac's days are local and the start is UTC, so a window can be read the day before it starts.

@@ -46,7 +46,7 @@ struct TeamPlanWeeklyHistory: View {
                     .foregroundStyle(.secondary)
             } else {
                 table(weeks.reversed())
-                legend
+                legend(hasResets: weeks.contains { ($0.resets ?? 0) > 0 })
             }
         } else if let error = container.teamPlans.historyError(teamID: teamID) {
             Text(error).font(.caption).foregroundStyle(Theme.notice)
@@ -121,19 +121,30 @@ struct TeamPlanWeeklyHistory: View {
             if showsWeekday {
                 Text(Self.weekday(day.day)).font(.system(size: 8)).foregroundStyle(.secondary).padding(2)
             }
+            if (day.resets ?? 0) > 0 {
+                Text(ResetCapacityFormat.mark).font(.system(size: 8, weight: .bold)).foregroundStyle(color)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing).padding(2)
+            }
         }
         .font(.caption2.monospacedDigit().weight(.medium))
         .frame(maxWidth: .infinity, minHeight: 26)
         .accessibilityElement()
-        .accessibilityLabel(Text(verbatim: "\(Self.weekday(day.day)) \(day.day): \(Self.reading(day))"))
+        .accessibilityLabel(Text(verbatim: "\(Self.weekday(day.day)) \(day.day): \(Self.reading(day))"
+            + ((day.resets ?? 0) > 0 ? ", " + String(localized: "reset claimed", comment: "A day on which a limit reset was claimed.") : "")))
     }
 
+    /// The window's share; after a claimed reset, its use against its capacity ("135%" over "of 200% ↻").
     private func total(_ week: TeamPlanHistory.Week) -> some View {
         let reached = week.percent >= 100
+        let capacity = week.capacityPercent.flatMap { $0 > 100 ? $0 : nil }
         return VStack(alignment: .trailing, spacing: 0) {
-            Text((week.estimated ? "~" : "") + Self.number(week.percent) + "%")
+            Text((week.estimated ? "~" : "") + Self.number(capacity == nil ? week.percent : week.usedPercent ?? week.percent) + "%")
                 .font(.caption.monospacedDigit().weight(.semibold))
                 .foregroundStyle(reached ? Theme.notice : AnyShapeStyle(.primary))
+            if let capacity {
+                Text("of \(Self.number(capacity))% \(ResetCapacityFormat.mark)", comment: "Under a week's use in Weekly History: the week's capacity after a claimed limit reset, e.g. of 200% ↻")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
             if reached || week.open {
                 Text(reached ? "limit reached" : "so far").font(.caption2).foregroundStyle(.secondary)
             }
@@ -155,7 +166,7 @@ struct TeamPlanWeeklyHistory: View {
         .frame(minWidth: 90, alignment: .trailing)
     }
 
-    private var legend: some View {
+    private func legend(hasResets: Bool) -> some View {
         HStack(spacing: 12) {
             Label { Text("darker = more") } icon: { RoundedRectangle(cornerRadius: 2).fill(color.opacity(0.7)).frame(width: 10, height: 10) }
             Label { Text("~ estimated") } icon: {
@@ -164,6 +175,7 @@ struct TeamPlanWeeklyHistory: View {
             Label { Text("· no reading") } icon: {
                 RoundedRectangle(cornerRadius: 2).strokeBorder(Color.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [2, 1])).frame(width: 10, height: 10)
             }
+            if hasResets { Text("\(ResetCapacityFormat.mark) reset claimed", comment: "Weekly History legend: a limit reset was claimed that day; the week counts against one more limit.") }
             Text("Used: the window's share of the weekly limit")
         }
         .font(.caption2)

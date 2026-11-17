@@ -177,6 +177,8 @@ struct WeekBox: Equatable {
     var label: String
     var isToday: Bool
     var kind: Kind
+    /// A limit reset was claimed that day.
+    var reset = false
 
     /// The tallest a box gets, so a heavy day or an overflow spills over the top but not off the card.
     static let maxHeight = 1.3
@@ -210,7 +212,10 @@ struct WeekBox: Equatable {
             } else {
                 kind = day.working ? .empty : .off
             }
-            return WeekBox(day: day.day, label: LivePaceFormat.dayLabel(day.day, today: today), isToday: day.day == today, kind: kind)
+            return WeekBox(
+                day: day.day, label: LivePaceFormat.dayLabel(day.day, today: today), isToday: day.day == today, kind: kind,
+                reset: (day.resets ?? 0) > 0
+            )
         }
     }
 }

@@ -216,6 +216,9 @@ final class AppContainer {
                 provider: claude,
                 refreshAfterClaim: { [weak dataStore] in
                     await ResetClaimRefresh.run(dataStore: dataStore, providerID: providerID, tag: "claude")
+                },
+                recordClaim: { at, cleared in
+                    ResetClaimLedger.record(RecordedResetClaim(cardID: providerID, at: at, cleared: cleared), defaults: .standard, now: at)
                 }
             )
         }
