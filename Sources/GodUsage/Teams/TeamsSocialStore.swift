@@ -230,12 +230,11 @@ struct TeamProjection: Equatable {
         else { return nil }
         let daysSoFar = end.day - start.day + 1
         guard daysSoFar > 0 else { return nil }
-        var monthName = Date.FormatStyle.dateTime.month(.wide)
-        monthName.timeZone = calendar.timeZone
         return TeamProjection(
             spentSoFar: spentSoFar,
             projected: spentSoFar / Double(daysSoFar) * Double(monthDays),
-            monthName: firstOfMonth.formatted(monthName),
+            // English like the rest of the UI; the localization work will switch it to the app's locale.
+            monthName: TeamsFormat.monthName(start.month),
             daysLeft: monthDays - daysSoFar
         )
     }
