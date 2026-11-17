@@ -53,6 +53,8 @@ Metric titles ("Session", "Weekly", "Extra Usage") stay English in the model, be
 
 Concise, in the tone of macOS System Settings. Titles capitalize only the first word ("Mostra sempre il ritmo"), not English title case. Brand and product names stay as they are (Claude, Codex, GodUsage, Max 20x).
 
+No article, or preposition merged with one, right before a placeholder: the right one depends on the value (l'8%, lo 0%, il 6%, l'11 novembre, all'1:00). Word around it instead: "superato di %@", "scendono a %@", "alle ore %@", "decorrenza %@". `LocalizationCatalogTests` fails on "il %@", "dal %@", "alle %@" and the like.
+
 To check a build in Italian without changing the Mac's language, launch it with `open "dist/GodUsage DEV.app" --args -AppleLanguages '(it)'` (or `'(en)'` on an Italian Mac).
 
 The CLI and the local HTTP API keep their field names and values in English. Error messages in the API's `errors` list are the dashboard's text, so they follow the app's language.

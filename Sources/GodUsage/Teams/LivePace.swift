@@ -50,8 +50,11 @@ struct LivePace: Equatable {
         case dayOff
         case notStarted
         case dayDone
-        /// Today's budget is used up.
+        /// Today's use went past its budget by at least 0.1% (what the labels can show).
         case overBudget
+        /// Today's use reads the same as its budget at one decimal: the budget is used up, nothing is
+        /// taken from the days after yet.
+        case atBudget
         /// The first working hour: too early to judge the pace.
         case warmingUp
         /// On pace to end well over today's budget.
@@ -61,7 +64,7 @@ struct LivePace: Equatable {
         case behind
 
         /// The day is under way, so the pace means something.
-        var isWorking: Bool { [.warmingUp, .ahead, .onPace, .behind, .overBudget].contains(self) }
+        var isWorking: Bool { [.warmingUp, .ahead, .onPace, .behind, .overBudget, .atBudget].contains(self) }
     }
 
     /// The color goes orange above this share of today's budget at the current pace, and back under `aheadExit`.
@@ -101,7 +104,7 @@ struct LivePace: Equatable {
     }
 
     enum Tone: Equatable {
-        /// Orange: ahead of pace now and heading over today's budget, or already over it.
+        /// Orange: ahead of pace now and heading over today's budget, or already at or over it.
         case hot
         /// Green: behind pace now and heading well under today's budget.
         case cool
@@ -115,7 +118,7 @@ struct LivePace: Equatable {
         let minutes = ahead ?? 0
         let clear = abs(minutes) >= Self.onPaceMargin
         switch state {
-        case .overBudget: return .hot
+        case .overBudget, .atBudget: return .hot
         case .ahead: return clear && minutes > 0 ? .hot : .neutral
         case .behind: return clear && minutes < 0 ? .cool : .neutral
         default: return .neutral
@@ -144,6 +147,9 @@ struct LivePace: Equatable {
 
     /// The last working day before the reset: what today leaves is lost, not moved.
     var isLastDay: Bool { futureDays.isEmpty }
+    /// Today's use for the bars: the budget itself when the two read the same, so a full bar has no
+    /// overflow sliver the labels can't explain.
+    var shownUsed: Double { state == .atBudget ? budget : used }
     /// What today leaves of its budget at the current pace.
     var projectedUnused: Double { max(0, budget - projected) }
 
@@ -173,8 +179,10 @@ struct LivePace: Equatable {
             state = .notStarted
         } else if let end, now >= end {
             state = .dayDone
-        } else if used >= budget {
+        } else if Self.shownOvershoot(used: used, budget: budget) > 0 {
             state = .overBudget
+        } else if Self.shownOvershoot(used: used, budget: budget) == 0 {
+            state = .atBudget
         } else if workedSoFar < Self.warmUp {
             state = .warmingUp
         } else {
@@ -201,6 +209,13 @@ struct LivePace: Equatable {
                 ? (day.day, remaining * day.hours / futureHours, plannedRemaining * day.hours / futureHours)
                 : (day.day, 0, 0)
         }
+    }
+
+    /// How far `used` is past `budget`, rounded to one decimal the way the labels show percentages
+    /// (`AppLocale.percent`): 0 when the two read the same, so "0.0% over" never shows.
+    static func shownOvershoot(used: Double, budget: Double) -> Double {
+        let shown = AppLocale.decimal(used - budget, digits: 1, locale: AppLocale.stable)
+        return Double(shown) ?? used - budget
     }
 
     /// How much of `spans` passed before `date`.

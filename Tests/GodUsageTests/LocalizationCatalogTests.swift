@@ -84,6 +84,31 @@ final class LocalizationCatalogTests: XCTestCase {
         XCTAssertTrue(mismatched.isEmpty, "Format specifiers differ:\n" + mismatched.joined(separator: "\n"))
     }
 
+    /// Italian articles depend on how the next word sounds: l'8%, lo 0%, il 6%, l'11 novembre,
+    /// all'1:00. A fixed article (or a preposition merged with one) before a number, date or time
+    /// placeholder is wrong for some values, so the Italian is worded without one ("a 18,4%",
+    /// "superato di 6,3%", "alle ore %@").
+    func testItalianHasNoArticleBeforeAPlaceholder() throws {
+        let articles = [
+            "il", "lo", "la", "i", "gli", "le", "l",
+            "del", "dello", "della", "dei", "degli", "delle", "dell",
+            "al", "allo", "alla", "ai", "agli", "alle", "all",
+            "nel", "nello", "nella", "nei", "negli", "nelle", "nell",
+            "sul", "sullo", "sulla", "sui", "sugli", "sulle", "sull",
+            "dal", "dallo", "dalla", "dai", "dagli", "dalle", "dall",
+        ].joined(separator: "|")
+        let pattern = #"(?i)(?<![\p{L}])(?:"# + articles + #")(?:\s+|['’])%(?:\d+\$)?(?:#@|lld|ld|d|@|f|\.\d+f)"#
+        let regex = try NSRegularExpression(pattern: pattern)
+        var offending: [String] = []
+        for entry in try loadEntries() where entry.shouldTranslate && !entry.isStale {
+            guard let italian = entry.localization("it") else { continue }
+            for value in values(of: italian) where regex.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)) != nil {
+                offending.append("\(entry.key) -> \(value)")
+            }
+        }
+        XCTAssertTrue(offending.isEmpty, "Italian article before a placeholder:\n" + offending.joined(separator: "\n"))
+    }
+
     /// Provider metric titles are translated at display time (`LocalizedMetricTitle`), so the catalog
     /// lists them by hand. A new descriptor title without an entry would stay English.
     @MainActor

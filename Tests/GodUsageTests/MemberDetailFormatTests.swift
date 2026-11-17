@@ -4,19 +4,19 @@ import XCTest
 final class MemberDetailFormatTests: XCTestCase {
     // MARK: - Last hour
 
-    func testLastHourTileNamesTheLevelAndSaysMostInTeamOnlyWhenTrue() {
+    func testLastHourTileNamesTheLevelAndSaysTopOfTheTeamOnlyWhenTrue() {
         let fastTop = TeamMomentum(lastHourUSD: 164.15, level: 2, reasons: ["fast", "top"])
         let tile = MemberDetailFormat.lastHourTile(fastTop)
         XCTAssertEqual(tile.label, "LAST HOUR")
         XCTAssertEqual(tile.value, "+$164.15")
-        XCTAssertEqual(tile.context, "Fast · most in the team")
+        XCTAssertEqual(tile.context, "Fast · top of the team")
         XCTAssertTrue(tile.isNotice)
         XCTAssertEqual(tile.accessibilityLabel, "$164.15 in the last hour · spending fast, level 2 of 3: over $5, the most in the team")
 
         let notTop = TeamMomentum(lastHourUSD: 6, level: 2, reasons: ["fast", "self"], typicalHourUSD: 2)
         XCTAssertEqual(MemberDetailFormat.lastHourTile(notTop).context, "Fast")
         XCTAssertEqual(MemberDetailFormat.momentumContext(TeamMomentum(lastHourUSD: 5, level: 1, reasons: ["fast"])), "Picking up")
-        XCTAssertEqual(MemberDetailFormat.momentumContext(TeamMomentum(lastHourUSD: 30, level: 3, reasons: ["fast", "self", "top"])), "Very fast · most in the team")
+        XCTAssertEqual(MemberDetailFormat.momentumContext(TeamMomentum(lastHourUSD: 30, level: 3, reasons: ["fast", "self", "top"])), "Very fast · top of the team")
     }
 
     func testLastHourTileIsQuietWithoutSpendAndPlainWithoutALevel() {
@@ -36,7 +36,7 @@ final class MemberDetailFormatTests: XCTestCase {
 
     func testPaceTileRoundsToWholeDollarsAndCountsDaysLeft() {
         let tile = MemberDetailFormat.paceTile(TeamProjection(spentSoFar: 1000, projected: 2404.37, monthName: "November", daysLeft: 13))
-        XCTAssertEqual(tile.label, "NOVEMBER PACE")
+        XCTAssertEqual(tile.label, "BY END OF NOVEMBER")
         XCTAssertEqual(tile.value, "$2,404")
         XCTAssertEqual(tile.context, "13 days left")
         XCTAssertEqual(MemberDetailFormat.paceTile(TeamProjection(spentSoFar: 1, projected: 1, monthName: "May", daysLeft: 1)).context, "1 day left")
@@ -46,7 +46,7 @@ final class MemberDetailFormatTests: XCTestCase {
     func testEfficiencyTileNeedsTokens() {
         let tile = MemberDetailFormat.efficiencyTile(UsageTotals(tokens: 2_000_000, costUSD: 0.78))
         XCTAssertEqual(tile?.value, "$0.39")
-        XCTAssertEqual(tile?.context, "per million tokens")
+        XCTAssertEqual(tile?.context, "per 1M tokens")
         XCTAssertNil(MemberDetailFormat.efficiencyTile(UsageTotals(tokens: 0, costUSD: 0)))
     }
 
@@ -59,6 +59,8 @@ final class MemberDetailFormatTests: XCTestCase {
         XCTAssertEqual(MemberDetailFormat.movementText(rankChange: nil, hasUsage: true, range: .today), "New")
         XCTAssertNil(MemberDetailFormat.movementText(rankChange: nil, hasUsage: false, range: .today))
         XCTAssertEqual(MemberDetailFormat.movementText(rankChange: 1, hasUsage: true, range: .week), "Up 1 since the previous 7 days")
+        XCTAssertEqual(MemberDetailFormat.movementText(rankChange: -3, hasUsage: true, range: .monthToDate), "Down 3 since last month")
+        XCTAssertEqual(MemberDetailFormat.movementText(rankChange: 0, hasUsage: true, range: .monthToDate), "Same as last month")
         XCTAssertNil(MemberDetailFormat.movementText(rankChange: 2, hasUsage: true, range: .year))
 
         let tile = MemberDetailFormat.placeTile(rank: 1, of: 2, rankChange: 0, hasUsage: true, range: .today)

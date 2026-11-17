@@ -3,7 +3,8 @@ import Foundation
 /// The words and numbers of a member's detail on the dashboard (`TeamMemberDetail`): the four tiles,
 /// the gold chips, the provider and model shares, who reacted, and the footer. Pure, so it is tested.
 enum MemberDetailFormat {
-    /// One tile of the 2×2 grid: a small uppercase label, a big number, one line of context.
+    /// One tile of the 2×2 grid: a small uppercase label (one line), a big number, and up to two lines
+    /// of context. Tiles are about 115pt wide, so labels stay short.
     struct Tile: Equatable {
         var label: String
         var value: String
@@ -35,7 +36,7 @@ enum MemberDetailFormat {
 
     // MARK: - Tiles
 
-    /// LAST HOUR: "+$164.15" (orange while they have a momentum level) with "Fast · most in the team",
+    /// LAST HOUR: "+$164.15" (orange while they have a momentum level) with "Fast · top of the team",
     /// or "Quiet" without spend in the last hour.
     static func lastHourTile(_ momentum: TeamMomentum?) -> Tile {
         guard let momentum, momentum.lastHourUSD > 0 else {
@@ -58,13 +59,13 @@ enum MemberDetailFormat {
         String(localized: "LAST HOUR", comment: "Member detail: uppercase tile label, spend in the last hour")
     }
 
-    /// "Fast · most in the team": the level's name, then "most in the team" only when they spent the
+    /// "Fast · top of the team": the level's name, then "top of the team" only when they spent the
     /// most in the last hour. "Normal pace" for spend that earned no level.
     static func momentumContext(_ momentum: TeamMomentum) -> String {
         guard momentum.level > 0 else { return String(localized: "Normal pace", comment: "Member detail, LAST HOUR tile: spend that earned no momentum level") }
         let name = levelName(momentum.level)
         guard (momentum.reasons ?? []).contains("top") else { return name }
-        return String(localized: "\(name) · most in the team", comment: "Member detail, LAST HOUR tile: a momentum level (Fast), and they spent the most in the team")
+        return String(localized: "\(name) · top of the team", comment: "Member detail, LAST HOUR tile: a momentum level (Fast), and they spent the most in the team. Keep it short: the tile is narrow.")
     }
 
     /// Level 1, 2, 3 of the momentum, in a word or two.
@@ -96,7 +97,7 @@ enum MemberDetailFormat {
         return reasons.isEmpty ? level : "\(level): \(reasons.joined(separator: ", "))"
     }
 
-    /// NOVEMBER PACE: the month's projection in whole dollars, with "13 days left" ("Last day" on it).
+    /// BY END OF NOVEMBER: the month's projection in whole dollars, with "13 days left" ("Last day" on it).
     static func paceTile(_ projection: TeamProjection) -> Tile {
         let value = Formatters.currency(projection.projected, fractionDigits: 0)
         let left = projection.daysLeft == 1 ? String(localized: "1 day left", comment: "Member detail, month projection tile")
@@ -105,21 +106,21 @@ enum MemberDetailFormat {
         let upperMonth = month.uppercased(with: AppLocale.current)
         let lowerLeft = left.lowercased(with: AppLocale.current)
         return Tile(
-            label: String(localized: "\(upperMonth) PACE", comment: "Member detail: uppercase tile label, the month's spend projection, e.g. NOVEMBER PACE"),
+            label: String(localized: "BY END OF \(upperMonth)", comment: "Member detail: uppercase tile label, the month's spend projection, e.g. BY END OF NOVEMBER. Keep it short: one line in a narrow tile."),
             value: value,
             context: left,
             accessibilityLabel: String(localized: "On pace for \(value) in \(month), \(lowerLeft)", comment: "Member detail, month projection for VoiceOver: a dollar amount, the month, the days left")
         )
     }
 
-    /// EFFICIENCY: "$0.39" per million tokens; nil without tokens.
+    /// EFFICIENCY: "$0.39" per 1M tokens; nil without tokens.
     static func efficiencyTile(_ totals: UsageTotals) -> Tile? {
         guard let rate = totals.costPerMillionTokens else { return nil }
         let value = Formatters.currency(rate)
         return Tile(
             label: String(localized: "EFFICIENCY", comment: "Member detail: uppercase tile label, dollars per million tokens"),
             value: value,
-            context: String(localized: "per million tokens", comment: "Member detail, EFFICIENCY tile"),
+            context: String(localized: "per 1M tokens", comment: "Member detail, EFFICIENCY tile: dollars per million tokens. Keep it short."),
             accessibilityLabel: String(localized: "Efficiency: \(value) per million tokens", comment: "Member detail, EFFICIENCY tile for VoiceOver")
         )
     }
@@ -163,9 +164,10 @@ enum MemberDetailFormat {
             return change > 0 ? String(localized: "Up \(places) since the previous 30 days", comment: "Member rank movement: places gained")
                 : String(localized: "Down \(places) since the previous 30 days", comment: "Member rank movement: places lost")
         case .monthToDate:
-            if change == 0 { return String(localized: "Same as the same days last month", comment: "Member rank movement") }
-            return change > 0 ? String(localized: "Up \(places) since the same days last month", comment: "Member rank movement: places gained")
-                : String(localized: "Down \(places) since the same days last month", comment: "Member rank movement: places lost")
+            // Against the same days of last month; "last month" keeps it within two lines of a tile.
+            if change == 0 { return String(localized: "Same as last month", comment: "Member rank movement, month to date: against the same days of last month") }
+            return change > 0 ? String(localized: "Up \(places) since last month", comment: "Member rank movement, month to date: places gained against the same days of last month")
+                : String(localized: "Down \(places) since last month", comment: "Member rank movement, month to date: places lost against the same days of last month")
         }
     }
 

@@ -105,11 +105,11 @@ struct TeamWeekStripCard: View {
         return only == selectedTeamID ? .none : .title(only)
     }
 
-    /// Plans with room while another provider's plan runs hot (over today's budget or well ahead of
-    /// pace): their pill is tinted green. Room means on pace or behind, with at least
+    /// Plans with room while another provider's plan runs hot (at or over today's budget, or well ahead
+    /// of pace): their pill is tinted green. Room means on pace or behind, with at least
     /// `roomForOthers` points of today's budget left.
     static func useThisNow(_ entries: [TeamPlanEntry], paces: [String: LivePace]) -> Set<String> {
-        let hot = Set(entries.filter { [.ahead, .overBudget].contains(paces[$0.id]?.state) }.map(\.plan.provider))
+        let hot = Set(entries.filter { [.ahead, .overBudget, .atBudget].contains(paces[$0.id]?.state) }.map(\.plan.provider))
         guard !hot.isEmpty else { return [] }
         return Set(entries.filter { entry in
             guard let live = paces[entry.id], !hot.contains(entry.plan.provider) else { return false }
