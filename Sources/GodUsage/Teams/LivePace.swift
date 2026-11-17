@@ -279,20 +279,31 @@ enum LivePaceFormat {
         return minutes >= 60 ? String(format: "%dh %02dm", minutes / 60, minutes % 60) : "\(minutes) min"
     }
 
-    /// "+44 min" ahead, "−1h 05m" behind, "On Pace" within five minutes.
-    static func signedDuration(_ seconds: TimeInterval) -> String {
-        if abs(seconds) < LivePace.onPaceMargin { return "On Pace" }
-        return (seconds > 0 ? "+" : "−") + duration(seconds)
-    }
-
     static func time(_ date: Date) -> String { date.formatted(date: .omitted, time: .shortened) }
-    static func weekdayTime(_ date: Date) -> String { date.formatted(.dateTime.weekday(.abbreviated).hour().minute()) }
+    /// "Mon 09:00": the weekday in English like the rest of the app, the time in the Mac's format.
+    static func weekdayTime(_ date: Date) -> String { "\(weekday(date)) \(time(date))" }
 
+    /// "Mon", in English whatever the Mac's language, so it matches the app's own words ("Today").
     static func weekday(_ day: String) -> String {
         guard let date = TeamsFormat.date(day) else { return day }
-        return date.formatted(.dateTime.weekday(.abbreviated))
+        return weekday(date)
     }
+
+    static func weekday(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.abbreviated).locale(englishLocale))
+    }
+
+    /// A day's label in the week's strip: "Today", else its weekday.
+    static func dayLabel(_ day: String, today: String) -> String { day == today ? "Today" : weekday(day) }
 
     /// "Fri, Mon".
     static func days(_ days: [String]) -> String { days.map(weekday).joined(separator: ", ") }
+
+    /// The working days left as one span: "Wed", "Fri, Mon", or "Wed–Mon" for three or more.
+    static func dayRange(_ days: [String]) -> String {
+        guard let first = days.first, let last = days.last else { return "" }
+        return days.count < 3 ? self.days(days) : "\(weekday(first))–\(weekday(last))"
+    }
+
+    private static let englishLocale = Locale(identifier: "en_US")
 }

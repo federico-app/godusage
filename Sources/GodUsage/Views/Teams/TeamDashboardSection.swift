@@ -118,7 +118,9 @@ struct TeamDashboardSection: View {
         if let stats {
             summary(stats)
             if showWeekStrip {
-                TeamWeekStripCard(plans: weekStripPlans, teamName: otherTeamName, today: teams.localToday())
+                TeamWeekStripCard(
+                    plans: weekStripPlans, selectedTeamID: teams.selectedTeamID, teamName: teamName, today: teams.localToday()
+                )
             }
             ranking(stats)
             if showChallenges { challengesCard }
@@ -205,10 +207,8 @@ struct TeamDashboardSection: View {
         return container.teamPlans.yourPlans(selectedTeamID: teams.selectedTeamID, teamIDs: teams.teams.map(\.id))
     }
 
-    private func otherTeamName(_ teamID: String) -> String? {
-        let teams = container.teams
-        guard teamID != teams.selectedTeamID else { return nil }
-        return teams.teams.first { $0.id == teamID }?.name
+    private func teamName(_ teamID: String) -> String? {
+        container.teams.teams.first { $0.id == teamID }?.name
     }
 
     private var currentTeamName: String {
