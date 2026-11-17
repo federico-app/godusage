@@ -47,9 +47,10 @@ With **Show Rank in Menu Bar** on (Settings → Teams → You), the strip ends w
   - ahead of pace: **+41m** in orange (plain when you're ahead but slowing down, as on the dashboard),
   - under pace: **−2h 40m** in green,
   - on pace: **On pace**, dimmed,
-  - over today's budget: a solid orange chip, for example **+6.3%**.
+  - at today's budget (use and budget read the same at one decimal): **Used up** in orange,
+  - over today's budget by at least 0.1%: a solid orange chip, for example **+6.3%**.
   
-  On several plans, the most urgent one shows: over today's budget beats ahead of pace, which beats the rest. Plans outside the working day (not started, day done, day off) don't count.
+  On several plans, the most urgent one shows: over today's budget beats ahead of pace or at the budget, which beat the rest. Plans outside the working day (not started, day done, day off) don't count.
 - When your team data is more than an hour old (your usage last reached the server over an hour ago), the bottom line says so, dimmed, for example **Upd 2h**.
 - With neither a pace nor stale data, the segment is the top line alone, centered like a single value: **#2 · $37**.
 

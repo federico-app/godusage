@@ -150,17 +150,6 @@
         }
       }
     },
-    "%@ PACE" : {
-      "comment" : "Member detail: uppercase tile label, the month's spend projection, e.g. NOVEMBER PACE",
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PROIEZIONE DI %@"
-          }
-        }
-      }
-    },
     "%@ Passed You" : {
       "comment" : "Overtake alert title; the value is one or more names",
       "localizations" : {
@@ -296,7 +285,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ alle %@"
+            "value" : "%@ alle ore %@"
           }
         }
       }
@@ -367,7 +356,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ scendono al %@."
+            "value" : "%@ scendono a %@."
           }
         }
       }
@@ -500,7 +489,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A questo ritmo %1$@ userà il %2$lld%% della sua quota e si rinnova tra %3$lld giorni. Usa %4$@ per far fruttare la spesa del team."
+            "value" : "A questo ritmo %1$@ arriverà a %2$lld%% della sua quota e si rinnova tra %3$lld giorni. Usa %4$@ per far fruttare la spesa del team."
           }
         }
       }
@@ -511,7 +500,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A questo ritmo %1$@ userà il %2$lld%% della sua quota e si rinnova domani. Usa %3$@ per far fruttare la spesa del team."
+            "value" : "A questo ritmo %1$@ arriverà a %2$lld%% della sua quota e si rinnova domani. Usa %3$@ per far fruttare la spesa del team."
           }
         }
       }
@@ -522,7 +511,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A questo ritmo %1$@ raggiungerà il limite %2$@ prima che si azzeri. A %3$@ resta il %4$lld%% del limite %5$@."
+            "value" : "A questo ritmo %1$@ raggiungerà il limite %2$@ prima che si azzeri. A %3$@ resta %4$lld%% del limite %5$@."
           }
         }
       }
@@ -798,7 +787,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ salgono al %@."
+            "value" : "%@ salgono a %@."
           }
         }
       }
@@ -938,7 +927,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ raggiungerà il limite %2$@ prima dell’azzeramento. A %3$@ resta il %4$@ del budget di oggi."
+            "value" : "%1$@ raggiungerà il limite %2$@ prima dell’azzeramento. A %3$@ resta %4$@ del budget di oggi."
           }
         }
       }
@@ -971,7 +960,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ · %2$@ alle %3$@"
+            "value" : "%1$@ · %2$@ alle ore %3$@"
           }
         }
       }
@@ -987,17 +976,6 @@
         }
       }
     },
-    "%@ · most in the team" : {
-      "comment" : "Member detail, LAST HOUR tile: a momentum level (Fast), and they spent the most in the team",
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ · il più alto del team"
-          }
-        }
-      }
-    },
     "%@ · spending fast, level %lld of 3" : {
       "comment" : "Member momentum for VoiceOver: the spend in the last hour, then the level",
       "localizations" : {
@@ -1005,6 +983,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ · spesa veloce, livello %lld di 3"
+          }
+        }
+      }
+    },
+    "%@ · top of the team" : {
+      "comment" : "Member detail, LAST HOUR tile: a momentum level (Fast), and they spent the most in the team. Keep it short: the tile is narrow.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · il più alto"
           }
         }
       }
@@ -2450,7 +2439,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Circa il %1$lld%% del limite %2$@ resterà inutilizzato: si azzera tra %3$@. Usa prima %4$@."
+            "value" : "Circa %1$lld%% del limite %2$@ resterà inutilizzato: si azzera tra %3$@. Usa prima %4$@."
           }
         }
       }
@@ -2714,7 +2703,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Un ritmo regolare distribuisce il budget di oggi (%@) sull’orario di lavoro fino alle %@."
+            "value" : "Un ritmo regolare distribuisce il budget di oggi (%@) sull’orario di lavoro fino alle ore %@."
           }
         }
       }
@@ -2899,7 +2888,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A questo ritmo oggi chiude al %@, oltre il budget."
+            "value" : "A questo ritmo oggi chiude a %@, oltre il budget."
           }
         }
       }
@@ -2910,7 +2899,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A questo ritmo il budget di oggi finisce alle %@."
+            "value" : "A questo ritmo il budget di oggi finisce alle ore %@."
           }
         }
       }
@@ -2931,7 +2920,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A questo ritmo il %@ del budget di oggi passa a %@."
+            "value" : "A questo ritmo %@ del budget di oggi passa a %@."
           }
         }
       }
@@ -2942,7 +2931,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A questo ritmo perdi il %@ del limite settimanale all’azzeramento di %@."
+            "value" : "A questo ritmo perdi %@ del limite settimanale all’azzeramento di %@."
           }
         }
       }
@@ -2953,7 +2942,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A questo ritmo perdi il %@ del limite settimanale all’azzeramento."
+            "value" : "A questo ritmo perdi %@ del limite settimanale all’azzeramento."
           }
         }
       }
@@ -2964,7 +2953,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A questo ritmo il budget di oggi finisce alle %@."
+            "value" : "A questo ritmo il budget di oggi finisce alle ore %@."
           }
         }
       }
@@ -2996,6 +2985,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Picco medio per sessione"
+          }
+        }
+      }
+    },
+    "BY END OF %@" : {
+      "comment" : "Member detail: uppercase tile label, the month's spend projection, e.g. BY END OF NOVEMBER. Keep it short: one line in a narrow tile.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A FINE %@"
           }
         }
       }
@@ -3048,7 +3048,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sotto il ritmo: a questo passo un account usa circa il %1$lld%% della settimana · %2$@"
+            "value" : "Sotto il ritmo: a questo passo un account usa circa %1$lld%% della settimana · %2$@"
           }
         }
       }
@@ -3172,7 +3172,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Budget esaurito alle %@"
+            "value" : "Fine budget %@"
           }
         }
       }
@@ -4408,13 +4408,24 @@
         }
       }
     },
+    "Down %lld since last month" : {
+      "comment" : "Member rank movement, month to date: places lost against the same days of last month",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sceso di %lld sul mese scorso"
+          }
+        }
+      }
+    },
     "Down %lld since the previous 30 days" : {
       "comment" : "Member rank movement: places lost",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sceso di %lld rispetto ai 30 giorni precedenti"
+            "value" : "Sceso di %lld sui 30 giorni precedenti"
           }
         }
       }
@@ -4425,18 +4436,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sceso di %lld rispetto ai 7 giorni precedenti"
-          }
-        }
-      }
-    },
-    "Down %lld since the same days last month" : {
-      "comment" : "Member rank movement: places lost",
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sceso di %lld rispetto agli stessi giorni del mese scorso"
+            "value" : "Sceso di %lld sui 7 giorni precedenti"
           }
         }
       }
@@ -8775,6 +8775,17 @@
         }
       }
     },
+    "Same as last month" : {
+      "comment" : "Member rank movement, month to date: against the same days of last month",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come il mese scorso"
+          }
+        }
+      }
+    },
     "Same as the previous 30 days" : {
       "comment" : "Member rank movement",
       "localizations" : {
@@ -8793,17 +8804,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Come nei 7 giorni precedenti"
-          }
-        }
-      }
-    },
-    "Same as the same days last month" : {
-      "comment" : "Member rank movement",
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Come negli stessi giorni del mese scorso"
           }
         }
       }
@@ -9243,7 +9243,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Mostra i %lld account"
+                  "value" : "Mostra %lld account"
                 }
               }
             }
@@ -9570,7 +9570,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inizia alle %@"
+            "value" : "Inizio %@"
           }
         }
       }
@@ -9581,7 +9581,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Resta sotto %@ per arrivare alle %@."
+            "value" : "Resta sotto %@ per arrivare alle ore %@."
           }
         }
       }
@@ -10249,7 +10249,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La giornata lavorativa è finita; oggi hai usato il %@ del budget del %@."
+            "value" : "La giornata lavorativa è finita; oggi hai usato %@ su un budget di %@."
           }
         }
       }
@@ -10260,7 +10260,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La giornata lavorativa inizia alle %@; il budget di oggi è %@."
+            "value" : "La giornata lavorativa inizia alle ore %@; il budget di oggi è %@."
           }
         }
       }
@@ -10594,7 +10594,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Per arrivare alle %@"
+            "value" : "Fino alle ore %@"
           }
         }
       }
@@ -10619,13 +10619,35 @@
         }
       }
     },
+    "Today’s budget is used up, on the last working day before the reset." : {
+      "comment" : "Live Pace note: today's use reached today's budget exactly",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il budget di oggi è esaurito, nell’ultima giornata lavorativa prima dell’azzeramento."
+          }
+        }
+      }
+    },
+    "Today’s budget is used up. More today comes out of the next working days." : {
+      "comment" : "Live Pace note: today's use reached today's budget exactly",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il budget di oggi è esaurito. Ciò che usi in più si toglie dalle prossime giornate lavorative."
+          }
+        }
+      }
+    },
     "Today’s budget is used up. The %@ comes out of the next working days." : {
       "comment" : "Live Pace note; the value is the percentage over today's budget",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Il budget di oggi è esaurito. Il %@ in più si toglie dalle prossime giornate lavorative."
+            "value" : "Budget di oggi superato di %@: si toglie dalle prossime giornate lavorative."
           }
         }
       }
@@ -10640,13 +10662,35 @@
         }
       }
     },
+    "Today’s budget used up" : {
+      "comment" : "Live Pace pill: today's use reached today's budget exactly, nothing over yet",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Budget di oggi esaurito"
+          }
+        }
+      }
+    },
+    "Today’s use has reached its budget: %@." : {
+      "comment" : "Live Pace chart summary: today's budget, a percentage of the weekly limit",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’utilizzo di oggi ha raggiunto il budget: %@."
+          }
+        }
+      }
+    },
     "Today’s use is ahead of even pace; at this pace the budget runs out at %@." : {
       "comment" : "Live Pace chart summary; the value is a time",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’utilizzo di oggi è sopra il ritmo costante; a questo ritmo il budget finisce alle %@."
+            "value" : "L’utilizzo di oggi è sopra il ritmo costante; a questo ritmo il budget finisce alle ore %@."
           }
         }
       }
@@ -10657,7 +10701,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’utilizzo di oggi è sopra il ritmo costante; a questo ritmo oggi chiude al %@ del suo budget del %@."
+            "value" : "L’utilizzo di oggi è sopra il ritmo costante; a questo ritmo oggi chiude a %@ su un budget di %@."
           }
         }
       }
@@ -10668,7 +10712,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’utilizzo di oggi è sotto il ritmo costante; a questo ritmo il budget finisce alle %@."
+            "value" : "L’utilizzo di oggi è sotto il ritmo costante; a questo ritmo il budget finisce alle ore %@."
           }
         }
       }
@@ -10679,7 +10723,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’utilizzo di oggi è sotto il ritmo costante; a questo ritmo oggi chiude al %@ del suo budget del %@."
+            "value" : "L’utilizzo di oggi è sotto il ritmo costante; a questo ritmo oggi chiude a %@ su un budget di %@."
           }
         }
       }
@@ -10690,7 +10734,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’utilizzo di oggi è in linea con il ritmo costante; a questo ritmo il budget finisce alle %@."
+            "value" : "L’utilizzo di oggi è in linea con il ritmo costante; a questo ritmo il budget finisce alle ore %@."
           }
         }
       }
@@ -10701,7 +10745,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’utilizzo di oggi è in linea con il ritmo costante; a questo ritmo oggi chiude al %@ del suo budget del %@."
+            "value" : "L’utilizzo di oggi è in linea con il ritmo costante; a questo ritmo oggi chiude a %@ su un budget di %@."
           }
         }
       }
@@ -11180,13 +11224,24 @@
         }
       }
     },
+    "Up %lld since last month" : {
+      "comment" : "Member rank movement, month to date: places gained against the same days of last month",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salito di %lld sul mese scorso"
+          }
+        }
+      }
+    },
     "Up %lld since the previous 30 days" : {
       "comment" : "Member rank movement: places gained",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salito di %lld rispetto ai 30 giorni precedenti"
+            "value" : "Salito di %lld sui 30 giorni precedenti"
           }
         }
       }
@@ -11197,18 +11252,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salito di %lld rispetto ai 7 giorni precedenti"
-          }
-        }
-      }
-    },
-    "Up %lld since the same days last month" : {
-      "comment" : "Member rank movement: places gained",
-      "localizations" : {
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salito di %lld rispetto agli stessi giorni del mese scorso"
+            "value" : "Salito di %lld sui 7 giorni precedenti"
           }
         }
       }
@@ -11230,7 +11274,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fino a %@ ci stai ancora fino alle %@."
+            "value" : "Fino a %@ ci stai ancora fino alle ore %@."
           }
         }
       }
@@ -11585,6 +11629,17 @@
         }
       }
     },
+    "Used up" : {
+      "comment" : "Menu bar team segment: today's budget is used up exactly, nothing over yet. Keep it very short.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esaurito"
+          }
+        }
+      }
+    },
     "Used: the window's share of the weekly limit" : {
       "localizations" : {
         "it" : {
@@ -11727,7 +11782,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Settimana che termina il %@"
+            "value" : "Settimana fino a %@"
           }
         }
       }
@@ -11738,7 +11793,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Settimana del %@"
+            "value" : "Settimana: %@"
           }
         }
       }
@@ -12112,7 +12167,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hai esaurito il limite %2$@ di %1$@. A %3$@ resta il %4$@ del budget di oggi."
+            "value" : "Hai esaurito il limite %2$@ di %1$@. A %3$@ resta %4$@ del budget di oggi."
           }
         }
       }
@@ -12123,7 +12178,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hai esaurito il limite %2$@ di %1$@. A %3$@ resta il %4$lld%% del limite %5$@."
+            "value" : "Hai esaurito il limite %2$@ di %1$@. A %3$@ resta %4$lld%% del limite %5$@."
           }
         }
       }
@@ -12627,13 +12682,13 @@
         }
       }
     },
-    "per million tokens" : {
-      "comment" : "Member detail, EFFICIENCY tile",
+    "per 1M tokens" : {
+      "comment" : "Member detail, EFFICIENCY tile: dollars per million tokens. Keep it short.",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "per milione di token"
+            "value" : "per 1M token"
           }
         }
       }
@@ -12654,7 +12709,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "si rinnova il %1$@ · %2$@"
+            "value" : "rinnovo %1$@ · %2$@"
           }
         }
       }
@@ -12665,7 +12720,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "si rinnova dopo il %@"
+            "value" : "rinnovo dopo %@"
           }
         }
       }
@@ -12833,7 +12888,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "oggi alle %@"
+            "value" : "oggi alle ore %@"
           }
         }
       }
@@ -12855,7 +12910,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "domani alle %@"
+            "value" : "domani alle ore %@"
           }
         }
       }
@@ -13018,7 +13073,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "↑ Sale a %@ · %@/mese dal %@"
+            "value" : "↑ Sale a %@ · %@/mese, decorrenza %@"
           }
         }
       }
@@ -13029,7 +13084,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "↑ Sale a %@ · %@/mese dal %@ (prossimo rinnovo)"
+            "value" : "↑ Sale a %@ · %@/mese, decorrenza %@ (prossimo rinnovo)"
           }
         }
       }
@@ -13040,7 +13095,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "↑ Salito a %@ · %@/mese il %@"
+            "value" : "↑ Salito a %@ · %@/mese · %@"
           }
         }
       }
@@ -13051,7 +13106,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "→ Cambia in %@ · %@/mese dal %@"
+            "value" : "→ Cambia in %@ · %@/mese, decorrenza %@"
           }
         }
       }
@@ -13062,7 +13117,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "→ Cambia in %@ · %@/mese dal %@ (prossimo rinnovo)"
+            "value" : "→ Cambia in %@ · %@/mese, decorrenza %@ (prossimo rinnovo)"
           }
         }
       }
@@ -13073,7 +13128,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "→ Cambiato in %@ · %@/mese il %@"
+            "value" : "→ Cambiato in %@ · %@/mese · %@"
           }
         }
       }
@@ -13084,7 +13139,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "↓ Scende a %@ · %@/mese dal %@"
+            "value" : "↓ Scende a %@ · %@/mese, decorrenza %@"
           }
         }
       }
@@ -13095,7 +13150,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "↓ Scende a %@ · %@/mese dal %@ (prossimo rinnovo)"
+            "value" : "↓ Scende a %@ · %@/mese, decorrenza %@ (prossimo rinnovo)"
           }
         }
       }
@@ -13106,7 +13161,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "↓ Sceso a %@ · %@/mese il %@"
+            "value" : "↓ Sceso a %@ · %@/mese · %@"
           }
         }
       }

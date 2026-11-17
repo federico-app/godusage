@@ -14,14 +14,14 @@ enum LivePaceDisplay {
         case muted
     }
 
-    /// A plan that's fine (not ahead of pace, not over today's budget) shows only its title and
+    /// A plan that's fine (not ahead of pace, not at or over today's budget) shows only its title and
     /// today's bar; its week and Details open with "Week".
     static func collapses(_ state: LivePace.State) -> Bool {
-        ![.ahead, .overBudget].contains(state)
+        ![.ahead, .overBudget, .atBudget].contains(state)
     }
 
     /// The one figure per plan, in words: "22 min ahead of pace", "2h 40m under pace", "On pace",
-    /// "6.3% over today", "Starts 9:00", "Day Done", "Day Off". The plan to use while another runs
+    /// "6.3% over today", "Today's budget used up", "Starts 9:00", "Day Done", "Day Off". The plan to use while another runs
     /// hot (`useThisNow`) is tinted green; the banner says why.
     static func pill(_ live: LivePace, useThisNow: Bool) -> (text: String, style: PillStyle) {
         let tone: PillStyle = switch live.tone {
@@ -42,6 +42,8 @@ enum LivePaceDisplay {
         case .overBudget:
             let over = LivePaceFormat.percent(max(0, live.used - live.budget))
             return (String(localized: "\(over) over today", comment: "Live Pace pill: how far today's use went past today's budget, e.g. 6.3% over today"), .over)
+        case .atBudget:
+            return (String(localized: "Today’s budget used up", comment: "Live Pace pill: today's use reached today's budget exactly, nothing over yet"), .hot)
         case .notStarted:
             let start = live.start.map(LivePaceFormat.time) ?? ""
             return (String(localized: "Starts \(start)", comment: "Live Pace pill before the working day; the value is a time"), .muted)
@@ -77,6 +79,8 @@ enum LivePaceDisplay {
             }
             let over = LivePaceFormat.percent(max(0, live.used - live.budget))
             return (String(localized: "Today’s budget is used up. The \(over) comes out of the next working days.", comment: "Live Pace note; the value is the percentage over today's budget"), .notice)
+        case .atBudget:
+            return (atBudgetText(live), .notice)
         case .onPace, .behind, .warmingUp, .notStarted:
             return nil
         case .dayDone:
@@ -93,7 +97,14 @@ enum LivePaceDisplay {
         }
     }
 
-    /// Over today's budget: "Wed–Mon: 20.0% → 18.4%", the working days left from what they had
+    /// At today's budget, exactly: the note and the pill's tooltip. Nothing is taken from the days after yet.
+    static func atBudgetText(_ live: LivePace) -> String {
+        live.isLastDay
+            ? String(localized: "Today’s budget is used up, on the last working day before the reset.", comment: "Live Pace note: today's use reached today's budget exactly")
+            : String(localized: "Today’s budget is used up. More today comes out of the next working days.", comment: "Live Pace note: today's use reached today's budget exactly")
+    }
+
+    /// Over today's budget (not merely at it): "Wed–Mon: 20.0% → 18.4%", the working days left from what they had
     /// before today to what today leaves them. Nil otherwise.
     static func futureSummary(_ live: LivePace) -> (days: String, planned: String, budget: String)? {
         guard live.state == .overBudget, let next = live.futureDays.first else { return nil }
@@ -138,10 +149,11 @@ struct TodayBarGeometry: Equatable {
     }
 
     /// The bar for a Live Pace row: the now tick only while the day is under way and under budget.
+    /// At the budget the bar is full, with no sliver of overflow.
     init(_ live: LivePace) {
         let paced: [LivePace.State] = [.ahead, .onPace, .behind, .warmingUp]
         let expected = paced.contains(live.state) && live.budget > 0 && live.start != nil ? live.expected : nil
-        self.init(used: live.used, budget: live.budget, expected: expected)
+        self.init(used: live.shownUsed, budget: live.budget, expected: expected)
     }
 }
 
