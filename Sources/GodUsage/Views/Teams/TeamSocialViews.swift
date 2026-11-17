@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// 🔥 👏 🤡 for one member: tap to give or take back yours. Your own row shows the counts only.
@@ -57,27 +58,36 @@ struct ReactionCounts: View {
     }
 }
 
-/// 👑 for today's top spender, 🏆 for last month's champion.
+/// A gold crown for today's top spender, a gold trophy for last month's champion, next to the name.
 struct MemberBadges: View {
     @Environment(AppContainer.self) private var container
     let teamID: String
     let userID: String
 
+    /// Dark goldenrod in light mode, a warmer gold in dark mode, so the symbols read on both cards.
+    static let gold = Color(nsColor: NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(srgbRed: 0.93, green: 0.74, blue: 0.27, alpha: 1)
+            : NSColor(srgbRed: 0.72, green: 0.53, blue: 0.04, alpha: 1)
+    })
+
     var body: some View {
         let social = container.teamsSocial
-        HStack(spacing: 2) {
+        HStack(spacing: 3) {
             if social.kingOfTheDay(teamID: teamID)?.userID == userID {
-                Text("👑")
+                Image(systemName: "crown.fill")
                     .accessibilityLabel("Top spender today")
                     .hoverTooltip("Top spender today")
             }
             if let champion = social.lastMonthChampion(teamID: teamID), champion.userID == userID {
-                Text("🏆")
+                Image(systemName: "trophy.fill")
                     .accessibilityLabel("\(champion.monthLabel) champion")
                     .hoverTooltip("\(champion.monthLabel) champion: top spender of the month")
             }
         }
-        .font(.caption)
+        .font(.system(size: 10, weight: .semibold))
+        .foregroundStyle(Self.gold)
+        .fixedSize()
     }
 }
 
