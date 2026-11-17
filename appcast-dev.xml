@@ -3,6 +3,15 @@
     <channel>
         <title>GodUsage DEV</title>
         <item>
+            <title>1.3.3-dev.858</title>
+            <pubDate>Tue, 17 Nov 2026 12:31:07 +0100</pubDate>
+            <sparkle:version>858</sparkle:version>
+            <sparkle:shortVersionString>1.3.3-dev.858</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-858/GodUsage-DEV-1.3.3-dev.858.dmg" length="16265243" type="application/octet-stream" sparkle:edSignature="U8qAGNAD3wUQuNbU8RgGp7eR39n5vnkcA4PSY3gyRG9UCxWCu1/1yvgJHxrbXapPXnfZsHKPGg78wziZ6zAzDw=="/>
+        </item>
+        <item>
             <title>1.3.3-dev.857</title>
             <pubDate>Tue, 17 Nov 2026 12:26:22 +0100</pubDate>
             <sparkle:version>857</sparkle:version>
@@ -82,15 +91,6 @@
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
             <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-849/GodUsage-DEV-1.3.3-dev.849.dmg" length="16075094" type="application/octet-stream" sparkle:edSignature="nKLIE8JItBjMm3K3LMExgmGePZmtHiXTtXpfBgWJKM22H4DLP96JojhKmXqJt4rqcKy/LaZuPJhhuhybZ8j1DQ=="/>
-        </item>
-        <item>
-            <title>1.3.3-dev.848</title>
-            <pubDate>Thu, 05 Nov 2026 15:05:24 +0100</pubDate>
-            <sparkle:version>848</sparkle:version>
-            <sparkle:shortVersionString>1.3.3-dev.848</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/federico-app/godusage/releases/download/dev-848/GodUsage-DEV-1.3.3-dev.848.dmg" length="16074230" type="application/octet-stream" sparkle:edSignature="Youi47wA+qRQ0pQcrmhxwxbtTnllisFT9mOqVoLA4n9DMxUBSH/79rxtsEaKcFWGUUsrHtoRpTL9ZxPOuSSHAw=="/>
         </item>
         <item>
             <title>0.8.16-dev.713</title>
