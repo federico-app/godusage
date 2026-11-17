@@ -113,6 +113,36 @@ struct TeamPlanSessions: Decodable, Hashable, Sendable {
     var accounts: Int
 }
 
+/// How much of the weekly limit a plan's accounts use per day, over the last seven days.
+struct TeamPlanDaily: Decodable, Hashable, Sendable {
+    struct Day: Decodable, Hashable, Sendable {
+        var day: String
+        /// The mean share of the weekly limit the accounts read that day used. Nil without data.
+        var percent: Double?
+        var working: Bool
+        /// Part of the share was spread over days no Mac read the window.
+        var estimated: Bool
+    }
+
+    /// Today (not over yet) last.
+    var days: [Day]
+    /// The mean share per finished working day of the chart. Nil until one has data.
+    var averagePercent: Double?
+    /// The share per working day that uses exactly the whole week.
+    var pacePercent: Double
+    var accounts: Int
+}
+
+/// How a plan's accounts use their 5-hour sessions in the cycle.
+struct TeamPlanSessions: Decodable, Hashable, Sendable {
+    var sessions: Int
+    var limitHits: Int
+    var averagePeakPercent: Double
+    /// Each session's peak, oldest first (the latest ones).
+    var peaks: [Double]
+    var accounts: Int
+}
+
 /// One plan in the Plans report: its cost against the covered members' usage of its provider at API
 /// prices, and the share of its quota they use, in the plan's current billing cycle. Computed by the server.
 struct TeamPlanReport: Decodable, Hashable, Sendable, Identifiable {
