@@ -79,6 +79,8 @@ struct TeamPlanQuota: Decodable, Hashable, Sendable {
     /// Windows last read well before they reset, so their share is a lower bound.
     var estimatedWindows: Int
     var wastedUSD: Double
+    /// Resets claimed in the counted windows, each counting the window against one more limit. Nil when none.
+    var resets: Int?
 }
 
 /// How much of the weekly limit a plan's accounts use per day, over the last seven days.

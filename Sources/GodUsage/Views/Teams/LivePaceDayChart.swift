@@ -53,7 +53,7 @@ struct LivePaceDayChart: View {
         let top = max(live.budget, live.projected, live.used, 1) * 1.1
         let x = { (date: Date) in LivePaceChartLayout.x(date, start: start, end: end, width: width) }
         let y = { (value: Double) in plotBottom - CGFloat(min(max(value, 0) / top, 1.05)) * (plotBottom - plotTop) }
-        let ideal = { (date: Date) in live.budget * LivePace.overlap(spans, until: date) / total }
+        let ideal = { (date: Date) in live.evenPace(at: date) }
         let working = live.state.isWorking && now >= start && now <= end
         let nowX = x(min(max(now, start), end))
         func label(_ text: Text, _ style: Color, weight: Font.Weight = .regular) -> GraphicsContext.ResolvedText {

@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.10.0
+
+### New Features
+- feat(menu-bar): update-available indicator ([#131](https://github.com/federico-app/godusage/pull/131)) by @andreaAppload
+- feat(teams): leaderboard in rank order, compact rows in place ([#132](https://github.com/federico-app/godusage/pull/132)) by @andreaAppload
+- feat(teams): claimed limit resets in weekly limits ([#134](https://github.com/federico-app/godusage/pull/134)) by @andreaAppload
+
+### Bug Fixes
+- fix(teams): at-budget state, Italian articles, member tiles fit ([#133](https://github.com/federico-app/godusage/pull/133)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.9.0...v1.10.0](https://github.com/federico-app/godusage/compare/v1.9.0...v1.10.0)
+
+- [68521ec](https://github.com/federico-app/godusage/commit/68521ecfff31fba341610a898fd53a6ff6369b27) feat(menu-bar): show when a GodUsage update is available by @andreaAppload
+- [81d1557](https://github.com/federico-app/godusage/commit/81d1557525431053315bffaccc8fa5f18b271aac) fix(teams): at-budget state instead of 0.0% over, Italian without articles before numbers, member tiles fit by @andreaAppload
+- [708fcec](https://github.com/federico-app/godusage/commit/708fcec569f88730d1e98455bd4f5255b8644d83) feat(teams): leaderboard in rank order, compact rows in place by @andreaAppload
+- [e61613e](https://github.com/federico-app/godusage/commit/e61613e599e690b7ea444f3891018dfecb3f307f) feat(teams): claimed limit resets in weekly limits by @andreaAppload
+
 ## v1.9.0
 
 ### New Features

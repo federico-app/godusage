@@ -40,8 +40,8 @@ final class LivePaceDisplayTests: XCTestCase {
         XCTAssertEqual(LivePaceDisplay.pill(onPace, useThisNow: true).style, .cool)
     }
 
-    func testOnlyPlansAheadOrOverBudgetStayExpanded() {
-        let expanded: [LivePace.State] = [.ahead, .overBudget]
+    func testOnlyPlansAheadOrAtOrOverBudgetStayExpanded() {
+        let expanded: [LivePace.State] = [.ahead, .overBudget, .atBudget]
         let collapsed: [LivePace.State] = [.onPace, .behind, .warmingUp, .notStarted, .dayDone, .dayOff]
         XCTAssertTrue(expanded.allSatisfy { !LivePaceDisplay.collapses($0) })
         XCTAssertTrue(collapsed.allSatisfy { LivePaceDisplay.collapses($0) })

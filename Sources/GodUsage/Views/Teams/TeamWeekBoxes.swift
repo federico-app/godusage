@@ -33,6 +33,13 @@ struct TeamPlanTitle<Trailing: View>: View {
                 if TeamPlanAccountsButton.isShown(budget: budget, plan: plan) {
                     TeamPlanAccountsButton(teamID: teamID, plan: plan, budget: budget)
                 }
+                if let week = budget.week {
+                    // A claimed reset gave the week another limit: its use against its capacity.
+                    Text(ResetCapacityFormat.weekLine(week))
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Spacer(minLength: 6)
             trailing
@@ -96,7 +103,7 @@ struct TeamWeekBoxes: View {
                 VStack(spacing: 2) {
                     if hasLabels { label(day).frame(height: 11) }
                     content(day.kind).frame(maxWidth: .infinity).frame(height: maxHeight, alignment: .bottom)
-                    Text(day.label)
+                    Text(day.reset ? "\(day.label)\(ResetCapacityFormat.mark)" : day.label)
                         .font(.system(size: 9, weight: day.isToday ? .bold : .regular))
                         .foregroundStyle(day.isToday ? .primary : .secondary)
                         .lineLimit(1)
@@ -152,7 +159,7 @@ struct TeamWeekBoxes: View {
 
     private var accessibilityText: String {
         let days = boxes.map { day -> String in
-            let name = day.label
+            let name = day.reset ? String(localized: "\(day.label), reset claimed", comment: "A day in the week's boxes on which a limit reset was claimed.") : day.label
             switch day.kind {
             case .off: return String(localized: "\(name) off", comment: "A day without working hours, in the week's boxes.")
             case .empty: return String(localized: "\(name) no data", comment: "A day in the week's boxes.")

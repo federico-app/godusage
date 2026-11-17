@@ -324,11 +324,12 @@ export async function planReports(
       quota,
       daily: planDaily(rows, { provider: plan.provider, covered }, today, workingDays),
       sessions: planSessions(rows, { provider: plan.provider, covered, cycleFrom: cycle.from }),
-      budget: withPace(planBudget(rows, { provider: plan.provider, covered }, today, now, workingDays), () =>
+      budget: withPace(planBudget(rows, { provider: plan.provider, covered }, today, now, workingDays, pace?.timeZone ?? null), () =>
         pace === null ? null : planPace(rows, { provider: plan.provider, covered }, today, now, pace)),
       hiddenPerAccount: planBudget(hiddenRows, { provider: plan.provider, covered }, today, now, workingDays)?.perAccount ?? [],
       perDeviceAccounts: perDeviceAccounts(rows, { provider: plan.provider, covered }, cycle.from < addDays(today, -7) ? cycle.from : addDays(today, -7)),
-      underused: quota === null ? multiple < 1 : quota.usedPercent < UNDERUSED_PERCENT,
+      // Claimed resets are free: a plan is underused by what it used of its paid limit, not of its capacity.
+      underused: quota === null ? multiple < 1 : (quota.paidPercent ?? quota.usedPercent) < UNDERUSED_PERCENT,
       mismatches: planMismatches(plan, (userID) => covers(plan, userID), cycle.from, detections),
     };
   });

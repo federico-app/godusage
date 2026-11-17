@@ -50,6 +50,9 @@ final class ClaudeProvider: ProviderRuntime {
     var unsettledResetClaim: (grantID: String, requestID: String)?
     /// One claim at a time per card, so two popovers can't race to spend.
     var resetClaimInFlight = false
+    /// The windows the last successful claim refilled (the answer's `cleared`, else the grant's
+    /// `clears`), for the Teams quota log (see `RecordedResetClaim`). Nil until a claim succeeds.
+    var lastResetClaimCleared: [String]?
 
     init(
         provider: Provider = ClaudeProvider.makeProvider(),

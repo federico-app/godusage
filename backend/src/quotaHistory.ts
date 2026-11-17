@@ -1,12 +1,11 @@
 import { ESTIMATE_GAP_MS, type QuotaRow } from "./quota";
+import { accountWindows, latestClaimBetween, shareOfCapacity, type MergedWindow } from "./quotaClaims";
 import { accountDailyUse, dayShare, round1, sessionsBetween, type Plan } from "./quotaDaily";
+import { zonedTime } from "./schedules";
 import { daysBetween } from "./stats";
 import { addDays } from "./usagePayload";
 import { isWorkingDay, type WorkingDays } from "./workingDays";
 
-const HOUR_MS = 3_600_000;
-/** Only weekly windows give a daily share of the weekly limit. */
-const WEEK_HOURS = 168;
 /** A window's first day counts when it starts before this UTC hour, its last when it ends at it or later. */
 const HALF_DAY_HOUR = 12;
 export const DEFAULT_HISTORY_WEEKS = 12;
@@ -20,6 +19,8 @@ export interface HistoryDay {
   working: boolean;
   estimated: boolean;
   accounts: number;
+  /** Limit resets claimed that day (the claiming Mac's day). Omitted when none. */
+  resets?: number;
 }
 
 /** One of the plan's weekly windows, from reset to reset. */
@@ -31,8 +32,17 @@ export interface HistoryWeek {
   endsAt: string;
   /** Still running: it resets after now. */
   open: boolean;
-  /** The share of the weekly limit used in the window, the mean over its accounts (capped at 100 each). */
+  /**
+   * The share of the window's capacity used, the mean over its accounts (capped at 100 each). Without
+   * claimed resets the capacity is the weekly limit; a claim adds another limit (see `capacityPercent`).
+   */
   percent: number;
+  /** With a claimed reset in the window: the share of the weekly limit used in all (135 of 200), the mean over its accounts. */
+  usedPercent?: number;
+  /** With a claimed reset: the window's capacity, 100 per limit (200 after one claim), the mean over its accounts. */
+  capacityPercent?: number;
+  /** With a claimed reset: how many were claimed in the window, over its accounts. */
+  resets?: number;
   /** Some account's share is a lower bound (last read well before its reset), or a day was spread. */
   estimated: boolean;
   /** Covered accounts with a window here. */
@@ -56,16 +66,33 @@ export interface PlanBudget {
   accounts: number;
   /** Each account with an open week, soonest reset first (see `AccountWeek`). */
   perAccount: AccountWeek[];
-  /** The soonest-resetting open week, day by day; days after today have no percent. */
-  days: { day: string; percent: number | null; working: boolean; estimated: boolean }[];
+  /** The soonest-resetting open week, day by day; days after today have no percent. `resets`: claims that day, omitted when none. */
+  days: { day: string; percent: number | null; working: boolean; estimated: boolean; resets?: number }[];
+  /** With a claimed reset in an open week: what the open weeks used of their capacity (see `WeekCapacity`). Omitted otherwise. */
+  week?: WeekCapacity;
+}
+
+/** An open week with claimed resets: what it used of its capacity. Means over the accounts with an open week. */
+export interface WeekCapacity {
+  /** The share of the weekly limit used so far in all, every stretch between resets counted (135). */
+  usedPercent: number;
+  /** 100 per limit: 100 plus 100 per claimed reset (200). */
+  capacityPercent: number;
+  /** With one account: the share used in each stretch, before each claim then since the last ([95, 40]). */
+  segments?: number[];
+  resets: number;
 }
 
 /** One account in the plan's open week: who reads it, how much of its week it used, when it resets. */
 export interface AccountWeek {
   /** The covered members whose Macs read this account's open week, by user id (the route names them). */
   people: string[];
-  /** The share of its weekly limit used so far. */
+  /** The share of its week's capacity used so far (the weekly limit, plus one per claimed reset). */
   percent: number;
+  /** With a claimed reset: the share of the weekly limit used in all, its capacity, and each stretch's share. */
+  usedPercent?: number;
+  capacityPercent?: number;
+  segments?: number[];
   /** The share of its weekly limit used today. */
   todayPercent: number;
   resetsAt: string;
@@ -75,46 +102,11 @@ export interface AccountWeek {
   account: string;
 }
 
-export interface Window {
-  account: string;
-  startsAt: number;
-  endsAt: number;
-  percent: number;
-  observedAt: number;
-  days: Map<string, number>;
-}
+export type Window = MergedWindow;
 
-/**
- * The covered accounts' weekly windows, merged across Macs (the highest share), each account's in
- * order. A window that a claimed reset cut short starts where the account's previous one ended.
- */
+/** The covered accounts' weekly windows, merged across Macs, each account's in order (see `accountWindows`). */
 export function coveredWindows(rows: QuotaRow[], plan: Plan): Map<string, Window[]> {
-  const byKey = new Map<string, Window & { covered: boolean }>();
-  for (const row of rows) {
-    if (row.provider !== plan.provider || row.kind !== "limit" || row.period_hours !== WEEK_HOURS) continue;
-    const key = `${row.account_key}|${row.ends_at}`;
-    const endsAt = Date.parse(row.ends_at);
-    const window = byKey.get(key) ?? {
-      account: row.account_key, startsAt: endsAt - WEEK_HOURS * HOUR_MS, endsAt, percent: 0, observedAt: 0, days: new Map<string, number>(), covered: false,
-    };
-    window.percent = Math.max(window.percent, row.percent);
-    window.observedAt = Math.max(window.observedAt, Date.parse(row.observed_at));
-    window.covered = window.covered || plan.covered(row.user_id);
-    for (const reading of row.days ?? []) window.days.set(reading.day, Math.max(window.days.get(reading.day) ?? 0, reading.percent));
-    byKey.set(key, window);
-  }
-  const accounts = new Map<string, Window[]>();
-  for (const window of byKey.values()) {
-    if (!window.covered) continue;
-    accounts.set(window.account, [...(accounts.get(window.account) ?? []), window]);
-  }
-  for (const windows of accounts.values()) {
-    windows.sort((a, b) => a.endsAt - b.endsAt);
-    for (let index = 1; index < windows.length; index += 1) {
-      windows[index]!.startsAt = Math.max(windows[index]!.startsAt, windows[index - 1]!.endsAt);
-    }
-  }
-  return accounts;
+  return accountWindows(rows, plan, { weekly: true });
 }
 
 /**
@@ -145,12 +137,21 @@ function frameAccount(accounts: Map<string, Window[]>, now: number): Window[] | 
   return best?.windows;
 }
 
+/** Claimed resets per day over `windows` (the claiming Mac's day). */
+function resetsByDay(windows: Window[]): Map<string, number> {
+  const resets = new Map<string, number>();
+  for (const claim of windows.flatMap((window) => window.claims)) resets.set(claim.day, (resets.get(claim.day) ?? 0) + 1);
+  return resets;
+}
+
+const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+
 /**
  * The plan's last `weeks` weekly windows, oldest first. With several accounts, the windows of the one
  * whose open week resets first frame the weeks; each other account counts with its window that holds
- * the frame's middle. A week's share is the mean of its accounts' window shares (capped at 100), its
- * days the daily share of the weekly limit (see `accountDailyUse`), and its sessions those that ended
- * in it.
+ * the frame's middle. A week's share is the mean of its accounts' shares of their capacity (capped at
+ * 100; a claimed reset adds a limit to its window), its days the daily share of the weekly limit (see
+ * `accountDailyUse`), and its sessions those that ended in it.
  */
 export function planHistory(rows: QuotaRow[], plan: Plan, today: string, now: Date, weeks: number, workingDays: WorkingDays): HistoryWeek[] {
   const accounts = coveredWindows(rows, plan);
@@ -164,20 +165,30 @@ export function planHistory(rows: QuotaRow[], plan: Plan, today: string, now: Da
       .filter((window): window is Window => window !== undefined);
     const open = week.endsAt > now.getTime();
     const span = windowDays(week.startsAt, week.endsAt);
+    const resets = resetsByDay(matching);
     const days: HistoryDay[] = [];
     for (let day = span.from; day <= span.to; day = addDays(day, 1)) {
       const share = day > today ? { percent: null, estimated: false, accounts: [] } : dayShare(used, day);
-      days.push({ day, percent: share.percent, working: isWorkingDay(day, workingDays), estimated: share.estimated, accounts: share.accounts.length });
+      days.push({
+        day, percent: share.percent, working: isWorkingDay(day, workingDays), estimated: share.estimated, accounts: share.accounts.length,
+        ...(resets.has(day) ? { resets: resets.get(day) } : {}),
+      });
     }
     const sessions = sessionsBetween(rows, plan, week.startsAt, week.endsAt);
     const lowerBound = matching.some((window) => window.endsAt <= now.getTime() && window.endsAt - window.observedAt > ESTIMATE_GAP_MS);
+    const claims = matching.reduce((sum, window) => sum + window.claims.length, 0);
     return {
       from: span.from,
       to: span.to,
       startsAt: new Date(week.startsAt).toISOString(),
       endsAt: new Date(week.endsAt).toISOString(),
       open,
-      percent: round1(matching.reduce((sum, window) => sum + Math.min(window.percent, 100), 0) / matching.length),
+      percent: round1(mean(matching.map((window) => Math.min(shareOfCapacity(window), 100)))),
+      ...(claims === 0 ? {} : {
+        usedPercent: round1(mean(matching.map((window) => Math.min(window.used, window.capacity)))),
+        capacityPercent: round1(mean(matching.map((window) => window.capacity))),
+        resets: claims,
+      }),
       estimated: lowerBound || days.some((day) => day.estimated),
       accounts: matching.length,
       days,
@@ -187,26 +198,61 @@ export function planHistory(rows: QuotaRow[], plan: Plan, today: string, now: Da
 }
 
 /**
- * An open window's use today and the share left at the start of today: 100 minus the last reading
- * before today; without one, a window that started today or yesterday counts from 0 and an older one
- * from its current share.
+ * An open window's use today, the share used before today (`before`), and the share left at the start
+ * of today: the window's capacity (100, plus 100 per claimed reset so far) minus the last reading before
+ * today. Without one, a window that started today or yesterday counts from 0 and an older one from its
+ * current share. Readings count every stretch between claims, so they only grow and today is never
+ * negative: a claim today counts the use before it and the use after it.
  */
-export function todayUse(window: Window, today: string): { today: number; left: number } {
+export function todayUse(window: Window, today: string): { today: number; left: number; before: number } {
   const startDay = new Date(window.startsAt).toISOString().slice(0, 10);
-  const current = Math.max(window.percent, window.days.get(today) ?? 0);
+  const current = Math.max(window.used, window.days.get(today) ?? 0);
   const earlier = [...window.days.entries()].filter(([day]) => day < today).map(([, percent]) => percent);
-  const before = earlier.length > 0 ? Math.max(...earlier) : daysBetween(startDay, today) <= 1 ? 0 : current;
-  return { today: Math.max(0, current - before), left: Math.max(0, 100 - before) };
+  const before = Math.min(earlier.length > 0 ? Math.max(...earlier) : daysBetween(startDay, today) <= 1 ? 0 : current, current);
+  return { today: current - before, left: Math.max(0, window.capacity - before), before };
+}
+
+/** The viewer's day `day` in `timeZone` as an absolute span (UTC without a zone). */
+export function dayBounds(day: string, timeZone: string | null): { from: number; to: number } {
+  const zone = timeZone ?? "UTC";
+  return { from: zonedTime(day, 0, zone), to: zonedTime(addDays(day, 1), 0, zone) };
+}
+
+/**
+ * A reset claimed today restarts today's budget from the claim: the use before it counts as spent, and
+ * what's left after it (capacity minus the share used at the claim) is spread from then on. "Today" is
+ * the viewer's day up to now, by the claim's time; Live Pace uses the same rule. Null without one.
+ */
+export function claimToday(
+  window: Window, day: { from: number; to: number }, now: number, before: number,
+): { at: number; usedBefore: number; leftAfter: number } | null {
+  const claim = latestClaimBetween(window, day.from, Math.min(day.to, now));
+  if (claim === null) return null;
+  return { at: claim.claim.at, usedBefore: Math.max(0, claim.usedAt - before), leftAfter: Math.max(0, window.capacity - claim.usedAt) };
+}
+
+/** What the open weeks used of their capacity, when one of them had a reset claimed (see `WeekCapacity`). */
+function weekCapacity(open: Window[]): WeekCapacity | undefined {
+  const resets = open.reduce((sum, window) => sum + window.claims.length, 0);
+  if (resets === 0) return undefined;
+  return {
+    usedPercent: round1(mean(open.map((window) => window.used))),
+    capacityPercent: round1(mean(open.map((window) => window.capacity))),
+    ...(open.length === 1 ? { segments: open[0]!.segments.map(round1) } : {}),
+    resets,
+  };
 }
 
 /**
  * Today's budget for the plan: for each covered account with an open weekly window, the share left at
- * the start of today (100 minus the last reading before today; without one, a window that started
- * today or yesterday counts from 0 and an older one from its current share) over today and the working
- * days until it resets (see `windowDays` for its last day). The plan takes the mean over its accounts.
- * Null when no covered account has an open weekly window.
+ * the start of today (see `todayUse`) over today and the working days until it resets (see `windowDays`
+ * for its last day). A reset claimed today restarts the budget at the claim (see `claimToday`). The
+ * plan takes the mean over its accounts. Null when no covered account has an open weekly window.
  */
-export function planBudget(rows: QuotaRow[], plan: Plan, today: string, now: Date, workingDays: WorkingDays): PlanBudget | null {
+export function planBudget(
+  rows: QuotaRow[], plan: Plan, today: string, now: Date, workingDays: WorkingDays, timeZone: string | null = null,
+): PlanBudget | null {
+  const day = dayBounds(today, timeZone);
   const open = [...coveredWindows(rows, plan).values()]
     .map((windows) => windows.find((window) => window.endsAt > now.getTime()))
     .filter((window): window is Window => window !== undefined);
@@ -220,26 +266,32 @@ export function planBudget(rows: QuotaRow[], plan: Plan, today: string, now: Dat
     return count;
   };
   const budgets = open.map((window) => {
-    const { today: used, left } = todayUse(window, today);
-    return { today: used, left, affordable: left / workingLeft(window) };
+    const { today: used, left, before } = todayUse(window, today);
+    const claim = claimToday(window, day, now.getTime(), before);
+    const affordable = claim === null ? left / workingLeft(window) : claim.usedBefore + claim.leftAfter / workingLeft(window);
+    return { today: used, left, affordable };
   });
-  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
   const soonest = open.reduce((first, window) => (window.endsAt < first.endsAt ? window : first));
   const used = accountDailyUse(rows, plan);
+  const resets = resetsByDay(open);
   const span = windowDays(soonest.startsAt, soonest.endsAt);
   const days: PlanBudget["days"] = [];
   for (let day = span.from; day <= span.to; day = addDays(day, 1)) {
     const share = day > today ? { percent: null, estimated: false } : dayShare(used, day);
-    days.push({ day, percent: share.percent, working: isWorkingDay(day, workingDays), estimated: share.estimated });
+    days.push({
+      day, percent: share.percent, working: isWorkingDay(day, workingDays), estimated: share.estimated,
+      ...(resets.has(day) ? { resets: resets.get(day) } : {}),
+    });
   }
   const perAccount = open
     .map((window, index): AccountWeek & { endsAt: number } => {
-      const reads = rows.filter((row) =>
-        row.provider === plan.provider && row.kind === "limit" && row.period_hours === WEEK_HOURS
-        && row.account_key === window.account && Date.parse(row.ends_at) === window.endsAt && plan.covered(row.user_id));
+      const reads = window.rows.filter((row) => plan.covered(row.user_id));
       return {
         people: [...new Set(reads.map((row) => row.user_id))].sort(),
-        percent: round1(window.percent),
+        percent: round1(shareOfCapacity(window)),
+        ...(window.claims.length === 0 ? {} : {
+          usedPercent: round1(window.used), capacityPercent: window.capacity, segments: window.segments.map(round1),
+        }),
         todayPercent: round1(budgets[index]!.today),
         resetsAt: new Date(window.endsAt).toISOString(),
         perDevice: reads.some((row) => row.per_device),
@@ -249,6 +301,7 @@ export function planBudget(rows: QuotaRow[], plan: Plan, today: string, now: Dat
     })
     .sort((a, b) => a.endsAt - b.endsAt || b.percent - a.percent)
     .map(({ endsAt: _endsAt, ...account }) => account);
+  const week = weekCapacity(open);
   return {
     todayPercent: round1(mean(budgets.map((budget) => budget.today))),
     affordablePercent: round1(mean(budgets.map((budget) => budget.affordable))),
@@ -258,5 +311,6 @@ export function planBudget(rows: QuotaRow[], plan: Plan, today: string, now: Dat
     accounts: open.length,
     perAccount,
     days,
+    ...(week === undefined ? {} : { week }),
   };
 }

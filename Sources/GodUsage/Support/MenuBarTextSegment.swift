@@ -2,13 +2,15 @@ import AppKit
 import SwiftUI
 
 /// The colors one strip render uses. A plain strip is a template image (`template`: everything black,
-/// macOS tints it); a strip with orange, green, or a badge is drawn twice, once per menu-bar
+/// macOS tints it); a strip with orange, green, blue, or a badge is drawn twice, once per menu-bar
 /// appearance (`light`, `dark`), and the image picks the matching one when it is drawn.
 struct MenuBarPalette {
     let primary: Color
     let warning: Color
     let positive: Color
     let chipText: Color
+    /// The update arrow (`MenuBarUpdateGlyph`): the system blue.
+    let accent: Color
 
     var dim: Color { primary.opacity(0.5) }
 
@@ -21,20 +23,24 @@ struct MenuBarPalette {
         }
     }
 
-    static let template = MenuBarPalette(primary: .black, warning: .black, positive: .black, chipText: .white)
+    static let template = MenuBarPalette(
+        primary: .black, warning: .black, positive: .black, chipText: .white, accent: .black
+    )
     /// The system orange per appearance; the light green is a shade darker than the system one so
     /// "▲1" stays legible on a light menu bar.
     static let light = MenuBarPalette(
         primary: .black,
         warning: Color(red: 1, green: 149 / 255, blue: 0),
         positive: Color(red: 40 / 255, green: 167 / 255, blue: 69 / 255),
-        chipText: Color(red: 29 / 255, green: 29 / 255, blue: 31 / 255)
+        chipText: Color(red: 29 / 255, green: 29 / 255, blue: 31 / 255),
+        accent: Color(red: 0, green: 122 / 255, blue: 1)
     )
     static let dark = MenuBarPalette(
         primary: .white,
         warning: Color(red: 1, green: 159 / 255, blue: 10 / 255),
         positive: Color(red: 48 / 255, green: 209 / 255, blue: 88 / 255),
-        chipText: Color(red: 29 / 255, green: 29 / 255, blue: 31 / 255)
+        chipText: Color(red: 29 / 255, green: 29 / 255, blue: 31 / 255),
+        accent: Color(red: 10 / 255, green: 132 / 255, blue: 1)
     )
 }
 
@@ -44,9 +50,19 @@ struct MenuBarTextStrip: View {
     static let segmentSpacing: CGFloat = 11
 
     var body: some View {
-        HStack(spacing: Self.segmentSpacing) {
-            ForEach(content.groups, id: \.providerID) { group in
-                MenuBarTextSegment(group: group, palette: palette)
+        HStack(spacing: MenuBarUpdateIndicator.leadingSpacing) {
+            if content.groups.isEmpty {
+                // Only the update arrow to show: lead with the app mark it belongs to.
+                MenuBarAppMarkGlyph(palette: palette)
+            } else {
+                HStack(spacing: Self.segmentSpacing) {
+                    ForEach(content.groups, id: \.providerID) { group in
+                        MenuBarTextSegment(group: group, palette: palette)
+                    }
+                }
+            }
+            if content.updateVersion != nil {
+                MenuBarUpdateGlyph(palette: palette)
             }
         }
         .foregroundStyle(palette.primary)

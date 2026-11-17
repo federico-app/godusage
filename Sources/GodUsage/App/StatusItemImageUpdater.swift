@@ -10,13 +10,20 @@ import Observation
 @MainActor
 final class StatusItemImageUpdater {
     private let container: AppContainer
+    /// The pending update the dashboard banner shows; the strip ends with its arrow.
+    private let updater: UpdaterController
     private let gate: StatusItemPresentationGate
 
     /// - Parameter apply: sets the rendered image and native tooltip regions onto the status item.
     ///   Returns `false` when the status button wasn't available, so the presentation is re-sent on
     ///   the next update instead of being remembered as applied.
-    init(container: AppContainer, apply: @escaping (MenuBarStripPresentation) -> Bool) {
+    init(
+        container: AppContainer,
+        updater: UpdaterController,
+        apply: @escaping (MenuBarStripPresentation) -> Bool
+    ) {
         self.container = container
+        self.updater = updater
         self.gate = StatusItemPresentationGate(apply: apply)
         startMinuteTicker()
     }
@@ -97,6 +104,12 @@ final class StatusItemImageUpdater {
             )
             content = MenuBarContent(groups: content.groups + [team], bars: content.bars)
         }
+        // The update arrow ends the strip, after the team segment. Privacy already returned above, so
+        // `concealUsage` is false here; the decision still takes it so it is testable in one place.
+        content.updateVersion = MenuBarUpdateIndicator.version(
+            available: updater.availableUpdateVersion,
+            concealUsage: container.privacy.concealUsage
+        )
         if let presentation = MenuBarStripRenderer.presentation(
             for: content,
             style: container.layout.menuBarStyle

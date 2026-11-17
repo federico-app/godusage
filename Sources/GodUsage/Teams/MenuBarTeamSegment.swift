@@ -39,14 +39,14 @@ enum MenuBarTeamSegment {
         return mostUrgent(paces).map { [pace($0)] }
     }
 
-    /// Over today's budget beats ahead of pace, which beats the rest. Plans outside the working day
+    /// Over today's budget beats ahead of pace or at the budget, which beat the rest. Plans outside the working day
     /// (not started, done, day off) have no pace to show. Ties keep the first plan, except that the
     /// further ahead of two plans ahead of pace wins.
     static func mostUrgent(_ paces: [LivePace]) -> LivePace? {
         func priority(_ state: LivePace.State) -> Int? {
             switch state {
             case .overBudget: 0
-            case .ahead: 1
+            case .ahead, .atBudget: 1
             case .warmingUp, .onPace, .behind: 2
             case .notStarted, .dayDone, .dayOff: nil
             }
@@ -65,12 +65,15 @@ enum MenuBarTeamSegment {
         return best?.live
     }
 
-    /// "+6.3%" chip over today's budget, "+41m" ahead (orange), "−2h 40m" under (green), "On pace".
+    /// "+6.3%" chip over today's budget, "Used up" at it (orange), "+41m" ahead (orange), "−2h 40m" under (green), "On pace".
     /// The minutes are colored the way the dashboard's pill is (`LivePace.tone`), so a figure that is
     /// ahead now but slowing down stays plain.
     static func pace(_ live: LivePace) -> MenuBarSpan {
         if live.state == .overBudget {
             return MenuBarSpan("+" + LivePaceFormat.percent(max(0, live.used - live.budget)), .chip)
+        }
+        if live.state == .atBudget {
+            return MenuBarSpan(String(localized: "Used up", comment: "Menu bar team segment: today's budget is used up exactly, nothing over yet. Keep it very short."), .warning)
         }
         let ahead = live.ahead ?? 0
         if abs(ahead) < LivePace.onPaceMargin {

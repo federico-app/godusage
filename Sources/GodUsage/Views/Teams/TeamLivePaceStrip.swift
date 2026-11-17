@@ -28,7 +28,7 @@ struct TeamLivePaceStrip: View {
             if expanded {
                 TeamWeekBoxes(
                     boxes: WeekBox.boxes(
-                        days: budget.days, today: today, used: live.used, budget: live.budget,
+                        days: budget.days, today: today, used: live.shownUsed, budget: live.budget,
                         future: live.futureDays, labelsLowered: live.state == .overBudget
                     ),
                     color: color
@@ -95,6 +95,8 @@ struct TeamLivePaceStrip: View {
         case .overBudget:
             let over = LivePaceFormat.percent(live.used - live.budget)
             return String(localized: "Today’s budget is used up: \(over) over. The working days until the reset get less.")
+        case .atBudget:
+            return LivePaceDisplay.atBudgetText(live)
         case .notStarted:
             return String(localized: "Your working day hasn’t started yet. Today’s budget is \(budget).")
         case .dayDone:
