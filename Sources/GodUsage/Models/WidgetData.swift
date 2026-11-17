@@ -128,9 +128,10 @@ struct WidgetData: Hashable {
         return min(max((limit - used) / limit, 0), 1)
     }
 
-    /// Severity bands for the meter fill color (see `MeterState.severity`).
+    /// Severity bands for the meter fill color (see `meterSeverity(for:)`). `atRisk` is orange: the
+    /// pace projects the limit before the reset while there is still room.
     enum MeterSeverity: Hashable {
-        case normal, warning, critical
+        case normal, warning, atRisk, critical
     }
 
     /// The meter's full visual state, derived once (`meterState(now:)`) so the bar color, the
@@ -144,7 +145,8 @@ struct WidgetData: Hashable {
         /// reached". Outranks the pace verdict — a visibly empty bar is never a calmer color.
         case spent
         /// Projected to run out before the reset, or to land right at the limit with no cushion to
-        /// speak of. Red, flame + the run-out time ("Limit in 3h 45m"). `eta` is `nil` at the float
+        /// speak of. Orange (red once the limit is nearly reached, see `meterSeverity(for:)`), flame +
+        /// the run-out time ("Limit in 3h 45m"). `eta` is `nil` at the float
         /// edge where the run-out lands essentially at the reset, and whenever the projected cushion
         /// rounds to 0%
         /// (≤ limit, so there's no run-out time) — in both cases the flame shows alone rather than a
@@ -162,17 +164,6 @@ struct WidgetData: Hashable {
         case healthy(projectedFraction: Double)
         /// No reset window to pace against: color from absolute level bands on the share used, no copy.
         case level(MeterSeverity)
-
-        /// Bar fill severity, or `nil` for `noData` (the track stays gray).
-        var severity: MeterSeverity? {
-            switch self {
-            case .noData: return nil
-            case .spent, .runningOut: return .critical
-            case .closeToLimit: return .warning
-            case .healthy: return .normal
-            case .level(let severity): return severity
-            }
-        }
 
         /// Whether the row carries the flame (spent, or projected to run out before the reset). The
         /// menu-bar strip reads the same verdict, so a flame there always matches one in the dashboard.
@@ -547,7 +538,7 @@ extension WidgetData {
     /// Carries no projection copy or tick — a plain level reading.
     private func absoluteLevelState(used: Double, limit: Double) -> MeterState {
         let percentUsed = (min(max(used / limit, 0), 1) * 100).rounded()
-        if percentUsed >= 90 { return .level(.critical) }
+        if percentUsed >= Self.criticalPercentUsed { return .level(.critical) }
         if percentUsed >= 80 { return .level(.warning) }
         return .level(.normal)
     }

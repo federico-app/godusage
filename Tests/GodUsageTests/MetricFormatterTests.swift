@@ -60,11 +60,11 @@ final class MetricFormatterTests: XCTestCase {
     func testTotalSpendRingCenterSplitsValueAndUnit() {
         let spend = MetricFormatter.totalSpendRingCenter(533, metric: .cost)
         XCTAssertEqual(spend.primary, "$533")
-        XCTAssertEqual(spend.unit, "dollars")
+        XCTAssertNil(spend.unit)
 
         let spendAbbrev = MetricFormatter.totalSpendRingCenter(2059.07, metric: .cost)
         XCTAssertEqual(spendAbbrev.primary, "$2.1K")
-        XCTAssertEqual(spendAbbrev.unit, "dollars")
+        XCTAssertNil(spendAbbrev.unit)
 
         let tokens = MetricFormatter.totalSpendRingCenter(12_400_000, metric: .tokens)
         XCTAssertEqual(tokens.primary, "12.4")

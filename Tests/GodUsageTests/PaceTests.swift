@@ -136,7 +136,7 @@ final class PaceTests: XCTestCase {
         XCTAssertNil(spare(data))
     }
 
-    func testProjectedToLandAtTheLimitPromotesToRed() {
+    func testProjectedToLandAtTheLimitPromotesToRunningOut() {
         let data = weeklyData(used: 49.8)
         guard case .runningOut(let eta, _) = data.meterState(now: now) else {
             return XCTFail("expected runningOut")
@@ -147,7 +147,7 @@ final class PaceTests: XCTestCase {
         XCTAssertEqual(data.meterState(now: now).tooltip, "~100% used at reset")
     }
 
-    func testProjectedExactlyAtLimitIsRedNotAmber() {
+    func testProjectedExactlyAtLimitIsRunningOutNotAmber() {
         let reset = resetsAt(elapsed: 0.5, period: week)
         XCTAssertEqual(Pace.evaluate(used: 50, limit: 100, resetsAt: reset, periodDuration: week, now: now)?.status, .onTrack)
         guard case .runningOut(let eta, _) = weeklyData(used: 50).meterState(now: now) else {
@@ -166,6 +166,37 @@ final class PaceTests: XCTestCase {
             return XCTFail("expected runningOut")
         }
         XCTAssertNotNil(eta)
+    }
+
+    // MARK: Tone (bar and flame color)
+
+    private func tone(_ data: WidgetData) -> WidgetData.MeterSeverity? {
+        data.meterSeverity(for: data.meterState(now: now))
+    }
+
+    func testProjectedRunOutWithRoomLeftIsOrangeNotRed() {
+        // 60% used half way through: "Limit in …" with 40% still left → orange, not the spent red.
+        XCTAssertEqual(tone(weeklyData(used: 60)), .atRisk)
+        // At the limit with no cushion (flame alone) is still only a projection.
+        XCTAssertEqual(tone(weeklyData(used: 49.8)), .atRisk)
+    }
+
+    func testRunOutNearlyReachedIsRed() {
+        // 90% used (the critical band, at whole-percent rounding) on a run-out pace → red.
+        XCTAssertEqual(tone(weeklyData(used: 89.6)), .critical)
+        XCTAssertEqual(tone(weeklyData(used: 95)), .critical)
+        XCTAssertEqual(tone(weeklyData(used: 89.4)), .atRisk)
+    }
+
+    func testSpentIsRedAndCloseToLimitStaysYellow() {
+        XCTAssertEqual(tone(weeklyData(used: 100)), .critical)
+        XCTAssertEqual(tone(weeklyData(used: 49)), .warning)
+        XCTAssertEqual(tone(weeklyData(used: 20)), .normal)
+    }
+
+    func testRunOutToneIgnoresTheUsedLeftDisplayMode() {
+        XCTAssertEqual(tone(weeklyData(used: 60, displayMode: .remaining)), .atRisk)
+        XCTAssertEqual(tone(weeklyData(used: 95, displayMode: .remaining)), .critical)
     }
 
     func testRunsOutOnlyWhenBehindAndBeforeReset() {
@@ -189,7 +220,7 @@ final class PaceTests: XCTestCase {
         XCTAssertEqual(data.meterState(now: now), .level(.normal))
     }
 
-    func testOnePercentAtProjectionGateDoesNotBecomeRed() {
+    func testOnePercentAtProjectionGateDoesNotRunOut() {
         let session: TimeInterval = 5 * 3600
         var data = WidgetData(title: "Session", icon: .providerMark("codex"), kind: .percent,
                               used: 1, limit: 100)

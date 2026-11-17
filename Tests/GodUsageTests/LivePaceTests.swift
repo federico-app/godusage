@@ -30,7 +30,7 @@ final class LivePaceTests: XCTestCase {
         // Friday and Monday share what today leaves at this pace: 60 − 28, instead of 60 − 20.
         XCTAssertEqual(live.futureDays.map(\.budget), [16, 16])
         XCTAssertEqual(live.futureDays.map(\.planned), [20, 20])
-        XCTAssertEqual(LivePaceFormat.signedDuration(try XCTUnwrap(live.ahead)), "+48 min")
+        XCTAssertEqual(LivePaceDisplay.pill(live, useThisNow: false).text, "48 min ahead of pace")
     }
 
     func testTheColorHoldsUntilThePaceIsBackUnderTheBudget() {

@@ -1,8 +1,9 @@
 import XCTest
 @testable import GodUsage
 
-/// Covers the meter fill's severity color, read off `MeterState.severity`. With a live reset window
-/// the color is a pace verdict (blue ahead / yellow cutting-it-close / red projected to run out);
+/// Covers the meter fill's severity color, read off `WidgetData.meterSeverity(for:)`. With a live reset window
+/// the color is a pace verdict (blue ahead / yellow cutting-it-close / orange projected to run out,
+/// red once nearly spent);
 /// without one it falls back to the absolute level bands (yellow at 80% used, red at 10% left);
 /// and a balance that rounds to empty is `spent` (red) ahead of either. It keys off the share
 /// *used*, regardless of the Used/Left display mode.
@@ -25,16 +26,22 @@ final class MeterSeverityTests: XCTestCase {
     }
 
     private func severity(_ data: WidgetData) -> WidgetData.MeterSeverity? {
-        data.meterState(now: now).severity
+        data.meterSeverity(for: data.meterState(now: now))
     }
 
     // MARK: Pace-driven (a live reset window)
 
-    func testBurningTooFastIsCriticalLongBeforeTheBarLooksFull() {
-        // 66% used but only a third of the week gone → projected ~182% → red, despite the
+    func testBurningTooFastIsAtRiskLongBeforeTheBarLooksFull() {
+        // 66% used but only a third of the week gone → projected ~182% → orange, despite the
         // absolute bands calling 66% "normal". This was the original complaint: a bar guaranteed
-        // to run out days early stayed calm blue.
-        XCTAssertEqual(severity(pacedData(used: 66, elapsed: 0.363)), .critical)
+        // to run out days early stayed calm blue. It is not red: a third is still left.
+        XCTAssertEqual(severity(pacedData(used: 66, elapsed: 0.363)), .atRisk)
+    }
+
+    func testProjectedRunOutTurnsRedOnceNearlySpent() {
+        // The same burn at 90% used (10% left) is the limit nearly reached → red.
+        XCTAssertEqual(severity(pacedData(used: 90, elapsed: 0.5)), .critical)
+        XCTAssertEqual(severity(pacedData(used: 85, elapsed: 0.5)), .atRisk)
     }
 
     func testCoastingToTheResetStaysNormalEvenWhenNearlyDrained() {
@@ -70,8 +77,9 @@ final class MeterSeverityTests: XCTestCase {
 
     func testEarlyInWindowUsesPaceVerdictNotAbsoluteBands() {
         // Early in the window still projects pace — heavy usage at 2% elapsed is already behind.
-        XCTAssertEqual(severity(pacedData(used: 50, elapsed: 0.02)), .critical)
-        XCTAssertEqual(severity(pacedData(used: 85, elapsed: 0.02)), .critical)
+        XCTAssertEqual(severity(pacedData(used: 50, elapsed: 0.02)), .atRisk)
+        XCTAssertEqual(severity(pacedData(used: 85, elapsed: 0.02)), .atRisk)
+        XCTAssertEqual(severity(pacedData(used: 92, elapsed: 0.02)), .critical)
     }
 
     // MARK: Absolute fallback (no reset window to project against)
