@@ -21,6 +21,8 @@ struct UsageSuggestion: Equatable, Identifiable, Sendable {
     let deadline: Date?
     /// The team whose plan the advice is about, for Open Plans.
     var teamID: String? = nil
+    /// The account card a "Switch to …" suggestion recommends, for the menu bar's green dot.
+    var targetProviderID: String? = nil
 }
 
 /// Turns this Mac's quotas, its reset credits, and the team's plans into suggestions, most urgent
@@ -169,7 +171,8 @@ enum UsageAdvisor {
             kind: .switchProvider, family: target.family,
             title: "Switch to \(target.providerName)",
             message: "\(reason) \(target.providerName) has \(Int((left * 100).rounded()))% of its \(target.metricTitle) left.",
-            deadline: quota.data.resetsAt
+            deadline: quota.data.resetsAt,
+            targetProviderID: target.providerID
         )
     }
 

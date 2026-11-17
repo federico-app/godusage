@@ -54,6 +54,13 @@ final class UsageAdviceStore {
             .filter { !dismissed.contains($0.id) }
     }
 
+    /// The accounts a "Switch to …" suggestion currently recommends: the menu bar marks them with a
+    /// green dot. Dismissing the banner does not clear it; the dot lasts as long as the situation.
+    func switchTargets(now: Date = Date()) -> Set<String> {
+        let all = UsageAdvisor.suggestions(quotas: quotas(), resets: resets(now: now), plans: [], now: now)
+        return Set(all.filter { $0.kind == .switchProvider }.compactMap(\.targetProviderID))
+    }
+
     func dismiss(_ suggestion: UsageSuggestion) {
         dismissedIDs = Self.remember(suggestion.id, in: dismissedIDs)
         defaults.set(dismissedIDs, forKey: Self.dismissedKey)
