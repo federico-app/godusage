@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { momentumLevels } from "../src/momentum";
+import { momentumLevels, spread } from "../src/momentum";
 import { env } from "./env";
 import { api, NOW, teamWith, upload } from "./support";
 
@@ -29,6 +29,23 @@ describe("momentumLevels", () => {
     expect(levels.usual).toEqual({ lastHourUSD: 3, level: 0, reasons: [], typicalHourUSD: 2.5 });
     // Under $1 never earns a bolt, even on top of the team.
     expect(momentumLevels(new Map([["slow", 0.5]]), new Map()).slow).toEqual({ lastHourUSD: 0.5, level: 0, reasons: [], typicalHourUSD: null });
+  });
+});
+
+describe("spread", () => {
+  const T = NOW.getTime();
+  const MIN = 60_000;
+
+  it("puts growth within the current bucket there, and splits a longer gap by overlap", () => {
+    expect(spread(4, T + 1 * MIN, T + 3 * MIN)).toEqual([[T, 4]]);
+    // 2.5 minutes in the previous bucket, 2.5 in the current one.
+    expect(spread(4, T - 2.5 * MIN, T + 2.5 * MIN)).toEqual([[T - 5 * MIN, 2], [T, 2]]);
+  });
+
+  it("drops the part older than the seven days kept", () => {
+    const parts = spread(14, T - 14 * 24 * 60 * MIN, T);
+    expect(parts).toHaveLength(7 * 24 * 12);
+    expect(parts.reduce((sum, [, cost]) => sum + cost, 0)).toBeCloseTo(7);
   });
 });
 
@@ -80,5 +97,75 @@ describe("momentum in team stats", () => {
     await put(owner.token, "device-aaaa-0004", cursor(13), at(10));
     await put(owner.token, "device-bbbb-0005", cursor(13), at(12));
     expect((await momentum(owner.token, team.id, at(15)))[owner.userID]?.lastHourUSD).toBe(3);
+  });
+});
+
+describe("momentum counts only what was spent in the last hour of the member's today", () => {
+  const YESTERDAY = "2026-10-04";
+
+  it("leaves out a row that comes back after a full upload dropped it", async () => {
+    const { owner, team } = await teamWith([]);
+    const claude = (cost: number) => ({ provider: "claude", days: [{ date: DAY, tokens: 1, costUSD: cost }] });
+    const codex = (cost: number) => ({ provider: "codex", days: [{ date: DAY, tokens: 1, costUSD: cost }] });
+    await put(owner.token, "device-aaaa-0006", [claude(40), codex(5)], at(0));
+    await put(owner.token, "device-aaaa-0006", [claude(41), codex(5)], at(5));
+    // A full upload without Claude deletes its stored row; then Claude comes back with the whole day.
+    await put(owner.token, "device-aaaa-0006", [codex(6)], at(10));
+    await put(owner.token, "device-aaaa-0006", [claude(42), codex(6)], at(15));
+    // $1 of Claude and $1 of Codex; the re-added $42 had nothing stored to grow from.
+    expect((await momentum(owner.token, team.id, at(16)))[owner.userID]?.lastHourUSD).toBe(2);
+  });
+
+  it("leaves out an account that moves to its own slot", async () => {
+    const { owner, team } = await teamWith([]);
+    await put(owner.token, "device-aaaa-0007", [{ provider: "claude", days: [{ date: DAY, tokens: 1, costUSD: 40 }] }], at(0));
+    await put(owner.token, "device-aaaa-0007", [{ provider: "claude", days: [{ date: DAY, tokens: 1, costUSD: 42 }] }], at(5));
+    // The same account, now sent on its own: a new slot with no stored row.
+    const split = { ...upload([]), providers: [{ provider: "claude", scope: "device", account: "a".repeat(32), split: true, days: [{ date: DAY, tokens: 1, costUSD: 43 }] }] };
+    expect((await api("PUT", "/v1/devices/device-aaaa-0007/usage", { token: owner.token, body: split, now: at(10) })).status).toBe(200);
+    expect((await momentum(owner.token, team.id, at(11)))[owner.userID]?.lastHourUSD).toBe(2);
+  });
+
+  it("leaves out growth on yesterday's row", async () => {
+    const { owner, team } = await teamWith([]);
+    const days = (yesterday: number, today: number) => [
+      { provider: "claude", days: [{ date: YESTERDAY, tokens: 1, costUSD: yesterday }, { date: DAY, tokens: 1, costUSD: today }] },
+    ];
+    await put(owner.token, "device-aaaa-0008", days(10, 5), at(0));
+    await put(owner.token, "device-aaaa-0008", days(30, 7), at(10));
+    expect((await momentum(owner.token, team.id, at(11)))[owner.userID]?.lastHourUSD).toBe(2);
+  });
+
+  it("follows the Mac's own day, not the UTC one", async () => {
+    const { owner, team } = await teamWith([]);
+    // A Mac behind UTC: its today is the UTC yesterday.
+    const body = (cost: number) => ({ ...upload([{ provider: "claude", days: [{ date: YESTERDAY, tokens: 1, costUSD: cost }] }]), localDay: YESTERDAY });
+    for (const [cost, minutes] of [[10, 0], [13, 10]] as const) {
+      const response = await api("PUT", "/v1/devices/device-aaaa-0009/usage", { token: owner.token, body: body(cost), now: at(minutes) });
+      expect(response.status).toBe(200);
+    }
+    expect((await momentum(owner.token, team.id, at(11)))[owner.userID]?.lastHourUSD).toBe(3);
+  });
+
+  it("spreads growth over the gap since the Mac's previous upload", async () => {
+    const { owner, team } = await teamWith([]);
+    await put(owner.token, "device-aaaa-0010", [{ provider: "claude", days: [{ date: DAY, tokens: 1, costUSD: 10 }] }], at(0));
+    // Three hours asleep, then $30 more: $10 per hour.
+    await put(owner.token, "device-aaaa-0010", [{ provider: "claude", days: [{ date: DAY, tokens: 1, costUSD: 40 }] }], at(180));
+    // The two earlier hours become the typical hour, so the last one isn't twice it.
+    expect((await momentum(owner.token, team.id, at(180)))[owner.userID]).toEqual({
+      lastHourUSD: 10,
+      level: 2,
+      reasons: ["fast", "top"],
+      typicalHourUSD: 10,
+    });
+  });
+
+  it("keeps a steady upload pace's last hour as it was", async () => {
+    const { owner, team } = await teamWith([]);
+    const claude = (cost: number) => [{ provider: "claude", days: [{ date: DAY, tokens: cost, costUSD: cost }] }];
+    await put(owner.token, "device-aaaa-0011", claude(10), at(0));
+    for (let step = 1; step <= 6; step++) await put(owner.token, "device-aaaa-0011", claude(10 + step), at(step * 5));
+    expect((await momentum(owner.token, team.id, at(31)))[owner.userID]).toEqual({ lastHourUSD: 6, level: 2, reasons: ["fast", "top"], typicalHourUSD: null });
   });
 });
