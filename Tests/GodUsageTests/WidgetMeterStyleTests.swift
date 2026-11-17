@@ -197,6 +197,15 @@ final class WidgetMeterStyleTests: XCTestCase {
 
     // MARK: - Helpers
 
+    func testAlwaysShowPacingDefaultsOnAndKeepsSavedOff() {
+        let fresh = makeUserDefaults("pacing-default")
+        XCTAssertTrue(makeEmptyStore(fresh).alwaysShowPacing)
+
+        let optedOut = makeUserDefaults("pacing-off")
+        makeEmptyStore(optedOut).alwaysShowPacing = false
+        XCTAssertFalse(makeEmptyStore(optedOut).alwaysShowPacing)
+    }
+
     private func makeRefreshedStore(
         format: ProgressFormat,
         used: Double,
