@@ -2,13 +2,8 @@ import SwiftUI
 
 /// One plan in This Week's Limit with Live Pace on: a pill saying how far ahead of or under today's
 /// pace you are, today's bar against its budget with a tick where today's use should be now, the
-<<<<<<< HEAD
 /// week's boxes, and Details with the pace now and the pace that lasts the day, the working hours, and
 /// the day chart. The words and shapes come from `LivePaceDisplay` and `LivePaceDetails`.
-=======
-/// week's boxes, and Details with the pace that fits the rest of the day, the working hours, and the
-/// day chart. The words and shapes come from `LivePaceDisplay`.
->>>>>>> origin/main
 struct TeamLivePaceStrip: View {
     let teamID: String
     let plan: TeamPlanReport
@@ -186,7 +181,6 @@ struct TeamLivePaceStrip: View {
             }
         }
         if showsDetails {
-<<<<<<< HEAD
             VStack(alignment: .leading, spacing: 8) {
                 if let rates = LivePaceDetails.rates(live) {
                     LivePaceRateTiles(now: rates.now, nowTone: LivePaceDetails.paceNowTone(live), allowed: rates.allowed, until: rates.until)
@@ -200,30 +194,4 @@ struct TeamLivePaceStrip: View {
             .transition(.opacity)
         }
     }
-=======
-            VStack(alignment: .leading, spacing: 4) {
-                if [.ahead, .onPace, .behind, .warmingUp].contains(live.state), let allowed = live.allowedRate, let end = live.end {
-                    Text(rateLine(allowed: allowed, end: end)).font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
-                }
-                Text(hoursLine).font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                if !pace.hours.isEmpty {
-                    LivePaceDayChart(pace: pace, live: live, color: color).frame(height: 64)
-                }
-            }
-            .transition(.opacity)
-        }
-    }
-
-    private func rateLine(allowed: Double, end: Date) -> String {
-        let now = live.rate.map { "\(LivePaceFormat.rate($0)) now · " } ?? ""
-        return "\(now)\(LivePaceFormat.rate(allowed)) lasts until \(LivePaceFormat.time(end))"
-    }
-
-    private var hoursLine: String {
-        let spans = pace.hours.compactMap(\.interval)
-        let hours = spans.isEmpty ? "no working hours today" : spans.map { "\(LivePaceFormat.time($0.start))–\(LivePaceFormat.time($0.end))" }.joined(separator: ", ")
-        let shared = pace.sharedWith.isEmpty ? "" : " · shared with \(pace.sharedWith.joined(separator: ", "))"
-        return "Hours: \(hours)\(shared)"
-    }
->>>>>>> origin/main
 }

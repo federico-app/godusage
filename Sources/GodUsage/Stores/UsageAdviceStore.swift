@@ -54,7 +54,6 @@ final class UsageAdviceStore {
             quotas: quotas(), resets: resets(now: now), plans: teamPlans(), roomyPlans: roomyPlans(now: now), now: now
         )
         .filter { !dismissed.contains($0.id) }
-<<<<<<< HEAD
     }
 
     /// The accounts a "Switch to …" suggestion currently recommends: the menu bar marks them with a
@@ -62,8 +61,6 @@ final class UsageAdviceStore {
     func switchTargets(now: Date = Date()) -> Set<String> {
         let all = UsageAdvisor.suggestions(quotas: quotas(), resets: resets(now: now), plans: [], now: now)
         return Set(all.filter { $0.kind == .switchProvider }.compactMap(\.targetProviderID))
-=======
->>>>>>> origin/main
     }
 
     func dismiss(_ suggestion: UsageSuggestion) {

@@ -40,7 +40,6 @@ While the dashboard's **Switch to …** suggestion is active (a provider is runn
 
 ## Team rank
 
-<<<<<<< HEAD
 With **Show Rank in Menu Bar** on (Settings → Teams → You), the strip ends with a team segment for the selected team:
 
 - **Top line**: your rank, how it moved since yesterday when known (**▲1** in green, **▼1** dimmed), and your spend today in whole dollars, for example **#2 ▲1 · $37**.
@@ -54,9 +53,6 @@ With **Show Rank in Menu Bar** on (Settings → Teams → You), the strip ends w
 - When your team data is more than an hour old (your usage last reached the server over an hour ago), the bottom line says so, dimmed, for example **Upd 2h**.
 
 Your share of the team's spend today is in the segment's tooltip and VoiceOver label. The segment updates with each team upload, at most every 15 minutes, and whenever the dashboard's Team section loads Today. See [Teams](teams.md).
-=======
-With **Show Rank in Menu Bar** on (Settings → Teams → You), the strip ends with a team segment: your rank in the selected team and your share of the team's spend today, over your spend today, for example **#2 · 38%** over **$12.40**. The share is left out while the team has spent nothing today. It updates with each team upload, at most every 15 minutes, and whenever the dashboard's Team section loads Today. See [Teams](teams.md).
->>>>>>> origin/main
 
 ## Login unavailable
 

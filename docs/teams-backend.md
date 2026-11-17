@@ -29,11 +29,7 @@ The backend used to run as a Cloudflare Worker on D1. D1's free plan (5M rows re
 - **Account exclusions:** for each Mac, which account fingerprints it leaves out of which of the user's teams (see [Accounts left out of a team](#accounts-left-out-of-a-team)).
 - **Working hours and time zone:** each member's working days and hours in each team if they set them (`team_work_schedules`, one per member per team, removed when they leave the team), and the IANA time zone their Mac sent with its latest upload (`users.time_zone`), for Live Pace.
 - **Quota readings:** each Mac's readings of its accounts' open weekly windows (`quota_readings`: account fingerprint, the window's reset, when it was read, the share used), kept 36 hours, for Live Pace's pace of the last working hour.
-<<<<<<< HEAD
 - **Spend pulses:** for each Mac, how much its spend grew in each five-minute window of the last seven days (growth between two uploads spread over the time between them), for [momentum](#momentum). The full history is kept: each upload replaces only the days in its window. No credentials, logs, prompts, project names, or account ids.
-=======
-- **Spend pulses:** for each Mac, how much its spend grew in each five-minute window of the last seven days, for [momentum](#momentum). The full history is kept: each upload replaces only the days in its window. No credentials, logs, prompts, project names, or account ids.
->>>>>>> origin/main
 
 Deleting an account deletes its sessions, Macs, usage, memberships, and the teams it owns.
 
