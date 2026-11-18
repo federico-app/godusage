@@ -24,9 +24,12 @@ describe("GET /v1/me/usage", () => {
     expect(body.from).toBe("2026-09-06");
     expect(body.to).toBe("2026-10-05");
     expect(body.days).toHaveLength(30);
-    expect(body.days[0]).toEqual({ day: "2026-09-06", tokens: 0, costUSD: 0 });
-    expect(body.days[28]).toEqual({ day: "2026-10-04", tokens: 7, costUSD: 0.25 });
-    expect(body.days[29]).toEqual({ day: "2026-10-05", tokens: 170, costUSD: 5 });
+    expect(body.days[0]).toEqual({ day: "2026-09-06", tokens: 0, costUSD: 0, providers: [] });
+    expect(body.days[28]).toEqual({ day: "2026-10-04", tokens: 7, costUSD: 0.25, providers: [{ provider: "claude", tokens: 7, costUSD: 0.25 }] });
+    expect(body.days[29]).toEqual({
+      day: "2026-10-05", tokens: 170, costUSD: 5,
+      providers: [{ provider: "cursor", tokens: 60, costUSD: 3 }, { provider: "claude", tokens: 110, costUSD: 2 }],
+    });
     expect(body.providers).toEqual([
       { provider: "cursor", tokens: 60, costUSD: 3 },
       { provider: "claude", tokens: 117, costUSD: 2.25 },

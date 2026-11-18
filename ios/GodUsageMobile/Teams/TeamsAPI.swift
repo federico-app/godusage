@@ -45,10 +45,12 @@ struct TeamsAPI: Sendable {
         try await send("GET", "/v1/me/usage?today=\(today)", token: token)
     }
 
-    func stats(token: String, teamID: String, range: BoardRange, today: String) async throws -> TeamBoard {
-        struct Envelope: Decodable { var stats: TeamBoard }
-        let envelope: Envelope = try await send("GET", "/v1/teams/\(Self.pathComponent(teamID))/stats?range=\(range.rawValue)&sort=cost&today=\(today)", token: token)
-        return envelope.stats
+    /// One board. `today` is the period's last day (yesterday for Yesterday); `include` (`today`,
+    /// `mtd`) adds those spend boards to the response's `extra`.
+    func stats(token: String, teamID: String, range: BoardRange, today: String, include: [String] = []) async throws -> TeamStatsResponse {
+        var query = "range=\(range.serverRange)&sort=cost&today=\(today)"
+        if !include.isEmpty { query += "&include=\(include.joined(separator: ","))" }
+        return try await send("GET", "/v1/teams/\(Self.pathComponent(teamID))/stats?\(query)", token: token)
     }
 
     /// The team's plans, for This Week's Limit. `tz` is the device's time zone, as the Mac sends it.

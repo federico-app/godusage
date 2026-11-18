@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 struct TeamsUser: Codable, Hashable, Sendable {
     var id: String
@@ -27,6 +28,8 @@ struct MyUsage: Decodable, Hashable, Sendable {
         var day: String
         var tokens: Int
         var costUSD: Double
+        /// The day's spend per provider; nil from servers before it.
+        var providers: [ProviderTotals]?
         var id: String { day }
     }
 
@@ -47,8 +50,11 @@ struct MyUsage: Decodable, Hashable, Sendable {
     }
 }
 
+/// The periods both tabs offer, as the Mac's Total Spend card does. Yesterday is the server's
+/// one-day range ending yesterday.
 enum BoardRange: String, CaseIterable, Identifiable, Sendable {
     case today
+    case yesterday
     case week = "7d"
     case month = "30d"
 
@@ -56,9 +62,30 @@ enum BoardRange: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .today: String(localized: "Today")
+        case .yesterday: String(localized: "Yesterday")
         case .week: String(localized: "7 Days")
         case .month: String(localized: "30 Days")
         }
+    }
+
+    /// The server's `range`.
+    var serverRange: String { self == .yesterday ? "today" : rawValue }
+
+    /// How many days of the user's 30 the period covers, ending `offset` days before today.
+    var dayCount: Int {
+        switch self {
+        case .today, .yesterday: 1
+        case .week: 7
+        case .month: 30
+        }
+    }
+
+    var offset: Int { self == .yesterday ? 1 : 0 }
+
+    /// The period's last day as the server's `today`: yesterday for Yesterday.
+    func lastDay(_ now: Date = Date()) -> String {
+        guard offset > 0, let day = Calendar.current.date(byAdding: .day, value: -offset, to: now) else { return TeamsFormat.localToday(now) }
+        return TeamsFormat.localToday(day)
     }
 
     /// A member's movement since the previous period, as a sentence: "Up 2 since yesterday". One
@@ -66,6 +93,10 @@ enum BoardRange: String, CaseIterable, Identifiable, Sendable {
     func movement(_ change: Int) -> String {
         let places = abs(change)
         switch self {
+        case .yesterday:
+            if change == 0 { return String(localized: "Same as the day before", comment: "Member rank movement") }
+            return change > 0 ? String(localized: "Up \(places) since the day before", comment: "Member rank movement: places gained")
+                : String(localized: "Down \(places) since the day before", comment: "Member rank movement: places lost")
         case .today:
             if change == 0 { return String(localized: "Same as yesterday", comment: "Member rank movement") }
             return change > 0 ? String(localized: "Up \(places) since yesterday", comment: "Member rank movement: places gained")
@@ -130,6 +161,13 @@ struct TeamBoard: Decodable, Hashable, Sendable {
         var id: String { day }
     }
 
+    /// The period's first and last day.
+    struct Range: Decodable, Hashable, Sendable {
+        var from: String
+        var to: String
+    }
+
+    var range: Range?
     var totals: UsageTotals
     var members: [Member]
     /// Every provider, shared accounts included, largest first.
@@ -150,6 +188,17 @@ struct TeamPlans: Decodable, Hashable, Sendable {
         var budget: Budget?
     }
 
+    /// One day of the open week.
+    struct Day: Decodable, Hashable, Sendable {
+        var day: String
+        /// Nil without data and after today.
+        var percent: Double?
+        var working: Bool?
+        var estimated: Bool?
+        /// Resets claimed that day.
+        var resets: Int?
+    }
+
     struct Budget: Decodable, Hashable, Sendable {
         /// The share of the weekly limit used today.
         var todayPercent: Double
@@ -164,6 +213,11 @@ struct TeamPlans: Decodable, Hashable, Sendable {
         var perAccount: [AccountWeek]?
         /// Set when a limit reset was claimed in an open week.
         var week: WeekCapacity?
+        /// The open week, day by day; nil from older servers.
+        var days: [Day]?
+        /// Today's budget over working hours, for Live Pace. Nil when the server can't tell (no
+        /// working hours, no time zone): the plan then shows no pace.
+        var pace: TeamPlanPace?
 
         /// The share of the week's capacity used so far, the mean over the accounts. Without the
         /// per-account list: what was used before today plus today.
@@ -194,5 +248,28 @@ struct TeamPlans: Decodable, Hashable, Sendable {
     /// The plans with an open weekly limit, as This Week's Limit lists them.
     var weekly: [(plan: Plan, budget: Budget)] {
         plans.compactMap { plan in plan.budget.map { (plan, $0) } }
+    }
+}
+
+/// Live Pace and the week's days are extras on a plan: a shape this app can't read drops them (logged)
+/// instead of failing the whole `/plans` response.
+extension KeyedDecodingContainer {
+    func decodeIfPresent(_ type: TeamPlanPace.Type, forKey key: Key) throws -> TeamPlanPace? {
+        lossy(type, key)
+    }
+
+    func decodeIfPresent(_ type: [TeamPlans.Day].Type, forKey key: Key) throws -> [TeamPlans.Day]? {
+        lossy(type, key)
+    }
+
+    private func lossy<T: Decodable>(_ type: T.Type, _ key: Key) -> T? {
+        guard contains(key) else { return nil }
+        do {
+            return try decodeNil(forKey: key) ? nil : decode(type, forKey: key)
+        } catch {
+            Logger(subsystem: "com.montinovo.godusage.mobile", category: "teams")
+                .error("dropped an unreadable \(key.stringValue, privacy: .public): \(String(describing: error), privacy: .public)")
+            return nil
+        }
     }
 }

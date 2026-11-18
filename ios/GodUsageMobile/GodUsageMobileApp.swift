@@ -2,7 +2,11 @@ import SwiftUI
 
 @main
 struct GodUsageMobileApp: App {
+    #if DEBUG
+    @State private var teams = PreviewFixture.model()
+    #else
     @State private var teams = TeamsModel()
+    #endif
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {

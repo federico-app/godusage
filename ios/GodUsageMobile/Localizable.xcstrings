@@ -1,6 +1,28 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    " · %lld days left": {
+      "localizations": {
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": " · %lld giorno rimasto"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": " · %lld giorni rimasti"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%@ %@ of %@ this week": {
       "comment": "A week with a claimed limit reset: the use (each stretch between resets, added up), then the week's capacity, e.g. ↻ 95% + 40% of 200% this week",
       "localizations": {
@@ -23,74 +45,192 @@
         }
       }
     },
-    "%@ of %@ today · resets %@": {
-      "comment": "Today's use of the weekly limit against today's budget, then when the limit resets, e.g. 8% of 14% today · resets Wed 10:00",
+    "%@ ahead of pace": {
+      "comment": "Live Pace pill; the value is a duration, e.g. 22 min",
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ di %2$@ oggi · reset %3$@"
+            "value": "%@ sopra il ritmo"
           }
         }
       }
     },
-    "%@ tokens": {
+    "%@ champion: top spender of the month": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ token"
+            "value": "Campione di %@: chi ha speso di più nel mese"
           }
         }
       }
     },
-    "%@ used": {
-      "comment": "The share of the weekly limit used so far, e.g. 62% used",
+    "%@ drop to %@.": {
+      "comment": "Live Pace note: the next working days' budget goes down, e.g. Wed–Mon drop to 18.4%",
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ usato"
+            "value": "%@ scendono a %@."
           }
         }
       }
     },
-    "%lld members": {
+    "%@ more today on budget · resets %@": {
+      "comment": "Points left in today's budget; when the weekly limit resets.",
       "localizations": {
-        "en": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ancora %@ oggi nel budget · reset %@"
+          }
+        }
+      }
+    },
+    "%@ of %@ today": {
+      "comment": "Today's use, bold, against today's budget.",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ di %@ oggi"
+          }
+        }
+      }
+    },
+    "%@ on %@.": {
+      "comment": "Live Pace note on a day off: the next working days' budget, e.g. 18.4% on Wed–Mon",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ per %@."
+          }
+        }
+      }
+    },
+    "%@ over today": {
+      "comment": "Live Pace pill: how far today's use went past today's budget, e.g. 6.3% over today",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ oltre oggi"
+          }
+        }
+      }
+    },
+    "%@ over today's budget · resets %@": {
+      "comment": "Points over today's budget; when the weekly limit resets.",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ oltre il budget di oggi · reset %@"
+          }
+        }
+      }
+    },
+    "%@ rise to %@.": {
+      "comment": "Live Pace note: the next working days' budget goes up, e.g. Wed–Mon rise to 18.4%",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ salgono a %@."
+          }
+        }
+      }
+    },
+    "%@ under pace": {
+      "comment": "Live Pace pill; the value is a duration, e.g. 2h 40m",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ sotto il ritmo"
+          }
+        }
+      }
+    },
+    "%@ used today": {
+      "comment": "Today's use, bold.",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ usato oggi"
+          }
+        }
+      }
+    },
+    "%@%@": {
+      "shouldTranslate": false
+    },
+    "%@–%@": {
+      "comment": "A range of weekdays, e.g. Wed–Mon",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@–%2$@"
+          }
+        }
+      }
+    },
+    "%lld active now": {
+      "comment": "Leaderboard header: members spending fast right now",
+      "localizations": {
+        "it": {
           "variations": {
             "plural": {
               "one": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld member"
+                  "value": "%lld attivo ora"
                 }
               },
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld members"
+                  "value": "%lld attivi ora"
                 }
               }
             }
           }
-        },
+        }
+      }
+    },
+    "%lld min": {
+      "comment": "A duration in minutes, e.g. 44 min",
+      "localizations": {
         "it": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld membro"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld membri"
-                }
-              }
-            }
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld min"
+          }
+        }
+      }
+    },
+    "%lldh %@m": {
+      "comment": "A duration in hours and minutes, e.g. 1h 05m",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldh %@m"
+          }
+        }
+      }
+    },
+    "+%@ last hour": {
+      "comment": "Spend in the last hour, under a member's bar.",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%@ ultima ora"
           }
         }
       }
@@ -125,12 +265,64 @@
         }
       }
     },
+    "Active now: %@ in the last hour": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attivo ora: %@ nell’ultima ora"
+          }
+        }
+      }
+    },
+    "Advanced Stats": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Statistiche avanzate"
+          }
+        }
+      }
+    },
     "Allow GodUsage to use the camera in Settings, or scan the code with the Camera app.": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
             "value": "Consenti a GodUsage di usare la fotocamera in Impostazioni, oppure scansiona il codice con l’app Fotocamera."
+          }
+        }
+      }
+    },
+    "At this pace today ends at %@, over its budget.": {
+      "comment": "Live Pace note; the value is a percentage of the weekly limit",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A questo ritmo oggi chiude a %@, oltre il budget."
+          }
+        }
+      }
+    },
+    "At this pace today’s budget runs out at %@.": {
+      "comment": "Live Pace note; the value is a time",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A questo ritmo il budget di oggi finisce alle ore %@."
+          }
+        }
+      }
+    },
+    "Bar colors: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colori delle barre: %@"
           }
         }
       }
@@ -155,6 +347,16 @@
         }
       }
     },
+    "Cost": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Costo"
+          }
+        }
+      }
+    },
     "Couldn’t reach the GodUsage server. Check your connection and try again.": {
       "localizations": {
         "it": {
@@ -171,6 +373,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "Giorno"
+          }
+        }
+      }
+    },
+    "Day Done": {
+      "comment": "Live Pace pill after the working day",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giornata finita"
+          }
+        }
+      }
+    },
+    "Day Off": {
+      "comment": "Live Pace pill on a day without working hours",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giorno libero"
+          }
+        }
+      }
+    },
+    "Down %lld since the day before": {
+      "comment": "Member rank movement: places lost",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sceso di %lld rispetto al giorno prima"
           }
         }
       }
@@ -208,12 +443,32 @@
         }
       }
     },
+    "GodUsage DEV build": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build DEV di GodUsage"
+          }
+        }
+      }
+    },
     "GodUsage couldn’t read your saved sign-in. Link this device again from your Mac.": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
             "value": "GodUsage non riesce a leggere l’accesso salvato. Collega di nuovo questo dispositivo dal Mac."
+          }
+        }
+      }
+    },
+    "Hide Week": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nascondi settimana"
           }
         }
       }
@@ -238,16 +493,6 @@
         }
       }
     },
-    "Leaderboard": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Classifica"
-          }
-        }
-      }
-    },
     "Link With Your Mac": {
       "localizations": {
         "it": {
@@ -268,12 +513,86 @@
         }
       }
     },
+    "New": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuovo"
+          }
+        }
+      }
+    },
+    "No Team": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun team"
+          }
+        }
+      }
+    },
+    "No cost data for this period": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun dato di costo per questo periodo"
+          }
+        }
+      }
+    },
     "No usage in this period.": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
             "value": "Nessun utilizzo in questo periodo."
+          }
+        }
+      }
+    },
+    "No working days before the reset.": {
+      "comment": "Live Pace note on a day off",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna giornata lavorativa prima dell’azzeramento."
+          }
+        }
+      }
+    },
+    "Not synced for %lld days": {
+      "localizations": {
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Non sincronizzato da %lld giorno"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Non sincronizzato da %lld giorni"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "On pace": {
+      "comment": "Live Pace pill: today's use is where it should be",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In linea"
           }
         }
       }
@@ -288,12 +607,13 @@
         }
       }
     },
-    "Provider": {
+    "Over today’s budget, on the last working day before the reset.": {
+      "comment": "Live Pace note",
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Provider"
+            "value": "Oltre il budget di oggi, nell’ultima giornata lavorativa prima dell’azzeramento."
           }
         }
       }
@@ -324,6 +644,27 @@
           "stringUnit": {
             "state": "translated",
             "value": "Posizione"
+          }
+        }
+      }
+    },
+    "Refresh Team": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiorna team"
+          }
+        }
+      }
+    },
+    "Same as the day before": {
+      "comment": "Member rank movement",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Come il giorno prima"
           }
         }
       }
@@ -371,6 +712,16 @@
         }
       }
     },
+    "Show Week": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra settimana"
+          }
+        }
+      }
+    },
     "Sign Out": {
       "localizations": {
         "it": {
@@ -411,12 +762,54 @@
         }
       }
     },
+    "Spending fast: level %lld of 3": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spesa rapida: livello %lld di 3"
+          }
+        }
+      }
+    },
+    "Starts %@": {
+      "comment": "Live Pace pill before the working day; the value is a time",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inizio %@"
+          }
+        }
+      }
+    },
+    "Team": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Team"
+          }
+        }
+      }
+    },
     "Team Total": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
             "value": "Totale del team"
+          }
+        }
+      }
+    },
+    "Team on pace for %@ in %@": {
+      "comment": "The team's month-end spend projection: amount, month.",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proiezione del team per %2$@: %1$@"
           }
         }
       }
@@ -523,12 +916,77 @@
         }
       }
     },
+    "Today’s budget is used up, on the last working day before the reset.": {
+      "comment": "Live Pace note: today's use reached today's budget exactly",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il budget di oggi è esaurito, nell’ultima giornata lavorativa prima dell’azzeramento."
+          }
+        }
+      }
+    },
+    "Today’s budget is used up. More today comes out of the next working days.": {
+      "comment": "Live Pace note: today's use reached today's budget exactly",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il budget di oggi è esaurito. Ciò che usi in più si toglie dalle prossime giornate lavorative."
+          }
+        }
+      }
+    },
+    "Today’s budget is used up. The %@ comes out of the next working days.": {
+      "comment": "Live Pace note; the value is the percentage over today's budget",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Budget di oggi superato di %@: si toglie dalle prossime giornate lavorative."
+          }
+        }
+      }
+    },
+    "Today’s budget used up": {
+      "comment": "Live Pace pill: today's use reached today's budget exactly, nothing over yet",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Budget di oggi esaurito"
+          }
+        }
+      }
+    },
     "Tokens": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
             "value": "Token"
+          }
+        }
+      }
+    },
+    "Top spender today": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chi spende di più oggi"
+          }
+        }
+      }
+    },
+    "Up %lld since the day before": {
+      "comment": "Member rank movement: places gained",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salito di %lld rispetto al giorno prima"
           }
         }
       }
@@ -577,6 +1035,68 @@
         }
       }
     },
+    "Updated %lldh ago": {
+      "comment": "Hours since a member's last sync.",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornato %lld h fa"
+          }
+        }
+      }
+    },
+    "Updated %lldm ago": {
+      "comment": "Minutes since a member's last sync.",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornato %lld min fa"
+          }
+        }
+      }
+    },
+    "Updated just now": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornato ora"
+          }
+        }
+      }
+    },
+    "Week": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settimana"
+          }
+        }
+      }
+    },
+    "Yesterday": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ieri"
+          }
+        }
+      }
+    },
+    "You": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu"
+          }
+        }
+      }
+    },
     "You can link it again with a new code from your Mac.": {
       "localizations": {
         "it": {
@@ -607,22 +1127,35 @@
         }
       }
     },
-    "Your Teams": {
+    "budget %@": {
+      "comment": "Today's budget, as a share of the weekly limit.",
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "I tuoi team"
+            "value": "budget %@"
           }
         }
       }
     },
-    "Your Usage": {
+    "off": {
+      "comment": "A day without working hours in the week's boxes.",
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il tuo utilizzo"
+            "value": "libero"
+          }
+        }
+      }
+    },
+    "team spend": {
+      "comment": "Caption under the team total",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "spesa del team"
           }
         }
       }

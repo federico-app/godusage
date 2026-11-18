@@ -24,8 +24,9 @@ enum TeamsFormat {
 
     private static let dollars = Locale(identifier: "en_US")
 
+    /// "$2,881.24": always cents, like the Mac.
     static func cost(_ value: Double) -> String {
-        "$" + value.formatted(.number.precision(.fractionLength(value >= 1_000 ? 0 : 2)).locale(dollars))
+        "$" + value.formatted(.number.precision(.fractionLength(2)).locale(dollars))
     }
 
     /// Counts below a million print in full with thousands separators ("58,342" / "58.342"); larger
