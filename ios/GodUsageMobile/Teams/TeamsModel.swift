@@ -13,6 +13,8 @@ final class TeamsModel {
     private(set) var myUsage: MyUsage?
     private(set) var teams: [TeamSummary] = []
     private(set) var boards: [String: TeamBoard] = [:]
+    /// Each team's plans, by team id, for This Week's Limit.
+    private(set) var plans: [String: TeamPlans] = [:]
     private(set) var isLoading = false
     private(set) var isPairing = false
     var errorMessage: String?
@@ -27,7 +29,7 @@ final class TeamsModel {
             session = try TeamsSessionKeychain.load()
         } catch {
             log.error("couldn't read the saved session: \(String(describing: error), privacy: .public)")
-            errorMessage = "GodUsage couldn’t read your saved sign-in. Link this device again from your Mac."
+            errorMessage = String(localized: "GodUsage couldn’t read your saved sign-in. Link this device again from your Mac.")
         }
     }
 
@@ -79,6 +81,19 @@ final class TeamsModel {
         guard let token = session?.token else { return }
         do {
             boards[Self.key(teamID, range)] = try await api.stats(token: token, teamID: teamID, range: range, today: TeamsFormat.localToday())
+            errorMessage = nil
+        } catch {
+            handle(error)
+        }
+    }
+
+    func loadPlans(teamID: String) async {
+        guard let token = session?.token else { return }
+        do {
+            plans[teamID] = try await api.plans(
+                token: token, teamID: teamID, today: TeamsFormat.localToday(), timeZone: TimeZone.current.identifier
+            )
+            errorMessage = nil
         } catch {
             handle(error)
         }
@@ -99,10 +114,11 @@ final class TeamsModel {
     }
 
     private func handle(_ error: Error) {
+        if error is CancellationError { return }
         if let failure = error as? TeamsAPI.Failure, failure.kind == .unauthorized {
             log.warning("teams session ended")
             clear()
-            errorMessage = "This device was unlinked. Scan a new code from your Mac to link it again."
+            errorMessage = String(localized: "This device was unlinked. Scan a new code from your Mac to link it again.")
             return
         }
         errorMessage = error.localizedDescription
@@ -113,6 +129,7 @@ final class TeamsModel {
         myUsage = nil
         teams = []
         boards = [:]
+        plans = [:]
         do { try TeamsSessionKeychain.save(nil) } catch {
             log.error("couldn't remove the saved session: \(String(describing: error), privacy: .public)")
         }

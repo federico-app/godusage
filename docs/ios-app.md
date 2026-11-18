@@ -7,7 +7,12 @@ Link the phone once by QR code: on a Mac signed in to Teams, open **Settings →
 Once linked, the app shows:
 
 - **Your Usage**: Today and Last 30 Days spend and tokens, a 30-day chart, and the spend per provider, summed across your Macs. Macs share usage with the server only while you are in at least one team.
-- **Your Teams**: each team's spend leaderboard for Today, 7 Days, or 30 Days.
+- **Your Teams**: tap a team for its board:
+  - **This Week's Limit**: for each of the team's plans with an open weekly limit, how much of the week its accounts used, today's use against today's budget, and when the limit resets. A claimed limit reset adds the week's use against its larger capacity ("↻ 95% + 40% of 200% this week"). Teams without such a plan show nothing here. The phone shows no Live Pace.
+  - For Today, 7 Days, or 30 Days: the team's total spend and tokens, a chart of spend per day by provider, the leaderboard, and spend per provider and per model.
+  - The leaderboard marks each member's movement since the previous period (▲2, ▼1); a member who had no usage then, or kept their place, shows none. Tap a member for their rank, spend, tokens, and spend per provider in the same range.
+
+The app is in English and Italian, following the device's language (see [Localization](localization.md#ios-app)).
 
 The session is kept in the Keychain on this device. **Sign Out** (account menu) ends it; unlinking the phone from the Mac does too, and the app then asks for a new code. The app refreshes on opening, on returning to the foreground, and with pull-to-refresh.
 

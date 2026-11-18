@@ -14,11 +14,11 @@ struct PairingLink: Equatable {
         var errorDescription: String? {
             switch self {
             case .notAPairingCode:
-                "That isn’t a GodUsage code. On your Mac, open Settings → Teams and choose Link iPhone or iPad."
+                String(localized: "That isn’t a GodUsage code. On your Mac, open Settings → Teams and choose Link iPhone or iPad.")
             case .otherServer(let isDev):
                 isDev
-                    ? "This code is from GodUsage DEV on your Mac. Scan it with the GodUsage DEV app, or show the code from the regular GodUsage."
-                    : "This code is from the regular GodUsage on your Mac. Scan it with the GodUsage app, or show the code from GodUsage DEV."
+                    ? String(localized: "This code is from GodUsage DEV on your Mac. Scan it with the GodUsage DEV app, or show the code from the regular GodUsage.")
+                    : String(localized: "This code is from the regular GodUsage on your Mac. Scan it with the GodUsage app, or show the code from GodUsage DEV.")
             }
         }
     }

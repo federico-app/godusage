@@ -96,13 +96,17 @@ struct TeamsView: View {
                 }
                 ForEach(usage.providers) { provider in
                     LabeledContent(TeamsFormat.providerName(provider.provider)) {
-                        Text("\(TeamsFormat.cost(provider.costUSD)) · \(TeamsFormat.tokens(provider.tokens))")
+                        Text(verbatim: "\(TeamsFormat.cost(provider.costUSD)) · \(TeamsFormat.tokens(provider.tokens))")
                     }
                 }
             } header: {
                 Text("Your Usage")
             } footer: {
-                Text(TeamsFormat.syncAge(usage.lastSyncAt) ?? "Your Macs share usage once you're in a team.")
+                if let age = TeamsFormat.syncAge(usage.lastSyncAt) {
+                    Text(age)
+                } else {
+                    Text("Your Macs share usage once you're in a team.")
+                }
             }
         } else if model.isLoading {
             Section { ProgressView().frame(maxWidth: .infinity) }
@@ -116,7 +120,7 @@ struct TeamsView: View {
             ForEach(model.teams) { team in
                 NavigationLink(value: team) {
                     LabeledContent(team.name) {
-                        Text(team.memberCount == 1 ? "1 member" : "\(team.memberCount) members")
+                        Text("\(team.memberCount) members")
                     }
                 }
             }
@@ -130,11 +134,11 @@ struct TeamsView: View {
         .task { await model.refresh() }
     }
 
-    private func tile(_ title: String, _ totals: UsageTotals?) -> some View {
+    private func tile(_ title: LocalizedStringKey, _ totals: UsageTotals?) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption).foregroundStyle(.secondary)
             Text(totals.map { TeamsFormat.cost($0.costUSD) } ?? "–").font(.title3.weight(.semibold)).monospacedDigit()
-            Text(totals.map { "\(TeamsFormat.tokens($0.tokens)) tokens" } ?? " ").font(.caption2).foregroundStyle(.secondary)
+            Text(totals.map { String(localized: "\(TeamsFormat.tokens($0.tokens)) tokens") } ?? " ").font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

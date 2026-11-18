@@ -47,9 +47,18 @@ struct TeamsAPI: Sendable {
 
     func stats(token: String, teamID: String, range: BoardRange, today: String) async throws -> TeamBoard {
         struct Envelope: Decodable { var stats: TeamBoard }
-        let id = teamID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/?&=#"))) ?? teamID
-        let envelope: Envelope = try await send("GET", "/v1/teams/\(id)/stats?range=\(range.rawValue)&sort=cost&today=\(today)", token: token)
+        let envelope: Envelope = try await send("GET", "/v1/teams/\(Self.pathComponent(teamID))/stats?range=\(range.rawValue)&sort=cost&today=\(today)", token: token)
         return envelope.stats
+    }
+
+    /// The team's plans, for This Week's Limit. `tz` is the device's time zone, as the Mac sends it.
+    func plans(token: String, teamID: String, today: String, timeZone: String) async throws -> TeamPlans {
+        let tz = timeZone.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? timeZone
+        return try await send("GET", "/v1/teams/\(Self.pathComponent(teamID))/plans?today=\(today)&tz=\(tz)", token: token)
+    }
+
+    private static func pathComponent(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/?&=#"))) ?? value
     }
 
     // MARK: - Transport
@@ -66,13 +75,13 @@ struct TeamsAPI: Sendable {
             return try JSONDecoder().decode(Response.self, from: data)
         } catch {
             log.error("\(method, privacy: .public) \(path, privacy: .public) returned an unreadable response: \(String(describing: error), privacy: .public)")
-            throw Failure(kind: .server, message: "The GodUsage server sent a response this app couldn’t read. Update the app and try again.")
+            throw Failure(kind: .server, message: String(localized: "The GodUsage server sent a response this app couldn’t read. Update the app and try again."))
         }
     }
 
     private func perform(_ method: String, _ path: String, token: String?, body: (some Encodable)?) async throws -> Data {
         guard let url = URL(string: path, relativeTo: baseURL) else {
-            throw Failure(kind: .invalid, message: "Invalid request.")
+            throw Failure(kind: .invalid, message: String(localized: "Invalid request."))
         }
         var request = URLRequest(url: url, timeoutInterval: 20)
         request.httpMethod = method
@@ -88,8 +97,10 @@ struct TeamsAPI: Sendable {
         do {
             (data, response) = try await URLSession.shared.data(for: request)
         } catch {
+            // Leaving a screen cancels its load; that is not a failure to show.
+            if error is CancellationError || (error as? URLError)?.code == .cancelled { throw CancellationError() }
             log.warning("\(method, privacy: .public) \(path, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
-            throw Failure(kind: .network, message: "Couldn’t reach the GodUsage server. Check your connection and try again.")
+            throw Failure(kind: .network, message: String(localized: "Couldn’t reach the GodUsage server. Check your connection and try again."))
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
@@ -101,7 +112,7 @@ struct TeamsAPI: Sendable {
             case 400, 403, 405, 409, 413: .invalid
             default: .server
             }
-            throw Failure(kind: kind, message: message ?? "The GodUsage server had a problem (HTTP \(status)). Try again later.")
+            throw Failure(kind: kind, message: message ?? String(localized: "The GodUsage server had a problem (HTTP \(status)). Try again later.", comment: "An HTTP status code, e.g. 500"))
         }
         return data
     }

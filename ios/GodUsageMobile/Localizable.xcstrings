@@ -1,0 +1,632 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ %@ of %@ this week": {
+      "comment": "A week with a claimed limit reset: the use (each stretch between resets, added up), then the week's capacity, e.g. ↻ 95% + 40% of 200% this week",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$@ su %3$@ questa settimana"
+          }
+        }
+      }
+    },
+    "%@ (You)": {
+      "comment": "The signed-in user's own row in the leaderboard",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (tu)"
+          }
+        }
+      }
+    },
+    "%@ of %@ today · resets %@": {
+      "comment": "Today's use of the weekly limit against today's budget, then when the limit resets, e.g. 8% of 14% today · resets Wed 10:00",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ di %2$@ oggi · reset %3$@"
+          }
+        }
+      }
+    },
+    "%@ tokens": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ token"
+          }
+        }
+      }
+    },
+    "%@ used": {
+      "comment": "The share of the weekly limit used so far, e.g. 62% used",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ usato"
+          }
+        }
+      }
+    },
+    "%lld members": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld member"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld members"
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld membro"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld membri"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "30 Days": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "30 giorni"
+          }
+        }
+      }
+    },
+    "7 Days": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 giorni"
+          }
+        }
+      }
+    },
+    "Account": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account"
+          }
+        }
+      }
+    },
+    "Allow GodUsage to use the camera in Settings, or scan the code with the Camera app.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti a GodUsage di usare la fotocamera in Impostazioni, oppure scansiona il codice con l’app Fotocamera."
+          }
+        }
+      }
+    },
+    "Camera Unavailable": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotocamera non disponibile"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla"
+          }
+        }
+      }
+    },
+    "Couldn’t reach the GodUsage server. Check your connection and try again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile raggiungere il server di GodUsage. Controlla la connessione e riprova."
+          }
+        }
+      }
+    },
+    "Day": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giorno"
+          }
+        }
+      }
+    },
+    "Down %lld since the previous 30 days": {
+      "comment": "Member rank movement: places lost",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sceso di %lld sui 30 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Down %lld since the previous 7 days": {
+      "comment": "Member rank movement: places lost",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sceso di %lld sui 7 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Down %lld since yesterday": {
+      "comment": "Member rank movement: places lost",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sceso di %lld rispetto a ieri"
+          }
+        }
+      }
+    },
+    "GodUsage couldn’t read your saved sign-in. Link this device again from your Mac.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GodUsage non riesce a leggere l’accesso salvato. Collega di nuovo questo dispositivo dal Mac."
+          }
+        }
+      }
+    },
+    "Invalid request.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richiesta non valida."
+          }
+        }
+      }
+    },
+    "Last 30 Days": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ultimi 30 giorni"
+          }
+        }
+      }
+    },
+    "Leaderboard": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Classifica"
+          }
+        }
+      }
+    },
+    "Link With Your Mac": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collega al Mac"
+          }
+        }
+      }
+    },
+    "Models": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelli"
+          }
+        }
+      }
+    },
+    "No usage in this period.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun utilizzo in questo periodo."
+          }
+        }
+      }
+    },
+    "On your Mac, open GodUsage Settings → Teams and choose Link iPhone or iPad. Then scan the code to see your usage and your teams here.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sul Mac, apri Impostazioni di GodUsage → Teams e scegli Collega iPhone o iPad. Poi scansiona il codice per vedere qui il tuo utilizzo e i tuoi team."
+          }
+        }
+      }
+    },
+    "Provider": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provider"
+          }
+        }
+      }
+    },
+    "Providers": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provider"
+          }
+        }
+      }
+    },
+    "Range": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intervallo"
+          }
+        }
+      }
+    },
+    "Rank": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posizione"
+          }
+        }
+      }
+    },
+    "Same as the previous 30 days": {
+      "comment": "Member rank movement",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Come nei 30 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Same as the previous 7 days": {
+      "comment": "Member rank movement",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Come nei 7 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Same as yesterday": {
+      "comment": "Member rank movement",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Come ieri"
+          }
+        }
+      }
+    },
+    "Scan Code": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scansiona codice"
+          }
+        }
+      }
+    },
+    "Sign Out": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esci"
+          }
+        }
+      }
+    },
+    "Sign out of GodUsage on this device?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uscire da GodUsage su questo dispositivo?"
+          }
+        }
+      }
+    },
+    "Signed in as %@.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesso eseguito come %@."
+          }
+        }
+      }
+    },
+    "Spend": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spesa"
+          }
+        }
+      }
+    },
+    "Team Total": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Totale del team"
+          }
+        }
+      }
+    },
+    "Teams": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teams"
+          }
+        }
+      }
+    },
+    "That isn’t a GodUsage code. On your Mac, open Settings → Teams and choose Link iPhone or iPad.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo non è un codice di GodUsage. Sul Mac, apri Impostazioni → Teams e scegli Collega iPhone o iPad."
+          }
+        }
+      }
+    },
+    "The GodUsage server had a problem (HTTP %lld). Try again later.": {
+      "comment": "An HTTP status code, e.g. 500",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server di GodUsage ha avuto un problema (HTTP %lld). Riprova più tardi."
+          }
+        }
+      }
+    },
+    "The GodUsage server sent a response this app couldn’t read. Update the app and try again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server di GodUsage ha inviato una risposta che l’app non riesce a leggere. Aggiorna l’app e riprova."
+          }
+        }
+      }
+    },
+    "The Keychain refused the GodUsage sign-in (error %d).": {
+      "comment": "A Keychain error code",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il Portachiavi ha rifiutato l’accesso a GodUsage (errore %d)."
+          }
+        }
+      }
+    },
+    "This Week's Limit": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite di questa settimana"
+          }
+        }
+      }
+    },
+    "This code is from GodUsage DEV on your Mac. Scan it with the GodUsage DEV app, or show the code from the regular GodUsage.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo codice viene da GodUsage DEV sul Mac. Scansionalo con l’app GodUsage DEV, oppure mostra il codice dalla versione normale di GodUsage."
+          }
+        }
+      }
+    },
+    "This code is from the regular GodUsage on your Mac. Scan it with the GodUsage app, or show the code from GodUsage DEV.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo codice viene dalla versione normale di GodUsage sul Mac. Scansionalo con l’app GodUsage, oppure mostra il codice da GodUsage DEV."
+          }
+        }
+      }
+    },
+    "This device was unlinked. Scan a new code from your Mac to link it again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo dispositivo è stato scollegato. Scansiona un nuovo codice dal Mac per collegarlo di nuovo."
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oggi"
+          }
+        }
+      }
+    },
+    "Tokens": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token"
+          }
+        }
+      }
+    },
+    "Up %lld since the previous 30 days": {
+      "comment": "Member rank movement: places gained",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salito di %lld sui 30 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Up %lld since the previous 7 days": {
+      "comment": "Member rank movement: places gained",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salito di %lld sui 7 giorni precedenti"
+          }
+        }
+      }
+    },
+    "Up %lld since yesterday": {
+      "comment": "Member rank movement: places gained",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salito di %lld rispetto a ieri"
+          }
+        }
+      }
+    },
+    "Updated %@": {
+      "comment": "When a member's Macs last shared usage, e.g. Updated 5 minutes ago",
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornato %@"
+          }
+        }
+      }
+    },
+    "You can link it again with a new code from your Mac.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puoi collegarlo di nuovo con un nuovo codice dal Mac."
+          }
+        }
+      }
+    },
+    "You're not in a team yet. Create or join one in GodUsage on your Mac.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non sei ancora in un team. Creane uno o unisciti a uno in GodUsage sul Mac."
+          }
+        }
+      }
+    },
+    "Your Macs share usage once you're in a team.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I tuoi Mac condividono l’utilizzo quando sei in un team."
+          }
+        }
+      }
+    },
+    "Your Teams": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I tuoi team"
+          }
+        }
+      }
+    },
+    "Your Usage": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo utilizzo"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
