@@ -160,8 +160,9 @@ struct TodayBarGeometry: Equatable {
 /// One day in the week's strip. Heights are shares of a full box, which stands for today's budget.
 struct WeekBox: Equatable {
     enum Kind: Equatable {
-        /// A day gone by, filled to its use.
-        case past(fill: Double, estimated: Bool)
+        /// A day gone by, filled to its use, with that use as `label` (~ when estimated): the box tops
+        /// out at `maxHeight`, so only the figure tells a heavy day from a very heavy one.
+        case past(fill: Double, estimated: Bool, label: String)
         /// Today: its budget as the box, filled to its use, with what went past the budget on top.
         case today(fill: Double, overflow: Double)
         /// A working day left, drawn at its budget; `lowered` when today took from it, with the new
@@ -208,7 +209,8 @@ struct WeekBox: Equatable {
                     kind = .off
                 }
             } else if let percent = day.percent, percent > 0 || day.working {
-                kind = .past(fill: share(percent), estimated: day.estimated)
+                let figure = LivePaceFormat.percent(percent)
+                kind = .past(fill: share(percent), estimated: day.estimated, label: day.estimated ? "~\(figure)" : figure)
             } else {
                 kind = day.working ? .empty : .off
             }
