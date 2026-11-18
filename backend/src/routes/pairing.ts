@@ -1,3 +1,4 @@
+import { readClientHeader } from "../clientHeader";
 import type { Handler } from "../context";
 import { forbidden, json, noContent, notFound, randomToken, readJSONObject, requireName, sha256Hex, unauthorized } from "../http";
 import { createSession, requireSession, requireUser } from "../session";
@@ -7,7 +8,9 @@ import { createSession, requireSession, requireUser } from "../session";
  *
  * 1. The Mac asks POST /v1/auth/pairing for a one-time code and shows it as a QR code.
  * 2. The phone scans it and posts the code to POST /v1/auth/pairing/exchange, which spends the code
- *    and returns a session of the same account, tagged with the phone's name.
+ *    and returns a session of the same account, tagged with the phone's name and with the model,
+ *    OS and app version from its `X-GodUsage-Client` header (see `clientHeader.ts`). Later requests
+ *    keep those and the device's last access current (`session.ts`, at most once an hour).
  * 3. The Mac lists linked devices (GET /v1/me/linked-devices) and can unlink one (DELETE …/:id).
  *
  * A code lives a few minutes and works once. Only its SHA-256 is stored. Paired sessions cannot
@@ -51,20 +54,42 @@ export const exchangePairingCode: Handler = async ({ request, env, deps }) => {
   const user = await env.db.first<{ id: string; display_name: string }>("SELECT id, display_name FROM users WHERE id = $1", [row.user_id]);
   if (!user) throw unauthorized("This account no longer exists.");
 
-  const token = await createSession(env.db, user.id, undefined, deviceName);
+  const token = await createSession(env.db, user.id, undefined, deviceName, readClientHeader(request));
   console.log(JSON.stringify({ event: "device_paired", userID: user.id }));
   return json({ token, user: { id: user.id, displayName: user.display_name } }, 201);
 };
 
-/** GET /v1/me/linked-devices → { devices: [{ id, name, linkedAt }] }, newest first. */
+/**
+ * GET /v1/me/linked-devices → { devices: [{ id, name, linkedAt, model, osVersion, appVersion, lastSeenAt }] },
+ * newest first. The last four are null until the device reports them (apps before the client header never do).
+ */
 export const listLinkedDevices: Handler = async ({ request, env }) => {
   const user = await requireUser(request, env.db);
-  const rows = await env.db.query<{ token_hash: string; paired_device: string; created_at: string }>(
-    "SELECT token_hash, paired_device, created_at FROM sessions WHERE user_id = $1 AND paired_device IS NOT NULL ORDER BY created_at DESC",
+  const rows = await env.db.query<{
+    token_hash: string;
+    paired_device: string;
+    created_at: string;
+    device_model: string | null;
+    os_version: string | null;
+    app_version: string | null;
+    last_seen_at: string | null;
+  }>(
+    `SELECT token_hash, paired_device, created_at, device_model, os_version, app_version, last_seen_at
+     FROM sessions WHERE user_id = $1 AND paired_device IS NOT NULL ORDER BY created_at DESC`,
     [user.id],
   );
   // The id is the session's token hash: it identifies the session but cannot be used as a token.
-  return json({ devices: rows.map((row) => ({ id: row.token_hash, name: row.paired_device, linkedAt: row.created_at })) });
+  return json({
+    devices: rows.map((row) => ({
+      id: row.token_hash,
+      name: row.paired_device,
+      linkedAt: row.created_at,
+      model: row.device_model,
+      osVersion: row.os_version,
+      appVersion: row.app_version,
+      lastSeenAt: row.last_seen_at,
+    })),
+  });
 };
 
 /** DELETE /v1/me/linked-devices/:id — signs that device out. */

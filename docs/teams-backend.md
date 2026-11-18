@@ -22,7 +22,7 @@ The backend used to run as a Cloudflare Worker on D1. D1's free plan (5M rows re
 ## What it stores
 
 - **Accounts:** the Sign in with Apple user id (`sub`) and a display name the user chooses. No email, no Apple name.
-- **Sessions:** only the SHA-256 hash of each session token. A session expires after 180 days without use. A session made by [QR pairing](#qr-pairing) also keeps the name of the phone or iPad it belongs to.
+- **Sessions:** only the SHA-256 hash of each session token. A session expires after 180 days without use. A session made by [QR pairing](#qr-pairing) also keeps the name of the phone or iPad it belongs to, the model, OS version and app version it reports, and when it was last used (to the hour).
 - **Pairing codes:** only the SHA-256 hash of each code, until it is used or replaced (three minutes at most).
 - **Teams:** name, the account whose deletion deletes the team (`owner_id`, always one of its owners), one invite code, and an optional public-board token. Roles (`owner` or `member`) live on each membership; a team can have several owners.
 - **Usage:** for each of the user's Macs, daily tokens and spend per provider and per model.
@@ -117,11 +117,11 @@ All routes are JSON under `/v1`. Authenticated routes take `Authorization: Beare
 | `POST /v1/auth/apple/exchange` | `{ code, codeVerifier }` → `{ token, user, created }`. The code works once, for five minutes. |
 | `POST /v1/auth/apple` | Native sign-in (for the iOS app): `{ identityToken, displayName? }` → `{ token, user, created }`. `displayName` is used only for a new account. |
 | `POST /v1/auth/pairing` | Signed-in Mac only (a paired session gets 403): `→ { code, expiresAt }`. The code works once, for three minutes, and replaces the account's previous code. See [QR pairing](#qr-pairing). |
-| `POST /v1/auth/pairing/exchange` | `{ code, deviceName }` → `{ token, user }`: a session of the code's account. `deviceName` is at most 60 characters. |
+| `POST /v1/auth/pairing/exchange` | `{ code, deviceName }` → `{ token, user }`: a session of the code's account. `deviceName` is at most 60 characters. The session records the [client header](#device-details) at once. |
 | `POST /v1/auth/logout` | Ends this session. |
 | `GET /v1/me/export` | Everything the server keeps about you, as one JSON document (the app's **Export My Data**). Session tokens are never included. |
 | `GET /v1/me/usage` | `?today=YYYY-MM-DD` → `{ from, to, days: [{ day, tokens, costUSD, providers }], providers: [{ provider, tokens, costUSD }], lastSyncAt }`: your own last 30 days across your Macs (Macs summed, account-wide providers from the newest Mac), for the iPhone app. `days` lists every day of the window, each with its spend per provider. |
-| `GET /v1/me/linked-devices` | `{ devices: [{ id, name, linkedAt }] }`: the sessions made by QR pairing, newest first. `id` is the session's token hash. |
+| `GET /v1/me/linked-devices` | `{ devices: [{ id, name, linkedAt, model, osVersion, appVersion, lastSeenAt }] }`: the sessions made by QR pairing, newest first. `id` is the session's token hash. The last four are null until the device reports them ([device details](#device-details)). |
 | `DELETE /v1/me/linked-devices/:id` | Signs that device out (404 if it isn't a linked device of this account). |
 | `GET`, `PATCH`, `DELETE /v1/me` | Read, rename (`{ displayName }`, at most 40 characters), or delete the account. |
 | `GET`, `POST /v1/teams` | List my teams, or create one (`{ name }`, at most 60 characters). |
@@ -231,6 +231,18 @@ The iPhone app signs in to an existing account without Sign in with Apple:
 3. The Mac lists and unlinks devices through `/v1/me/linked-devices`. Signing out of the Mac ends only the Mac's session.
 
 Paired sessions cannot make codes, so every linked device traces back to a Mac signed in with Apple. The exchange counts against the sign-in rate limit (20 a minute per IP), and a code has 256 random bits.
+
+### Device details
+
+iOS 16 and later give every phone the name "iPhone", so the phone also describes itself in a header on every request, the exchange included (`src/clientHeader.ts`):
+
+```
+X-GodUsage-Client: ios; app=1.10.1; model=iPhone 13; os=26.1
+```
+
+The first part is the platform, then `key=value` pairs separated by `;`, in any order; unknown keys are skipped. `model` is the marketing name (or the raw identifier, like `iPhone19,1`, for a model the app doesn't know yet; `Simulator` in the simulator), at most 60 characters; `os` the OS version and `app` the GodUsage app version, at most 32 each. A header over 256 characters is ignored whole, and an empty, too long, or non-ASCII value is dropped; a bad header never fails the request.
+
+The exchange stores the details and the time on the new session (migration `0015`: `sessions.device_model`, `os_version`, `app_version`, `last_seen_at`). After that, each request on a paired session writes `last_seen_at` (and the details) only when the stored time is an hour old or missing, or a reported detail changed, so most reads stay reads. A request without the header still counts as use and keeps the stored details. Apps from before the header leave the details null; their `last_seen_at` starts with their first request after the deploy. The Mac's own sessions never record any of it. **Export My Data** lists the details under `linkedDevices`.
 
 ## Development
 

@@ -88,6 +88,7 @@ struct TeamsAPI: Sendable {
         var request = URLRequest(url: url, timeoutInterval: 20)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "accept")
+        request.setValue(ClientInfo.header, forHTTPHeaderField: "x-godusage-client")
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "authorization") }
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "content-type")

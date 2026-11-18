@@ -118,7 +118,8 @@ export const exportMe: Handler = async ({ request, env, deps }) => {
     Promise.all([
       tx.query("SELECT id, apple_sub, display_name, created_at, time_zone FROM users WHERE id = $1", id),
       tx.query("SELECT COUNT(*) AS n FROM sessions WHERE user_id = $1", id),
-      tx.query("SELECT paired_device AS name, created_at FROM sessions WHERE user_id = $1 AND paired_device IS NOT NULL ORDER BY created_at", id),
+      tx.query(`SELECT paired_device AS name, created_at, device_model AS model, os_version, app_version, last_seen_at
+         FROM sessions WHERE user_id = $1 AND paired_device IS NOT NULL ORDER BY created_at`, id),
       tx.query("SELECT id, name, updated_at FROM devices WHERE user_id = $1 ORDER BY updated_at DESC", id),
       tx.query("SELECT device_id, slot, bucket, cost_usd FROM spend_pulses WHERE user_id = $1 ORDER BY bucket, device_id, slot", id),
       tx.query("SELECT device_id, provider, slot, day, scope, tokens, cost_usd FROM usage_days WHERE user_id = $1 ORDER BY day, provider, slot", id),

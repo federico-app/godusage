@@ -14,7 +14,7 @@ The sign-in stays on this Mac until you sign out, delete the account, or it goes
 
 The GodUsage iPhone app signs in to the same account by scanning a QR code from a Mac that is already signed in. Open **Settings → Teams → You → iPhone and iPad**, choose **Link iPhone or iPad…**, and scan the code with the app. A code works once and expires after three minutes; asking for a new one cancels the old one. The sheet closes on its own once the device links.
 
-The section lists every linked device by name. **Unlink…** signs that device out. A linked device stays signed in when the Mac signs out, until it is unlinked, signs itself out, the account is deleted, or it goes unused for 180 days. A linked device cannot show codes for other devices. DEV builds link only to the DEV iPhone app, and production builds only to the production app.
+The section lists every linked device by its model and OS ("iPhone 13 · iOS 26.1"), with when it was linked, when it was last active (to the hour), and its GodUsage version. A device whose app is older than these details shows the name it linked with and no version until the app updates. **Unlink…** signs that device out. A linked device stays signed in when the Mac signs out, until it is unlinked, signs itself out, the account is deleted, or it goes unused for 180 days. A linked device cannot show codes for other devices. DEV builds link only to the DEV iPhone app, and production builds only to the production app.
 
 Development builds (`com.montinovo.godusage.dev`) use a separate backend with separate accounts and teams, so testing never touches real leaderboards. See [Teams backend](teams-backend.md#environments).
 

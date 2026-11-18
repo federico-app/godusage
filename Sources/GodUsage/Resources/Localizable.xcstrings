@@ -5903,6 +5903,49 @@
         }
       }
     },
+    "Last active %lldd ago" : {
+      "comment" : "Days since a linked phone last used GodUsage.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultimo accesso %lld g fa"
+          }
+        }
+      }
+    },
+    "Last active %lldh ago" : {
+      "comment" : "Hours since a linked phone last used GodUsage.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultimo accesso %lld h fa"
+          }
+        }
+      }
+    },
+    "Last active %lldm ago" : {
+      "comment" : "Minutes since a linked phone last used GodUsage.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultimo accesso %lld min fa"
+          }
+        }
+      }
+    },
+    "Last active just now" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultimo accesso ora"
+          }
+        }
+      }
+    },
     "Last day" : {
       "localizations" : {
         "it" : {
@@ -6129,6 +6172,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Collegato %@"
+          }
+        }
+      }
+    },
+    "Linked on %@" : {
+      "comment" : "When a phone or iPad was linked; the argument is a short date, e.g. Nov 18",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collegato: %@"
           }
         }
       }
