@@ -31,7 +31,7 @@ final class TeamLeaderboardLayoutTests: XCTestCase {
         XCTAssertEqual(TeamLeaderboardLayout.rankLabels([member("a", rank: 1)]), ["a": "1"])
     }
 
-    func testKeepsRankOrderAndPicksARowStylePerMember() {
+    func testInactiveMembersKeepTheSameRowsAsActiveMembers() {
         let members = [member("a", rank: 1), member("b", rank: 2), member("c", rank: 3), member("d", rank: 4)]
         let layout = TeamLeaderboardLayout(
             members: members,
@@ -39,24 +39,27 @@ final class TeamLeaderboardLayoutTests: XCTestCase {
         )
         // #2 stays above #3 even though only #3 spent in the last hour.
         XCTAssertEqual(layout.rows.map(\.member.userID), ["a", "b", "c", "d"])
-        XCTAssertEqual(layout.rows.map(\.style), [.full, .compact, .full, .compact])
+        XCTAssertEqual(layout.rows, members.map { TeamLeaderboardLayout.Row(member: $0) })
         XCTAssertEqual(layout.activeCount, 2)
+        let quietLayout = TeamLeaderboardLayout(members: members, momentum: [:])
+        XCTAssertEqual(layout.rows, quietLayout.rows)
+        XCTAssertEqual(quietLayout.activeCount, 0)
     }
 
-    func testRowStyleFollowsLastHourSpend() {
-        XCTAssertEqual(TeamLeaderboardLayout.rowStyle(nil), .compact)
-        XCTAssertEqual(TeamLeaderboardLayout.rowStyle(TeamMomentum(lastHourUSD: 0, level: 0)), .compact)
-        // A few dollars an hour is below the momentum threshold but still a full row.
-        XCTAssertEqual(TeamLeaderboardLayout.rowStyle(TeamMomentum(lastHourUSD: 3, level: 0)), .full)
-        XCTAssertEqual(TeamLeaderboardLayout.rowStyle(TeamMomentum(lastHourUSD: 0.01, level: 0)), .full)
-        XCTAssertEqual(TeamLeaderboardLayout.rowStyle(TeamMomentum(lastHourUSD: 0, level: 2)), .full)
+    func testActivityFollowsLastHourSpend() {
+        XCTAssertEqual(TeamLeaderboardLayout.isActive(nil), false)
+        XCTAssertEqual(TeamLeaderboardLayout.isActive(TeamMomentum(lastHourUSD: 0, level: 0)), false)
+        // Spend below the momentum threshold still counts as active.
+        XCTAssertEqual(TeamLeaderboardLayout.isActive(TeamMomentum(lastHourUSD: 3, level: 0)), true)
+        XCTAssertEqual(TeamLeaderboardLayout.isActive(TeamMomentum(lastHourUSD: 0.01, level: 0)), true)
+        XCTAssertEqual(TeamLeaderboardLayout.isActive(TeamMomentum(lastHourUSD: 0, level: 2)), true)
     }
 
-    func testNobodySpendingKeepsEveryFullRowAndNoSummary() {
+    func testNobodySpendingKeepsEveryRowAndNoSummary() {
         let members = [member("a", rank: 1), member("b", rank: 2)]
         let layout = TeamLeaderboardLayout(members: members, momentum: ["a": momentum(level: 0)])
         XCTAssertEqual(layout.rows.map(\.member.userID), ["a", "b"])
-        XCTAssertEqual(layout.rows.map(\.style), [.full, .full])
+        XCTAssertEqual(layout.rows, members.map { TeamLeaderboardLayout.Row(member: $0) })
         XCTAssertEqual(layout.activeCount, 0)
         XCTAssertNil(TeamLeaderboardLayout.activeSummary(activeCount: layout.activeCount))
     }
@@ -70,11 +73,11 @@ final class TeamLeaderboardLayoutTests: XCTestCase {
         XCTAssertTrue(layout.visibleRows(limit: 0).isEmpty)
     }
 
-    func testTiesKeepTheirLabelsWhateverTheRowStyle() {
+    func testTiesKeepTheirLabelsRegardlessOfActivity() {
         let members = [member("a", rank: 1), member("b", rank: 2), member("c", rank: 2), member("d", rank: 4)]
         let layout = TeamLeaderboardLayout(members: members, momentum: ["c": momentum(level: 1)])
         XCTAssertEqual(layout.rows.map(\.member.userID), ["a", "b", "c", "d"])
-        XCTAssertEqual(layout.rows.map(\.style), [.compact, .compact, .full, .compact])
+        XCTAssertEqual(layout.rows, members.map { TeamLeaderboardLayout.Row(member: $0) })
         XCTAssertEqual(layout.rows.map { layout.rankLabel($0.member) }, ["1", "2=", "2=", "4"])
     }
 

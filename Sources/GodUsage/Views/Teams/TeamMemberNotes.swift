@@ -30,7 +30,7 @@ struct MomentumBolts: View {
 }
 
 /// The line under a member's bar: a green live dot and "+$12.40 last hour" while they spent
-/// something in the last hour (the full row), otherwise when they last synced, plus their version
+/// something in the last hour, otherwise when they last synced, plus their version
 /// only when it is outdated. The member's detail explains everything in full.
 struct MemberStatusNote: View {
     let member: TeamStats.Member
@@ -38,7 +38,7 @@ struct MemberStatusNote: View {
     let newestVersion: String?
 
     var body: some View {
-        if let momentum, TeamLeaderboardLayout.rowStyle(momentum) == .full {
+        if let momentum, TeamLeaderboardLayout.isActive(momentum) {
             HStack(spacing: 5) {
                 LiveDot()
                 Text("+\(Formatters.currency(momentum.lastHourUSD)) last hour", comment: "Spend in the last hour, under a member's bar.")
