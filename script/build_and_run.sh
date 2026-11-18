@@ -32,8 +32,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Version the dev build from git instead of a hand-maintained constant, so the footer/About
 # string tracks the latest stable release tag (v0.8.2 -> "0.8.2", shown as "0.8.2-dev").
 # CFBundleVersion is the commit count — the same default release.sh uses. Fails loudly if the
-# tags aren't available (e.g. a shallow clone).
-APP_VERSION="$(git -C "$ROOT_DIR" describe --tags --match 'v*' --exclude '*-*' --abbrev=0 | sed 's/^v//')"
+# tags aren't available (e.g. a shallow clone). The highest tag, not `git describe`: release tags sit
+# on squash-merged commits on main, so from develop describe only reaches an old tag.
+APP_VERSION="$(git -C "$ROOT_DIR" tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '1s/^v//p')"
+[ -n "$APP_VERSION" ] || { echo "no stable v* tag found (shallow clone?)" >&2; exit 1; }
 APP_BUILD="$(git -C "$ROOT_DIR" rev-list --count HEAD)"
 DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$APP_DISPLAY.app"
