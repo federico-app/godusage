@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.10.2
+
+### New Features
+- Linked iPhones and iPads show their model, iOS version, when they were linked, when they were last active, and their GodUsage version ([#143](https://github.com/federico-app/godusage/pull/143)) by @andreaAppload
+
+### Bug Fixes
+- DEV builds show the version of the latest release ([#142](https://github.com/federico-app/godusage/pull/142)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.1...v1.10.2](https://github.com/federico-app/godusage/compare/v1.10.1...v1.10.2)
+
+- [b4b9f9c](https://github.com/federico-app/godusage/commit/b4b9f9cc1514cfa2e4fc8f35e8e9644f480c7805) feat(teams): linked devices show model, iOS version, last access and app version (#143) by @andreaAppload
+- [c4e1334](https://github.com/federico-app/godusage/commit/c4e13346aaf46b93668a54e1ad9cb68d153b4e1b) fix(dev): DEV builds take the version of the latest release (#142) by @andreaAppload
+
+## v1.10.1
+
+### New Features
+- iPhone app: Team and You tabs laid out like the Mac panel, with This Week's Limit, Live Pace, leaderboard details, and Italian ([#138](https://github.com/federico-app/godusage/pull/138)) by @andreaAppload
+
+### Bug Fixes
+- Settings opens at the right height ([#139](https://github.com/federico-app/godusage/pull/139)) by @andreaAppload
+- Leaderboard bars show for inactive members ([#137](https://github.com/federico-app/godusage/pull/137)) by @andreaAppload
+
+### Chores
+- `make release` uploads the iOS app to TestFlight from a Mac ([#140](https://github.com/federico-app/godusage/pull/140)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.0...v1.10.1](https://github.com/federico-app/godusage/compare/v1.10.0...v1.10.1)
+
+- [b558be5](https://github.com/federico-app/godusage/commit/b558be590f9e4415d52a8982ebe1251e63460cf7) chore(ios): make release uploads the iOS app to TestFlight from a Mac (#140) by @andreaAppload
+- [89cd9af](https://github.com/federico-app/godusage/commit/89cd9afb0cc66f1121af72436f1751f454acf29b) feat(ios): Team and You tabs like the Mac panel, Live Pace, and Italian (#138) by @andreaAppload
+- [4e63ab4](https://github.com/federico-app/godusage/commit/4e63ab4650024c3c85b4e698af81afd7de68d455) fix(settings): open the Settings window at the right height (#139) by @andreaAppload
+- [f40b240](https://github.com/federico-app/godusage/commit/f40b2408b07f176ad73c28c20712c8092fa2afd5) fix: show leaderboard bars for inactive members (#137) by @andreaAppload
+- [9b003f1](https://github.com/federico-app/godusage/commit/9b003f1f72e3a8228e9df1a1463815108308d3b9) fix: show leaderboard bars for inactive members by @andreaAppload
+
 ## v1.10.0
 
 ### New Features
