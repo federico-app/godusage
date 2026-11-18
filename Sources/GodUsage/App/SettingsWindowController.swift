@@ -180,6 +180,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
         // Fresh window, fresh animation state — a stale target from a previous window's life would
         // make the dedupe guard skip this first sizing.
         targetContentHeight = 0
+        pendingContentHeight = nil
         setContentHeight(rememberedHeight(for: selectedPane), animated: false)
         if let topLeft = savedTopLeft() {
             window.setFrameTopLeftPoint(topLeft)
@@ -229,6 +230,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
         // AppKit only tracks selection for genuine toolbar clicks; pin it so a programmatic
         // selection (or any missed click bookkeeping) can't leave the highlight on the old pane.
         window.toolbar?.selectedItemIdentifier = pane.toolbarItemIdentifier
+        // A height the old pane reported but that was not applied yet belongs to the old pane.
+        pendingContentHeight = nil
         hosting.rootView = paneRoot(pane)
         // Resize to the pane's remembered height immediately (System Settings-style animated frame
         // change); the content-height callback then corrects it only if the content changed since the
@@ -248,11 +251,23 @@ final class SettingsWindowController: NSObject, NSWindowDelegate, NSToolbarDeleg
         defaults.set(Double(height), forKey: Self.heightKey(for: pane))
         // The geometry callback can fire inside a SwiftUI layout pass; resizing the window there
         // would re-enter the same layout. Defer one runloop turn — on a plain open the remembered
-        // height already matches and the deferred call is a no-op.
+        // height already matches and the deferred call is a no-op. Coalesce: one layout pass can
+        // report several heights, and starting one animation per height let an earlier, stale
+        // target win, leaving the window at the wrong height while `targetContentHeight` held the
+        // right one (so nothing corrected it). Only the latest height is applied.
+        let isScheduled = pendingContentHeight != nil
+        pendingContentHeight = height
+        guard !isScheduled else { return }
         Task { @MainActor [weak self] in
-            self?.setContentHeight(height, animated: true)
+            guard let self, let height = self.pendingContentHeight else { return }
+            self.pendingContentHeight = nil
+            self.setContentHeight(height, animated: true)
         }
     }
+
+    /// The newest height reported by the current pane and not yet applied (see
+    /// `paneContentHeightChanged`).
+    private var pendingContentHeight: CGFloat?
 
     /// The content height the window is at or currently animating toward. Deduping retargets against
     /// this — never against the live frame, which sits mid-flight during an animation — is what keeps

@@ -8,7 +8,7 @@ enum TeamsSessionKeychain {
 
     struct Failure: Error, LocalizedError {
         var status: OSStatus
-        var errorDescription: String? { "The Keychain refused the GodUsage sign-in (error \(status))." }
+        var errorDescription: String? { String(localized: "The Keychain refused the GodUsage sign-in (error \(status)).", comment: "A Keychain error code") }
     }
 
     static func load() throws -> TeamsSession? {

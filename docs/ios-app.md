@@ -4,12 +4,21 @@ GodUsageMobile (in `ios/`) is a read-only iPhone and iPad viewer for your Teams 
 
 Link the phone once by QR code: on a Mac signed in to Teams, open **Settings → Teams → You → iPhone and iPad → Link iPhone or iPad…**, then tap **Scan Code** in the app (or scan the code with the Camera app, which opens GodUsage). See [Teams](teams.md#iphone-and-ipad).
 
-Once linked, the app shows:
+Once linked, the app has two tabs, laid out like the Mac's menu-bar panel. **Team** opens on launch.
 
-- **Your Usage**: Today and Last 30 Days spend and tokens, a 30-day chart, and the spend per provider, summed across your Macs. Macs share usage with the server only while you are in at least one team.
-- **Your Teams**: each team's spend leaderboard for Today, 7 Days, or 30 Days.
+- **Team**: the Team section of the Mac's panel, for one team (a menu on its name picks another; the app remembers the choice). A refresh button reloads it; it also reloads every two minutes while on screen.
+  - **Today, Yesterday, 7 Days, 30 Days**: the period for the team's spend and the leaderboard.
+  - **Team spend** for the period, and the team's month-end projection ("Team on pace for $2,881.24 in November · 12 days left"), from this month's spend so far.
+  - **This Week's Limit**: one row per plan with an open weekly limit. With working hours set, a plan shows **Live Pace**, computed on the phone the same way as on the Mac: a badge saying how far today's use is ahead of or under an even pace over the working day ("1h 14m under pace", green when heading well under today's budget, orange when heading over), today's bar with a tick where today's use should be now, and "0.0% of 19.8% today". **Week** opens the week's boxes and the note on what's next; a plan ahead of pace or over today's budget shows them right away. Without Live Pace (no working hours), a plan shows today's use against today's budget, the week's boxes, and when the limit resets. A claimed limit reset adds the week's use against its larger capacity ("↻ 95% + 40% of 200% this week"). Teams without such a plan show nothing here.
+  - **Leaderboard**: "N active now" and the bar colors, then each member with their rank and movement since the previous period (▲2, ▼1, or New), You, a crown for today's top spender and a trophy for last month's champion, their spend, a bar split by provider, and either "+$8.18 last hour" while they spend or when they last synced ("Not synced for 13 days"). Your row is highlighted. Tap a member for their rank, spend, tokens, and spend per provider.
+  - **Advanced Stats**: the team's total spend and tokens, spend per day by provider, and spend per provider and per model for the period.
+- **You**: the Mac's cost card for your own usage, summed across your Macs: Today, Yesterday, 7 Days, or 30 Days, the total, a bar split by provider, and the spend per provider. Below it, your last 30 days day by day. A server that sends no per-day provider split shows only the total for Today, Yesterday, and 7 Days. Macs share usage with the server only while you are in at least one team.
 
-The session is kept in the Keychain on this device. **Sign Out** (account menu) ends it; unlinking the phone from the Mac does too, and the app then asks for a new code. The app refreshes on opening, on returning to the foreground, and with pull-to-refresh.
+The phone has no reactions, challenges, shared accounts, or Live Pace details and alerts.
+
+The app is in English and Italian, following the device's language (see [Localization](localization.md#ios-app)).
+
+The session is kept in the Keychain on this device. **Sign Out** (the account menu at the top of each tab) ends it; unlinking the phone from the Mac does too, and the app then asks for a new code. The app refreshes on opening, on returning to the foreground, and with pull-to-refresh.
 
 **GodUsage DEV** (Debug and Dev builds) talks to the dev server (`api-dev.godusage.com`) and **GodUsage** (Release builds) to production (`api.godusage.com`), matching the Mac's DEV and production channels. A code from the other server is refused with a message naming the right app.
 
