@@ -138,7 +138,7 @@ final class LivePaceDisplayTests: XCTestCase {
         )
         XCTAssertEqual(boxes.map(\.label), ["Wed", "Today", "Fri", "Sat", "Mon"])
         XCTAssertEqual(boxes.map(\.kind), [
-            .past(fill: 0.5, estimated: false), .today(fill: 0.25, overflow: 0),
+            .past(fill: 0.5, estimated: false, label: "10.0%"), .today(fill: 0.25, overflow: 0),
             .future(height: 1, lowered: false, label: nil), .off, .future(height: 1, lowered: false, label: nil),
         ])
     }
@@ -157,6 +157,18 @@ final class LivePaceDisplayTests: XCTestCase {
         let unlabeled = WeekBox.boxes(days: days, today: "2026-11-05", used: 12, budget: 20, future: [("2026-11-06", 16, 20)], labelsLowered: false)
         XCTAssertEqual(unlabeled[1].kind, .future(height: 0.8, lowered: true, label: nil))
         XCTAssertEqual(unlabeled[2].kind, .off, "a working day with no hours has nothing to spend")
+    }
+
+    /// A heavy day tops out at the box's ceiling, as tall as a lighter heavy day: only its figure tells them apart.
+    func testPastDaysCarryTheirUseEvenPastTheBoxCeiling() {
+        let days = [
+            TeamPlanBudget.Day(day: "2026-11-03", percent: 41, working: true, estimated: false),
+            TeamPlanBudget.Day(day: "2026-11-04", percent: 24, working: true, estimated: true),
+            day("2026-11-05", 24),
+        ]
+        let boxes = WeekBox.boxes(days: days, today: "2026-11-05", used: 24, budget: 14.9, future: [], labelsLowered: false)
+        XCTAssertEqual(boxes[0].kind, .past(fill: WeekBox.maxHeight, estimated: false, label: "41.0%"))
+        XCTAssertEqual(boxes[1].kind, .past(fill: WeekBox.maxHeight, estimated: true, label: "~24.0%"))
     }
 
     // MARK: - Team headers

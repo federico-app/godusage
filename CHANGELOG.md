@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.10.3
+
+### New Features
+- This Week's Limit shows above each past day the share of the weekly limit it used, so a heavy day reads apart from a lighter one even when both boxes are full ([#146](https://github.com/federico-app/godusage/pull/146)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.2...v1.10.3](https://github.com/federico-app/godusage/compare/v1.10.2...v1.10.3)
+
+- [9e45679](https://github.com/federico-app/godusage/commit/9e4567972edaf5b33e6b861a16f359d4f95460d4) feat(teams): week boxes show each past day's share of the weekly limit (#146) by @andreaAppload
+
 ## v1.10.2
 
 ### New Features
