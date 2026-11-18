@@ -333,8 +333,7 @@ private struct TeamsRankingList: View {
 
     private var metric: TeamMetric { TeamMetric(sort) }
 
-    /// Members in rank order: the full row while they spent something in the last hour, the compact
-    /// row otherwise. Shared accounts follow the members.
+    /// Members in rank order, each with a provider bar. Shared accounts follow the members.
     var body: some View {
         let top = stats.rankingTop(for: metric)
         let layout = TeamLeaderboardLayout(members: stats.members, momentum: momentum)
@@ -354,24 +353,13 @@ private struct TeamsRankingList: View {
             ForEach(Array(layout.rows.enumerated()), id: \.element.id) { index, row in
                 let member = row.member
                 if index > 0 || !header.isEmpty { Divider() }
-                Group {
-                    switch row.style {
-                    case .full:
-                        TeamLeaderboardMemberRow(
-                            member: member, rankLabel: layout.rankLabel(member), isMe: member.userID == currentUserID, top: top,
-                            metric: metric, range: stats.range.name, momentum: momentum(member), newestVersion: newest,
-                            teamID: teamID, reactions: .buttons, valueFont: .body, barHeight: 6
-                        )
-                    case .compact:
-                        TeamLeaderboardCompactRow(
-                            member: member, rankLabel: layout.rankLabel(member), isMe: member.userID == currentUserID,
-                            metric: metric, range: stats.range.name, newestVersion: newest, teamID: teamID,
-                            reactions: .buttons, rankFont: .body
-                        )
-                    }
-                }
+                TeamLeaderboardMemberRow(
+                    member: member, rankLabel: layout.rankLabel(member), isMe: member.userID == currentUserID, top: top,
+                    metric: metric, range: stats.range.name, momentum: momentum(member), newestVersion: newest,
+                    teamID: teamID, reactions: .buttons, valueFont: .body, barHeight: 6
+                )
                 .padding(.horizontal, 12)
-                .padding(.vertical, row.style == .full ? 9 : 7)
+                .padding(.vertical, 9)
                 .background(member.userID == currentUserID ? TeamLeaderboardRowStyle.youTint : .clear)
             }
             ForEach(shared) { account in

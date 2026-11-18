@@ -1,47 +1,31 @@
 import Foundation
 
-/// How a leaderboard card lays out its members: always in ranking order, each with a row style (full
-/// while they spent something in the last hour, compact otherwise), the rank labels ("6=" for ties),
-/// the header's summary, and which providers the legend names. Shared by the dashboard's Team section
-/// and the Teams window.
+/// The members in ranking order, rank labels ("6=" for ties), header summary, and provider legend.
+/// Every member keeps their provider bar regardless of activity. Shared by the dashboard and Teams window.
 struct TeamLeaderboardLayout: Equatable {
-    /// How a member's row is drawn. The style never moves a member: the list stays in rank order.
-    enum RowStyle: Equatable {
-        /// Bar, live last hour and momentum: the member spent something in the last hour.
-        case full
-        /// Two short lines, no bar: nothing spent in the last hour.
-        case compact
-    }
-
     struct Row: Equatable, Identifiable {
         let member: TeamStats.Member
-        let style: RowStyle
         var id: String { member.userID }
     }
 
-    /// Every member, in the order given (ranking order), with its row style.
+    /// Every member, in the order given (ranking order).
     let rows: [Row]
     /// "6" or "6=" by user id.
     let rankLabels: [String: String]
-    /// How many members spent something in the last hour: the header's "N active now". They get
-    /// the full row; when there are none, every member does.
+    /// How many members spent something in the last hour: the header's "N active now".
     let activeCount: Int
 
     /// `members` must already be in ranking order (see `TeamMetric.ranked`).
     init(members: [TeamStats.Member], momentum: [String: TeamMomentum]) {
-        let styles = members.map { Self.rowStyle(momentum[$0.userID]) }
-        let active = styles.filter { $0 == .full }.count
-        activeCount = active
-        // Nobody spent anything in the last hour: everyone keeps the full row, so a quiet team keeps
-        // its bars.
-        rows = zip(members, styles).map { Row(member: $0, style: active == 0 ? .full : $1) }
+        activeCount = members.filter { Self.isActive(momentum[$0.userID]) }.count
+        rows = members.map { Row(member: $0) }
         rankLabels = Self.rankLabels(members)
     }
 
-    /// Full when the member spent something in the last hour (or has momentum), compact otherwise.
-    static func rowStyle(_ momentum: TeamMomentum?) -> RowStyle {
-        guard let momentum else { return .compact }
-        return momentum.lastHourUSD > 0 || momentum.level > 0 ? .full : .compact
+    /// Activity affects the summary and status note, never whether the row shows a bar.
+    static func isActive(_ momentum: TeamMomentum?) -> Bool {
+        guard let momentum else { return false }
+        return momentum.lastHourUSD > 0 || momentum.level > 0
     }
 
     /// The first `limit` rows in rank order: the popover's Members Shown collapse.

@@ -41,6 +41,12 @@ Two exceptions:
 
 Clock times follow the Time Format setting and the Mac's region, as before.
 
+## iOS app
+
+The iOS companion app (`ios/`) has its own String Catalog, `ios/GodUsageMobile/Localizable.xcstrings`, and `ios/GodUsageMobile/InfoPlist.xcstrings` for the camera permission text. Xcode extracts the strings from the code at build time (`SWIFT_EMIT_LOC_STRINGS`) and compiles both catalogs into `en.lproj` and `it.lproj` in the app; opening the catalog in Xcode after a build adds new keys. Add the Italian for every new key, with the same rules as the Mac. The app follows the device's language; any language other than Italian shows English.
+
+Numbers follow the app's language as on the Mac (en_US for English, Italian for Italian), dollars stay American, and dates use the app's language with the device's region, so clock times keep its 12- or 24-hour style (`TeamsFormat`).
+
 ## Menu bar letters
 
 The strip's session and weekly values start with a letter. English uses **S** (session) and **W** (weekly). Italian can't use the initials, since Sessione and Settimanale both start with S, so it uses **H** for the session (the hours window) and **S** for settimanale. They are the catalog keys "S" and "W", with comments.

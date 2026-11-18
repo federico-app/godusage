@@ -1,0 +1,23 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSCameraUsageDescription": {
+      "comment": "Privacy - Camera Usage Description",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GodUsage uses the camera to scan the code that links this device to your Mac."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GodUsage usa la fotocamera per scansionare il codice che collega questo dispositivo al Mac."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -42,6 +42,14 @@ struct SettingsPaneHost: View {
     static let minimumContentWidth: CGFloat = 440
     static let maximumContentWidth: CGFloat = 960
 
+    /// Whether a measurement comes from a real layout. While the window is being built, the hosting
+    /// view lays the pane out once at a near-zero width, where every word wraps onto its own line
+    /// and the pane reports a height several times its real one. Applying (or remembering) that
+    /// height opened the window at the wrong size.
+    static func isSettledLayout(width: CGFloat) -> Bool {
+        width >= minimumContentWidth / 2
+    }
+
     let pane: SettingsPane
     /// Reports the pane content's intrinsic height (a vertical scroll view proposes nil height, so
     /// the measurement is viewport-invariant). The window controller follows it.
@@ -53,10 +61,11 @@ struct SettingsPaneHost: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
                 .frame(maxWidth: .infinity)
-                .onGeometryChange(for: CGFloat.self) { proxy in
-                    proxy.size.height
-                } action: { height in
-                    onContentHeightChange(height)
+                .onGeometryChange(for: CGSize.self) { proxy in
+                    proxy.size
+                } action: { size in
+                    guard Self.isSettledLayout(width: size.width) else { return }
+                    onContentHeightChange(size.height)
                 }
         }
         .scrollBounceBehavior(.basedOnSize)

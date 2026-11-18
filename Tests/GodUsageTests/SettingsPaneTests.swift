@@ -25,3 +25,19 @@ final class SettingsPaneTests: XCTestCase {
         }
     }
 }
+
+/// Regression: the window opened at the wrong height because the pane's first layout, at the
+/// near-zero width the hosting view has while the window is built, reported a height several times
+/// the real one, and that height was applied and remembered.
+final class SettingsPaneMeasurementTests: XCTestCase {
+    func testIgnoresTheNearZeroWidthFirstLayout() {
+        XCTAssertFalse(SettingsPaneHost.isSettledLayout(width: 1))
+        XCTAssertFalse(SettingsPaneHost.isSettledLayout(width: 0))
+    }
+
+    func testAcceptsEveryWidthTheWindowCanHave() {
+        XCTAssertTrue(SettingsPaneHost.isSettledLayout(width: SettingsPaneHost.minimumContentWidth))
+        XCTAssertTrue(SettingsPaneHost.isSettledLayout(width: SettingsPaneHost.defaultContentWidth))
+        XCTAssertTrue(SettingsPaneHost.isSettledLayout(width: SettingsPaneHost.maximumContentWidth))
+    }
+}
