@@ -14,7 +14,7 @@ struct TeamsLinkedDevicesSection: View {
         let pairing = container.devicePairing
         SettingsSection("iPhone and iPad") {
             ForEach(pairing.linkedDevices) { device in
-                SettingsRow(device.name) {
+                LinkedDeviceRow(device: device) {
                     Button("Unlink…") { confirmingUnlink = device }
                         .disabled(pairing.isWorking)
                 }
@@ -40,7 +40,7 @@ struct TeamsLinkedDevicesSection: View {
             PairingCodeSheet(pairing: pairing) { isShowingCode = false }
         }
         .alert(
-            "Unlink \(confirmingUnlink?.name ?? "")?",
+            "Unlink \(confirmingUnlink.map(LinkedDeviceFormat.title) ?? "")?",
             isPresented: Binding(get: { confirmingUnlink != nil }, set: { if !$0 { confirmingUnlink = nil } }),
             presenting: confirmingUnlink
         ) { device in
@@ -49,6 +49,33 @@ struct TeamsLinkedDevicesSection: View {
         } message: { _ in
             Text("It's signed out of GodUsage and needs a new code to link again.")
         }
+    }
+}
+
+/// One linked device: model and OS (or its name) over when it was linked, when it was last active
+/// and its GodUsage version. The relative time refreshes every minute.
+private struct LinkedDeviceRow<Control: View>: View {
+    let device: LinkedDevice
+    @ViewBuilder let control: () -> Control
+
+    var body: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: LinkedDeviceFormat.title(device))
+                TimelineView(.periodic(from: .now, by: 60)) { context in
+                    let subtitle = LinkedDeviceFormat.subtitle(device, now: context.date)
+                    if !subtitle.isEmpty {
+                        Text(verbatim: subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Spacer(minLength: 8)
+            control()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, DensitySetting.compact.controlRowPadding)
     }
 }
 
@@ -83,7 +110,7 @@ private struct PairingCodeSheet: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 64))
                 .foregroundStyle(.green)
-                .accessibilityLabel("Linked \(device.name)")
+                .accessibilityLabel("Linked \(LinkedDeviceFormat.title(device))")
         } else if let code = pairing.activeCode, let image = QRCodeImage.make(code.url.absoluteString) {
             Image(nsImage: image)
                 .interpolation(.none)
@@ -103,7 +130,7 @@ private struct PairingCodeSheet: View {
     @ViewBuilder
     private var footer: some View {
         if let device = pairing.justLinked {
-            Text("\(device.name) is linked.")
+            Text("\(LinkedDeviceFormat.title(device)) is linked.")
         } else if let message = pairing.errorMessage {
             Text(message).foregroundStyle(Theme.notice)
         } else if let code = pairing.activeCode {

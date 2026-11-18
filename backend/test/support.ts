@@ -67,9 +67,9 @@ export interface APIResponse<T = any> {
 export async function api<T = any>(
   method: string,
   path: string,
-  options: { token?: string; body?: unknown; now?: Date } = {},
+  options: { token?: string; body?: unknown; now?: Date; headers?: Record<string, string> } = {},
 ): Promise<APIResponse<T>> {
-  const headers = new Headers();
+  const headers = new Headers(options.headers);
   if (options.token) headers.set("authorization", `Bearer ${options.token}`);
   if (options.body !== undefined) headers.set("content-type", "application/json");
   const response = await makeApp(options.now).fetch(

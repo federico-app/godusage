@@ -8,12 +8,23 @@ struct PairingCode: Decodable, Equatable, Sendable {
     var expiresAt: String
 }
 
-/// An iPhone or iPad signed in to this account by QR pairing.
+/// An iPhone or iPad signed in to this account by QR pairing. The optional fields come from the
+/// phone's `X-GodUsage-Client` header; they are nil for phones that never sent it (and from servers
+/// before it). `LinkedDeviceFormat` turns them into the Settings row.
 struct LinkedDevice: Decodable, Hashable, Identifiable, Sendable {
     var id: String
+    /// The name the phone sent when it linked (on iOS 16 and later usually just "iPhone" or "iPad").
     var name: String
     /// ISO 8601.
     var linkedAt: String
+    /// Marketing name, e.g. "iPhone 13" (or the raw identifier for a model the app doesn't know).
+    var model: String? = nil
+    /// e.g. "26.1".
+    var osVersion: String? = nil
+    /// The GodUsage app's version, e.g. "1.10.1".
+    var appVersion: String? = nil
+    /// ISO 8601; the server refreshes it at most once an hour.
+    var lastSeenAt: String? = nil
 }
 
 /// What the QR code holds: `godusage://pair?code=…&server=https://api.godusage.com`. The phone

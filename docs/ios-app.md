@@ -18,7 +18,7 @@ The phone has no reactions, challenges, shared accounts, or Live Pace details an
 
 The app is in English and Italian, following the device's language (see [Localization](localization.md#ios-app)).
 
-The session is kept in the Keychain on this device. **Sign Out** (the account menu at the top of each tab) ends it; unlinking the phone from the Mac does too, and the app then asks for a new code. The app refreshes on opening, on returning to the foreground, and with pull-to-refresh.
+The session is kept in the Keychain on this device. **Sign Out** (the account menu at the top of each tab) ends it; unlinking the phone from the Mac does too, and the app then asks for a new code. The app refreshes on opening, on returning to the foreground, and with pull-to-refresh. Every request names the device's model, iOS version and app version (`ClientInfo.swift`), so the Mac's list of linked devices can tell phones apart; see [Teams backend](teams-backend.md#device-details).
 
 **GodUsage DEV** (Debug and Dev builds) talks to the dev server (`api-dev.godusage.com`) and **GodUsage** (Release builds) to production (`api.godusage.com`), matching the Mac's DEV and production channels. A code from the other server is refused with a message naming the right app.
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.10.2
+
+### New Features
+- Linked iPhones and iPads show their model, iOS version, when they were linked, when they were last active, and their GodUsage version ([#143](https://github.com/federico-app/godusage/pull/143)) by @andreaAppload
+
+### Bug Fixes
+- DEV builds show the version of the latest release ([#142](https://github.com/federico-app/godusage/pull/142)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.1...v1.10.2](https://github.com/federico-app/godusage/compare/v1.10.1...v1.10.2)
+
+- [b4b9f9c](https://github.com/federico-app/godusage/commit/b4b9f9cc1514cfa2e4fc8f35e8e9644f480c7805) feat(teams): linked devices show model, iOS version, last access and app version (#143) by @andreaAppload
+- [c4e1334](https://github.com/federico-app/godusage/commit/c4e13346aaf46b93668a54e1ad9cb68d153b4e1b) fix(dev): DEV builds take the version of the latest release (#142) by @andreaAppload
+
 ## v1.10.1
 
 ### New Features
