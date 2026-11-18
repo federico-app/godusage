@@ -934,12 +934,23 @@
       }
     },
     "%@ used" : {
-      "comment" : "A day gone by in the week's boxes.\nA meter reading in Used mode, e.g. 5% used or $12.00 used",
+      "comment" : "A meter reading in Used mode, e.g. 5% used or $12.00 used",
       "localizations" : {
         "it" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ usato"
+          }
+        }
+      }
+    },
+    "%@ used %@" : {
+      "comment" : "A day gone by in the week's boxes, with the share of the weekly limit it used.",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: usato %2$@"
           }
         }
       }
@@ -5978,6 +5989,7 @@
       }
     },
     "Last synced %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "it" : {
           "stringUnit" : {

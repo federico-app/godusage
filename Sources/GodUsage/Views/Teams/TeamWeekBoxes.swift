@@ -94,7 +94,13 @@ struct TeamWeekBoxes: View {
     private static let box: CGFloat = 26
     private var maxHeight: CGFloat { Self.box * WeekBox.maxHeight }
     private var hasLabels: Bool {
-        boxes.contains { if case .future(_, _, let label) = $0.kind { label != nil } else { false } }
+        boxes.contains { day in
+            switch day.kind {
+            case .past: true
+            case let .future(_, _, label): label != nil
+            default: false
+            }
+        }
     }
 
     var body: some View {
@@ -118,10 +124,14 @@ struct TeamWeekBoxes: View {
 
     @ViewBuilder
     private func label(_ day: WeekBox) -> some View {
-        if case .future(_, _, let text?) = day.kind {
+        switch day.kind {
+        case let .past(_, _, text):
+            Text(text).font(.system(size: 8, weight: .semibold).monospacedDigit()).foregroundStyle(.secondary)
+                .lineLimit(1).minimumScaleFactor(0.7)
+        case let .future(_, _, text?):
             Text(text).font(.system(size: 8, weight: .semibold).monospacedDigit()).foregroundStyle(WeekLimitColors.noticeText)
                 .lineLimit(1).minimumScaleFactor(0.7)
-        } else {
+        default:
             Color.clear
         }
     }
@@ -130,7 +140,7 @@ struct TeamWeekBoxes: View {
     private func content(_ kind: WeekBox.Kind) -> some View {
         let shape = RoundedRectangle(cornerRadius: 4, style: .continuous)
         switch kind {
-        case let .past(fill, estimated):
+        case let .past(fill, estimated, _):
             shape.fill(color.opacity(estimated ? 0.4 : 0.85)).frame(height: max(Self.box * fill, 2))
         case let .today(fill, overflow):
             VStack(spacing: 0) {
@@ -163,7 +173,8 @@ struct TeamWeekBoxes: View {
             switch day.kind {
             case .off: return String(localized: "\(name) off", comment: "A day without working hours, in the week's boxes.")
             case .empty: return String(localized: "\(name) no data", comment: "A day in the week's boxes.")
-            case .past: return String(localized: "\(name) used", comment: "A day gone by in the week's boxes.")
+            case let .past(_, _, label):
+                return String(localized: "\(name) used \(label)", comment: "A day gone by in the week's boxes, with the share of the weekly limit it used.")
             case let .today(_, overflow):
                 return overflow > 0
                     ? String(localized: "\(name) over budget", comment: "Today in the week's boxes.")
