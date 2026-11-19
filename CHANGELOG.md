@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.10.4
+
+### Bug Fixes
+- When Anthropic blocks Claude usage updates, the warning says when the shown values were fetched, and the app log records what Anthropic answered ([#148](https://github.com/federico-app/godusage/pull/148)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.3...v1.10.4](https://github.com/federico-app/godusage/compare/v1.10.3...v1.10.4)
+
+- [68b8955](https://github.com/federico-app/godusage/commit/68b8955fc244389383d47ee528c36af0c9731ffd) fix(claude): log 429 details and say when the shown values were fetched (#148) by @andreaAppload
+
 ## v1.10.3
 
 ### New Features

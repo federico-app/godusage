@@ -39,6 +39,8 @@ final class ClaudeProvider: ProviderRuntime {
     /// us.
     private var cachedCredentialFingerprint: Data?
     private var lastGoodUsage: ClaudeMappedUsage?
+    /// When `lastGoodUsage` was fetched, named in the rate-limit warning.
+    private var lastGoodUsageAt: Date?
     private var rateLimitedUntil: Date?
     private static let rateLimitCooldown: TimeInterval = 5 * 60
     /// The last hourly reset-grants check (see `ClaudeProvider+ResetGrants.swift`).
@@ -375,7 +377,11 @@ final class ClaudeProvider: ProviderRuntime {
         if response.statusCode == 429 {
             let retryAfterSeconds = ClaudeUsageMapper.parseRetryAfterSeconds(response, now: now())
             rateLimitedUntil = now().addingTimeInterval(TimeInterval(retryAfterSeconds ?? Int(Self.rateLimitCooldown)))
-            AppLog.info(LogTag.plugin("claude"), "rate-limited (serving \(lastGoodUsage == nil ? "badge" : "last-good usage"))")
+            AppLog.warn(
+                LogTag.plugin("claude"),
+                "usage 429 (serving \(lastGoodUsage == nil ? "badge" : "last-good usage")); "
+                    + ClaudeUsageMapper.rateLimitDiagnostics(response, retryAfterSeconds: retryAfterSeconds)
+            )
             return rateLimitedSnapshot(credentials: state.displayOAuth, retryAfterSeconds: retryAfterSeconds)
         }
 
@@ -387,6 +393,7 @@ final class ClaudeProvider: ProviderRuntime {
         // post-claim refresh's.
         if resetClaimEpoch == claimEpoch {
             lastGoodUsage = mapped
+            lastGoodUsageAt = now()
             rateLimitedUntil = nil
         }
         return mapped
@@ -444,7 +451,9 @@ final class ClaudeProvider: ProviderRuntime {
         // A held reset grant past its deadline is gone, even while the live call is paused.
         mapped.lines = mapped.lines.map { ClaudeUsageMapper.droppingElapsedResetGrants($0, now: now()) }
         mapped.lines.append(ClaudeUsageMapper.rateLimitedNote(retryAfterSeconds: retryAfterSeconds))
-        mapped.warning = ClaudeUsageMapper.rateLimitedWarning(retryAfterSeconds: retryAfterSeconds)
+        mapped.warning = ClaudeUsageMapper.rateLimitedWarning(
+            retryAfterSeconds: retryAfterSeconds, valuesFrom: lastGoodUsageAt, now: now()
+        )
         // Last-good usage is a clean fetch, so its action is `.refresh`; the rate-limit notice replacing
         // its warning must carry `.wait` with it or the triangle stays clickable on stale bars.
         mapped.warningAction = .wait
@@ -455,6 +464,7 @@ final class ClaudeProvider: ProviderRuntime {
     /// post-claim refresh must fetch live usage instead of serving the pre-claim snapshot.
     func forgetLiveUsageAfterResetClaim() {
         lastGoodUsage = nil
+        lastGoodUsageAt = nil
         rateLimitedUntil = nil
     }
 
@@ -465,6 +475,7 @@ final class ClaudeProvider: ProviderRuntime {
         guard cachedCredentialFingerprint != fingerprint else { return }
         cachedCredentialFingerprint = fingerprint
         lastGoodUsage = nil
+        lastGoodUsageAt = nil
         rateLimitedUntil = nil
     }
 

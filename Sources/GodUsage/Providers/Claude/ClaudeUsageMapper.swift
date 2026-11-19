@@ -103,11 +103,48 @@ enum ClaudeUsageMapper {
     /// user off manual refreshes, which extend Anthropic's rate limiting — which is why every snapshot
     /// carrying it marks itself `.wait`, leaving the header triangle inert instead of offering the
     /// refresh this very sentence warns against.
-    static func rateLimitedWarning(retryAfterSeconds: Int?) -> String {
-        guard let retryText = retryAfterSeconds.map(formatRateLimitMinutes) else {
-            return String(localized: "Updates blocked by Anthropic. Be patient — manual refreshes will make it worse.")
+    ///
+    /// `valuesFrom` is when the still-shown bars were fetched (nil when there are none), so a long block
+    /// doesn't pass hour-old bars off as current.
+    static func rateLimitedWarning(retryAfterSeconds: Int?, valuesFrom: Date? = nil, now: Date = Date()) -> String {
+        let retryText = retryAfterSeconds.map(formatRateLimitMinutes)
+        guard let valuesFrom else {
+            guard let retryText else {
+                return String(localized: "Updates blocked by Anthropic. Be patient — manual refreshes will make it worse.")
+            }
+            return String(localized: "Updates blocked by Anthropic. Be patient — manual refreshes will make it worse. Retrying in ~\(retryText).")
         }
-        return String(localized: "Updates blocked by Anthropic. Be patient — manual refreshes will make it worse. Retrying in ~\(retryText).")
+        let fetchedText = formatValuesFrom(valuesFrom, now: now)
+        guard let retryText else {
+            return String(localized: "Updates blocked by Anthropic. Showing values from \(fetchedText). Be patient — manual refreshes will make it worse.")
+        }
+        return String(localized: "Updates blocked by Anthropic. Showing values from \(fetchedText). Be patient — manual refreshes will make it worse. Retrying in ~\(retryText).")
+    }
+
+    /// The fetch time of the bars shown during a block: the time alone today, date and time otherwise.
+    static func formatValuesFrom(_ date: Date, now: Date, calendar: Calendar = .current) -> String {
+        if calendar.isDate(date, inSameDayAs: now) {
+            return date.formatted(date: .omitted, time: .shortened)
+        }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    /// One log line describing a 429 from the usage endpoint: the Retry-After the provider will honor, the
+    /// response's rate-limit headers, and a redacted preview of the body. Only allowlisted headers are
+    /// included, so nothing credential-like can reach the log.
+    static func rateLimitDiagnostics(_ response: HTTPResponse, retryAfterSeconds: Int?) -> String {
+        let headerPrefixes = ["retry-after", "anthropic-ratelimit", "x-ratelimit", "ratelimit", "request-id", "x-should-retry", "cf-ray"]
+        let headers = response.headers
+            .filter { name, _ in headerPrefixes.contains { name.lowercased().hasPrefix($0) } }
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key.lowercased())=\($0.value)" }
+        let retry = retryAfterSeconds.map { "\($0)s" } ?? "none (default cooldown)"
+        var parts = ["retry-after \(retry)", "headers: \(headers.isEmpty ? "none" : headers.joined(separator: ", "))"]
+        let body = String(decoding: response.body, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        if !body.isEmpty {
+            parts.append("body: \(LogRedaction.bodyPreview(body, limit: 300))")
+        }
+        return parts.joined(separator: "; ")
     }
 
     /// Provider warning shown on the Claude header (the amber triangle + tooltip, like Z.ai's "no coding
