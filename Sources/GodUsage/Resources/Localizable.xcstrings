@@ -11564,6 +11564,28 @@
         }
       }
     },
+    "Updates blocked by Anthropic. Showing values from %@. Be patient — manual refreshes will make it worse." : {
+      "comment" : "Claude rate-limit warning while showing the last fetched bars. The argument is when they were fetched, e.g. 10:49 or 18 Nov 2026, 17:46",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiornamenti bloccati da Anthropic. Valori aggiornati a: %@. Pazienta: gli aggiornamenti manuali peggiorano la situazione."
+          }
+        }
+      }
+    },
+    "Updates blocked by Anthropic. Showing values from %@. Be patient — manual refreshes will make it worse. Retrying in ~%@." : {
+      "comment" : "Claude rate-limit warning while showing the last fetched bars. First argument: when they were fetched (e.g. 10:49); second: time until the next try (e.g. 25m)",
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiornamenti bloccati da Anthropic. Valori aggiornati a: %1$@. Pazienta: gli aggiornamenti manuali peggiorano la situazione. Nuovo tentativo tra ~%2$@."
+          }
+        }
+      }
+    },
     "Usage Display" : {
       "localizations" : {
         "it" : {

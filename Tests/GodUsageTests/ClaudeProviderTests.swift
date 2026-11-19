@@ -1318,6 +1318,9 @@ final class ClaudeProviderTests: XCTestCase {
         XCTAssertEqual(text(second.lines, "Note")?.contains("rate limited"), true)
         XCTAssertNil(badge(second.lines, "Status"))
         XCTAssertEqual(second.warning?.hasPrefix("Updates blocked by Anthropic"), true)
+        // The warning names when the still-shown bars were fetched, so old bars don't pass as current.
+        let fetchedAt = ClaudeUsageMapper.formatValuesFrom(t0, now: t0)
+        XCTAssertEqual(second.warning?.contains("Showing values from \(fetchedAt)."), true)
         // Cached bars from a clean fetch, but the notice on top of them is the rate limit's — the
         // header must not offer a refresh while this snapshot is on screen.
         XCTAssertEqual(second.resolvedWarningAction, .wait)
