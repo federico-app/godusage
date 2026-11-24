@@ -181,7 +181,8 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
         )
     }
 
-    /// What `daily-cloudcode-pa` was seen returning on 2026-10-17: only the non-Gemini pool.
+    /// A host answering with only the non-Gemini pool (seen on `daily-cloudcode-pa` on 2026-10-17, and
+    /// on both hosts on 2026-11-24 for callers with a bare `antigravity` User-Agent).
     static let claudeOnlyGroupsJSON = """
     "groups":[{"displayName":"Claude and GPT models","buckets":[
       {"bucketId":"3p-5h","window":"5h","remainingFraction":0.4},
@@ -210,9 +211,9 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
             if path == AntigravityUsageClient.quotaSummaryPath {
                 // The remote endpoint returns the payload bare (no "response" wrapper).
                 switch request.url.host {
-                case "cloudcode-pa.googleapis.com":
-                    return HTTPResponse(statusCode: 200, headers: [:], body: Data("{\(groupsJSON)}".utf8))
                 case "daily-cloudcode-pa.googleapis.com":
+                    return HTTPResponse(statusCode: 200, headers: [:], body: Data("{\(groupsJSON)}".utf8))
+                case "cloudcode-pa.googleapis.com":
                     return HTTPResponse(statusCode: 200, headers: [:], body: Data("{\(partialGroupsJSON)}".utf8))
                 default:
                     return HTTPResponse(statusCode: 404, headers: [:], body: Data())
@@ -229,9 +230,9 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
         XCTAssertEqual(snapshot.plan, "Pro")
         XCTAssertEqual(snapshot.lines.map(\.label), ["Session", "Weekly", "Argon Weekly", "Claude", "Claude Weekly"])
         XCTAssertEqual(snapshot.lines.map { used($0) }, [25, 10, 40, 60, 0])
-        assertSummaryRequests(routing, hosts: ["cloudcode-pa.googleapis.com"])
-        XCTAssertFalse(routing.requests.contains { $0.url.host == "daily-cloudcode-pa.googleapis.com" },
-                       "a complete production response must not be replaced by the partial daily response")
+        assertSummaryRequests(routing, hosts: ["daily-cloudcode-pa.googleapis.com"])
+        XCTAssertFalse(routing.requests.contains { $0.url.host == "cloudcode-pa.googleapis.com" && $0.url.path == AntigravityUsageClient.quotaSummaryPath },
+                       "a complete daily response must not be replaced by the partial production response")
 
         // Without Antigravity's client metadata and User-Agent, loadCodeAssist omits currentTier/paidTier.
         let planRequest = routing.requests.first { $0.url.path.contains("loadCodeAssist") }

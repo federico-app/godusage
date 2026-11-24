@@ -27,10 +27,12 @@ enum TokenRefreshOutcome: Sendable {
 /// Google Cloud Code endpoints, and the Google OAuth token refresh.
 struct AntigravityUsageClient: Sendable {
     static let lsService = "exa.language_server_pb.LanguageServerService"
-    // The daily endpoint can omit Gemini quotas from a successful response; prefer production.
+    // Daily first: it's the host the Antigravity app itself talks to (`--cloud_code_endpoint`), and the
+    // only one that saw real Gemini usage on 2026-11-24. Production answered the same account with an
+    // untouched Gemini window (100% left, reset "now + 5h").
     static let cloudCodeURLs = [
-        "https://cloudcode-pa.googleapis.com",
-        "https://daily-cloudcode-pa.googleapis.com"
+        "https://daily-cloudcode-pa.googleapis.com",
+        "https://cloudcode-pa.googleapis.com"
     ]
     static let fetchModelsPath = "/v1internal:fetchAvailableModels"
     static let loadCodeAssistPath = "/v1internal:loadCodeAssist"
@@ -88,11 +90,17 @@ struct AntigravityUsageClient: Sendable {
         return await cloudCode(path: path, token: token, userAgent: userAgent, payload: payload)
     }
 
+    /// Antigravity's own User-Agent (`antigravity/<version> (aidev_client; …)`). Cloud Code shapes its
+    /// answers by caller: with a bare `antigravity` UA, `retrieveUserQuotaSummary` leaves out the whole
+    /// Gemini group (seen 2026-11-24) and `loadCodeAssist` leaves out the tier.
+    func clientUserAgent() -> String {
+        AntigravityClientVersion.userAgent(version: clientVersion())
+    }
+
     /// `loadCodeAssist` with Antigravity's client metadata. Without it the response carries only
     /// `allowedTiers` — no `currentTier`/`paidTier` — so the plan can't be read.
     func loadCodeAssist(token: String) async -> CloudCodeOutcome {
-        let userAgent = AntigravityClientVersion.userAgent(version: clientVersion())
-        return await cloudCode(path: Self.loadCodeAssistPath, token: token, userAgent: userAgent, payload: Self.loadCodeAssistPayload)
+        await cloudCode(path: Self.loadCodeAssistPath, token: token, userAgent: clientUserAgent(), payload: Self.loadCodeAssistPayload)
     }
 
     /// `ClientMetadata` enum names as they appear in the Antigravity language server's protos.
@@ -112,8 +120,8 @@ struct AntigravityUsageClient: Sendable {
     }
 
     /// POST a Cloud Code endpoint on each base URL in order and return every 2xx body in base-URL order.
-    /// The hosts can disagree: `daily-cloudcode-pa` has answered the quota summary with only the Claude
-    /// group while `cloudcode-pa` also returned Gemini, so a caller merging by id may need both. Stops
+    /// The hosts can disagree (one has answered the quota summary with only the Claude group), so a
+    /// caller merging by id may need both. Stops
     /// after the first base when its 2xx body is one `isComplete` accepts: callers merge first-wins, so
     /// a later answer couldn't change the result. Any 2xx wins; otherwise a 401/403 on any base is
     /// `.authFailed`, and anything else `.unavailable`.

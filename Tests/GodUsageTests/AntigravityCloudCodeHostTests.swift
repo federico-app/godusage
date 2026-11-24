@@ -1,13 +1,13 @@
 import XCTest
 @testable import GodUsage
 
-/// Covers which Cloud Code hosts answer the quota summary (production first, daily merged in when
-/// production's answer is incomplete or fails) and the Antigravity-shaped `loadCodeAssist` request.
+/// Covers which Cloud Code hosts answer the quota summary (daily first, production merged in when
+/// daily's answer is incomplete or fails) and the Antigravity-shaped client identity on its requests.
 final class AntigravityCloudCodeHostTests: XCTestCase {
     private static let production = "cloudcode-pa.googleapis.com"
     private static let daily = "daily-cloudcode-pa.googleapis.com"
 
-    /// Four shared quota windows plus Argon, as production returns them.
+    /// Four shared quota windows plus Argon, as the daily host returns them.
     private static let fullBody = """
     {"groups":[
       {"displayName":"Gemini 4 Argon","buckets":[
@@ -69,9 +69,37 @@ final class AntigravityCloudCodeHostTests: XCTestCase {
         routing.requests.filter { $0.url.path == AntigravityUsageClient.quotaSummaryPath }.compactMap { $0.url.host }
     }
 
-    func testProductionIsAskedBeforeDaily() {
-        XCTAssertEqual(AntigravityUsageClient.cloudCodeURLs.first, "https://\(Self.production)")
-        XCTAssertEqual(AntigravityUsageClient.cloudCodeURLs.last, "https://\(Self.daily)")
+    /// Regression: on 2026-11-24 production answered with an untouched Gemini window (100% left) while
+    /// daily — the host the Antigravity app itself uses — had the real usage.
+    func testDailyIsAskedBeforeProduction() {
+        XCTAssertEqual(AntigravityUsageClient.cloudCodeURLs.first, "https://\(Self.daily)")
+        XCTAssertEqual(AntigravityUsageClient.cloudCodeURLs.last, "https://\(Self.production)")
+    }
+
+    /// Regression: on 2026-11-24 Cloud Code left the whole Gemini group out of the quota summary for a
+    /// bare `antigravity` User-Agent, so Session, Weekly and Argon Weekly read "No data".
+    @MainActor
+    func testSummaryAndModelsRequestsSendAntigravityClientUserAgent() async {
+        let routing = RoutingHTTPClient { _ in HTTPResponse(statusCode: 404, headers: [:], body: Data()) }
+        let client = AntigravityUsageClient(lsHTTP: routing, http: routing, clientVersion: { "2.34.0" })
+        let provider = AntigravityProvider(
+            authStore: AntigravityAuthStore(
+                keychain: FakeKeychain("go-keyring-base64:" + Data(
+                    #"{"token":{"access_token":"ya29.kc","expiry":"2099-01-01T00:00:00Z"}}"#.utf8
+                ).base64EncodedString()),
+                files: FakeFiles()
+            ),
+            usageClient: client,
+            discovery: LanguageServerDiscovery(processRunner: NoProcessRunner())
+        )
+
+        _ = await provider.refresh()
+        let expected = AntigravityClientVersion.userAgent(version: "2.34.0")
+        for path in [AntigravityUsageClient.quotaSummaryPath, AntigravityUsageClient.fetchModelsPath] {
+            let agents = routing.requests.filter { $0.url.path == path }.map { $0.headers["User-Agent"] }
+            XCTAssertFalse(agents.isEmpty, path)
+            XCTAssertTrue(agents.allSatisfy { $0 == expected }, "\(path): \(agents)")
+        }
     }
 
     /// Regression: on 2026-10-17 one Cloud Code host answered with only the Claude group while the
@@ -79,20 +107,20 @@ final class AntigravityCloudCodeHostTests: XCTestCase {
     @MainActor
     func testSummaryMergesBucketsAcrossHostsWhenOneOmitsAPool() async {
         let full = Self.fullBody, partial = Self.claudeOnlyBody
-        let routing = summaryRouting { host in Self.ok(host == Self.production ? partial : full) }
+        let routing = summaryRouting { host in Self.ok(host == Self.daily ? partial : full) }
 
         let snapshot = await makeProvider(routing).refresh()
         XCTAssertEqual(snapshot.lines.map(\.label), Self.allLabels)
-        // Claude buckets come from production (first wins); Gemini and Argon from the daily host.
+        // Claude buckets come from daily (first wins); Gemini and Argon from production.
         XCTAssertEqual(snapshot.lines.map { used($0) }, [25, 10, 40, 0, 20])
-        XCTAssertEqual(summaryHosts(routing), [Self.production, Self.daily])
+        XCTAssertEqual(summaryHosts(routing), [Self.daily, Self.production])
     }
 
     @MainActor
-    func testCompleteProductionSummaryDoesNotWaitForAStalledDailyHost() async {
+    func testCompleteDailySummaryDoesNotWaitForAStalledProductionHost() async {
         let full = Self.fullBody
         let routing = summaryRouting { host in
-            if host == Self.daily { try await Task.sleep(for: .seconds(30)) }
+            if host == Self.production { try await Task.sleep(for: .seconds(30)) }
             return Self.ok(full)
         }
 
@@ -100,14 +128,14 @@ final class AntigravityCloudCodeHostTests: XCTestCase {
         let snapshot = await makeProvider(routing).refresh()
         XCTAssertLessThan(Date().timeIntervalSince(start), 5)
         XCTAssertEqual(snapshot.lines.map(\.label), Self.allLabels)
-        XCTAssertEqual(summaryHosts(routing), [Self.production])
+        XCTAssertEqual(summaryHosts(routing), [Self.daily])
     }
 
     @MainActor
-    func testSummaryFromDailySurvivesAuthFailureOnProduction() async {
+    func testSummaryFromProductionSurvivesAuthFailureOnDaily() async {
         let full = Self.fullBody
         let routing = summaryRouting { host in
-            host == Self.production ? HTTPResponse(statusCode: 403, headers: [:], body: Data()) : Self.ok(full)
+            host == Self.daily ? HTTPResponse(statusCode: 403, headers: [:], body: Data()) : Self.ok(full)
         }
 
         let snapshot = await makeProvider(routing).refresh()
@@ -115,24 +143,24 @@ final class AntigravityCloudCodeHostTests: XCTestCase {
     }
 
     @MainActor
-    func testProduction503FallsBackToPartialDailySummary() async {
+    func testDaily503FallsBackToPartialProductionSummary() async {
         let partial = Self.claudeOnlyBody
         let routing = summaryRouting { host in
-            host == Self.production ? HTTPResponse(statusCode: 503, headers: [:], body: Data()) : Self.ok(partial)
+            host == Self.daily ? HTTPResponse(statusCode: 503, headers: [:], body: Data()) : Self.ok(partial)
         }
 
         let snapshot = await makeProvider(routing).refresh()
         XCTAssertEqual(snapshot.lines.map(\.label), ["Claude", "Claude Weekly"],
                        "Gemini and Argon rows stay absent when the fallback has no data for them")
-        XCTAssertEqual(summaryHosts(routing), [Self.production, Self.daily])
+        XCTAssertEqual(summaryHosts(routing), [Self.daily, Self.production])
         XCTAssertFalse(routing.requests.contains { $0.url.path == AntigravityUsageClient.fetchModelsPath })
     }
 
     @MainActor
-    func testProductionTimeoutFallsBackToDailySummary() async {
+    func testDailyTimeoutFallsBackToProductionSummary() async {
         let full = Self.fullBody
         let routing = summaryRouting { host in
-            if host == Self.production { throw URLError(.timedOut) }
+            if host == Self.daily { throw URLError(.timedOut) }
             return Self.ok(full)
         }
 
@@ -167,7 +195,7 @@ final class AntigravityCloudCodeHostTests: XCTestCase {
         guard case .ok(let data) = await client.loadCodeAssist(token: "t") else { return XCTFail("expected 2xx") }
         XCTAssertEqual(AntigravityUsageMapper.parseLoadCodeAssistPlan(data), "Ultra")
         let request = routing.requests.first
-        XCTAssertEqual(request?.url.host, Self.production)
+        XCTAssertEqual(request?.url.host, Self.daily)
         XCTAssertEqual(request?.headers["User-Agent"], AntigravityClientVersion.userAgent(version: nil))
         let body = request?.body.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
         XCTAssertEqual(body?["metadata"] as? [String: String], [

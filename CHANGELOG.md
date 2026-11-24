@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.10.5
+
+### Bug Fixes
+- Antigravity's Session and Weekly meters show Gemini usage again instead of "No data" ([#150](https://github.com/federico-app/godusage/pull/150)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.4...v1.10.5](https://github.com/federico-app/godusage/compare/v1.10.4...v1.10.5)
+
+- [f4e288d](https://github.com/federico-app/godusage/commit/f4e288d2eed69d90b61620b607629dbf23d2c972) fix(antigravity): restore Gemini meters by sending the client User-Agent and asking daily first (#150) by @andreaAppload
+
 ## v1.10.4
 
 ### Bug Fixes
