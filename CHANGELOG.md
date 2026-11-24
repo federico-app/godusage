@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.10.7
+
+### Bug Fixes
+- GodUsage no longer uses a lot of CPU with the panel closed while a team member is active ([#154](https://github.com/federico-app/godusage/pull/154)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.6...v1.10.7](https://github.com/federico-app/godusage/compare/v1.10.6...v1.10.7)
+
+- [d88f4c1](https://github.com/federico-app/godusage/commit/d88f4c142018f9fcb8418d836597eba5b0ef22a7) Stop the Teams live dot from rendering behind the closed popover (#154) by @andreaAppload
+
 ## v1.10.6
 
 ### Bug Fixes

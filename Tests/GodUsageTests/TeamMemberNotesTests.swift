@@ -35,4 +35,11 @@ final class TeamMemberNotesTests: XCTestCase {
         let old = try JSONDecoder().decode(MemberReactions.self, from: Data(#"{"fire":0,"clap":0,"clown":0,"mine":[]}"#.utf8))
         XCTAssertNil(old.from)
     }
+
+    // Regression: the pulse kept running behind the closed popover and held the main thread at ~55% CPU.
+    func testLiveDotPulsesOnlyWhileHostIsOnScreen() {
+        XCTAssertTrue(LiveDot.pulses(hostVisible: true, reduceMotion: false))
+        XCTAssertFalse(LiveDot.pulses(hostVisible: false, reduceMotion: false))
+        XCTAssertFalse(LiveDot.pulses(hostVisible: true, reduceMotion: true))
+    }
 }
