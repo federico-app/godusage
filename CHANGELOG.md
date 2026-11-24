@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.10.6
+
+### Bug Fixes
+- With Antigravity 2.34 and later, GodUsage reads usage from the running Antigravity app again instead of Google's servers, so refreshes are faster ([#152](https://github.com/federico-app/godusage/pull/152)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.5...v1.10.6](https://github.com/federico-app/godusage/compare/v1.10.5...v1.10.6)
+
+- [9055ce7](https://github.com/federico-app/godusage/commit/9055ce7d17fe6522fff69dfbb00e69bcaeb19da3) fix(antigravity): read the language server's CSRF token from its hub file (#152) by @andreaAppload
+
 ## v1.10.5
 
 ### Bug Fixes
