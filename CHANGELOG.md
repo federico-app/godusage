@@ -1,5 +1,53 @@
 # Changelog
 
+## v1.10.6
+
+### Bug Fixes
+- With Antigravity 2.34 and later, GodUsage reads usage from the running Antigravity app again instead of Google's servers, so refreshes are faster ([#152](https://github.com/federico-app/godusage/pull/152)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.5...v1.10.6](https://github.com/federico-app/godusage/compare/v1.10.5...v1.10.6)
+
+- [9055ce7](https://github.com/federico-app/godusage/commit/9055ce7d17fe6522fff69dfbb00e69bcaeb19da3) fix(antigravity): read the language server's CSRF token from its hub file (#152) by @andreaAppload
+
+## v1.10.5
+
+### Bug Fixes
+- Antigravity's Session and Weekly meters show Gemini usage again instead of "No data" ([#150](https://github.com/federico-app/godusage/pull/150)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.4...v1.10.5](https://github.com/federico-app/godusage/compare/v1.10.4...v1.10.5)
+
+- [f4e288d](https://github.com/federico-app/godusage/commit/f4e288d2eed69d90b61620b607629dbf23d2c972) fix(antigravity): restore Gemini meters by sending the client User-Agent and asking daily first (#150) by @andreaAppload
+
+## v1.10.4
+
+### Bug Fixes
+- When Anthropic blocks Claude usage updates, the warning says when the shown values were fetched, and the app log records what Anthropic answered ([#148](https://github.com/federico-app/godusage/pull/148)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.3...v1.10.4](https://github.com/federico-app/godusage/compare/v1.10.3...v1.10.4)
+
+- [68b8955](https://github.com/federico-app/godusage/commit/68b8955fc244389383d47ee528c36af0c9731ffd) fix(claude): log 429 details and say when the shown values were fetched (#148) by @andreaAppload
+
+## v1.10.3
+
+### New Features
+- This Week's Limit shows above each past day the share of the weekly limit it used, so a heavy day reads apart from a lighter one even when both boxes are full ([#146](https://github.com/federico-app/godusage/pull/146)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.2...v1.10.3](https://github.com/federico-app/godusage/compare/v1.10.2...v1.10.3)
+
+- [9e45679](https://github.com/federico-app/godusage/commit/9e4567972edaf5b33e6b861a16f359d4f95460d4) feat(teams): week boxes show each past day's share of the weekly limit (#146) by @andreaAppload
+
 ## v1.10.2
 
 ### New Features
