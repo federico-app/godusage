@@ -54,17 +54,39 @@ struct MemberStatusNote: View {
     }
 }
 
-/// A small green dot that pulses gently: the member is spending right now. Still with Reduce Motion.
+/// A small green dot that pulses gently: the member is spending right now. Still with Reduce Motion,
+/// and still while its host is off screen.
 struct LiveDot: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.liveAnimationsActive) private var hostVisible
 
     var body: some View {
-        // A symbol effect runs in Core Animation, so the pulse doesn't redraw the row.
+        // A repeating symbol effect is not free: SwiftUI renders every frame of it through the hosting
+        // view, and the popover's tree survives `orderOut`. Left running behind a closed popover it kept
+        // the main thread busy at ~50–60% CPU, so it only runs while the host is on screen.
         Image(systemName: "circle.fill")
             .font(.system(size: 6))
             .foregroundStyle(Theme.positive)
-            .symbolEffect(.pulse, options: .repeating, isActive: !reduceMotion)
+            .symbolEffect(.pulse, options: .repeating, isActive: Self.pulses(hostVisible: hostVisible, reduceMotion: reduceMotion))
             .accessibilityHidden(true)
+    }
+
+    static func pulses(hostVisible: Bool, reduceMotion: Bool) -> Bool {
+        hostVisible && !reduceMotion
+    }
+}
+
+/// Whether the view's host window is on screen, for repeating animations that must stop when it isn't.
+/// Default `true`: a window that is torn down on close (the Teams window) needs nothing. The popover,
+/// whose tree outlives `orderOut`, sets it from `PopoverTransparencyStore.popoverShown`.
+private struct LiveAnimationsActiveKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    var liveAnimationsActive: Bool {
+        get { self[LiveAnimationsActiveKey.self] }
+        set { self[LiveAnimationsActiveKey.self] = newValue }
     }
 }
 
