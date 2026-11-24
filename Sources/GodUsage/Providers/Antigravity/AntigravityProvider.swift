@@ -121,7 +121,8 @@ final class AntigravityProvider: ProviderRuntime {
                         processName: "language_server",
                         markers: ["antigravity", "antigravity-ide"],
                         csrfFlag: "--csrf_token",
-                        portFlag: "--extension_server_port"
+                        portFlag: "--extension_server_port",
+                        hubDirectory: Self.hubDirectory
                     )
                     : await probeLS(processName: "agy", markers: [], csrfFlag: "", portFlag: nil)
                 switch outcome {
@@ -146,13 +147,20 @@ final class AntigravityProvider: ProviderRuntime {
 
     // MARK: - Language server
 
-    private func probeLS(processName: String, markers: [String], csrfFlag: String, portFlag: String?) async -> ProbeLSOutcome {
+    /// Where Antigravity 2.34+ publishes its language server's ports and CSRF token (`hub_<port>.json`),
+    /// now that the token reaches the server over stdin instead of `--csrf_token`.
+    static let hubDirectory = "~/.gemini/antigravity/daemon"
+
+    private func probeLS(
+        processName: String, markers: [String], csrfFlag: String, portFlag: String?, hubDirectory: String? = nil
+    ) async -> ProbeLSOutcome {
         let discovery = self.discovery
         let options = LanguageServerDiscovery.Options(
             processName: processName,
             markers: markers,
             csrfFlag: csrfFlag,
-            portFlag: portFlag
+            portFlag: portFlag,
+            hubDirectory: hubDirectory
         )
         let discovered: LanguageServerDiscovery.Result
         switch await loadOffMainActor({ discovery.discoverOutcome(options) }) {

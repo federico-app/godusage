@@ -4,8 +4,10 @@ import Foundation
 /// `agy` CLI) and returns the CSRF token + listening ports needed to call its local Connect-RPC service.
 ///
 /// The approach: scan `ps` for the process, match it by name + marker flags, pull `--csrf_token` /
-/// `--extension_server_port` from its argv, and read its listening TCP ports via `lsof`. All work is
-/// blocking subprocess I/O, so call `discover` off the main actor (e.g. via `loadOffMainActor`).
+/// `--extension_server_port` from its argv, and read its listening TCP ports via `lsof`. Servers that
+/// no longer put the token in argv (Antigravity 2.34's standalone hub reads it from stdin) publish it
+/// in a `hub_<port>.json` file instead, found through `hubDirectory`. All work is blocking subprocess
+/// and file I/O, so call `discover` off the main actor (e.g. via `loadOffMainActor`).
 struct LanguageServerDiscovery: Sendable {
     struct Options: Sendable {
         /// Executable name to match (e.g. `language_server`, `agy`).
@@ -17,6 +19,9 @@ struct LanguageServerDiscovery: Sendable {
         var csrfFlag: String
         /// Optional flag carrying an HTTP fallback port (e.g. `--extension_server_port`).
         var portFlag: String?
+        /// Directory holding `hub_<port>.json` files (`{"pid", "httpsPort", "httpPort", "csrfToken"}`),
+        /// read when argv has no `csrfFlag` value. Nil means argv is the only token source.
+        var hubDirectory: String? = nil
     }
 
     struct Result: Sendable {
@@ -27,6 +32,7 @@ struct LanguageServerDiscovery: Sendable {
     }
 
     var processRunner: ProcessRunning = SystemProcessRunner()
+    var files: TextFileAccessing = LocalTextFileAccessor()
 
     /// Why a discovery pass returned no server, kept distinct so callers can negative-cache only
     /// the safe case: `noProcess` (ps ran, nothing matched) is a stable fact worth remembering;
@@ -63,12 +69,13 @@ struct LanguageServerDiscovery: Sendable {
         let lsofPath = ["/usr/sbin/lsof", "/usr/bin/lsof"].first { FileManager.default.fileExists(atPath: $0) }
 
         for candidate in candidates {
-            let csrf: String
+            let flagCSRF: String?
             if options.csrfFlag.trimmingCharacters(in: .whitespaces).isEmpty {
-                csrf = ""
-            } else if let value = Self.extractFlag(command: candidate.command, flag: options.csrfFlag) {
-                csrf = value
+                flagCSRF = ""
             } else {
+                flagCSRF = Self.extractFlag(command: candidate.command, flag: options.csrfFlag)
+            }
+            if flagCSRF == nil && options.hubDirectory == nil {
                 continue
             }
 
@@ -90,12 +97,57 @@ struct LanguageServerDiscovery: Sendable {
                 continue
             }
 
+            let csrf: String
+            if let flagCSRF {
+                csrf = flagCSRF
+            } else if let directory = options.hubDirectory,
+                      let hub = hubFile(directory: directory, pid: candidate.pid, ports: ports) {
+                csrf = hub.csrfToken
+            } else {
+                AppLog.warn(.subprocess, "ls discover: \(options.processName) pid=\(candidate.pid) has no \(options.csrfFlag) and no matching hub file")
+                continue
+            }
+
             AppLog.info(.subprocess, "ls discover: found \(options.processName) pid=\(candidate.pid) ports=\(ports)")
             return .found(Result(pid: candidate.pid, csrf: csrf, ports: ports, extensionPort: extensionPort))
         }
 
         // Matching processes exist but none exposed usable endpoints (yet) — not cacheable.
         return .indeterminate
+    }
+
+    // MARK: - Hub files
+
+    struct HubFile: Decodable, Equatable {
+        var pid: Int32
+        var csrfToken: String
+    }
+
+    /// The `hub_<port>.json` written for this process: tried for each listening port, and accepted only
+    /// when its `pid` is the candidate's (a stale file from a previous run names a dead pid).
+    func hubFile(directory: String, pid: Int32, ports: [Int]) -> HubFile? {
+        for port in ports {
+            let path = (directory as NSString).appendingPathComponent("hub_\(port).json")
+            let text: String
+            do {
+                guard let stored = try files.readTextIfPresent(path) else { continue }
+                text = stored
+            } catch {
+                AppLog.warn(.subprocess, "ls discover: could not read \(path): \(error.localizedDescription)")
+                continue
+            }
+            guard let hub = Self.parseHubFile(text), hub.pid == pid else { continue }
+            return hub
+        }
+        return nil
+    }
+
+    /// Decode a hub file; nil when it is malformed or has no token.
+    static func parseHubFile(_ text: String) -> HubFile? {
+        guard let hub = try? JSONDecoder().decode(HubFile.self, from: Data(text.utf8)),
+              !hub.csrfToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return nil }
+        return hub
     }
 
     // MARK: - Pure helpers (unit-tested directly)
