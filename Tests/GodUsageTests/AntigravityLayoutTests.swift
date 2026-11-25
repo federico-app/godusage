@@ -10,11 +10,12 @@ final class AntigravityLayoutTests: XCTestCase {
     func testFreshDefaultsSeedFiveMetricsTwoPinsAndClaudePairSecondary() {
         let store = makeStore("FreshDefaults")
 
-        // All five metrics enabled, in declaration order (Argon Weekly right after Weekly).
+        // All nine metrics enabled, in declaration order (Argon Weekly right after Weekly, local
+        // history after the quota meters).
         XCTAssertEqual(store.placed.map(\.descriptorID), [
             "antigravity.geminiPro", "antigravity.geminiWeekly", "antigravity.argonWeekly",
             "antigravity.claude", "antigravity.claudeWeekly"
-        ])
+        ] + localUsageMetricIDs)
 
         // The Gemini pair is pinned (2-per-provider cap), mirroring Claude/Codex Session+Weekly.
         XCTAssertEqual(store.pinnedMetricIDs, ["antigravity.geminiPro", "antigravity.geminiWeekly"])
@@ -24,7 +25,33 @@ final class AntigravityLayoutTests: XCTestCase {
         XCTAssertEqual(group?.alwaysShownMetrics.map(\.id), [
             "antigravity.geminiPro", "antigravity.geminiWeekly", "antigravity.argonWeekly"
         ])
-        XCTAssertEqual(group?.expandedMetrics.map(\.id), ["antigravity.claude", "antigravity.claudeWeekly"])
+        XCTAssertEqual(group?.expandedMetrics.map(\.id), ["antigravity.claude", "antigravity.claudeWeekly"] + localUsageMetricIDs)
+    }
+
+    func testLocalUsageUpgradeSeedsTrendAndSpendTilesOnceOnDemandAndUnpinned() {
+        let defaults = makeDefaults("LocalUsageUpgrade")
+        let quotaIDs = [
+            "antigravity.geminiPro", "antigravity.geminiWeekly", "antigravity.argonWeekly",
+            "antigravity.claude", "antigravity.claudeWeekly"
+        ]
+        saveStored(quotaIDs.map { PlacedWidget(descriptorID: $0) }, forKey: "layout", in: defaults)
+        saveStored(quotaIDs, forKey: "layout.seededDefaults", in: defaults)
+        saveStored(["antigravity": quotaIDs], forKey: "layout.metricOrderByProvider", in: defaults)
+        defaults.set(["antigravity.geminiPro", "antigravity.geminiWeekly"], forKey: "layout.menuBarPins")
+        defaults.set(["antigravity.claude", "antigravity.claudeWeekly"], forKey: "layout.expandedMetrics")
+
+        let store = LayoutStore(registry: .antigravityOnly, defaults: defaults, storageKey: "layout")
+
+        for id in localUsageMetricIDs {
+            XCTAssertTrue(store.isMetricEnabled(id), id)
+            XCTAssertTrue(store.expandedMetricIDs.contains(id), id)
+            XCTAssertFalse(store.isPinned(id), id)
+        }
+        XCTAssertEqual(store.orderedSupportedMetrics(for: "antigravity").map(\.id), quotaIDs + localUsageMetricIDs)
+
+        store.setMetricEnabled("antigravity.today", false)
+        let reloaded = LayoutStore(registry: .antigravityOnly, defaults: defaults, storageKey: "layout")
+        XCTAssertFalse(reloaded.isMetricEnabled("antigravity.today"), "the new default is offered only once")
     }
 
     func testArgonUpgradeSeedsOnceAndPreservesSavedPinsOrderAndOptOuts() {
@@ -46,11 +73,12 @@ final class AntigravityLayoutTests: XCTestCase {
         XCTAssertEqual(store.placed.filter { $0.descriptorID == "antigravity.argonWeekly" }.count, 1)
         XCTAssertFalse(store.isMetricEnabled("antigravity.geminiWeekly"))
         XCTAssertEqual(store.pinnedMetricIDs, ["antigravity.claude"])
-        XCTAssertEqual(store.expandedMetricIDs, ["antigravity.geminiPro"])
+        // The local-usage metrics are new to this layout too, so they seed below the caret.
+        XCTAssertEqual(store.expandedMetricIDs, Set(["antigravity.geminiPro"] + localUsageMetricIDs))
         XCTAssertEqual(store.orderedSupportedMetrics(for: "antigravity").map(\.id), [
             "antigravity.geminiPro", "antigravity.geminiWeekly", "antigravity.argonWeekly",
             "antigravity.claude", "antigravity.claudeWeekly"
-        ])
+        ] + localUsageMetricIDs)
 
         store.setMetricEnabled("antigravity.argonWeekly", false)
         let reloaded = LayoutStore(registry: .antigravityOnly, defaults: defaults, storageKey: "layout")
@@ -164,6 +192,10 @@ final class AntigravityLayoutTests: XCTestCase {
 
     // MARK: - Fixtures
 
+    private var localUsageMetricIDs: [String] {
+        ["antigravity.trend", "antigravity.today", "antigravity.yesterday", "antigravity.last30"]
+    }
+
     private var preArgonMetricIDs: [String] {
         ["antigravity.geminiPro", "antigravity.geminiWeekly", "antigravity.claude", "antigravity.claudeWeekly"]
     }
@@ -188,5 +220,5 @@ private extension WidgetRegistry {
     /// A registry with just the live Antigravity provider, so `DefaultLayout`'s seeds filter down to
     /// its four metrics.
     @MainActor
-    static var antigravityOnly: WidgetRegistry { .from([AntigravityProvider()]) }
+    static var antigravityOnly: WidgetRegistry { .from([AntigravityProvider(conversationScanner: .emptyForTesting)]) }
 }

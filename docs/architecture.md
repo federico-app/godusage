@@ -40,6 +40,8 @@ Automatic refreshes never request secret data from another app's Keychain item. 
 
 Claude, Codex, Grok, Muse, and pi share `IncrementalJSONLScanner` for local JSONL history. The scanner caches parsed events per file by path, size, and modification time in a versioned Application Support store, partitioned by provider and home. Provider instances that read the same home share one scanner actor, so cards do not parse the same files twice. A session log that only grew since its last parse re-reads just the appended bytes. Records leave the cache as their file modification dates fall out of the history window. The scanner also memoizes aggregation and pricing: when a refresh finds no log changes and the pricing snapshot, history window, and calendar are unchanged, it reuses the previous aggregation.
 
+Antigravity keeps its history in per-conversation SQLite databases, not JSONL, so it has its own scanner actor. It reads each database read-only through `sqlite3` and caches the parsed generations in memory by path plus the size and modification time of the database and its `-wal` file.
+
 Muse subscription meters use the Meta developer dashboard’s teams/subscription-quota JSON APIs and the browser cookie reader shared with Sakana Fugu. Muse additionally discovers Firefox profiles and reads their unencrypted cookie databases without Keychain access. Its provider coalesces concurrent reads and enforces a 15-minute floor for both automatic and manual refreshes. Muse CLI credentials and key-minting endpoints are not involved. Local token history uses the existing independent session-log scanner.
 
 ## Stores
