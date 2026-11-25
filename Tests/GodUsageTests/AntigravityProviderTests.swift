@@ -375,7 +375,8 @@ final class AntigravityProviderTests: XCTestCase {
         let provider = AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(wrapped), files: FakeFiles()),
             usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing),
-            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
 
         let snapshot = await provider.refresh()
@@ -392,7 +393,8 @@ final class AntigravityProviderTests: XCTestCase {
         let provider = AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(nil), files: FakeFiles()),
             usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing),
-            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
         let snapshot = await provider.refresh()
         XCTAssertTrue(snapshot.lines.contains { $0.isError })
@@ -408,7 +410,8 @@ final class AntigravityProviderTests: XCTestCase {
         let provider = AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(wrapped), files: FakeFiles()),
             usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing),
-            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
         let snapshot = await provider.refresh()
         XCTAssertTrue(snapshot.lines.contains { $0.isError })
@@ -429,7 +432,8 @@ final class AntigravityProviderTests: XCTestCase {
         let provider = AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(wrapped), files: FakeFiles()),
             usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing),
-            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
         let snapshot = await provider.refresh()
         XCTAssertTrue(snapshot.lines.contains { $0.isError })
@@ -450,7 +454,8 @@ final class AntigravityProviderTests: XCTestCase {
         let provider = AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(wrapped), files: FakeFiles()),
             usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing),
-            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
         let snapshot = await provider.refresh()
         XCTAssertTrue(snapshot.lines.contains { $0.isError })
@@ -470,7 +475,8 @@ final class AntigravityProviderTests: XCTestCase {
         let provider = AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(wrapped), files: FakeFiles()),
             usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing),
-            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
         let snapshot = await provider.refresh()
         XCTAssertTrue(snapshot.lines.contains { $0.isError })
@@ -496,7 +502,8 @@ final class AntigravityProviderTests: XCTestCase {
         let provider = AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(wrapped), files: FakeFiles()),
             usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing),
-            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: EmptyProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
         let snapshot = await provider.refresh()
         XCTAssertTrue(snapshot.lines.contains { $0.isError })

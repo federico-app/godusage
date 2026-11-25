@@ -13,12 +13,20 @@ Antigravity has two shared quota pools, and each pool has a rolling 5-hour windo
 | Argon Weekly | The separate Gemini 4 Argon weekly quota, when Antigravity reports one |
 | Claude | The shared non-Gemini pool (Claude, GPT-OSS, and others), rolling 5-hour window |
 | Claude Weekly | The same non-Gemini pool's weekly window |
+| Usage Trend | Daily tokens over the last 30 days, from your local Antigravity conversations |
+| Today / Yesterday / Last 30 Days | Tokens and estimated API-rate spend from your local Antigravity conversations |
 
 When Antigravity reports your subscription tier (such as `Pro` or `Ultra`), GodUsage shows it beside the provider name.
 
-Gemini Pro and Gemini Flash are one pool, so GodUsage shows one meter per window instead of separate Pro and Flash meters. That pair is named Session and Weekly to match the other providers. Every non-Gemini model shares the second pool, shown under the Claude name. Quotas are reported as a fraction, so there are no token or dollar spend tiles.
+Gemini Pro and Gemini Flash are one pool, so GodUsage shows one meter per window instead of separate Pro and Flash meters. That pair is named Session and Weekly to match the other providers. Every non-Gemini model shares the second pool, shown under the Claude name. Quotas are reported as a fraction. Tokens and spend come from your local conversations instead (see below).
 
 Paid Pro plans have a separate Argon weekly quota. Ultra includes Argon in its larger shared Gemini quota, shown by Session and Weekly. Argon Weekly reads **No data** when the response has no usable separate Argon weekly quota. GodUsage uses the quota Antigravity returns rather than guessing from the plan name.
+
+## Token and spend tiles
+
+The Usage Trend and spend tiles count every model generation Antigravity saved in its conversation history on this Mac, bucketed by the day it ran. Hover a tile for the per-model breakdown. If Antigravity has never saved a conversation here, the tiles read **No data**. The tiles do not need a login: when the quota meters can't load because of a sign-in or Keychain problem, the tiles still update under the sign-in notice (or the Connect prompt). During a temporary outage the card shows the error and keeps its last good values.
+
+Spend is an estimate of what the same tokens would cost at Google's (or Anthropic's) public API list price, not a bill: your plan does not charge per token. Each generation is priced at the model's current list price, so when Google changes a price, earlier days are re-estimated at the new rate. Antigravity's internal model names map to Google's public ids (`gemini-4-neon-medium` → Gemini 4 Neon, `gemini-3.8-flash-medium` → Gemini 3.8 Flash). `gemini-3-flash-agent` has no public price of its own and is estimated as Gemini 3 Flash Preview. A model no price list knows is left out of the totals and listed in the tile's warning triangle. See [Pricing](../pricing.md).
 
 When a pool's 5-hour window has no usage yet, that meter reads **Not started** instead of a reset countdown. Hover it for an explanation. The weekly meters always show a reset countdown.
 
@@ -56,6 +64,8 @@ Cloud Code requests for the quota summary, the models list, and the plan send An
 The four shared-pool windows use their known bucket ids. Argon Weekly requires the exact `Gemini 4 Argon` group and one explicitly weekly bucket with its own id and a usable remaining fraction. Disabled, malformed, or ambiguous Argon quotas are left out. The legacy per-model endpoints never feed Argon into the shared Gemini meter, because they do not say which pool or period its quota belongs to.
 
 With the app closed, the plan comes from Cloud Code's `loadCodeAssist`, called the way the Antigravity app calls it: its client metadata (`ideType` `ANTIGRAVITY`, `pluginType` `GEMINI`) and the User-Agent above. The version is read from the installed Antigravity app's `Info.plist`, with a pinned fallback when the app is missing. Google leaves out the tier for any other caller. A known `paidTier.id` (Pro, Ultra, Ultra Lite) wins over the tier's display name.
+
+The spend tiles read `~/.gemini/antigravity/conversations/*.db`, one SQLite database per conversation, read-only. Each row of the `gen_metadata` table is one model generation; GodUsage reads only its token counts (input, cache reads and writes, and output, which already includes thinking), the model, and the steps it produced. A generation's time is the creation time of its first step in the `steps` table. Input does not include cache reads, so each bucket is priced once at its own rate. Some rows name their model and others carry only a model number; GodUsage learns the number-to-name pairs from all conversations, with a built-in table as a fallback. A database is read again only when it or its `-wal` file changes, and conversations last changed before the 30-day window are skipped. A database that cannot be read is logged and skipped; the others and the quota meters still update. Rows left out of the tiles (undecodable, without token counts, or without a step time) are counted in the log once per database change, and a database whose rows yield nothing countable is logged as an error, since that usually means Antigravity changed its storage format. Conversation text is never logged or stored.
 
 > Reverse-engineered from the app and language-server binary. Endpoints and storage can change without notice.
 

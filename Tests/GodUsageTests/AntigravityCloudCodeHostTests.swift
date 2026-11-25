@@ -45,7 +45,8 @@ final class AntigravityCloudCodeHostTests: XCTestCase {
         return AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(wrapped), files: FakeFiles()),
             usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing, clientVersion: { nil }),
-            discovery: LanguageServerDiscovery(processRunner: NoProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: NoProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
     }
 
@@ -90,7 +91,8 @@ final class AntigravityCloudCodeHostTests: XCTestCase {
                 files: FakeFiles()
             ),
             usageClient: client,
-            discovery: LanguageServerDiscovery(processRunner: NoProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: NoProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
 
         _ = await provider.refresh()

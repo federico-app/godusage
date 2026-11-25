@@ -21,6 +21,8 @@ GodUsage reads credentials that provider tools already keep on your Mac.
 
 Besides the provider API calls, GodUsage fetches public [model price lists](pricing.md) about once an hour from `raw.githubusercontent.com`, `models.dev`, and this project's GitHub Pages. These are plain downloads of public data and carry no usage, log, or account information. Spend tiles are computed from local CLI logs on your Mac. No log data leaves it.
 
+For Antigravity, the spend tiles read the conversation databases in `~/.gemini/antigravity/conversations/`, read-only. GodUsage reads only token counts, model names, and step times from them. Conversation text is never logged, stored, or sent anywhere. The parsed counts are kept in memory only, not in the usage cache below.
+
 Release builds also check the signed update feed. See [Updates](updates.md).
 
 ## Local usage cache

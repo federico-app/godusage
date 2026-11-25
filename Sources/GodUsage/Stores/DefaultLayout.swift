@@ -8,7 +8,8 @@ import Foundation
 enum DefaultLayout {
     static let metricIDs: [String] = [
         "antigravity.geminiPro", "antigravity.geminiWeekly", "antigravity.argonWeekly",
-        "antigravity.claude", "antigravity.claudeWeekly",
+        "antigravity.claude", "antigravity.claudeWeekly", "antigravity.trend",
+        "antigravity.today", "antigravity.yesterday", "antigravity.last30",
 
         "claude.session", "claude.weekly", "claude.fable", "claude.rateLimitResets", "claude.trend",
         "claude.today", "claude.yesterday", "claude.last30",
@@ -104,8 +105,9 @@ enum DefaultLayout {
     /// (existing layouts keep everything always-shown unless they reset customization).
     static let expandedMetricIDs: [String] = [
         // Antigravity: the Gemini pool pair (5h + weekly) and Argon Weekly stay above the fold; the
-        // non-Gemini (Claude) pool pair sits below the caret.
+        // non-Gemini (Claude) pool pair and local history sit below the caret.
         "antigravity.claude", "antigravity.claudeWeekly",
+        "antigravity.trend", "antigravity.today", "antigravity.yesterday", "antigravity.last30",
         // Claude: Session, Weekly, and Fable stay above the fold; reset grants and local history sit
         // below the caret.
         "claude.rateLimitResets", "claude.trend", "claude.today", "claude.yesterday", "claude.last30",
