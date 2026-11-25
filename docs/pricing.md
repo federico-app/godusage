@@ -1,6 +1,6 @@
 # Model Pricing
 
-How GodUsage turns token counts into the estimated dollars on the spend tiles (Claude, Codex, Cursor, Grok, Muse, and fixed-rate Sakana Fugu models). OpenRouter and OpenCode are different: OpenRouter's API reports billed dollars directly, and OpenCode records its own per-message cost in its local logs.
+How GodUsage turns token counts into the estimated dollars on the spend tiles (Claude, Codex, Cursor, Antigravity, Grok, Muse, and fixed-rate Sakana Fugu models). OpenRouter and OpenCode are different: OpenRouter's API reports billed dollars directly, and OpenCode records its own per-message cost in its local logs.
 
 ## Where prices come from
 
@@ -29,6 +29,8 @@ When no source can price a model, GodUsage leaves it out of the spend figures. I
 Codex auto-review is free for users signed in through ChatGPT from October 6, 2026, per [OpenAI's announcement](https://x.com/thsottiaux/status/2107368734981517634). The announcement gives a date, not a time, so GodUsage uses 00:00 UTC that day as the cutoff. Native Codex, pi, and OpenCode requests before the cutoff keep the previous dated model estimates (Luna rates from July 9, 2026); requests at or after it cost $0, even when pi recorded a cost. Free requests never show an unknown-price warning. Auto-review keeps its `codex-auto-review` name and measured tokens in the totals and in its own model breakdown row, including periods that mix earlier paid estimates with free requests.
 
 Gemini 4 Argon covers `gemini-4-argon` and its trial, preview, and effort variants (`gemini-4-argon-high`, `gemini-4-argon-trial`), plus labels such as `Gemini 4 Argon (High)`. The supplement prices them at [Google's introductory API rates](https://ai.google.dev/gemini-api/docs/pricing): $2 input, $0.10 cache reads, and $10 output per million tokens through November 30, 2026. Cache writes use the $2 input rate, because Google supports only implicit caching for Argon. Google lists $4 input, $0.20 cache reads, and $20 output from December 1, 2026. The supplement has no dated rates, so that change needs a supplement update on that date, and from then on all Argon usage, including earlier days, is estimated at the new rates.
+
+Antigravity uses Google's Standard-tier API list prices. Its model names are the same slugs Cursor uses, so they share the alias rules, which strip effort and variant suffixes (`gemini-4-neon-medium` → `gemini-4-neon`, `gemini-4-hydrogen-tiered-high` → `gemini-4-hydrogen`). For Gemini, an exact LiteLLM entry wins over a supplement rate taken from Cursor's table, so Gemini 3.8 Flash costs Google's $3.75 output in Antigravity and Cursor's $3.50 in Cursor. Gemini 4 Carbon, Neon, and Hydrogen are not in the public catalogs yet, so the supplement carries their rates alongside Argon. `gemini-3-flash-agent` has no public price and is estimated as `gemini-3-flash-preview`. Announced price changes (Carbon and Argon on December 1, 2026; Gemini 3.6 and 3.8 Flash on January 1, 2027) are not dated in the supplement: every day uses the current list price, and the rates are updated when the change takes effect.
 
 ## What the estimate includes
 

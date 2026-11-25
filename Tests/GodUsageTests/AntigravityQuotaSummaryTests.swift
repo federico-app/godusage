@@ -150,7 +150,10 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
 
     @MainActor
     func testDescriptorLabelsMatchMapperEmittedLabels() {
-        let descriptorLabels = Set(AntigravityProvider().widgetDescriptors.map(\.metricLabel))
+        // Quota meters only: the trend and spend tiles come from the local conversation scan.
+        let descriptorLabels = Set(AntigravityProvider(conversationScanner: .emptyForTesting).widgetDescriptors
+            .filter { !$0.isSpendTile && $0.id != "antigravity.trend" }
+            .map(\.metricLabel))
         XCTAssertEqual(
             Set(AntigravityUsageMapper.summaryBuckets.map(\.label)).union([AntigravityMetric.argonWeeklyLabel]),
             descriptorLabels
@@ -177,7 +180,8 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
         return AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(wrapped), files: FakeFiles()),
             usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing, clientVersion: { "9.8.7" }),
-            discovery: LanguageServerDiscovery(processRunner: NoProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: NoProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
     }
 
@@ -271,7 +275,8 @@ final class AntigravityQuotaSummaryTests: XCTestCase {
         AntigravityProvider(
             authStore: AntigravityAuthStore(keychain: FakeKeychain(nil), files: FakeFiles()),
             usageClient: AntigravityUsageClient(lsHTTP: routing, http: routing),
-            discovery: LanguageServerDiscovery(processRunner: FakeLSProcessRunner())
+            discovery: LanguageServerDiscovery(processRunner: FakeLSProcessRunner()),
+            conversationScanner: .emptyForTesting
         )
     }
 

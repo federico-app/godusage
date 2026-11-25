@@ -13,6 +13,9 @@ import Foundation
 /// On each source, `RetrieveUserQuotaSummary` is tried first (the only endpoint reporting the merged
 /// pools and the weekly windows); builds without it fall back to the legacy per-model endpoints,
 /// which are 5h-only — the weekly meters read "No data" there.
+///
+/// The Usage Trend and spend tiles come from Antigravity's local conversation databases
+/// (`AntigravityConversationScanner`), scanned alongside the quota probe.
 @MainActor
 final class AntigravityProvider: ProviderRuntime {
     let provider = Provider(id: "antigravity", displayName: "Antigravity", icon: .providerMark("antigravity"))
@@ -20,18 +23,26 @@ final class AntigravityProvider: ProviderRuntime {
     let authStore: AntigravityAuthStore
     let usageClient: AntigravityUsageClient
     let discovery: LanguageServerDiscovery
+    let conversationScanner: AntigravityConversationScanner
     let now: @Sendable () -> Date
+    let pricing: @Sendable () async -> ModelPricing
+
+    static let localSourceNote = String(localized: "From your Antigravity conversations (estimated)")
 
     init(
         authStore: AntigravityAuthStore = AntigravityAuthStore(),
         usageClient: AntigravityUsageClient = AntigravityUsageClient(),
         discovery: LanguageServerDiscovery = LanguageServerDiscovery(),
-        now: @escaping @Sendable () -> Date = Date.init
+        conversationScanner: AntigravityConversationScanner = AntigravityConversationScanner(),
+        now: @escaping @Sendable () -> Date = Date.init,
+        pricing: @escaping @Sendable () async -> ModelPricing = ModelPricingStore.livePricing
     ) {
         self.authStore = authStore
         self.usageClient = usageClient
         self.discovery = discovery
+        self.conversationScanner = conversationScanner
         self.now = now
+        self.pricing = pricing
     }
 
     var widgetDescriptors: [WidgetDescriptor] {
@@ -45,8 +56,10 @@ final class AntigravityProvider: ProviderRuntime {
             .percent(id: AntigravityMetric.claudeID, provider: provider, title: AntigravityMetric.claudeLabel, isSessionWindow: true)
                 .exportingLimit("nonGeminiSession", unit: "percent"),
             .percent(id: AntigravityMetric.claudeWeeklyID, provider: provider, title: AntigravityMetric.claudeWeeklyLabel)
-                .exportingLimit("nonGeminiWeekly", unit: "percent")
-        ]
+                .exportingLimit("nonGeminiWeekly", unit: "percent"),
+            .usageTrend(provider: provider)
+                .exportingHistory(scope: .machineLocal, estimatedCost: true, sourceNote: Self.localSourceNote)
+        ] + WidgetDescriptor.spendTiles(provider: provider)
     }
 
     func hasLocalCredentials() async -> Bool {
@@ -68,16 +81,84 @@ final class AntigravityProvider: ProviderRuntime {
     }
 
     func refresh() async -> ProviderSnapshot {
+        // The local scan never touches the network and never fails the refresh, so it runs beside
+        // the quota probe.
+        let refreshedAt = now()
+        let scanner = conversationScanner
+        let pricing = self.pricing
+        async let localScan = scanner.scan(now: refreshedAt, pricing: await pricing())
         do {
             let result = try await probe()
-            return ProviderSnapshot.make(provider: provider, plan: result.plan, lines: result.lines, refreshedAt: now())
-        } catch AntigravityError.keychainConnectRequired {
-            // The login exists but hasn't been loaded this process — the neutral Connect
-            // affordance, not a warning.
-            return ProviderSnapshot.connectPrompt(provider: provider, error: AntigravityError.keychainConnectRequired)
+            return localUsageSnapshot(
+                plan: result.plan, lines: result.lines, scan: await localScan, refreshedAt: refreshedAt
+            )
+        } catch let error as AntigravityError where error != .unavailable {
+            // A login problem (connect, sign-in, Keychain) can't stop the tiles that come only from
+            // local conversations: serve them under the notice, like Claude and Codex do. Without
+            // local usage, keep the plain error card or connect prompt.
+            guard let scan = await localScan, !Task.isCancelled else {
+                return Self.failureSnapshot(provider: provider, error: error)
+            }
+            return localUsageSnapshot(
+                plan: nil, lines: [], scan: scan, refreshedAt: refreshedAt,
+                warning: error.localizedDescription,
+                warningIsConnectPrompt: error == .keychainConnectRequired
+            )
         } catch {
+            // A transient outage stays an error card: the store keeps the last good snapshot
+            // (meters and tiles) on screen instead of replacing the meters with "No data".
             return ProviderSnapshot.error(provider: provider, error: error)
         }
+    }
+
+    static func failureSnapshot(provider: Provider, error: AntigravityError) -> ProviderSnapshot {
+        if error == .keychainConnectRequired {
+            // The login exists but hasn't been loaded this process — the neutral Connect
+            // affordance, not a warning.
+            return ProviderSnapshot.connectPrompt(provider: provider, error: error)
+        }
+        return ProviderSnapshot.error(provider: provider, error: error)
+    }
+
+    /// The published snapshot: whatever quota lines the probe produced plus the always-local Usage
+    /// Trend and spend tiles. A `warning` marks a snapshot served without live quota.
+    private func localUsageSnapshot(
+        plan: String?,
+        lines initialLines: [MetricLine],
+        scan: LogUsageScan?,
+        refreshedAt: Date,
+        warning: String? = nil,
+        warningIsConnectPrompt: Bool = false
+    ) -> ProviderSnapshot {
+        var lines = initialLines
+        var usageHistory: ProviderUsageHistory?
+        if let scan, !Task.isCancelled {
+            usageHistory = ProviderUsageHistory(
+                series: scan.series,
+                modelUsage: scan.modelUsage,
+                unknownModelsByDay: scan.unknownModelsByDay
+            )
+            SpendTileMapper.appendTokenUsage(
+                scan.series, to: &lines, now: refreshedAt,
+                unknownModelsByDay: scan.unknownModelsByDay,
+                modelUsage: scan.modelUsage,
+                modelSourceNote: Self.localSourceNote
+            )
+            SpendTileMapper.appendUsageTrend(scan.series, to: &lines, now: refreshedAt, note: Self.localSourceNote)
+        }
+        // An authoritative empty quota answer keeps its empty lines (each meter reads "No data");
+        // only a snapshot served under a notice needs an explicit placeholder.
+        if warning != nil { MetricLine.appendNoDataIfNeeded(&lines) }
+        return ProviderSnapshot.make(
+            provider: provider,
+            plan: plan,
+            lines: lines,
+            refreshedAt: now(),
+            usageHistory: usageHistory,
+            warning: warning,
+            warningIsConnectPrompt: warning == nil ? nil : warningIsConnectPrompt,
+            loginRequired: warning == nil ? false : true
+        )
     }
 
     private struct StrategyResult {

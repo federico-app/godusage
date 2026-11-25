@@ -4956,6 +4956,16 @@
         }
       }
     },
+    "From your Antigravity conversations (estimated)" : {
+      "localizations" : {
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dalle conversazioni di Antigravity (stima)"
+          }
+        }
+      }
+    },
     "From your Claude usage history (estimated)" : {
       "localizations" : {
         "it" : {

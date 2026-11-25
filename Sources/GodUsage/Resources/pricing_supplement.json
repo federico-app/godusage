@@ -1,6 +1,6 @@
 {
   "$comment": "GodUsage pricing supplement. Prices Cursor-native models that no public catalog carries, supplies fast-variant multipliers the catalogs omit, and maps provider log/CSV model slugs to canonical pricing keys (LiteLLM keys, models.dev ids, or entries in this file). Cursor Router rows name the routed model in prose instead of a slug ('Opus 5 (Auto Balanced)'), so those labels get alias rules too. Muse Spark rates come from Meta's Model API pricing page. Published to update-feed by .github/workflows/pricing-supplement.yml on every change, so installed apps pick edits up within about an hour - no release needed. Rates are USD per million tokens. Sources: https://cursor.com/docs/models-and-pricing.md for Cursor-native entries; https://developers.openai.com/api/docs/models/daybreak-blue-latest and https://developers.openai.com/api/docs/pricing for Daybreak aliases and rates; https://dev.meta.ai/docs/pricing-rate-limits for Muse Spark.",
-  "updated_at": "2026-10-27T12:00:00Z",
+  "updated_at": "2026-11-25T12:00:00Z",
   "pricing": {
     "auto": {
       "input_per_million": 1.25,
@@ -185,6 +185,27 @@
       "cache_write_per_million": 2.0,
       "cache_read_per_million": 0.1,
       "output_per_million": 10.0
+    },
+    "gemini-4-carbon": {
+      "$comment": "Google Gemini 4 Carbon Standard-tier API rates (https://aistudio.google.com/docs/pricing, 2026-11-25), same as Argon. From 2026-12-01 Google lists $4 input / $20 output / $0.20 cache read; the supplement has no dated rates, so update this entry when those rates take effect. Cache write uses the input rate (implicit caching only).",
+      "input_per_million": 2.0,
+      "cache_write_per_million": 2.0,
+      "cache_read_per_million": 0.1,
+      "output_per_million": 10.0
+    },
+    "gemini-4-neon": {
+      "$comment": "Google Gemini 4 Neon Standard-tier API rates (https://aistudio.google.com/docs/pricing, 2026-11-25). Used by Antigravity. Cache write uses the input rate (implicit caching only).",
+      "input_per_million": 3.0,
+      "cache_write_per_million": 3.0,
+      "cache_read_per_million": 0.15,
+      "output_per_million": 15.0
+    },
+    "gemini-4-hydrogen": {
+      "$comment": "Google Gemini 4 Hydrogen Standard-tier API rates (https://aistudio.google.com/docs/pricing, 2026-11-25). Used by Antigravity. Cache write uses the input rate (implicit caching only).",
+      "input_per_million": 1.5,
+      "cache_write_per_million": 1.5,
+      "cache_read_per_million": 0.075,
+      "output_per_million": 7.5
     }
   },
   "fast_multipliers": {
@@ -252,6 +273,11 @@
     { "pattern": "^gemini-3\\.7-flash(?:-preview)?(?:-(?:low|medium|high|xhigh))?$", "canonical": "gemini-3.7-flash" },
     { "pattern": "^gemini-3\\.8-flash(?:-preview)?(?:-(?:none|low|medium|high|xhigh))?(?:-preview)?$", "canonical": "gemini-3.8-flash" },
     { "pattern": "^gemini-4-argon(?:-(?:trial|preview))?(?:-(?:none|n|low|medium|high|xhigh))?(?:-(?:trial|preview))?$", "canonical": "gemini-4-argon" },
+    { "pattern": "^gemini-4-argon-tiered(?:-(?:none|low|medium|high|xhigh))?$", "canonical": "gemini-4-argon" },
+    { "pattern": "^gemini-4-carbon(?:-(?:tiered|trial|preview))?(?:-(?:none|low|medium|high|xhigh))?$", "canonical": "gemini-4-carbon" },
+    { "pattern": "^gemini-4-neon(?:-(?:tiered|trial|preview))?(?:-(?:none|low|medium|high|xhigh))?$", "canonical": "gemini-4-neon" },
+    { "pattern": "^gemini-4-hydrogen(?:-(?:tiered|trial|preview))?(?:-(?:none|low|medium|high|xhigh))?$", "canonical": "gemini-4-hydrogen" },
+    { "pattern": "^gemini-3-flash-agent(?:-(?:low|medium|high|xhigh))?$", "canonical": "gemini-3-flash-preview" },
     { "pattern": "^gemini-3-pro-preview(?:-(?:low|medium|high|xhigh))?$", "canonical": "gemini-3-pro-preview" },
     { "pattern": "^gemini-3\\.1-pro(?:-preview)?(?:-(?:low|medium|high|xhigh))?$", "canonical": "gemini-3.1-pro-preview" },
     { "pattern": "^gpt-5(?:-(?:low|high))?-fast$", "canonical": "gpt-5-fast" },

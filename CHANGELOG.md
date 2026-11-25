@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.11.0
+
+### New Features
+- Antigravity shows tokens and estimated spend for Today, Yesterday and the Last 30 Days, plus a usage trend, read from Antigravity's local conversations and priced at Google's Gemini list prices ([#156](https://github.com/federico-app/godusage/pull/156)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.10.7...v1.11.0](https://github.com/federico-app/godusage/compare/v1.10.7...v1.11.0)
+
+- [6d71cab](https://github.com/federico-app/godusage/commit/6d71cab160892b473fd2157511bae3745b00e1eb) Add Antigravity token and spend tiles from local conversations (#156) by @andreaAppload
+
 ## v1.10.7
 
 ### Bug Fixes
