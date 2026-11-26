@@ -28,13 +28,15 @@ enum YourTeamPlans {
     }
 
     /// Two plans that both cover you stand for the same subscription when they're for one provider and
-    /// either name the same plan (the detected plan when both are linked to one, else the name, ignoring
-    /// case and spaces) or their open weekly limits reset at the same instant (one account's window,
-    /// however each owner named the plan). Reports carry no account ids, so this is as close as the
-    /// app gets; a false match only hides another team's copy, never the selected team's.
+    /// their open weekly limits reset at the same instant (one account's window, however each owner
+    /// named the plan). Weekly limits that reset at different instants are different accounts, even
+    /// on the same tier. Without a weekly limit on both, they match when they name the same plan (the
+    /// detected plan when both are linked to one, else the name, ignoring case and spaces). Reports
+    /// carry no account ids, so this is as close as the app gets; a false match only hides another
+    /// team's copy, never the selected team's.
     static func sameSubscription(_ a: TeamPlanReport, _ b: TeamPlanReport) -> Bool {
         guard a.provider == b.provider else { return false }
-        if let resetA = a.budget?.resetsAt, let resetB = b.budget?.resetsAt, resetA == resetB { return true }
+        if let resetA = a.budget?.resetsAt, let resetB = b.budget?.resetsAt { return resetA == resetB }
         if let detectedA = a.detectedPlan, let detectedB = b.detectedPlan {
             return normalized(detectedA) == normalized(detectedB)
         }
