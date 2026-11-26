@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.11.1
+
+### Bug Fixes
+- This Week's Limit shows a team's shared plan again when you also have a personal plan of the same tier whose weekly limit resets at a different time ([#159](https://github.com/federico-app/godusage/pull/159)) by @andreaAppload
+
+---
+
+### Changelog
+**Full Changelog**: [v1.11.0...v1.11.1](https://github.com/federico-app/godusage/compare/v1.11.0...v1.11.1)
+
+- [0313dd6](https://github.com/federico-app/godusage/commit/0313dd607793251c8b14c8ebd6098ee40ddc6291) Show both plans when same-tier weekly limits reset apart (#159) by @andreaAppload
+
 ## v1.11.0
 
 ### New Features
