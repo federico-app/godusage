@@ -18,6 +18,8 @@ The repo is public, so CI's macOS jobs skip pull requests from forks: a stranger
 
 Signing jobs import their certificate into a temporary keychain named after the run and job, and remove it when the job ends, so two jobs at once never clash. The certificates, notary key, and Sparkle key come from the repo secrets for each run and are not kept on the Mac.
 
+The runners run as the Mac's user, so they inherit its global git config. The publishing workflows turn commit signing off (`commit.gpgsign=false` through `GIT_CONFIG_*`), so a signing setup like 1Password's can't block a feed commit when it's locked.
+
 ## Removing a runner
 
 In the runner's folder: `./svc.sh stop && ./svc.sh uninstall`, then `./config.sh remove --token <removal token>` (an admin creates it from the runner's page in Settings → Actions → Runners).

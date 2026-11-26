@@ -24,6 +24,14 @@ on:
 permissions:
   contents: read
 
+# Self-hosted runners run as the Mac's user and inherit its global git config, which signs commits
+# through 1Password. When 1Password is locked the commit fails, and actions-gh-pages skips it
+# silently (v1.11.1 shipped without its appcast entry). CI commits don't need a signature.
+env:
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: commit.gpgsign
+  GIT_CONFIG_VALUE_0: "false"
+
 jobs:
   release:
     runs-on: [self-hosted, macOS, ARM64, godusage]
