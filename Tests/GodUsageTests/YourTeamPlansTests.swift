@@ -72,6 +72,21 @@ final class YourTeamPlansTests: XCTestCase {
         XCTAssertEqual(ids(merged), ["a/work", "b/personal"], "linked to different detected plans, so not one subscription")
     }
 
+    func testSameTierWithWeeklyLimitsResettingApartIsTwoSubscriptions() {
+        // A team's shared Max and your own Max: same detected plan, but each account's week resets
+        // on its own day, so the other team's shared plan must not be hidden behind the personal one.
+        let merged = YourTeamPlans.merge(selectedTeamID: "all", reports: [
+            (teamID: "all", report: report([])),
+            (teamID: "personal", report: report([
+                plan("mine", name: "Claude Max Fede", detectedPlan: "Max 5x", resetsAt: "2026-11-28T09:00:00.000Z"),
+            ])),
+            (teamID: "dev", report: report([
+                plan("shared", name: "Claude Max 100", detectedPlan: "Max 5x", resetsAt: "2026-12-01T04:00:00.000Z"),
+            ])),
+        ])
+        XCTAssertEqual(ids(merged), ["personal/mine", "dev/shared"])
+    }
+
     func testASelectedTeamPlanThatDoesNotCoverYouHidesNothing() {
         let merged = YourTeamPlans.merge(selectedTeamID: "a", reports: [
             (teamID: "a", report: report([plan("colleague", includesYou: false)])),
