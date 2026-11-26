@@ -3,6 +3,14 @@
     <channel>
         <title>GodUsage</title>
         <item>
+            <title>1.11.1</title>
+            <pubDate>Thu, 26 Nov 2026 14:34:45 +0100</pubDate>
+            <sparkle:version>861</sparkle:version>
+            <sparkle:shortVersionString>1.11.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/federico-app/godusage/releases/download/v1.11.1/GodUsage-1.11.1.dmg" length="30175764" type="application/octet-stream" sparkle:edSignature="YWgr8oUZtoiSJmQ0PwGBGla6Ipz34ZYLkfAQ28lT36wEwIKmh4J2MEUFTX+6nLN9s275MWkTFz/qDmuyzIawCA=="/>
+        </item>
+        <item>
             <title>1.11.0</title>
             <pubDate>Wed, 25 Nov 2026 16:15:49 +0100</pubDate>
             <sparkle:version>859</sparkle:version>
